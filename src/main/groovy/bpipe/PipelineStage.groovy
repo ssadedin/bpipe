@@ -155,14 +155,14 @@ class PipelineStage {
                 if(newFiles) {
                     // If the default output happens to be one of the created files, 
                     // prefer to use that
-                    if(context.defaultOutput in nextInputs)
+                    if(context.defaultOutput in newFiles)
                         nextInputs = context.defaultOutput
                     else {
                         // Use the oldest created file.  This means if the 
                         // body actually executed a series of steps we'll use the
                         // last file it made
 	                    // nextInputs = newFiles.iterator().next()
-                        nextInputs = newFiles.sort { new File(it).lastModified() }.reverse().iterator().next
+                        nextInputs = newFiles.sort { new File(it).lastModified() }.reverse().iterator().next()
                     }
                     log.info "Using next input inferred from created files $newFiles : ${nextInputs}"
                 }
