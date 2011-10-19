@@ -5,11 +5,13 @@ VERSION=0.1
 STAGE="build/stage/bpipe-$VERSION"
 
 repositories {
+    flatDir(dirs: file('local-lib'))
     mavenCentral()
 }
 
 dependencies {
     groovy group: 'org.codehaus.groovy', name: 'groovy', version: '1.8.2'
+    compile files(fileTree(dir:'local-lib', includes:['*.jar']))
     testCompile group: 'junit', name: 'junit', version: '4.8.2'
 }
 

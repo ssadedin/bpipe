@@ -39,7 +39,11 @@ class Runner {
     
     private static Logger log = Logger.getLogger("bpipe.Runner");
     
-    public static OptionAccessor opts
+    static CliBuilder runCli = new CliBuilder(usage: 'bpipe [run] [-h] [-t] [-d] [-v] <pipeline> <input1> <input2> ...\n')
+    
+    static CliBuilder diagramCli = new CliBuilder(usage: 'bpipe diagram [-e] <pipeline> <input1> <input2> ...\n')
+    
+    public static OptionAccessor opts = runCli.parse([])
     
     public static void main(String [] args) {
         
@@ -55,8 +59,9 @@ class Runner {
         // to be removed from the user's folder
         System.addShutdownHook { 
             def home = System.getProperty("user.home")
-            def jobFile = new File("$home/.bpipe/jobs/$pid")
+            def jobFile = new File("$home/.bpipedb/jobs/$pid")
             if(jobFile.exists()) {
+                log.info("Deleting job file $jobFile")
                 if(!jobFile.delete()) {
                     log.warn("Unable to delete job file for job $pid")
                     println("WARN: Unable to delete job file for job $pid")
@@ -79,26 +84,53 @@ class Runner {
         parentLog.addHandler(pidLog)
         
         log.info("Starting")
-        def cli = new CliBuilder(usage: 'bpipe run [-h] [-t] [-d] [-v] <pipeline> <input1> <input2> ...')
-        cli.with {
-             h longOpt:'help', 'usage information'
-             d longOpt:'dir', 'output directory', args:1
-             t longOpt:'test', 'test mode'
-             v longOpt:'verbose', 'print internal logging to standard error'
+        
+        def cli
+        
+        def groovyArgs = ["--main", "groovy.ui.GroovyMain"] 
+        String mode = System.getProperty("bpipe.mode")
+        if(mode == "diagram")  {
+            log.info("Mode is diagram")
+            cli = diagramCli
+            Config.config["mode"] = "diagram"
         }
+        else 
+        if(mode == "diagrameditor") {
+            log.info("Mode is diagram editor")
+            cli = diagramCli
+            Config.config["mode"] = "diagrameditor"
+            
+        }
+        else {
+            cli = runCli
+	        cli.with {
+	             h longOpt:'help', 'usage information'
+	             d longOpt:'dir', 'output directory', args:1
+	             t longOpt:'test', 'test mode'
+	             v longOpt:'verbose', 'print internal logging to standard error'
+	        }
+        }
+        
         def opt = cli.parse(args)
         if(!opt)
             System.exit(1)
         
         if(!opt.arguments()) {
             cli.usage()
+            println "\n"
             System.exit(1)
         }
+        groovyArgs += opt.arguments()
         
         opts = opt
         
-        // Add to the arguments the main class and the script to execute
-        def groovyArgs = ["--main", "groovy.ui.GroovyMain"] + opt.arguments()
+        String pipelineFile = opts.arguments()[0]
+        if(!new File(pipelineFile).exists()) {
+            println "\nCould not understand command $pipelineFile or find it as a file\n"
+            cli.usage()
+            println "\n"
+            System.exit(1)
+        }
         
         org.codehaus.groovy.tools.GroovyStarter.main(groovyArgs as String[])
     }

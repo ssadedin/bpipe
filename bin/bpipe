@@ -19,6 +19,8 @@ fi
 COMMAND="$1"
 TESTMODE=""
 
+CP="$BPIPE_HOME"/lib/bpipe.jar:"$BPIPE_HOME"/lib/groovy-all-1.8.2.jar:$BPIPE_HOME/lib/commons-cli-1.2.jar:$BPIPE_HOME/lib/jgraphx.jar:"$BPIPE_LIB"
+
 # If the only argument is "retry" then actually just run the previous 
 if [ "$COMMAND" == "retry" ]
 then
@@ -41,6 +43,16 @@ then
         echo
     fi
     exit
+elif [ "$COMMAND" == "diagram" ];
+then
+	shift 1
+	java -classpath "$CP" -Dbpipe.mode=diagram -Dbpipe.pid=$$ bpipe.Runner $* 
+	exit
+elif [ "$COMMAND" == "diagrameditor" ];
+then
+	shift 1
+	java -classpath "$CP" -Dbpipe.mode=diagrameditor -Dbpipe.pid=$$ bpipe.Runner $* 
+	exit
 elif [ "$COMMAND" == "log" ];
 then
 	# TODO: will fail if spaces in path
@@ -50,10 +62,14 @@ elif [ "$COMMAND" == "jobs" ];
 then
     if [ -e ~/.bpipedb/jobs/ ];
     then
+     
 	    for i in ~/.bpipedb/jobs/* _ ;
 	    do
-	       [ "$i" != _ ] &&  
-		       echo `basename $i`" : "`cat $i`
+	       base=`basename $i`
+	       if [ "$base" != "*" ] && [ "$i" != "_" ];
+	       then
+		       echo "$base : "`cat $i`
+	       fi
 	    done
     fi
     exit
@@ -71,8 +87,6 @@ fi
 
 echo "$0 $COMMAND $*" > .bpipe/lastcmd
 echo "$0 $COMMAND $*" >> .bpipe/history
-
-CP="$BPIPE_HOME"/lib/bpipe.jar:"$BPIPE_HOME"/lib/groovy-all-1.8.2.jar:$BPIPE_HOME/lib/commons-cli-1.2.jar:"$BPIPE_LIB"
 
 # Run in the background with nohup so that jobs do not abort on logout
 nohup java -classpath "$CP" -Dbpipe.pid=$$ bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &

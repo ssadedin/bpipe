@@ -116,7 +116,12 @@ class PipelineStage {
             
             this.running = true
             
-            nextInputs = body(context.@input)
+            if(PipelineCategory.wrappers.containsKey(stageName)) {
+                log.info("Executing stage $stageName inside wrapper")
+                PipelineCategory.wrappers[stageName](body, context.@input)
+            }
+            else
+	            nextInputs = body(context.@input)
             
             if(!joiner)
 	            log.info("Stage $stageName returned $nextInputs as default inputs for next stage")

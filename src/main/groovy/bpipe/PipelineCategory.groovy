@@ -222,6 +222,13 @@ class PipelineCategory {
     
     static Map closureNames = [:]
     
+    /**
+     * Map of stage name to body wrapper - a closure that should be 
+     * called instead of the body, passing the body as a parameter.
+     * This is how predeclared Transform and Filters work.
+     */
+    static Map wrappers = [:]
+    
     static PipelineStage currentStage 
     
     static Object plus(Closure c, Closure other) {
@@ -233,8 +240,6 @@ class PipelineCategory {
             currentStage.run()
             Utils.checkFiles(currentStage.context.output)
                     
-//          println "Output 1 is ${currentStage.context.output} next input is ${currentStage.nextInputs}"   
-            
             // If the stage did not return any outputs then we assume
             // that the inputs to the next stage are the same as the inputs
             // to the previous stage
@@ -287,6 +292,8 @@ class PipelineCategory {
     
     /**
      * Executes the given body with 'input' defined to be the 
+     * most recently produced output file(s) matching the 
+     * extensions specified by input
      * 
      * @param c
      * @param inputs
@@ -304,12 +311,13 @@ class PipelineCategory {
         
         inputs = Utils.box(inputs).collect { String inp ->
             for(s in reverseStages) {
-                if(inp.startsWith(".")) { // Find the most recent stage that output a matching file
-                    def o = Utils.box(s.context.output)?.find { it?.endsWith(inp) } 
-                    if(o)
-                        return o
-                }
-            }
+                if(!inp.startsWith("."))
+                    inp = "." + inp
+                
+                def o = Utils.box(s.context.output)?.find { it?.endsWith(inp) } 
+                if(o)
+                    return o
+	        }
         }
         
         if(inputs.any { it == null})
@@ -430,6 +438,7 @@ class PipelineCategory {
     
     static void addStages(Binding binding) {
         binding.variables.each { 
+            log.info("Found binding variable ${it.key}")
             if(it.value instanceof Closure) {
                 closureNames[it.value] = it.key
             }
@@ -444,11 +453,13 @@ class PipelineCategory {
      */
     static void addStages(def host) {
         // Let's introspect the clazz to see what closure attributes it has
+        log.info("Adding stages from $host")
         host.metaClass.properties.each { MetaBeanProperty p ->
             try {
                 def x = p.getProperty(host)
                 if(x instanceof Closure) {
-                    closureNames[x] = p.name
+                    log.info("Found pipeline stage ${p.name}")
+                    PipelineCategory.closureNames[x] = p.name
                 }
             }
             catch(Exception e) {
