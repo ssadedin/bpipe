@@ -11,7 +11,7 @@ BPIPE_HOME=`dirname $0`/..
 : ${BPIPE_LIB:="$HOME/bpipes"}
 
 # Last bpipe commands
-if [ ! -e .bpipe ];
+if [ ! -e .bpipe/logs ];
 then
     mkdir -p .bpipe/logs
 fi
@@ -20,6 +20,12 @@ COMMAND="$1"
 TESTMODE=""
 
 CP="$BPIPE_HOME"/lib/bpipe.jar:"$BPIPE_HOME"/lib/groovy-all-1.8.2.jar:$BPIPE_HOME/lib/commons-cli-1.2.jar:$BPIPE_HOME/lib/jgraphx.jar:"$BPIPE_LIB"
+
+# Token support for Cygwin: convert the class path to windows format so we can at least find the jars
+if uname | grep -iq cygwin;
+then
+   CP=`cygpath -pw "$CP"`
+fi
 
 # If the only argument is "retry" then actually just run the previous 
 if [ "$COMMAND" == "retry" ]
@@ -55,8 +61,9 @@ then
 	exit
 elif [ "$COMMAND" == "log" ];
 then
+	shift 1
 	# TODO: will fail if spaces in path
-	ls -tc .bpipe/logs/*.log | grep -v 'bpipe\.' | head -1 | xargs tail -f
+	ls -tc .bpipe/logs/*.log | grep -v 'bpipe\.' | head -1 | xargs tail -f $*
 	exit
 elif [ "$COMMAND" == "jobs" ];
 then
@@ -138,18 +145,20 @@ cleanup() {
             if [ -e "$f" ];
             then
                 target=".bpipe/trash/$f"
-                echo "Moving unclean file $f to $target"
-                echo
                 if [ ! -d .bpipe/trash ];
                 then
                     mkdir -p .bpipe/trash
                 fi
-                if [ -e "$target" ];
-                then
-                    echo "WARN: Overwriting target $target"
-                    echo
-                    rm "$target"
-                fi
+		count=1
+		realtarget="$target"
+                while [ -e "$realtarget" ];
+                do
+		    realtarget="${target}.${count}"
+		    let "count = count + 1"
+                done
+		target="$realtarget"
+                echo "Moving unclean file $f to $target"
+                echo
                 mv "$f" ".bpipe/trash/$f"
             fi
         done
