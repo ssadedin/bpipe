@@ -54,6 +54,7 @@ public class BpipeLogFormatter extends Formatter {
             .append("\t")
             .append(record.getLevel()).append("\t|")
             .append(format.format(new Date(record.getMillis())))
+            .append(' ')
             .append(record.getMessage()).append(' ')
             .append(lineSep);
         return output.toString();
