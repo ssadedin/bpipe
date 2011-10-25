@@ -33,13 +33,19 @@ import java.util.logging.*;
  * A small wrapper that parses command line arguments and forwards execution
  * to the user's script
  * 
- * @author ssadedin@mcri.edu.au
+ * @author simon.sadedin@mcri.edu.au
  */
 class Runner {
     
     private static Logger log = Logger.getLogger("bpipe.Runner");
     
-    static CliBuilder runCli = new CliBuilder(usage: 'bpipe [run] [-h] [-t] [-d] [-v] <pipeline> <input1> <input2> ...\n')
+    static CliBuilder runCli = new CliBuilder(usage: 
+   """bpipe [run|test] [-h] [-t] [-d] [-v] <pipeline> <in1> <in2>...
+history 
+log
+jobs
+diagram
+diagrameditor""")
     
     static CliBuilder diagramCli = new CliBuilder(usage: 'bpipe diagram [-e] <pipeline> <input1> <input2> ...\n')
     
@@ -104,7 +110,7 @@ class Runner {
         else {
             cli = runCli
 	        cli.with {
-	             h longOpt:'help', 'usage information'
+	             h longOpt:'help', 'uSage information'
 	             d longOpt:'dir', 'output directory', args:1
 	             t longOpt:'test', 'test mode'
 	             v longOpt:'verbose', 'print internal logging to standard error'
