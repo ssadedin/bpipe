@@ -90,7 +90,12 @@ class PipelineStage {
      */
     def run() {
         Utils.checkFiles(context.@input)
+        Pipeline.externalBinding.variables.each { 
+            if(body.properties.containsKey("binding"))
+	            body.binding.variables.put(it.key,it.value) 
+        }
         body.setDelegate(context)
+        
         def oldFiles = new File(".").listFiles() as List
         try {
             oldFiles.removeAll { f -> IGNORE_NEW_FILE_PATTERNS.any { f.name.matches(it) } }
@@ -181,6 +186,7 @@ class PipelineStage {
             if(!this.context.output)
                 this.context.output = nextInputs
                 
+            log.info "Actual outputs from stage $stageName are ${this.context.output}"
             context.defaultOutput = null
             
         }
@@ -209,4 +215,8 @@ class PipelineStage {
         return nextInputs
     }
     
+    def propertyMissing(String name) {
+        return Pipeline.binding.variables[name]
+    }
+
 }

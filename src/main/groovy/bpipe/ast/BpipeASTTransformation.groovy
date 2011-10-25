@@ -122,6 +122,8 @@ class BpipeASTTransformation implements ASTTransformation {
             
         // Note: failing to set this causes mysterious untraceable NullPointerExceptions later on
         innerClosure.variableScope = new VariableScope()
+//        innerClosure.variableScope = new VariableScope(clsBlock.variableScope.parent)
+//        clsBlock.variableScope.parent = innerClosure.variableScope
         
         def transformStatement = 
             new ExpressionStatement(

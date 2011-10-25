@@ -19,7 +19,7 @@ fi
 COMMAND="$1"
 TESTMODE=""
 
-CP="$BPIPE_HOME"/lib/bpipe.jar:"$BPIPE_HOME"/lib/groovy-all-1.8.2.jar:$BPIPE_HOME/lib/commons-cli-1.2.jar:$BPIPE_HOME/lib/jgraphx.jar:"$BPIPE_LIB"
+CP="$BPIPE_HOME"/lib/bpipe.jar:"$BPIPE_HOME"/lib/groovy-all-1.8.2.jar:$BPIPE_HOME/lib/commons-cli-1.2.jar:$BPIPE_HOME/lib/jgraphx.jar
 
 # Token support for Cygwin: convert the class path to windows format so we can at least find the jars
 if uname | grep -iq cygwin;

@@ -231,6 +231,11 @@ class PipelineCategory {
     
     static PipelineStage currentStage 
     
+    /**
+     * Joins two closures representing pipeline stages together by
+     * creating wrapping closure that executes each one in turn.  This is the 
+     * basis of Bpipes's + syntax for joining sequential pipeline stages.
+     */
     static Object plus(Closure c, Closure other) {
         def result  = {  input1 ->
             
@@ -276,11 +281,16 @@ class PipelineCategory {
             lastOutput = out 
             currentStage.context.output = out
             
+            c.binding.variables.each { 
+                println "var:  $it.key"
+            }
+            
             // Store the list of output files so that if we are killed 
             // they can be cleaned up
             PipelineStage.UNCLEAN_FILE_PATH.text += Utils.box(currentStage.context.output)?.join("\n")
             
             c.setDelegate(currentStage.context)
+	        log.info("Producing from inputs ${currentStage.context.@input}")
             def nextIn= body()
             if(nextIn)
                 currentStage.nextInputs = nextIn
@@ -301,20 +311,34 @@ class PipelineCategory {
      * @return
      */
     static Object from(Closure c, Object inputs, Closure body) {
+        
+        log.info "Searching for inputs matching spec $inputs"
+        
         def reverseStages = stages.reverse()
         def orig = inputs
         
+        def reverseOutputs = stages.reverse().collect { Utils.box(it.context.output) }
+        
         // Add a final stage that represents the original inputs (bit of a hack)
-        // You can think of it as the initial inputs being the output of some previou stage
+        // You can think of it as the initial inputs being the output of some previous stage
         // that we know nothing about
-        reverseStages << new PipelineStage(new PipelineContext(output:stages[0].context.input),null) 
+        reverseOutputs.add(Utils.box(stages[0].context.@input))
+        
+        // Add an initial stage that represents the current input to this stage.  This way
+        // if the from() spec is used and matches the actual inputs then it will go with those
+        // rather than searching backwards for a previous match
+        reverseOutputs.add(0,Utils.box(currentStage.context.@input))
+        
+//        reverseStages.add(0,new PipelineStage(new PipelineContext(output:stages[0].context.input),null))
         
         inputs = Utils.box(inputs).collect { String inp ->
-            for(s in reverseStages) {
-                if(!inp.startsWith("."))
-                    inp = "." + inp
-                
-                def o = Utils.box(s.context.output)?.find { it?.endsWith(inp) } 
+            
+            if(!inp.startsWith("."))
+                inp = "." + inp
+            
+            for(s in reverseOutputs) {
+                log.info("Checking outputs ${s}")
+                def o = s.find { it?.endsWith(inp) } 
                 if(o)
                     return o
 	        }
@@ -323,12 +347,13 @@ class PipelineCategory {
         if(inputs.any { it == null})
             throw new PipelineError("Unable to locate one or more specified inputs matching spec $orig")
             
-//        println "Found inputs $inputs for spec $orig"
+        log.info "Found inputs $inputs for spec $orig"
         
         inputs = Utils.unbox(inputs)
         
         def oldInputs = currentStage.context.input 
         currentStage.context.input  = inputs
+        lastInputs = inputs
         
         def nextIn= body()
         if(nextIn)
@@ -337,6 +362,7 @@ class PipelineCategory {
             currentStage.nextInputs = null
         
         currentStage.context.input  = oldInputs
+        lastInputs = oldInputs
         return nextIn
     }
     
@@ -359,6 +385,7 @@ class PipelineCategory {
         // TODO: use binding instead of lastInput
         // def rawInp = c.binding.variables.input
         def inp = Utils.first(lastInputs)
+        log.info("Filter $type defined on inputs $inp")
         if(!inp) 
            throw new PipelineError("Expected input but no input provided") 
            
@@ -438,8 +465,8 @@ class PipelineCategory {
     
     static void addStages(Binding binding) {
         binding.variables.each { 
-            log.info("Found binding variable ${it.key}")
             if(it.value instanceof Closure) {
+	            log.info("Found closure variable ${it.key}")
                 closureNames[it.value] = it.key
             }
         }

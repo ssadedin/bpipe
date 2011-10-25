@@ -64,6 +64,11 @@ public class Pipeline {
     private static Logger log = Logger.getLogger("bpipe.Pipeline");
     
     /**
+     * Global binding
+     */
+    static Binding externalBinding = new Binding()
+    
+    /**
      * Default run method - introspects all the inputs from the binding of the
      * pipeline closure.
      */
@@ -98,6 +103,15 @@ public class Pipeline {
 	}
 
 	private static executePipeline(def inputFile, Object host, Closure pipeline) {
+        
+        loadExternalStages()
+        
+        // We have to manually add all the external variables to the outer pipeline stage
+        Pipeline.externalBinding.variables.each { 
+            log.info "Loaded external reference: $it.key"
+            pipeline.binding.variables.put(it.key,it.value) 
+        }
+        
 		def cmdlog = new File('commandlog.txt')
 		if(!cmdlog.exists())
 			cmdlog << ""
@@ -107,9 +121,11 @@ public class Pipeline {
 		println("="*Config.config.columns)
 
 		initUncleanFilePath()
+        
+        boolean failed = false
 
 		use(PipelineCategory) {
-			pipeline.setDelegate(host)
+			// pipeline.setDelegate(host)
 			PipelineCategory.currentStage = new PipelineStage(new PipelineContext(), pipeline())
 			PipelineCategory.stages << PipelineCategory.currentStage
 			PipelineCategory.currentStage.context.input = inputFile
@@ -118,16 +134,22 @@ public class Pipeline {
 			}
 			catch(PipelineError e) {
 				System.err << "Pipeline failed!\n\n"+e.message << "\n\n"
+                failed = true
 			}
 			catch(PipelineTestAbort e) {
 				println "\n\nAbort due to Test Mode!\n\n  $e.message\n"
+                failed = true
 			}
 
 			println("\n"+" Pipeline Finished ".center(Config.config.columns,"="))
 			msg "Finished at " + (new Date())
 
-			if(PipelineCategory.currentStage.context.output && !PipelineCategory.currentStage.context.output.startsWith("null") /* hack */)
-				msg "Output is " + PipelineCategory.currentStage.context.output
+            if(!failed) {
+				def outputFile = Utils.first(PipelineCategory.currentStage.context.output)
+				if(outputFile && !outputFile.startsWith("null") /* hack */ && new File(outputFile).exists()) {
+					msg "Output is " + outputFile
+				}
+            }
 		}
 
 		// Make sure the command log ends with newline
@@ -149,6 +171,31 @@ public class Pipeline {
                 
         }
         PipelineStage.UNCLEAN_FILE_PATH.text = ""
+    }
+    
+    static void loadExternalStages() {
+        GroovyShell shell = new GroovyShell(externalBinding)
+        def pipeFolder = new File(System.properties["user.home"], "bpipes")
+        if(System.getenv("BPIPE_LIB")) {
+            pipeFolder = new File(System.getenv("BPIPE_LIB"))
+        }
+        
+        if(!pipeFolder.exists()) {
+            log.warn("Pipeline folder $pipeFolder could not be found")
+            return
+        }
+        
+        def scripts = pipeFolder.listFiles().grep { it.name.endsWith("groovy") }.each { scriptFile ->
+            log.info("Evaluating library file $scriptFile")
+            try {
+		        shell.evaluate(scriptFile)
+            }
+            catch(Exception ex) {
+                log.error("Failed to evaluate script $scriptFile", ex)
+                System.err.println("WARN: Error evaluating script $scriptFile: " + ex.getMessage())
+            }
+	        PipelineCategory.addStages(externalBinding)
+        }
     }
     
     /**
@@ -179,6 +226,7 @@ public class Pipeline {
         // Figures out what the pipeline stages are 
         if(host)
 			pipeline.setDelegate(host)
+            
         use(DefinePipelineCategory) {
             pipeline()()
         }
