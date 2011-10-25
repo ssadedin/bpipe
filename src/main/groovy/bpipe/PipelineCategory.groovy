@@ -281,10 +281,6 @@ class PipelineCategory {
             lastOutput = out 
             currentStage.context.output = out
             
-            c.binding.variables.each { 
-                println "var:  $it.key"
-            }
-            
             // Store the list of output files so that if we are killed 
             // they can be cleaned up
             PipelineStage.UNCLEAN_FILE_PATH.text += Utils.box(currentStage.context.output)?.join("\n")

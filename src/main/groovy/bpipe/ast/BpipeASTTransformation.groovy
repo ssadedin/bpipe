@@ -107,6 +107,8 @@ class BpipeASTTransformation implements ASTTransformation {
             return
         } 
         
+        // println "================ AST PROCESSING : $closureName ============="
+        
         ClosureExpression cls = expr.rightExpression
         if(cls.code?.class != BlockStatement)  {
             println "ERROR: Transform annotates closure without block (?!)"

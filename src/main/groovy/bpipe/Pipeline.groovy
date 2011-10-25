@@ -214,7 +214,11 @@ public class Pipeline {
     }
     
     static Closure declarePipelineStage(String stageName, Closure c) {
+        // println "Pipeline stage declared $stageName"
         PipelineCategory.closureNames[c] = stageName
+        if(c.properties.containsKey("binding")) {
+            c.binding.variables[stageName] = c
+        }
         return c
     }
     
