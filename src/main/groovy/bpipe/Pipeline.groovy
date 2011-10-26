@@ -126,7 +126,8 @@ public class Pipeline {
 
 		use(PipelineCategory) {
 			// pipeline.setDelegate(host)
-			PipelineCategory.currentStage = new PipelineStage(new PipelineContext(), pipeline())
+			PipelineCategory.currentStage = 
+                new PipelineStage(new PipelineContext(PipelineCategory.stages), pipeline())
 			PipelineCategory.stages << PipelineCategory.currentStage
 			PipelineCategory.currentStage.context.input = inputFile
 			try {

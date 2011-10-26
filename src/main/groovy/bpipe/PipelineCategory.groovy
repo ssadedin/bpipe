@@ -27,11 +27,13 @@ package bpipe
 import groovy.lang.Closure;
 
 import java.io.FileOutputStream;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 import static Utils.*
+
 
 /**
  * This context defines implicit functions and variables that are 
@@ -44,6 +46,15 @@ import static Utils.*
 class PipelineContext {
     
     private static Logger log = Logger.getLogger("bpipe.PipelineContext");
+    
+    public PipelineContext(List<PipelineStage> pipelineStages) {
+        super();
+        if(pipelineStages == null)
+            throw new IllegalArgumentException("pipelineStages cannot be null")
+        this.pipelineStages = pipelineStages;
+    }
+
+    private List<PipelineStage> pipelineStages 
     
     def defaultOutput
     
@@ -112,7 +123,7 @@ class PipelineContext {
         if(this.@input == null || Utils.isContainer(this.@input) && this.@input.size() == 0) {
             throw new PipelineError("Input expected but not provided")
         }
-        return this.@input
+        return new PipelineInput(this.@input, pipelineStages)
     }
     
     def setInput(def inp) {
@@ -239,7 +250,7 @@ class PipelineCategory {
     static Object plus(Closure c, Closure other) {
         def result  = {  input1 ->
             
-            currentStage = new PipelineStage(new PipelineContext(), c)
+            currentStage = new PipelineStage(new PipelineContext(stages), c)
             stages << currentStage
             currentStage.context.setInput(input1)
             currentStage.run()
@@ -256,7 +267,7 @@ class PipelineCategory {
                 
             lastInputs = nextInputs
             
-            currentStage = new PipelineStage(new PipelineContext(), other)
+            currentStage = new PipelineStage(new PipelineContext(stages), other)
             currentStage.context.@input = nextInputs
             stages << currentStage
             currentStage.run()
@@ -276,14 +287,16 @@ class PipelineCategory {
         def lastInputs = currentStage.context.@input
         if(Utils.isNewer(out,lastInputs)) {
           msg(c,"Skipping steps to create $out because newer than $lastInputs ")
+	      currentStage.context.output = out
         }
         else {
             lastOutput = out 
+            
             currentStage.context.output = out
             
             // Store the list of output files so that if we are killed 
             // they can be cleaned up
-            PipelineStage.UNCLEAN_FILE_PATH.text += Utils.box(currentStage.context.output)?.join("\n")
+            PipelineStage.UNCLEAN_FILE_PATH.text += Utils.box(currentStage.context.output)?.join("\n") 
             
             c.setDelegate(currentStage.context)
 	        log.info("Producing from inputs ${currentStage.context.@input}")
@@ -325,18 +338,19 @@ class PipelineCategory {
         // rather than searching backwards for a previous match
         reverseOutputs.add(0,Utils.box(currentStage.context.@input))
         
-//        reverseStages.add(0,new PipelineStage(new PipelineContext(output:stages[0].context.input),null))
-        
         inputs = Utils.box(inputs).collect { String inp ->
             
             if(!inp.startsWith("."))
                 inp = "." + inp
             
             for(s in reverseOutputs) {
-                log.info("Checking outputs ${s}")
                 def o = s.find { it?.endsWith(inp) } 
-                if(o)
+                if(o) {
+	                log.info("Checking ${s} vs $inp  Y")
                     return o
+                }
+                log.info("Checking outputs ${s} vs $inp N")
+                
 	        }
         }
         
