@@ -27,8 +27,6 @@ fi
 
 CP="$BPIPE_HOME"/$LIB/bpipe.jar:"$BPIPE_HOME"/$LIB/groovy-all-1.8.2.jar:$BPIPE_HOME/$LIB/commons-cli-1.2.jar:$BPIPE_HOME/$LIB/jgraphx.jar
 
-echo "CP=$CP"
-
 # In case we are running in place in the bpipe project root, we pre-empt any other 
 # bpipe classes with those from the build directory and the eclipse compile path
 if [ -e $BPIPE_HOME/build/classes/main ];
@@ -211,24 +209,23 @@ trap end SIGINT
 
 # Tail the output so that the user sees it
 RUNPID=$$
-tail -f --pid=$BPIPE_PID .bpipe/logs/$RUNPID.log 
 
-##### Old - before I knew about tails --pid option! (todo: delete)
+# On Cygwin we can use automatic termination of tail,
+# but on Macs we have to emaulate that (grrr)
+if uname | grep -iq cygwin;
+then
+	tail -f --pid=$BPIPE_PID .bpipe/logs/$RUNPID.log 
+else
+	tail -f .bpipe/logs/$RUNPID.log &
+	TAIL_PID="$!"
 
-#TAIL_PID="$!"
-# Wait for the Java Bpipe process to finish naturally (not Ctrl-C, see above for that)
-#wait $BPIPE_PID
+        # Wait for the Java Bpipe process to finish naturally (not Ctrl-C, see above for that)
+	wait $BPIPE_PID
 
-# Cygwin seems to exit too quickly, before tail even picks up the stream
-# so unless we wait a tiny bit the output is truncated
-#if uname | grep -iq cygwin;
-#then
-#  sleep 1
-#fi
-
-# Seems like The Java Bpipe process ended by itself: kill the background tail process 
-# started above
-#if kill -0 $TAIL_PID  ;
-#then
-#    kill $TAIL_PID
-#fi
+        # Seems like The Java Bpipe process ended by itself: kill the background tail process 
+        # started above
+	if kill -0 $TAIL_PID  ;
+	then
+	    kill $TAIL_PID
+	fi
+fi
