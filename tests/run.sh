@@ -4,6 +4,9 @@ TESTS=`find . -maxdepth 1 -type d | grep "[A-Za-z]"`
 
 BASE=`pwd`
 
+# Add BPipe from the project root to the path
+PATH="$BASE/../bin:$PATH"
+
 succ=0
 fail=0
 

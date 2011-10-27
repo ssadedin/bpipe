@@ -19,7 +19,22 @@ fi
 COMMAND="$1"
 TESTMODE=""
 
-CP="$BPIPE_HOME"/lib/bpipe.jar:"$BPIPE_HOME"/lib/groovy-all-1.8.2.jar:$BPIPE_HOME/lib/commons-cli-1.2.jar:$BPIPE_HOME/lib/jgraphx.jar
+LIB=lib
+if [ -e $BPIPE_HOME/local-lib ];
+then
+  LIB="local-lib"
+fi
+
+CP="$BPIPE_HOME"/$LIB/bpipe.jar:"$BPIPE_HOME"/$LIB/groovy-all-1.8.2.jar:$BPIPE_HOME/$LIB/commons-cli-1.2.jar:$BPIPE_HOME/$LIB/jgraphx.jar
+
+echo "CP=$CP"
+
+# In case we are running in place in the bpipe project root, we pre-empt any other 
+# bpipe classes with those from the build directory and the eclipse compile path
+if [ -e $BPIPE_HOME/build/classes/main ];
+then
+  CP="$BPIPE_HOME/eclipse-build:$CP"
+fi
 
 # Token support for Cygwin: convert the class path to windows format so we can at least find the jars
 if uname | grep -iq cygwin;
@@ -51,33 +66,33 @@ then
     exit
 elif [ "$COMMAND" == "diagram" ];
 then
-	shift 1
-	java -classpath "$CP" -Dbpipe.mode=diagram -Dbpipe.pid=$$ bpipe.Runner $* 
-	exit
+    shift 1
+    java -classpath "$CP" -Dbpipe.mode=diagram -Dbpipe.pid=$$ bpipe.Runner $* 
+    exit
 elif [ "$COMMAND" == "diagrameditor" ];
 then
-	shift 1
-	java -classpath "$CP" -Dbpipe.mode=diagrameditor -Dbpipe.pid=$$ bpipe.Runner $* 
-	exit
+    shift 1
+    java -classpath "$CP" -Dbpipe.mode=diagrameditor -Dbpipe.pid=$$ bpipe.Runner $* 
+    exit
 elif [ "$COMMAND" == "log" ];
 then
-	shift 1
-	# TODO: will fail if spaces in path
-	ls -tc .bpipe/logs/*.log | grep -v 'bpipe\.' | head -1 | xargs tail -f $*
-	exit
+    shift 1
+    # TODO: will fail if spaces in path
+    ls -tc .bpipe/logs/*.log | grep -v 'bpipe\.' | head -1 | xargs tail -f $*
+    exit
 elif [ "$COMMAND" == "jobs" ];
 then
     if [ -e ~/.bpipedb/jobs/ ];
     then
      
-	    for i in ~/.bpipedb/jobs/* _ ;
-	    do
-	       base=`basename $i`
-	       if [ "$base" != "*" ] && [ "$i" != "_" ];
-	       then
-		       echo "$base : "`cat $i`
-	       fi
-	    done
+        for i in ~/.bpipedb/jobs/* _ ;
+        do
+           base=`basename $i`
+           if [ "$base" != "*" ] && [ "$i" != "_" ];
+           then
+               echo "$base : "`cat $i`
+           fi
+        done
     fi
     exit
 elif [ "$COMMAND" == "run" ];
@@ -126,10 +141,10 @@ killtree() {
     
     if [ ! -z "$pids" ];
     then
-	    for child_pid in ${pids}; 
-	    do
-	        killtree ${child_pid}
-	    done
+        for child_pid in ${pids}; 
+        do
+            killtree ${child_pid}
+        done
     fi
     kill -TERM ${ppid}
 }
@@ -149,14 +164,14 @@ cleanup() {
                 then
                     mkdir -p .bpipe/trash
                 fi
-		count=1
-		realtarget="$target"
+                count=1
+                realtarget="$target"
                 while [ -e "$realtarget" ];
                 do
-		    realtarget="${target}.${count}"
-		    let "count = count + 1"
+                  realtarget="${target}.${count}"
+                  let "count = count + 1"
                 done
-		target="$realtarget"
+                target="$realtarget"
                 echo "Moving unclean file $f to $target"
                 echo
                 mv "$f" ".bpipe/trash/$f"
@@ -195,16 +210,25 @@ function end() {
 trap end SIGINT
 
 # Tail the output so that the user sees it
-tail -f .bpipe/logs/$$.log &
+RUNPID=$$
+tail -f --pid=$BPIPE_PID .bpipe/logs/$RUNPID.log 
 
-TAIL_PID="$!"
+##### Old - before I knew about tails --pid option! (todo: delete)
 
+#TAIL_PID="$!"
 # Wait for the Java Bpipe process to finish naturally (not Ctrl-C, see above for that)
-wait $BPIPE_PID
+#wait $BPIPE_PID
+
+# Cygwin seems to exit too quickly, before tail even picks up the stream
+# so unless we wait a tiny bit the output is truncated
+#if uname | grep -iq cygwin;
+#then
+#  sleep 1
+#fi
 
 # Seems like The Java Bpipe process ended by itself: kill the background tail process 
 # started above
-if kill -0 $TAIL_PID  ;
-then
-    kill $TAIL_PID
-fi
+#if kill -0 $TAIL_PID  ;
+#then
+#    kill $TAIL_PID
+#fi
