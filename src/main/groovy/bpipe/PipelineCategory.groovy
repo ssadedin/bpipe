@@ -45,14 +45,38 @@ import static Utils.*
  */
 class PipelineContext {
     
+    /**
+     * Logger for this class to use
+     */
     private static Logger log = Logger.getLogger("bpipe.PipelineContext");
     
-    public PipelineContext(List<PipelineStage> pipelineStages) {
+    /**
+     * Create a Pipeline Context with the specified adidtional bound variables and 
+     * pipeline stages as well.
+     * 
+     * @param extraBinding    extra variables to make referenceable by pipeline stages
+     *                        that execute using this context
+     * @param pipelineStages  list of known pipeline stages.  These are used to resolve
+     *                        inputs when the user uses the implicit 'from' by appending
+     *                        an extension to the implicit input variable (eg: $input.csv).
+     *                        The stages are searched to find the most recent stage with
+     *                        an output that matches the specified extension. 
+     *                        
+     */
+    public PipelineContext(Binding extraBinding, List<PipelineStage> pipelineStages) {
         super();
         if(pipelineStages == null)
             throw new IllegalArgumentException("pipelineStages cannot be null")
-        this.pipelineStages = pipelineStages;
+        this.pipelineStages = pipelineStages
+        this.extraBinding = extraBinding
     }
+    
+    /**
+     * Additional variables that are injected into the pipeline stage when it executes.
+     * In practice, these allow it to resolve pipeline stages that are loaded from external
+     * files (which otherwise would not be in scope).
+     */
+	Binding extraBinding
 
     private List<PipelineStage> pipelineStages 
     
@@ -199,6 +223,74 @@ class PipelineContext {
         }
         return outFile
     }
+    
+    /**
+     * Executes the given body with 'input' defined to be the 
+     * most recently produced output file(s) matching the 
+     * extensions specified by input
+     * 
+     * @param c
+     * @param inputs
+     * @param body
+     * @return
+     */
+    Object from(Object inputs, Closure body) {
+        
+        log.info "Searching for inputs matching spec $inputs"
+        
+        def reversepipelineStages = pipelineStages.reverse()
+        def orig = inputs
+        
+        def reverseOutputs = pipelineStages.reverse().collect { Utils.box(it.context.output) }
+        
+        // Add a final stage that represents the original inputs (bit of a hack)
+        // You can think of it as the initial inputs being the output of some previous stage
+        // that we know nothing about
+        reverseOutputs.add(Utils.box(pipelineStages[0].context.@input))
+        
+        // Add an initial stage that represents the current input to this stage.  This way
+        // if the from() spec is used and matches the actual inputs then it will go with those
+        // rather than searching backwards for a previous match
+        reverseOutputs.add(0,Utils.box(this.@input))
+        
+        inputs = Utils.box(inputs).collect { String inp ->
+            
+            if(!inp.startsWith("."))
+                inp = "." + inp
+            
+            for(s in reverseOutputs) {
+                def o = s.find { it?.endsWith(inp) } 
+                if(o) {
+	                log.info("Checking ${s} vs $inp  Y")
+                    return o
+                }
+                log.info("Checking outputs ${s} vs $inp N")
+                
+	        }
+        }
+        
+        if(inputs.any { it == null})
+            throw new PipelineError("Unable to locate one or more specified inputs matching spec $orig")
+            
+        log.info "Found inputs $inputs for spec $orig"
+        
+        inputs = Utils.unbox(inputs)
+        
+        def oldInputs = input 
+        input  = inputs
+        PipelineCategory.lastInputs = inputs
+        
+        def nextIn= body()
+        if(nextIn)
+            PipelineCategory.currentStage.nextInputs = nextIn
+        else
+            PipelineCategory.currentStage.nextInputs = null
+        
+        this.input  = oldInputs
+        PipelineCategory.lastInputs = oldInputs
+        return nextIn
+    }
+	
 }
 
 /**
@@ -213,13 +305,6 @@ class PipelineCategory {
      * Map of closures to names of output files they produce
      */
     static outputs = [:]
-    
-    /**
-     * List of past stages that have already produced outputs
-     */
-    static def stages = []
-    
-    static def joiners = []
     
     /**
      * Hack - unfortunately weird scope for closures makes the
@@ -248,10 +333,15 @@ class PipelineCategory {
      * basis of Bpipes's + syntax for joining sequential pipeline stages.
      */
     static Object plus(Closure c, Closure other) {
+        Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
+		Binding extraBinding = pipeline.externalBinding
+        
+		// What we return is actually a closure to be executed later
+		// when the pipeline is run.  
         def result  = {  input1 ->
             
-            currentStage = new PipelineStage(new PipelineContext(stages), c)
-            stages << currentStage
+            currentStage = new PipelineStage(new PipelineContext(extraBinding,pipeline.stages), c)
+            pipeline.stages << currentStage
             currentStage.context.setInput(input1)
             currentStage.run()
             Utils.checkFiles(currentStage.context.output)
@@ -267,13 +357,13 @@ class PipelineCategory {
                 
             lastInputs = nextInputs
             
-            currentStage = new PipelineStage(new PipelineContext(stages), other)
+            currentStage = new PipelineStage(new PipelineContext(extraBinding,pipeline.stages), other)
             currentStage.context.@input = nextInputs
-            stages << currentStage
+            pipeline.stages << currentStage
             currentStage.run()
             return currentStage.nextInputs?:currentStage.context.output
         }
-        joiners << result
+        pipeline.joiners << result
         return result
     }
     
@@ -309,72 +399,6 @@ class PipelineCategory {
         return out
     }
     
-    /**
-     * Executes the given body with 'input' defined to be the 
-     * most recently produced output file(s) matching the 
-     * extensions specified by input
-     * 
-     * @param c
-     * @param inputs
-     * @param body
-     * @return
-     */
-    static Object from(Closure c, Object inputs, Closure body) {
-        
-        log.info "Searching for inputs matching spec $inputs"
-        
-        def reverseStages = stages.reverse()
-        def orig = inputs
-        
-        def reverseOutputs = stages.reverse().collect { Utils.box(it.context.output) }
-        
-        // Add a final stage that represents the original inputs (bit of a hack)
-        // You can think of it as the initial inputs being the output of some previous stage
-        // that we know nothing about
-        reverseOutputs.add(Utils.box(stages[0].context.@input))
-        
-        // Add an initial stage that represents the current input to this stage.  This way
-        // if the from() spec is used and matches the actual inputs then it will go with those
-        // rather than searching backwards for a previous match
-        reverseOutputs.add(0,Utils.box(currentStage.context.@input))
-        
-        inputs = Utils.box(inputs).collect { String inp ->
-            
-            if(!inp.startsWith("."))
-                inp = "." + inp
-            
-            for(s in reverseOutputs) {
-                def o = s.find { it?.endsWith(inp) } 
-                if(o) {
-	                log.info("Checking ${s} vs $inp  Y")
-                    return o
-                }
-                log.info("Checking outputs ${s} vs $inp N")
-                
-	        }
-        }
-        
-        if(inputs.any { it == null})
-            throw new PipelineError("Unable to locate one or more specified inputs matching spec $orig")
-            
-        log.info "Found inputs $inputs for spec $orig"
-        
-        inputs = Utils.unbox(inputs)
-        
-        def oldInputs = currentStage.context.input 
-        currentStage.context.input  = inputs
-        lastInputs = inputs
-        
-        def nextIn= body()
-        if(nextIn)
-            currentStage.nextInputs = nextIn
-        else
-            currentStage.nextInputs = null
-        
-        currentStage.context.input  = oldInputs
-        lastInputs = oldInputs
-        return nextIn
-    }
     
     static Object noop(Closure c, Closure body) {
         def context = currentStage.context

@@ -90,16 +90,17 @@ class PipelineStage {
      */
     def run() {
         Utils.checkFiles(context.@input)
-        Pipeline.externalBinding.variables.each { 
-            if(body.properties.containsKey("binding"))
-	            body.binding.variables.put(it.key,it.value) 
-        }
+        if(body.properties.containsKey("binding"))
+            body.binding.variables += this.context.extraBinding.variables
+            
         body.setDelegate(context)
         
         def oldFiles = new File(".").listFiles() as List
         try {
             oldFiles.removeAll { f -> IGNORE_NEW_FILE_PATTERNS.any { f.name.matches(it) } }
             def modified = oldFiles.inject([:]) { result, f -> result[f] = f.lastModified(); return result }
+            
+			// TODO: have to somehow have reference to joiners!
             boolean joiner = (body in PipelineCategory.joiners)
             if(!joiner) {
 	            stageName = PipelineCategory.closureNames.containsKey(body) ?
@@ -198,7 +199,7 @@ class PipelineStage {
             // Otherwise we might destroy existing data
             if(this.context.output != null) {
 	            def newOutputFiles = Utils.box(this.context.output)
-                log.info("Removing pre-existing files $oldFiles from outputs to clean up $newOutputFiles")
+                log.info("Retaining pre-existing files $oldFiles from outputs")
                 newOutputFiles.removeAll { fn ->
                     def canonical = new File(fn).canonicalPath
                     oldFiles.any { 
@@ -206,6 +207,7 @@ class PipelineStage {
 	                    return it.canonicalPath == canonical
 	                }
                 }
+				log.info("Cleaning up: $newOutputFiles")
 	            Utils.cleanup(newOutputFiles)
             }
             throw e

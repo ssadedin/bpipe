@@ -64,9 +64,50 @@ public class Pipeline {
     private static Logger log = Logger.getLogger("bpipe.Pipeline");
     
     /**
-     * Global binding
+     * Global binding - variables and functions (including pipeline stages)
+     * that are available to all pipeline stages
      */
-    static Binding externalBinding = new Binding()
+    Binding externalBinding = new Binding()
+    
+    /**
+     * List of past stages that have already produced outputs.  This 
+     * list is built up progressively as pipeline stages execute.
+     */
+    def stages = []
+    
+    /**
+     * A list of "dummy" stages that are actually used to link other stages together
+     */
+    def joiners = []
+    
+    /**
+     * Due to certain constraints in how Groovy handles operator 
+     * overloading and injections of methods into classes at runtime,
+     * we can only add certain methods in a static context.  To handle that,
+     * we have a global (non-thread-safe) "current" pipeline.
+     * <p>
+     * To access the pipeline, use the #withCurrentUnderConstructionPipeline method
+     * which will synchronize on the variable so that we can guarantee that no two
+     * are accessed at the same time.
+     */
+	static Pipeline currentUnderConstructionPipeline = null
+    
+    /**
+     * Due to certain constraints in how Groovy handles operator 
+     * overloading and injections of methods into classes at runtime,
+     * we can only add certain methods in a static context.  To handle that,
+     * we have a global (non-thread-safe) "current" pipeline
+     * 
+     * @param c
+     * @return
+     */
+	static Pipeline withCurrentUnderConstructionPipeline(Pipeline p, Closure c) {
+        synchronized(Pipeline.class) {
+            currentUnderConstructionPipeline = p
+    	    c(currentUnderConstructionPipeline)	
+            currentUnderConstructionPipeline = null
+        }
+	}
     
     /**
      * Default run method - introspects all the inputs from the binding of the
@@ -80,9 +121,11 @@ public class Pipeline {
        run(pipeline.binding.variables.args, host, pipeline) 
     }
     
-	static def run(def inputFile, Object host, Closure pipeline) {
+	static def run(def inputFile, Object host, Closure pipelineBuilder) {
         
         log.info("Running with input " + inputFile)
+        
+		Pipeline pipeline = new Pipeline()
         
         // To make life easier when a single argument is passed in,
         // debox it from the array so that pipeline stages that 
@@ -91,23 +134,23 @@ public class Pipeline {
         
         PipelineCategory.addStages(host)
         if(!(host instanceof Binding))
-            PipelineCategory.addStages(pipeline.binding)
+            PipelineCategory.addStages(pipelineBuilder.binding)
 
 		// Create a command log file to capture all commands executed
         def mode = Config.config.mode 
         if(mode == "run")
-	        executePipeline(inputFile, host, pipeline)
+	        pipeline.execute(inputFile, host, pipelineBuilder)
         else
         if(mode in ["diagram","diagrameditor"])
-	        diagram(host, pipeline, Runner.opts.arguments()[0], mode == "diagrameditor")
+	        diagram(host, pipelineBuilder, Runner.opts.arguments()[0], mode == "diagrameditor")
 	}
 
-	private static executePipeline(def inputFile, Object host, Closure pipeline) {
+	private void execute(def inputFile, Object host, Closure pipeline) {
         
         loadExternalStages()
         
         // We have to manually add all the external variables to the outer pipeline stage
-        Pipeline.externalBinding.variables.each { 
+        this.externalBinding.variables.each { 
             log.info "Loaded external reference: $it.key"
             pipeline.binding.variables.put(it.key,it.value) 
         }
@@ -126,9 +169,17 @@ public class Pipeline {
 
 		use(PipelineCategory) {
 			// pipeline.setDelegate(host)
+            
+            // Build the actual pipeline
+            
+			def constructedPipeline
+            Pipeline.withCurrentUnderConstructionPipeline(this) {
+				constructedPipeline = pipeline()
+			}
+			
 			PipelineCategory.currentStage = 
-                new PipelineStage(new PipelineContext(PipelineCategory.stages), pipeline())
-			PipelineCategory.stages << PipelineCategory.currentStage
+                new PipelineStage(new PipelineContext(this.externalBinding, this.stages), constructedPipeline)
+			this.stages << PipelineCategory.currentStage
 			PipelineCategory.currentStage.context.input = inputFile
 			try {
 				PipelineCategory.currentStage.run()
@@ -174,7 +225,7 @@ public class Pipeline {
         PipelineStage.UNCLEAN_FILE_PATH.text = ""
     }
     
-    static void loadExternalStages() {
+    private void loadExternalStages() {
         GroovyShell shell = new GroovyShell(externalBinding)
         def pipeFolder = new File(System.properties["user.home"], "bpipes")
         if(System.getenv("BPIPE_LIB")) {
@@ -182,7 +233,7 @@ public class Pipeline {
         }
         
         if(!pipeFolder.exists()) {
-            log.warn("Pipeline folder $pipeFolder could not be found")
+            log.warning("Pipeline folder $pipeFolder could not be found")
             return
         }
         
@@ -192,7 +243,7 @@ public class Pipeline {
 		        shell.evaluate(scriptFile)
             }
             catch(Exception ex) {
-                log.error("Failed to evaluate script $scriptFile", ex)
+                log.severe("Failed to evaluate script $scriptFile: "+ ex)
                 System.err.println("WARN: Error evaluating script $scriptFile: " + ex.getMessage())
             }
 	        PipelineCategory.addStages(externalBinding)
