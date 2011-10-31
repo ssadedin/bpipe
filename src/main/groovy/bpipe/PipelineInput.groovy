@@ -45,7 +45,13 @@ class PipelineInput {
      */
     def input
     
-   List<PipelineStage> stages 
+    /**
+     * List of inputs actually resolved by interception of $input.x 
+     * style property references
+     */
+    List<String> resolvedInputs = []
+    
+    List<PipelineStage> stages 
     
     PipelineInput(def input, List<PipelineStage> stages) {
         this.stages = stages;
@@ -74,7 +80,9 @@ class PipelineInput {
     def propertyMissing(String name) {
         def exts = [name]
         def inputs = resolveInputsWithExtensions(exts, PipelineCategory.currentStage)
-        return String.valueOf(inputs[0])
+        def result = String.valueOf(inputs[0])
+        this.resolvedInputs << result
+        return result
     }
         
     /**

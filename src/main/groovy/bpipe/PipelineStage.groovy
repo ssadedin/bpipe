@@ -33,6 +33,13 @@ import groovy.lang.Closure;
 /**
  * Encapsulates a Pipeline stage including its body (a closure to run)
  * and all the metadata about it (its name, status, inputs, outputs, etc.).
+ * <p>
+ * The design goal is that the PipelineStage is independent of the Pipeline that
+ * it is running in and thus can be shared or copied to apply it to multiple
+ * Pipeline objects, thus enabling parallel / independent execution, or reuse
+ * of the same stage at multiple places within a pipeline.  Therefore
+ * all the actual running state of a PipelineStage is carried in 
+ * a {@link PipelineContext} object that is associated to it.
  * 
  * @author ssadedin@mcri.edu.au
  */
@@ -101,7 +108,7 @@ class PipelineStage {
             def modified = oldFiles.inject([:]) { result, f -> result[f] = f.lastModified(); return result }
             
 			// TODO: have to somehow have reference to joiners!
-            boolean joiner = (body in PipelineCategory.joiners)
+            boolean joiner = (body in this.context.pipelineJoiners)
             if(!joiner) {
 	            stageName = PipelineCategory.closureNames.containsKey(body) ?
 	            PipelineCategory.closureNames[body] : "${stageCount}"
@@ -116,6 +123,7 @@ class PipelineStage {
 	            }
 	            log.info("Stage $stageName : INPUT=${context.@input} OUTPUT=${context.output}")
             }   
+            context.stageName = stageName
             
             // TODO: get rid of this!  but doing so breaks PipelineCategory.filter for now
             PipelineCategory.lastInputs = context.@input

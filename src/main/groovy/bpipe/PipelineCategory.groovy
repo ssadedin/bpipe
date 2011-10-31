@@ -63,12 +63,13 @@ class PipelineContext {
      *                        an output that matches the specified extension. 
      *                        
      */
-    public PipelineContext(Binding extraBinding, List<PipelineStage> pipelineStages) {
+    public PipelineContext(Binding extraBinding, List<PipelineStage> pipelineStages, List<Closure> pipelineJoiners) {
         super();
         if(pipelineStages == null)
             throw new IllegalArgumentException("pipelineStages cannot be null")
         this.pipelineStages = pipelineStages
         this.extraBinding = extraBinding
+        this.pipelineJoiners = pipelineJoiners
     }
     
     /**
@@ -77,9 +78,23 @@ class PipelineContext {
      * files (which otherwise would not be in scope).
      */
 	Binding extraBinding
+    
+    /**
+     * The stage name for which this context is running
+     */
+    String stageName
 
     private List<PipelineStage> pipelineStages 
     
+    private List<Closure> pipelineJoiners 
+    
+    /**
+     * The default output is set prior to the body of the a pipeline stage being run.
+     * If the pipeline stage does nothing else but references $output then the default output is 
+     * the one that is returned.  However the pipeline stage may modify the output
+     * by use of the transform, filter or produce constructs.  If so, the actual output 
+     * is stored in the output property.
+     */
     def defaultOutput
     
     def getDefaultOutput() {
@@ -97,7 +112,12 @@ class PipelineContext {
     }
     
     def getOutput() {
-        if(output == null) {
+        if(output == null) { // Output not set elsewhere
+            // If an input property was referenced, compute the default from that instead
+            if(inputWrapper?.resolvedInputs) {
+                log.info("Using non-default output due to input property reference: " + inputWrapper.resolvedInputs[0])
+                return inputWrapper.resolvedInputs[0] +"." + this.stageName
+            }
             return defaultOutput
         }
         return output
@@ -117,6 +137,11 @@ class PipelineContext {
      * Input to a stage - can be either a single value or a list of values
      */
     def input
+    
+    /**
+     * Wrapper that intercepts calls to resolve input properties
+     */
+    PipelineInput inputWrapper
     
     String getInput1() {
         return Utils.first(input)
@@ -147,7 +172,10 @@ class PipelineContext {
         if(this.@input == null || Utils.isContainer(this.@input) && this.@input.size() == 0) {
             throw new PipelineError("Input expected but not provided")
         }
-        return new PipelineInput(this.@input, pipelineStages)
+        if(!inputWrapper)
+            inputWrapper = new PipelineInput(this.@input, pipelineStages)
+            
+        return inputWrapper
     }
     
     def setInput(def inp) {
@@ -340,7 +368,7 @@ class PipelineCategory {
 		// when the pipeline is run.  
         def result  = {  input1 ->
             
-            currentStage = new PipelineStage(new PipelineContext(extraBinding,pipeline.stages), c)
+            currentStage = new PipelineStage(pipeline.createContext(), c)
             pipeline.stages << currentStage
             currentStage.context.setInput(input1)
             currentStage.run()
@@ -357,7 +385,7 @@ class PipelineCategory {
                 
             lastInputs = nextInputs
             
-            currentStage = new PipelineStage(new PipelineContext(extraBinding,pipeline.stages), other)
+            currentStage = new PipelineStage(pipeline.createContext(), other)
             currentStage.context.@input = nextInputs
             pipeline.stages << currentStage
             currentStage.run()
