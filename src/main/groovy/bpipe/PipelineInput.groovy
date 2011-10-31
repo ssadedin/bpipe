@@ -89,6 +89,12 @@ class PipelineInput {
         // faux inheritance from String class
         if(name in String.metaClass.methods*.name)
             return String.metaClass.invokeMethod(this.toString(), name, args)
+        else
+            throw new MissingMethodException(name, PipelineInput, args)
+    }
+    
+    def plus(String str) {
+        return this.toString() + str 
     }
         
     /**

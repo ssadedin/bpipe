@@ -66,6 +66,7 @@ class Utils {
 	
 		outputs.collect { new File(it) }.every { f ->
 			
+            println "Check $f"
 			if(!f.exists()) {
 				return false
 			}
@@ -165,5 +166,15 @@ class Utils {
             
         // Plain object
         return inputs
+    }
+    
+    /**
+     * Check if any of the specified inputs are wrapped in PipelineInput and if so, unwrap them
+     * 
+     * @param inputs    a single object or array or collection of objects
+     */
+    static unwrap(inputs) {
+        def result = unbox(box(inputs).collect { it instanceof PipelineInput?it.input:it })
+        return result
     }
 }

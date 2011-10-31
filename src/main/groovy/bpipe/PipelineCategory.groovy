@@ -402,6 +402,10 @@ class PipelineCategory {
      */
     static Object produce(Closure c, Object out, Closure body) { 
         log.info "Producing $out from $currentStage.context"
+        
+        // Unwrap any wrapped inputs that may have been passed in the outputs
+        out = Utils.unwrap(out)
+        
         def lastInputs = currentStage.context.@input
         if(Utils.isNewer(out,lastInputs)) {
           msg(c,"Skipping steps to create $out because newer than $lastInputs ")
