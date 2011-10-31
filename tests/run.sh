@@ -13,7 +13,7 @@ do
 	cd "$BASE"/"$t"
 	rm -rf .bpipe
 	
-	if . run.sh;
+	if ./run.sh;
 	then
 		echo
 		echo "SUCCEEDED"
