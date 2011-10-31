@@ -84,6 +84,12 @@ class PipelineInput {
         this.resolvedInputs << result
         return result
     }
+    
+    def methodMissing(String name, args) {
+        // faux inheritance from String class
+        if(name in String.metaClass.methods*.name)
+            return String.metaClass.invokeMethod(this.toString(), name, args)
+    }
         
     /**
      * Search backwards through the inputs to the current stage and the outputs of
