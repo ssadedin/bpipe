@@ -66,11 +66,10 @@ class Utils {
 	
 		outputs.collect { new File(it) }.every { f ->
 			
-            println "Check $f"
+//            println "Check $f"
 			if(!f.exists()) {
 				return false
 			}
-			
                 
 			if(inputs instanceof String || inputs instanceof GString) {
 	            if(f.name == inputs)

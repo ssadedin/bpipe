@@ -37,24 +37,11 @@ import static Utils.*
 
 /**
  * A category that adds default Bpipe functions to closures
- * so that they can reference them without qualifying them
+ * to enable basic operators such as the + operator to work.
  */
 class PipelineCategory {
     
     private static Logger log = Logger.getLogger("bpipe.PipelineCategory");
-    
-    /**
-     * Map of closures to names of output files they produce
-     */
-    static outputs = [:]
-    
-    /**
-     * Hack - unfortunately weird scope for closures makes the
-     * map above not work when resolving embedded variable names
-     */
-    static lastOutput = null
-    
-    static lastInputs = null
     
     static Map closureNames = [:]
     
@@ -95,8 +82,6 @@ class PipelineCategory {
                 
             Utils.checkFiles(nextInputs)
                 
-            lastInputs = nextInputs
-            
             currentStage = new PipelineStage(pipeline.createContext(), other)
             currentStage.context.@input = nextInputs
             pipeline.stages << currentStage
@@ -105,83 +90,6 @@ class PipelineCategory {
         }
         pipeline.joiners << result
         return result
-    }
-    
-    /**
-     * Specifies that the given output (out) will be produced
-     * by the given closure, and skips execution of the closure
-     * if the output is newer than all the current inputs.  
-     */
-    static Object produce(Closure c, Object out, Closure body) { 
-        log.info "Producing $out from $currentStage.context"
-        
-        // Unwrap any wrapped inputs that may have been passed in the outputs
-        out = Utils.unwrap(out)
-        
-        def lastInputs = currentStage.context.@input
-        if(Utils.isNewer(out,lastInputs)) {
-          msg(c,"Skipping steps to create $out because newer than $lastInputs ")
-	      currentStage.context.output = out
-        }
-        else {
-            lastOutput = out 
-            
-            currentStage.context.output = out
-            
-            // Store the list of output files so that if we are killed 
-            // they can be cleaned up
-            PipelineStage.UNCLEAN_FILE_PATH.text += Utils.box(currentStage.context.output)?.join("\n") 
-            
-            c.setDelegate(currentStage.context)
-	        log.info("Producing from inputs ${currentStage.context.@input}")
-            def nextIn= body()
-            if(nextIn)
-                currentStage.context.nextInputs = nextIn
-            else
-                currentStage.context.nextInputs = null
-        }
-        return out
-    }
-    
-    
-    static Object noop(Closure c, Closure body) {
-        def context = currentStage.context
-        context.input = lastInputs
-        context.output = lastInputs
-        c.setDelegate(context)
-        body()
-        return context.output
-    }
-    
-    /**
-     * Specifies an output that keeps the same type of file but modifies 
-     * it ("filters" it). Convenience wrapper for {@link #produce(Closure, Object, Closure)}
-     * for the case where the same file extension is kept but a transformation
-     * type is added to the name.
-     */
-    static Object filter(Closure c, String type, Closure body) {
-        // TODO: use binding instead of lastInput
-        // def rawInp = c.binding.variables.input
-        def inp = Utils.first(lastInputs)
-        log.info("Filter $type defined on inputs $inp")
-        if(!inp) 
-           throw new PipelineError("Expected input but no input provided") 
-           
-        produce(c, inp.replaceAll('(\\.[^\\.]*$)','.'+type+'$1'),body)
-    }
-     
-    
-    /**
-     * Specifies an output that is a transformation of the input 
-     * to a different format - keeps same file name but replaces
-     * the extension.  Convenience wrapper for {@link #produce(Closure, Object, Closure)}
-     * for the case where only the extension on the file is changed. 
-     */
-    static Object transform(Closure c, String extension, Closure body) {
-        def inp = Utils.first(lastInputs)
-        if(!inp) 
-           throw new PipelineError("Expected input but no input provided") 
-        produce(c, inp.replaceAll('\\.[^\\.]*$','.'+extension),body)
     }
     
     /**
@@ -234,11 +142,6 @@ class PipelineCategory {
       def p = Runtime.getRuntime().exec((String[])(['bash','-c',"$joined"].toArray()))
       p.consumeProcessOutput(System.out, System.err)
       return p
-    }
-    
-    static void msg(Closure,m) {
-        def date = (new Date()).format("HH:mm:ss")
-        println "$date MSG:  $m"
     }
     
     static void addStages(Binding binding) {

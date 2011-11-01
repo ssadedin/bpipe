@@ -177,8 +177,9 @@ public class Pipeline {
 				constructedPipeline = pipeline()
 			}
 			
+            def rootContext = createContext()
 			PipelineCategory.currentStage = 
-                new PipelineStage(createContext(), constructedPipeline)
+                new PipelineStage(rootContext, constructedPipeline)
 			this.stages << PipelineCategory.currentStage
 			PipelineCategory.currentStage.context.input = inputFile
 			try {
@@ -194,7 +195,7 @@ public class Pipeline {
 			}
 
 			println("\n"+" Pipeline Finished ".center(Config.config.columns,"="))
-			msg "Finished at " + (new Date())
+			rootContext.msg "Finished at " + (new Date())
 
             if(!failed) {
 				def outputFile = Utils.first(PipelineCategory.currentStage.context.output)

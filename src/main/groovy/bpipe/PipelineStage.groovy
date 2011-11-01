@@ -118,9 +118,6 @@ class PipelineStage {
             }   
             context.stageName = stageName
             
-            // TODO: get rid of this!  but doing so breaks PipelineCategory.filter for now
-            PipelineCategory.lastInputs = context.@input
-            
             this.running = true
             
             if(PipelineCategory.wrappers.containsKey(stageName)) {

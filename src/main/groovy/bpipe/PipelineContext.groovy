@@ -232,6 +232,74 @@ class PipelineContext {
        return outFile
    }
    
+    /**
+     * Specifies an output that is a transformation of the input 
+     * to a different format - keeps same file name but replaces
+     * the extension.  Convenience wrapper for {@link #produce(Closure, Object, Closure)}
+     * for the case where only the extension on the file is changed. 
+     */
+    Object transform(String extension, Closure body) {
+        def inp = Utils.first(this.@input)
+        if(!inp) 
+           throw new PipelineError("Expected input but no input provided") 
+        this.produce(inp.replaceAll('\\.[^\\.]*$','.'+extension),body)
+    }
+  
+   
+    /**
+     * Specifies an output that keeps the same type of file but modifies 
+     * it ("filters" it). Convenience wrapper for {@link #produce(Closure, Object, Closure)}
+     * for the case where the same file extension is kept but a transformation
+     * type is added to the name.
+     */
+    Object filter(String type, Closure body) {
+        def inp = Utils.first(this.@input)
+        log.info("Filter $type defined on inputs $inp")
+        if(!inp) 
+           throw new PipelineError("Expected input but no input provided") 
+           
+        this.produce(inp.replaceAll('(\\.[^\\.]*$)','.'+type+'$1'),body)
+    }
+    
+       /**
+     * Specifies that the given output (out) will be produced
+     * by the given closure, and skips execution of the closure
+     * if the output is newer than all the current inputs.  
+     */
+    Object produce(Object out, Closure body) { 
+        log.info "Producing $out from $this"
+        
+        // Unwrap any wrapped inputs that may have been passed in the outputs
+        out = Utils.unwrap(out)
+        
+        def lastInputs = this.@input
+        if(Utils.isNewer(out,lastInputs)) {
+          msg("Skipping steps to create $out because newer than $lastInputs ")
+	      this.output = out
+        }
+        else {
+            this.output = out
+            
+            // Store the list of output files so that if we are killed 
+            // they can be cleaned up
+            PipelineStage.UNCLEAN_FILE_PATH.text += Utils.box(this.output)?.join("\n") 
+            
+            body.setDelegate(this);
+	        log.info("Producing from inputs ${this.@input}")
+            def nextIn= body()
+            if(nextIn)
+                this.nextInputs = nextIn
+            else
+                this.nextInputs = null
+        }
+        return out
+    }
+    
+    static void msg(m) {
+        def date = (new Date()).format("HH:mm:ss")
+        println "$date MSG:  $m"
+    }
+   
    /**
     * Executes the given body with 'input' defined to be the
     * most recently produced output file(s) matching the
@@ -286,7 +354,6 @@ class PipelineContext {
        
        def oldInputs = input
        input  = inputs
-       PipelineCategory.lastInputs = inputs
        
        def nextIn= body()
        if(nextIn)
@@ -295,7 +362,6 @@ class PipelineContext {
            PipelineCategory.currentStage.nextInputs = null
        
        this.input  = oldInputs
-       PipelineCategory.lastInputs = oldInputs
        return nextIn
    }
    
