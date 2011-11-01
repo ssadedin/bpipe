@@ -118,7 +118,7 @@ class PipelineCategory {
       
       def p = Runtime.getRuntime().exec((String[])(['bash','-c',"$joined"].toArray()))
       StringWriter outputBuffer = new StringWriter()
-      p.consumeProcessOutput(outputBuffer, System.err)
+      p.consumeProcessOutput(outputBuffer,System.err)
       p.waitFor()
       return outputBuffer.toString()
     }
