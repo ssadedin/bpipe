@@ -70,13 +70,6 @@ class PipelineStage {
     PipelineContext context
     
     /**
-     * The inputs to be passed to the next stage of the pipeline.
-     * Usually this is the same as context.output but it doesn't have
-     * to be.
-     */
-    def nextInputs
-    
-    /**
      * The actual closure that will be executed when this pipeline stage runs
      */
     Closure body
@@ -134,11 +127,11 @@ class PipelineStage {
                 log.info("Executing stage $stageName inside wrapper")
                 PipelineCategory.wrappers[stageName](body, context.@input)
             }
-            else
-	            nextInputs = body(context.@input)
+            else 
+	            context.nextInputs = body(context.@input)
             
             if(!joiner)
-	            log.info("Stage $stageName returned $nextInputs as default inputs for next stage")
+	            log.info("Stage $stageName returned $context.nextInputs as default inputs for next stage")
                 
             UNCLEAN_FILE_PATH.text = ""
             
@@ -163,11 +156,12 @@ class PipelineStage {
                 newFiles = oldFiles.grep { it.lastModified() > modified[it] }.collect { it.name }
             }
             
-            if(!nextInputs && this.context.@output != null) {
+            if(!context.nextInputs && this.context.@output != null) {
                 log.info("Inferring nextInputs from explicit output as $context.@output")
-                nextInputs = this.context.output
+                context.nextInputs = this.context.output
             }
 
+            def nextInputs = context.nextInputs
             if(nextInputs == null || Utils.isContainer(nextInputs) && !nextInputs) {
                 // TODO: Make configurable
                 newFiles.removeAll { it.endsWith(".bai") || it.endsWith(".log") }
@@ -197,6 +191,7 @@ class PipelineStage {
                 
             log.info "Actual outputs from stage $stageName are ${this.context.output}"
             context.defaultOutput = null
+            context.nextInputs = nextInputs
             
         }
         catch(PipelineTestAbort e) {
@@ -222,7 +217,7 @@ class PipelineStage {
         }
         Utils.checkFiles(context.output,"output")
         
-        return nextInputs
+        return context.nextInputs
     }
     
     def propertyMissing(String name) {
