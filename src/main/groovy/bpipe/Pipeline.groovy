@@ -200,7 +200,7 @@ public class Pipeline {
             if(!failed) {
 				def outputFile = Utils.first(PipelineCategory.currentStage.context.output)
 				if(outputFile && !outputFile.startsWith("null") /* hack */ && new File(outputFile).exists()) {
-					msg "Output is " + outputFile
+					rootContext.msg "Output is " + outputFile
 				}
             }
 		}

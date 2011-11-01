@@ -304,6 +304,10 @@ class PipelineContext {
     * Executes the given body with 'input' defined to be the
     * most recently produced output file(s) matching the
     * extensions specified by input
+    * <p>
+    * TODO: this performs essentially the same function as 
+    * {@link PipelineInput#propertyMissing(String)}, it would 
+    * be nice to merge them together and get rid of this one.
     *
     * @param c
     * @param inputs
@@ -329,7 +333,7 @@ class PipelineContext {
        // rather than searching backwards for a previous match
        reverseOutputs.add(0,Utils.box(this.@input))
        
-       inputs = Utils.box(inputs).collect { String inp ->
+       def resolvedInputs = Utils.box(inputs).collect { String inp ->
            
            if(!inp.startsWith("."))
                inp = "." + inp
@@ -345,24 +349,28 @@ class PipelineContext {
            }
        }
        
-       if(inputs.any { it == null})
-           throw new PipelineError("Unable to locate one or more specified inputs matching spec $orig")
+       if(resolvedInputs.any { it == null})
+           throw new PipelineError("Unable to locate one or more specified resolvedInputs matching spec $orig")
            
-       log.info "Found inputs $inputs for spec $orig"
+       log.info "Found inputs $resolvedInputs for spec $orig"
        
-       inputs = Utils.unbox(inputs)
+       resolvedInputs = Utils.unbox(resolvedInputs)
        
-       def oldInputs = input
-       input  = inputs
+       def oldInputs = this.@input
+       this.@input  = resolvedInputs
        
-       def nextIn= body()
-       if(nextIn)
-           PipelineCategory.currentStage.nextInputs = nextIn
-       else
-           PipelineCategory.currentStage.nextInputs = null
+       this.getInput().resolvedInputs << resolvedInputs
        
-       this.input  = oldInputs
-       return nextIn
+       this.nextInputs = body()
+       this.@input  = oldInputs
+       return this.nextInputs
    }
    
+   /**
+    * The current stage is always the most recent stage to have executed
+    * @return
+    */
+   PipelineStage getCurrentStage() {
+       return this.stages[-1]
+   }
 }
