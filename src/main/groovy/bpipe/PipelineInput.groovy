@@ -69,7 +69,7 @@ class PipelineInput {
     String getAt(int i) {
         def inputs = Utils.box(this.input)
         if(inputs.size() <= i)
-            throw new PipelineError("Insufficient inputs:  at least $i inputs are expected but only ${inputs.size()} are available")
+            throw new PipelineError("Insufficient inputs:  at least ${i+1} inputs are expected but only ${inputs.size()} are available")
         return inputs[i]
     }
     

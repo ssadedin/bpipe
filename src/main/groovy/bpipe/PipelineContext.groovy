@@ -7,6 +7,9 @@ import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
+
+import static Utils.*
 
 /**
 * This context defines implicit functions and variables that are
@@ -362,7 +365,9 @@ class PipelineContext {
        this.getInput().resolvedInputs << resolvedInputs
        
        this.nextInputs = body()
+       
        this.@input  = oldInputs
+       this.@inputWrapper = null
        return this.nextInputs
    }
    

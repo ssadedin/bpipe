@@ -1,16 +1,18 @@
 /*
- * Simplest possible test - just execute a couple of commands and 
- * join them together in a pipeline
+ * Test that from correctly finds an input from backwards in the pipeline
+ * and makes it referencable via $input
  */
 hello = {
-	filter("foo") {
+	from("txt") {
 		exec "cp $input $output"
 	}
 }
 
-@Filter("bar")
 world = {
-	exec "cp $input $output"
+	from("csv") {
+		msg "$input => $output"
+		exec "cp $input $output"
+	}
 }
 
 Bpipe.run {
