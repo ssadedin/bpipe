@@ -79,7 +79,7 @@ class PipelineInput {
      */
     def propertyMissing(String name) {
         def exts = [name]
-        def inputs = resolveInputsWithExtensions(exts, PipelineCategory.currentStage)
+        def inputs = resolveInputsWithExtensions(exts)
         def result = String.valueOf(inputs[0])
         this.resolvedInputs << result
         return result
@@ -102,7 +102,7 @@ class PipelineInput {
      * previous stages to find the first output that ends with the extension specified
      * for each of the given exts.
      */
-    def resolveInputsWithExtensions(def exts, PipelineStage currentStage) {    
+    def resolveInputsWithExtensions(def exts) {    
         
         def orig = exts
         
@@ -118,7 +118,7 @@ class PipelineInput {
         // rather than searching backwards for a previous match
         // TODO: get rid of reference to PipelineCategory here
         // how to model "current stage" when pipeline has parallel parts?
-        reverseOutputs.add(0,Utils.box(currentStage.context.@input))
+        reverseOutputs.add(0,Utils.box(this.@input))
         
         def filesWithExts = Utils.box(exts).collect { String inp ->
             

@@ -52,7 +52,7 @@ class PipelineCategory {
      */
     static Map wrappers = [:]
     
-    static PipelineStage currentStage 
+//    static PipelineStage currentStage 
     
     /**
      * Joins two closures representing pipeline stages together by
@@ -67,7 +67,7 @@ class PipelineCategory {
 		// when the pipeline is run.  
         def result  = {  input1 ->
             
-            currentStage = new PipelineStage(pipeline.createContext(), c)
+            def currentStage = new PipelineStage(pipeline.createContext(), c)
             pipeline.stages << currentStage
             currentStage.context.setInput(input1)
             currentStage.run()

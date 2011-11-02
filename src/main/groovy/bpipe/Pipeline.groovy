@@ -168,22 +168,20 @@ public class Pipeline {
         boolean failed = false
 
 		use(PipelineCategory) {
-			// pipeline.setDelegate(host)
             
             // Build the actual pipeline
-            
 			def constructedPipeline
             Pipeline.withCurrentUnderConstructionPipeline(this) {
 				constructedPipeline = pipeline()
 			}
 			
             def rootContext = createContext()
-			PipelineCategory.currentStage = 
+			def currentStage = 
                 new PipelineStage(rootContext, constructedPipeline)
-			this.stages << PipelineCategory.currentStage
-			PipelineCategory.currentStage.context.input = inputFile
+			this.stages << currentStage
+			currentStage.context.@input = inputFile
 			try {
-				PipelineCategory.currentStage.run()
+				currentStage.run()
 			}
 			catch(PipelineError e) {
 				System.err << "Pipeline failed!\n\n"+e.message << "\n\n"
@@ -198,7 +196,7 @@ public class Pipeline {
 			rootContext.msg "Finished at " + (new Date())
 
             if(!failed) {
-				def outputFile = Utils.first(PipelineCategory.currentStage.context.output)
+				def outputFile = Utils.first(currentStage.context.output)
 				if(outputFile && !outputFile.startsWith("null") /* hack */ && new File(outputFile).exists()) {
 					rootContext.msg "Output is " + outputFile
 				}
