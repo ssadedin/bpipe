@@ -92,6 +92,16 @@ class PipelineCategory {
         return result
     }
     
+	static Object multiply(String pattern, List stages) {
+		return { input ->
+            
+			// Match the input
+            
+            
+			println "Wow, I really can fucking multiply $input"
+		}
+	}
+    
     /**
      * Provides an implicit "exec" function that pipeline stages can use
      * to run commands.  This variant blocks and waits for the 

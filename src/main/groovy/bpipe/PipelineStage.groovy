@@ -100,7 +100,6 @@ class PipelineStage {
             oldFiles.removeAll { f -> IGNORE_NEW_FILE_PATTERNS.any { f.name.matches(it) } }
             def modified = oldFiles.inject([:]) { result, f -> result[f] = f.lastModified(); return result }
             
-			// TODO: have to somehow have reference to joiners!
             boolean joiner = (body in this.context.pipelineJoiners)
             if(!joiner) {
 	            stageName = PipelineCategory.closureNames.containsKey(body) ?
@@ -215,10 +214,6 @@ class PipelineStage {
         Utils.checkFiles(context.output,"output")
         
         return context.nextInputs
-    }
-    
-    def propertyMissing(String name) {
-        return Pipeline.binding.variables[name]
     }
 
 }
