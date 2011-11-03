@@ -29,6 +29,7 @@ import groovy.lang.Closure;
 import java.io.FileOutputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
@@ -61,7 +62,6 @@ class PipelineCategory {
      */
     static Object plus(Closure c, Closure other) {
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
-		Binding extraBinding = pipeline.externalBinding
         
 		// What we return is actually a closure to be executed later
 		// when the pipeline is run.  
@@ -91,14 +91,57 @@ class PipelineCategory {
         pipeline.joiners << result
         return result
     }
-    
+//    
+//    /**
+//     * Take the output from all the stages in the list
+//     * which may have executed in parallel and 
+//     * forward all the outputs to the given closure
+//     */
+//    static Object plus(List stages, Closure other) {
+//        
+//	}
+//    
+    /**
+     * Implements the syntax that allows an input filter to 
+     * break inputs into samples and pass to multiple parallel 
+     * stages in the form
+     * <p>
+     * <code>"sample_%_*.txt" * [stage1 + stage2 + stage3]</code>
+     */
 	static Object multiply(String pattern, List stages) {
+        Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
 		return { input ->
             
 			// Match the input
+            InputSplitter splitter = new InputSplitter()
+            Map samples = splitter.split(pattern, input)
+			
+            AtomicInteger runningCount = new AtomicInteger(samples.size())
             
+            // Now we have all our samples, make a 
+			// separate pipeline for each one
+			List<Pipeline> childPipelines = samples.collect { id, files ->
+                log.info "Creating pipeline to run sample $id with files $files"
+                Pipeline child = pipeline.fork()
+                new Thread({
+                    // Each sample will decrement the running count as it finishes
+                    pipeline.run(stages, files, runningCount)
+                }).start()
+                return child
+			}
             
-			println "Wow, I really can fucking multiply $input"
+			while(runningCount.get()) {
+				log.info("Waiting for " + runningCount.get() + " parallel stages to complete" )
+                Thread.sleep()
+			}
+            
+            outputs = []
+            childPipelines.eachWithIndex { c,i ->
+                def out = c.stages[-1].context.output
+                log.info "Outputs from child $i :  $out"
+				outputs += outputs
+			}
+            return outputs
 		}
 	}
     

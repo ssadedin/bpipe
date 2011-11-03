@@ -34,14 +34,6 @@ import bpipe.graph.Graph;
 import static Utils.isContainer 
 import static Utils.unbox 
 
-/**
- * Annotation to indicate name of a pipeline stage.
- * Not used currently.
- */
-@Retention(RetentionPolicy.RUNTIME)
-public @interface Name {
-	String value();
-}
 
 class Config {
     static config = [ 
@@ -52,7 +44,6 @@ class Config {
         mode : "run"
     ]
 }
-
 
 /**
  * Main Pipeline class.  Used by client to start a pipeline
