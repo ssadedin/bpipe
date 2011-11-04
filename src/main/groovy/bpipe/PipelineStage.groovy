@@ -92,8 +92,6 @@ class PipelineStage {
         Utils.checkFiles(context.@input)
         if(body.properties.containsKey("binding"))
             body.binding.variables += this.context.extraBinding.variables
-            
-        body.setDelegate(context)
         
         def oldFiles = new File(".").listFiles() as List
         try {
@@ -118,6 +116,8 @@ class PipelineStage {
             context.stageName = stageName
             
             this.running = true
+            
+            PipelineDelegate.setDelegateOn(context,body)
             
             if(PipelineCategory.wrappers.containsKey(stageName)) {
                 log.info("Executing stage $stageName inside wrapper")

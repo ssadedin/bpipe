@@ -165,6 +165,10 @@ class PipelineContext {
        this.@input = inp
    }
    
+   def getInputs() {
+       return Utils.box(this.@input).join(" ")
+   }
+   
    /**
     * Output stream, only opened if the stage body references
     * the "out" variable
@@ -287,7 +291,7 @@ class PipelineContext {
             // they can be cleaned up
             PipelineStage.UNCLEAN_FILE_PATH.text += Utils.box(this.output)?.join("\n") 
             
-            body.setDelegate(this);
+            PipelineDelegate.setDelegateOn(this, body)
 	        log.info("Producing from inputs ${this.@input}")
             def nextIn= body()
             if(nextIn)
@@ -297,6 +301,59 @@ class PipelineContext {
         }
         return out
     }
+    
+    /**
+     * Provides an implicit "exec" function that pipeline stages can use
+     * to run commands.  This variant blocks and waits for the 
+     * shell command to exit.  If the command returns a failure exit code
+     * (non zero) then an exception is thrown.
+     * 
+     * @see #async(Closure, String)
+     */
+    void exec(String cmd) {
+      Process p = async(cmd)
+      if(p.waitFor() != 0) {
+        // Output is still spooling from the process.  By waiting a bit we ensure
+        // that we don't interleave the exception trace with the output
+        Thread.sleep(200)
+        throw new PipelineError("Command failed with exit status != 0: \n$cmd")
+      }
+    }
+    
+    String capture(String cmd) {
+      new File('commandlog.txt').text += '\n'+cmd
+      def joined = ""
+      cmd.eachLine { joined += " " + it }
+      // println "Joined command is: $joined"
+      
+      def p = Runtime.getRuntime().exec((String[])(['bash','-c',"$joined"].toArray()))
+      StringWriter outputBuffer = new StringWriter()
+      p.consumeProcessOutput(outputBuffer,System.err)
+      p.waitFor()
+      return outputBuffer.toString()
+    }
+    
+    /**
+     * Asynchronously executes the given command by passing it to 
+     * a bash shell for execution.  The exit code is not checked and
+     * the command may still be running on return.  The Process object 
+     * for the command that is run is returned.  Callers can use the
+     * {@link Process#waitFor()} to wait for the process to finish.
+     */
+    Process async(String cmd) {
+      if(Runner.opts.t)
+          throw new PipelineTestAbort("Would execute: $cmd")
+          
+      def joined = ""
+      cmd.eachLine { joined += " " + it }
+//      println "Joined command is: $joined"
+      
+      new File('commandlog.txt').text += '\n'+cmd
+      def p = Runtime.getRuntime().exec((String[])(['bash','-c',"$joined"].toArray()))
+      p.consumeProcessOutput(System.out, System.err)
+      return p
+    }
+    
     
     static void msg(m) {
         def date = (new Date()).format("HH:mm:ss")
@@ -317,12 +374,12 @@ class PipelineContext {
     * @param body
     * @return
     */
-   Object from(Object inputs, Closure body) {
+   Object from(Object stageInputs, Closure body) {
        
-       log.info "Searching for inputs matching spec $inputs"
+       log.info "Searching for inputs matching spec $stageInputs"
        
        def reversepipelineStages = pipelineStages.reverse()
-       def orig = inputs
+       def orig = stageInputs
        
        def reverseOutputs = pipelineStages.reverse().collect { Utils.box(it.context.output) }
        
@@ -336,7 +393,7 @@ class PipelineContext {
        // rather than searching backwards for a previous match
        reverseOutputs.add(0,Utils.box(this.@input))
        
-       def resolvedInputs = Utils.box(inputs).collect { String inp ->
+       def resolvedInputs = Utils.box(stageInputs).collect { String inp ->
            
            if(!inp.startsWith("."))
                inp = "." + inp

@@ -27,6 +27,7 @@ package bpipe
 import java.lang.annotation.Retention;
 
 import java.lang.annotation.RetentionPolicy;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
@@ -72,6 +73,17 @@ public class Pipeline {
     def joiners = []
     
     /**
+     * Flag that is set to true if this pipeline has executed and experienced 
+     * a failure
+     */
+    boolean failed = false
+    
+    /**
+     * The base context from which all others are generated
+     */
+    PipelineContext rootContext
+    
+    /**
      * Due to certain constraints in how Groovy handles operator 
      * overloading and injections of methods into classes at runtime,
      * we can only add certain methods in a static context.  To handle that,
@@ -87,7 +99,11 @@ public class Pipeline {
      * Due to certain constraints in how Groovy handles operator 
      * overloading and injections of methods into classes at runtime,
      * we can only add certain methods in a static context.  To handle that,
-     * we have a global (non-thread-safe) "current" pipeline
+     * we have a global (non-thread-safe) "current" pipeline.  Fortunately this 
+     * is only needed during the pipeline definition stage and not during 
+     * execution, so in fact we can afford to be single threaded in how
+     * we access this pipeline and only one pipeline is ever under construction
+     * at a time (even if multiple pipelines are constructed).
      * 
      * @param c
      * @return
@@ -126,6 +142,8 @@ public class Pipeline {
         PipelineCategory.addStages(host)
         if(!(host instanceof Binding))
             PipelineCategory.addStages(pipelineBuilder.binding)
+            
+        pipeline.loadExternalStages()
 
 		// Create a command log file to capture all commands executed
         def mode = Config.config.mode 
@@ -135,10 +153,41 @@ public class Pipeline {
         if(mode in ["diagram","diagrameditor"])
 	        diagram(host, pipelineBuilder, Runner.opts.arguments()[0], mode == "diagrameditor")
 	}
+    
+    /**
+     * Runs the specified closure in the context of this pipeline 
+     * and both decrements and notifies the given counter when finished.
+     */
+    void runSegment(def inputs, Closure s, AtomicInteger counter) {
+        try {
+            this.rootContext = createContext()
+            def currentStage = new PipelineStage(rootContext, s)
+            this.stages << currentStage
+            currentStage.context.@input = inputs
+            try {
+                currentStage.run()
+            }
+            catch(PipelineError e) {
+                System.err << "Pipeline failed!\n\n"+e.message << "\n\n"
+                failed = true
+            }
+            catch(PipelineTestAbort e) {
+                println "\n\nAbort due to Test Mode!\n\n  $e.message\n"
+                failed = true
+            }
+        }
+        finally {
+            if(counter != null) {
+	            int value = counter.decrementAndGet()
+	            log.info "Finished running segment for inputs $inputs and decremented counter to $value"
+	            synchronized(counter) {
+	                counter.notifyAll()
+	            }
+	        }
+        }
+    }
 
 	private void execute(def inputFile, Object host, Closure pipeline) {
-        
-        loadExternalStages()
         
         // We have to manually add all the external variables to the outer pipeline stage
         this.externalBinding.variables.each { 
@@ -156,8 +205,6 @@ public class Pipeline {
 
 		initUncleanFilePath()
         
-        boolean failed = false
-
 		use(PipelineCategory) {
             
             // Build the actual pipeline
@@ -166,28 +213,13 @@ public class Pipeline {
 				constructedPipeline = pipeline()
 			}
 			
-            def rootContext = createContext()
-			def currentStage = 
-                new PipelineStage(rootContext, constructedPipeline)
-			this.stages << currentStage
-			currentStage.context.@input = inputFile
-			try {
-				currentStage.run()
-			}
-			catch(PipelineError e) {
-				System.err << "Pipeline failed!\n\n"+e.message << "\n\n"
-                failed = true
-			}
-			catch(PipelineTestAbort e) {
-				println "\n\nAbort due to Test Mode!\n\n  $e.message\n"
-                failed = true
-			}
+            runSegment(inputFile, constructedPipeline, null)
 
 			println("\n"+" Pipeline Finished ".center(Config.config.columns,"="))
 			rootContext.msg "Finished at " + (new Date())
 
             if(!failed) {
-				def outputFile = Utils.first(currentStage.context.output)
+				def outputFile = Utils.first(stages[-1].context.output)
 				if(outputFile && !outputFile.startsWith("null") /* hack */ && new File(outputFile).exists()) {
 					rootContext.msg "Output is " + outputFile
 				}
@@ -217,6 +249,21 @@ public class Pipeline {
                 
         }
         PipelineStage.UNCLEAN_FILE_PATH.text = ""
+    }
+    
+    /**
+     * Create a new pipeline that is initialized with copies of all the same state
+     * that this pipeline has.  The new pipeline can execute concurrently with this
+     * one without interfering with this one's state.
+     * <p>
+     * Note:  the new pipeline is not run by this method; instead you have to
+     *        call one of the l{@link #run(Closure)} methods on the returned pipeline
+     */
+    Pipeline fork() {
+        Pipeline p = new Pipeline()
+        p.stages = [] + this.stages
+        p.joiners = [] + this.joiners
+        return p
     }
     
     private void loadExternalStages() {

@@ -108,94 +108,74 @@ class PipelineCategory {
      * <p>
      * <code>"sample_%_*.txt" * [stage1 + stage2 + stage3]</code>
      */
-	static Object multiply(String pattern, List stages) {
+	static Object multiply(String pattern, List segments) {
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
-		return { input ->
+		def multiplyImplementation = { input ->
+            
+            def currentStage = new PipelineStage(pipeline.createContext(), {})
+            pipeline.stages << currentStage
+            currentStage.context.setInput(input)
             
 			// Match the input
             InputSplitter splitter = new InputSplitter()
             Map samples = splitter.split(pattern, input)
 			
-            AtomicInteger runningCount = new AtomicInteger(samples.size())
+            AtomicInteger runningCount = new AtomicInteger()
             
             // Now we have all our samples, make a 
-			// separate pipeline for each one
-			List<Pipeline> childPipelines = samples.collect { id, files ->
-                log.info "Creating pipeline to run sample $id with files $files"
-                Pipeline child = pipeline.fork()
-                new Thread({
-                    // Each sample will decrement the running count as it finishes
-                    pipeline.run(stages, files, runningCount)
-                }).start()
-                return child
-			}
+			// separate pipeline for each one, and for each parallel stage
+           List<Pipeline> childPipelines = []
+           List<Thread> threads = []
+           for(Closure s in segments) {
+				samples.each { id, files ->
+	                log.info "Creating pipeline to run sample $id with files $files"
+	                runningCount.incrementAndGet()
+	                Pipeline child = pipeline.fork()
+	                Thread childThread = new Thread({
+	                    // Each sample will decrement the running count as it finishes
+	                    child.runSegment(files, s, runningCount)
+	                })
+                    childPipelines << child
+                    threads << childThread
+				}
+            }
+           
+           // Start all the threads
+           threads.each { it.start() }
             
 			while(runningCount.get()) {
 				log.info("Waiting for " + runningCount.get() + " parallel stages to complete" )
-                Thread.sleep()
+                synchronized(runningCount) {
+                    runningCount.wait(5)
+                }
+                // TODO: really here we should check if any of the pipelines that finished 
+                // have failed so that we can abort the other processes if they did
 			}
             
-            outputs = []
+            if(childPipelines.any { it.failed }) {
+                // TODO: make a much better error message!
+                throw new PipelineError("One or more parallel stages failed")
+            }
+            
+            def outputs = []
             childPipelines.eachWithIndex { c,i ->
                 def out = c.stages[-1].context.output
                 log.info "Outputs from child $i :  $out"
-				outputs += outputs
+                if(out)
+					outputs += out
 			}
+            currentStage.context.output = outputs
+            
+            Utils.checkFiles(currentStage.context.output)
+            
             return outputs
 		}
+        
+        pipeline.joiners << multiplyImplementation
+        
+        return multiplyImplementation
+        
 	}
-    
-    /**
-     * Provides an implicit "exec" function that pipeline stages can use
-     * to run commands.  This variant blocks and waits for the 
-     * shell command to exit.  If the command returns a failure exit code
-     * (non zero) then an exception is thrown.
-     * 
-     * @see #async(Closure, String)
-     */
-    static void exec(Closure c, String cmd) {
-      Process p = async(c,cmd)
-      if(p.waitFor() != 0) {
-        // Output is still spooling from the process.  By waiting a bit we ensure
-        // that we don't interleave the exception trace with the output
-        Thread.sleep(200)
-        throw new PipelineError("Command failed with exit status != 0: \n$cmd")
-      }
-    }
-    
-    static String capture(Closure c, String cmd) {
-      new File('commandlog.txt').text += '\n'+cmd
-      def joined = ""
-      cmd.eachLine { joined += " " + it }
-      // println "Joined command is: $joined"
-      
-      def p = Runtime.getRuntime().exec((String[])(['bash','-c',"$joined"].toArray()))
-      StringWriter outputBuffer = new StringWriter()
-      p.consumeProcessOutput(outputBuffer,System.err)
-      p.waitFor()
-      return outputBuffer.toString()
-    }
-    
-    /**
-     * Asynchronously executes the given command by passing it to 
-     * a bash shell for execution.  The exit code is not checked and
-     * the command may still be running on return.  The Process object 
-     * for the command that is run is returned.  Callers can use the
-     * {@link Process#waitFor()} to wait for the process to finish.
-     */
-    static Process async(Closure c, String cmd) {
-      if(Runner.opts.t)
-          throw new PipelineTestAbort("Would execute: $cmd")
-          
-      def joined = ""
-      cmd.eachLine { joined += " " + it }
-//      println "Joined command is: $joined"
-      
-      new File('commandlog.txt').text += '\n'+cmd
-      def p = Runtime.getRuntime().exec((String[])(['bash','-c',"$joined"].toArray()))
-      p.consumeProcessOutput(System.out, System.err)
-      return p
-    }
     
     static void addStages(Binding binding) {
         binding.variables.each { 
