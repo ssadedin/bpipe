@@ -184,11 +184,9 @@ class PipelineStage {
                 
             if(!this.context.output)
                 this.context.output = nextInputs
-                
-            log.info "Actual outputs from stage $stageName are ${this.context.output}"
-            context.defaultOutput = null
+
+			context.defaultOutput = null
             context.nextInputs = nextInputs
-            
         }
         catch(PipelineTestAbort e) {
             throw e

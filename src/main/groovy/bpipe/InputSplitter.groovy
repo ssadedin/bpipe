@@ -58,9 +58,6 @@ class InputSplitter {
                 
             String group = m[0][splitGroup+1]
             log.fine "The group:  $group"
-            
-			
-			
             if(!unsortedResult.containsKey(group))
                 unsortedResult[group] = []
                 
@@ -147,8 +144,8 @@ class InputSplitter {
 		// Find the characters flanking the % and * and use those as
 		// pattern delimiters
         int percPos = pattern.indexOf('%')
-        if(percPos == -1)
-		    throw new PipelineError("A sample split pattern must contain a % character to indicate the splitting point")
+//        if(percPos == -1)
+//		    throw new PipelineError("A sample split pattern must contain a % character to indicate the splitting point")
 		
 		def starMatch = (pattern =~ /\*/)
 		List starPos = []
@@ -163,6 +160,10 @@ class InputSplitter {
         log.fine "Sorted: $sorted"
         
 		int percGroupPos = sorted.indexOf(percPos)
+        if(percPos < 0) {
+		    sorted = starPos
+            sorted.sort()
+        }
         
 		log.fine "% is group # " + percGroupPos
         

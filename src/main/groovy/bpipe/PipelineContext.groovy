@@ -83,8 +83,9 @@ class PipelineContext {
    
    def output
    
-   def setOutput(o) {
-       this.output = toOutputFolder(o)
+   void setOutput(o) {
+       log.info "Setting output $o on context ${this.hashCode()}"
+       this.@output = toOutputFolder(o)
    }
    
    def getOutput() {

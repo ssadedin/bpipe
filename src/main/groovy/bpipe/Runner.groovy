@@ -120,7 +120,7 @@ diagrameditor""")
         def opt = cli.parse(args)
         if(!opt)
             System.exit(1)
-        
+            
         if(!opt.arguments()) {
             cli.usage()
             println "\n"
@@ -129,6 +129,13 @@ diagrameditor""")
         groovyArgs += opt.arguments()
         
         opts = opt
+        
+		if(opts.v) {
+            ConsoleHandler console = new ConsoleHandler()
+            console.setFormatter(new BpipeLogFormatter())
+            console.setLevel(Level.FINE)
+            parentLog.addHandler(console)
+		}
         
         String pipelineFile = opts.arguments()[0]
         if(!new File(pipelineFile).exists()) {

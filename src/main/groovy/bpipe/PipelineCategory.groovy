@@ -53,8 +53,6 @@ class PipelineCategory {
      */
     static Map wrappers = [:]
     
-//    static PipelineStage currentStage 
-    
     /**
      * Joins two closures representing pipeline stages together by
      * creating wrapping closure that executes each one in turn.  This is the 
@@ -91,16 +89,37 @@ class PipelineCategory {
         pipeline.joiners << result
         return result
     }
-//    
-//    /**
-//     * Take the output from all the stages in the list
-//     * which may have executed in parallel and 
-//     * forward all the outputs to the given closure
-//     */
-//    static Object plus(List stages, Closure other) {
-//        
-//	}
-//    
+    
+    /**
+     * Take the output from the given closure and forward
+     * all of them to all the stages in the list.
+     * This is a special case of multiply below. 
+     */
+    static Object plus(Closure other, List segments) {
+        Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
+        Closure mul = multiply("*", segments)
+        def plusImplementation =  { input1 ->
+            
+            def currentStage = new PipelineStage(pipeline.createContext(), other)
+            pipeline.stages << currentStage
+            currentStage.context.setInput(input1)
+            currentStage.run()
+            Utils.checkFiles(currentStage.context.output)
+                    
+            // If the stage did not return any outputs then we assume
+            // that the inputs to the next stage are the same as the inputs
+            // to the previous stage
+            def nextInputs = currentStage.context.nextInputs
+            if(nextInputs == null)
+                nextInputs = currentStage.context.@input
+                
+            Utils.checkFiles(nextInputs)
+            return mul(nextInputs)
+		}
+        pipeline.joiners << plusImplementation
+        return plusImplementation
+	}
+    
     /**
      * Implements the syntax that allows an input filter to 
      * break inputs into samples and pass to multiple parallel 
@@ -111,6 +130,8 @@ class PipelineCategory {
 	static Object multiply(String pattern, List segments) {
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
 		def multiplyImplementation = { input ->
+            
+			log.info "multiply on input $input with pattern $pattern"
             
             def currentStage = new PipelineStage(pipeline.createContext(), {})
             pipeline.stages << currentStage
@@ -127,13 +148,15 @@ class PipelineCategory {
            List<Pipeline> childPipelines = []
            List<Thread> threads = []
            for(Closure s in segments) {
+                log.info "Processing segment ${s.hashCode()}"
 				samples.each { id, files ->
 	                log.info "Creating pipeline to run sample $id with files $files"
 	                runningCount.incrementAndGet()
 	                Pipeline child = pipeline.fork()
+                    Closure segmentClosure = s
 	                Thread childThread = new Thread({
 	                    // Each sample will decrement the running count as it finishes
-	                    child.runSegment(files, s, runningCount)
+	                    child.runSegment(files, segmentClosure, runningCount)
 	                })
                     childPipelines << child
                     threads << childThread
@@ -157,18 +180,18 @@ class PipelineCategory {
                 throw new PipelineError("One or more parallel stages failed")
             }
             
-            def outputs = []
+            def nextInputs = []
             childPipelines.eachWithIndex { c,i ->
-                def out = c.stages[-1].context.output
-                log.info "Outputs from child $i :  $out"
+                def out = c.stages[-1].context.nextInputs
+                log.info "Outputs from child $i :  $out context=${c.stages[-1].context.hashCode()}"
                 if(out)
-					outputs += out
+					nextInputs += out
 			}
-            currentStage.context.output = outputs
+            currentStage.context.output = nextInputs
             
             Utils.checkFiles(currentStage.context.output)
             
-            return outputs
+            return nextInputs
 		}
         
         pipeline.joiners << multiplyImplementation
