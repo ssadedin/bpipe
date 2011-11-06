@@ -1,7 +1,7 @@
 apply plugin: 'eclipse'
 apply plugin: 'groovy'
 
-VERSION="0.1.2"
+VERSION="0.1.3"
 STAGE="build/stage/bpipe-$VERSION"
 
 repositories {
