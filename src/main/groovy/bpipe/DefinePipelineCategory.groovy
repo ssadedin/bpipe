@@ -57,7 +57,7 @@ class DefinePipelineCategory {
      */
     static Node inputStage = new Node(null, "input", []) 
     
-    static Node currentStage = inputStage
+    static List<Node> currentStage = [inputStage]
 	
     static def joiners = []
     
@@ -66,8 +66,8 @@ class DefinePipelineCategory {
             
             if(PipelineCategory.closureNames.containsKey(c)) {
 	            def newStage = new Node(null, PipelineCategory.closureNames[c])
-	            currentStage.append(newStage)
-                currentStage = newStage
+	            currentStage*.append(newStage)
+                currentStage = [newStage]
             }
                 
             if(c in joiners)
@@ -75,8 +75,8 @@ class DefinePipelineCategory {
             
             if(PipelineCategory.closureNames.containsKey(other)) {
 	            def newStage = new Node(null, PipelineCategory.closureNames[other])
-	            currentStage.append(newStage)
-                currentStage = newStage
+	            currentStage*.append(newStage)
+                currentStage = [newStage]
             }
                 
             if(other in joiners)
@@ -135,14 +135,21 @@ class DefinePipelineCategory {
             // Now we have all our samples, make a 
 			// separate pipeline for each one, and for each parallel stage
            def oldStages = currentStage
+           def newStages = []
            for(Closure s in segments) {
                 log.info "Processing segment ${s.hashCode()}"
                 currentStage = oldStages
-//				samples.each { id, files ->
-//	                log.info "Creating pipeline to run sample $id with files $files"
-                s(input)
-//				}
-            }
+                if(s in joiners) {
+                    s(input)
+                    newStages << currentStage[0]
+                }
+                else {
+				    def stageNode = new Node(null,PipelineCategory.closureNames[s])
+				    currentStage*.append(stageNode)
+                    newStages << stageNode
+                }
+           }
+           currentStage = newStages
 		}
         
         joiners << multiplyImplementation

@@ -135,6 +135,7 @@ class Graph extends JFrame {
 		this.graphComponent.setSize(this.width, this.height)
 
 		MxHierarchicalLayout layout = new MxHierarchicalLayout(graph);
+        layout.setDisableEdgeStyle(true)
 		layout.setOrientation(SwingConstants.WEST);
 		layout.execute(graph.getDefaultParent());
 	}
