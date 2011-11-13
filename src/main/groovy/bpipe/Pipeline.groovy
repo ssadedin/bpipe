@@ -331,7 +331,7 @@ public class Pipeline {
         
         // Now make a graph
         // println "Found stages " + DefinePipelineCategory.stages
-        Graph g = new Graph(DefinePipelineCategory.stages)
+        Graph g = new Graph(DefinePipelineCategory.inputStage)
         if(editor) {
             g.display()
         }

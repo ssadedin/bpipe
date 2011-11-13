@@ -25,9 +25,23 @@
 package bpipe
 
 import static bpipe.Utils.*
+
 import groovy.lang.Closure
 
 import java.util.logging.Logger
+
+/*
+class PipelineNode {
+    
+	String name
+    
+	PipelineNode next
+	
+    PipelineNode parent 
+	
+	List<PipelineNode> children = []
+}
+*/
 
 /**
  * A category that adds a plus operator for closures that 
@@ -41,21 +55,29 @@ class DefinePipelineCategory {
     /**
      * List stages found
      */
-    static def stages = []
+    static Node inputStage = new Node(null, "input", []) 
     
+    static Node currentStage = inputStage
+	
     static def joiners = []
     
     static Object plus(Closure c, Closure other) {
         def result  = { 
             
-            if(PipelineCategory.closureNames.containsKey(c))
-	            stages << PipelineCategory.closureNames[c]
+            if(PipelineCategory.closureNames.containsKey(c)) {
+	            def newStage = new Node(null, PipelineCategory.closureNames[c])
+	            currentStage.append(newStage)
+                currentStage = newStage
+            }
                 
             if(c in joiners)
                 c()
             
-            if(PipelineCategory.closureNames.containsKey(other))
-	            stages << PipelineCategory.closureNames[other]
+            if(PipelineCategory.closureNames.containsKey(other)) {
+	            def newStage = new Node(null, PipelineCategory.closureNames[other])
+	            currentStage.append(newStage)
+                currentStage = newStage
+            }
                 
             if(other in joiners)
 	            other()
@@ -63,4 +85,70 @@ class DefinePipelineCategory {
         joiners << result
         return result
     }
+    
+    /**
+     * Take the output from the given closure and forward
+     * all of them to all the stages in the list.
+     * This is a special case of multiply below. 
+     */
+//    static Object plus(Closure other, List segments) {
+//        Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
+//        Closure mul = multiply("*", segments)
+//        def plusImplementation =  { input1 ->
+//            
+//            def currentStage = new PipelineStage(pipeline.createContext(), other)
+//            pipeline.stages << currentStage
+//            currentStage.context.setInput(input1)
+//            currentStage.run()
+//            Utils.checkFiles(currentStage.context.output)
+//                    
+//            // If the stage did not return any outputs then we assume
+//            // that the inputs to the next stage are the same as the inputs
+//            // to the previous stage
+//            def nextInputs = currentStage.context.nextInputs
+//            if(nextInputs == null)
+//                nextInputs = currentStage.context.@input
+//                
+//            Utils.checkFiles(nextInputs)
+//            return mul(nextInputs)
+//		}
+//        pipeline.joiners << plusImplementation
+//        return plusImplementation
+//	}
+    
+    /**
+     * Implements the syntax that allows an input filter to 
+     * break inputs into samples and pass to multiple parallel 
+     * stages in the form
+     * <p>
+     * <code>"sample_%_*.txt" * [stage1 + stage2 + stage3]</code>
+     */
+	static Object multiply(String pattern, List segments) {
+		def multiplyImplementation = { input ->
+            
+			log.info "multiply on input $input with pattern $pattern"
+            
+			// Match the input
+            InputSplitter splitter = new InputSplitter()
+            Map samples = splitter.split(pattern, input)
+			
+            // Now we have all our samples, make a 
+			// separate pipeline for each one, and for each parallel stage
+           def oldStages = currentStage
+           for(Closure s in segments) {
+                log.info "Processing segment ${s.hashCode()}"
+                currentStage = oldStages
+//				samples.each { id, files ->
+//	                log.info "Creating pipeline to run sample $id with files $files"
+                s(input)
+//				}
+            }
+		}
+        
+        joiners << multiplyImplementation
+        
+        return multiplyImplementation
+        
+	}
+	
 }
