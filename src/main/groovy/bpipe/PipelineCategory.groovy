@@ -204,7 +204,8 @@ class PipelineCategory {
         binding.variables.each { 
             if(it.value instanceof Closure) {
 	            log.info("Found closure variable ${it.key}")
-                closureNames[it.value] = it.key
+                if(!closureNames.containsKey(it.value))
+	                closureNames[it.value] = it.key
             }
         }
     }

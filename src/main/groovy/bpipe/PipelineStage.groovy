@@ -90,8 +90,14 @@ class PipelineStage {
      */
     def run() {
         Utils.checkFiles(context.@input)
-        if(body.properties.containsKey("binding"))
-            body.binding.variables += this.context.extraBinding.variables
+        
+        if(body.properties.containsKey("binding")) {
+             this.context.extraBinding.variables.each { k,v ->
+                 if(!body.binding.variables.containsKey(k)) {
+                     body.binding.variables[k] = v
+                 }
+             } 
+        }
         
         def oldFiles = new File(".").listFiles() as List
         try {
