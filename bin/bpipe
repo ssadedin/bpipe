@@ -78,6 +78,28 @@ then
     # TODO: will fail if spaces in path
     ls -tc .bpipe/logs/*.log | grep -v 'bpipe\.' | head -1 | xargs tail -f $*
     exit
+elif [ "$COMMAND" == "stop" ];
+then
+    shift 1
+    # Find all the process ids and kill them!
+    # TODO
+    JOBPID=`ls -tc .bpipe/jobs/* | head -1 | xargs basename`
+
+    echo "PID of last job is $JOBPID"
+    
+    if kill -0 $JOBPID > /dev/null 2>&1 ;
+    then
+      echo
+      echo "Killing job $JOBPID"
+      echo
+      killtree $JOBPID
+    else
+      echo
+      echo "Job $JOBPID appears to be finished"
+      echo
+    fi
+
+    exit
 elif [ "$COMMAND" == "jobs" ];
 then
     if [ -e ~/.bpipedb/jobs/ ];
