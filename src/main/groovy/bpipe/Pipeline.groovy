@@ -192,8 +192,14 @@ public class Pipeline {
         // We have to manually add all the external variables to the outer pipeline stage
         this.externalBinding.variables.each { 
             log.info "Loaded external reference: $it.key"
-            pipeline.binding.variables.put(it.key,it.value) 
+            if(!pipeline.binding.variables.containsKey(it.key))
+	            pipeline.binding.variables.put(it.key,it.value) 
+            else
+                log.info "External reference $it.key is overridden by local reference"    
         }
+        
+        // Add all the pipeline variables to the external binding
+        this.externalBinding.variables += pipeline.binding.variables
         
 		def cmdlog = new File('commandlog.txt')
 		if(!cmdlog.exists())
