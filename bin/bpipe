@@ -3,6 +3,39 @@
 # Bpipe Runner Script
 #
 
+# Utility script
+# Kill a whole tree of processes
+# for some children it happens automatically, but for some it doesn't
+killtree() {
+    local ppid=$1
+    
+    # Sadly Mac OS/X does not seem to support --ppid option in default version
+    # of ps
+    if uname | grep -q Darwin;
+    then
+        pids=`ps -o pid,ppid | grep '^[0-9]' | grep ' '$ppid | cut -f 1 -d ' '`
+    else
+        pids=$(ps -o pid --no-headers --ppid ${ppid})
+    fi
+    
+    if [ ! -z "$pids" ];
+    then
+        for child_pid in ${pids}; 
+        do
+            killtree ${child_pid}
+        done
+    fi
+    kill -TERM ${ppid}
+}
+
+createPidFile() {
+        # This creating dance is to try and make the
+        # launch pid file appear atomically
+        # The java runtime is going to read this file immediately after startup
+	echo $BPIPE_PID > .bpipe/launch/$$.tmp
+	mv .bpipe/launch/$$.tmp .bpipe/launch/$$
+}
+
 # Locate Bpipe's home directory
 # Need something more sophisticated to deal with symbolic links?
 BPIPE_HOME=`dirname $0`/..
@@ -15,6 +48,8 @@ if [ ! -e .bpipe/logs ];
 then
     mkdir -p .bpipe/logs
 fi
+
+mkdir -p .bpipe/launch
 
 COMMAND="$1"
 TESTMODE=""
@@ -65,12 +100,12 @@ then
 elif [ "$COMMAND" == "diagram" ];
 then
     shift 1
-    java -classpath "$CP" -Dbpipe.mode=diagram -Dbpipe.pid=$$ bpipe.Runner $* 
+    java -classpath "$CP" -Dbpipe.mode=diagram bpipe.Runner $* 
     exit
 elif [ "$COMMAND" == "diagrameditor" ];
 then
     shift 1
-    java -classpath "$CP" -Dbpipe.mode=diagrameditor -Dbpipe.pid=$$ bpipe.Runner $* 
+    java -classpath "$CP" -Dbpipe.mode=diagrameditor bpipe.Runner $* 
     exit
 elif [ "$COMMAND" == "log" ];
 then
@@ -81,14 +116,16 @@ then
 elif [ "$COMMAND" == "stop" ];
 then
     shift 1
-    # Find all the process ids and kill them!
-    # TODO
+    # Find all the process ids and kill it
     JOBPID=`ls -tc .bpipe/jobs/* | head -1 | xargs basename`
 
+    echo
     echo "PID of last job is $JOBPID"
     
     if kill -0 $JOBPID > /dev/null 2>&1 ;
     then
+      # TODO: would be nicer to show a little info and 
+      # let the the user confirm?
       echo
       echo "Killing job $JOBPID"
       echo
@@ -110,7 +147,18 @@ then
            base=`basename $i`
            if [ "$base" != "*" ] && [ "$i" != "_" ];
            then
-               echo "$base : "`cat $i`
+	       if [ -e $i ];
+	       then
+	       	       if kill -0 $base > /dev/null 2>/dev/null ;
+		       then
+			       echo "$base : "`cat $i`
+		       else
+			       echo "$base : appears to have stopped but was not removed from database.  Maybe hard killed?"
+		       fi
+	       else
+		       echo "Found old PID file $i"
+		       #rm $i
+	       fi
            fi
         done
     fi
@@ -131,43 +179,23 @@ echo "$0 $COMMAND $*" > .bpipe/lastcmd
 echo "$0 $COMMAND $*" >> .bpipe/history
 
 # Run in the background with nohup so that jobs do not abort on logout
+# We pass the pid of this shell as a property.  This allows the bpipe runtime
+# to figure out its own process id which is otherwise hard to do in Java
 nohup java -classpath "$CP" -Dbpipe.pid=$$ bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
 
 BPIPE_PID="$!"
 
+createPidFile
+
 # Save the job in the local folder, linked to its PID
 mkdir -p .bpipe/jobs
-echo "$0 $COMMAND $*" >> .bpipe/jobs/$$
+echo "$0 $COMMAND $*" >> .bpipe/jobs/$BPIPE_PID
 
 # Save the job in the user's home .bpipe folder - this allows the user to query
 # what jobs they have running from anywhere
 # Note that it is up to the Java code to remove this when it shuts down
 mkdir -p ~/.bpipedb/jobs
-ln -s `pwd`/.bpipe/jobs/$$  ~/.bpipedb/jobs/$$ 
-
-# Kill a whole tree of processes
-# for some children it happens automatically, but for some it doesn't
-killtree() {
-    local ppid=$1
-    
-    # Sadly Mac OS/X does not seem to support --ppid option in default version
-    # of ps
-    if uname | grep -q Darwin;
-    then
-        pids=`ps -o pid,ppid | grep '^[0-9]' | grep ' '$ppid | cut -f 1 -d ' '`
-    else
-        pids=$(ps -o pid --no-headers --ppid ${ppid})
-    fi
-    
-    if [ ! -z "$pids" ];
-    then
-        for child_pid in ${pids}; 
-        do
-            killtree ${child_pid}
-        done
-    fi
-    kill -TERM ${ppid}
-}
+ln -s `pwd`/.bpipe/jobs/$BPIPE_PID  ~/.bpipedb/jobs/$BPIPE_PID
 
 
 # Look for files marked dirty and clean them up
