@@ -58,9 +58,8 @@ diagrameditor""")
             if(!db.mkdir())
                 throw new RuntimeException("Bpipe was not able to make its database directory, .bpipe in the local folder.  Is this folder read-only?")
         
-        // This property is passed from the bpipe shell command line runner
-        String pid = System.getProperty("bpipe.pid")
-        
+        String pid = resolvePID()
+	        
         // Before we do anything else, add a shutdown hook so that termination of the process causes the job to 
         // to be removed from the user's folder
         System.addShutdownHook { 
@@ -147,4 +146,38 @@ diagrameditor""")
         
         org.codehaus.groovy.tools.GroovyStarter.main(groovyArgs as String[])
     }
+
+	private static String resolvePID() {
+        // If we weren't given a host pid, assume we are running as a generic
+        // command and just put the log files, etc, under this name
+		String pid = "command"
+
+		// This property is passed from the bpipe shell command line runner
+		// It is the PID of the bash shell that started this process, not
+		// the PID of this actual process
+		String hostPid = System.getProperty("bpipe.pid")
+		if(hostPid) {
+			File hostPidFile = new File(".bpipe/launch/${hostPid}")
+			int count = 0
+			while(true) {
+				if(hostPidFile.exists()) {
+                    println "Found host pid file $hostPidFile"
+					pid = hostPidFile.text.trim()
+					hostPidFile.delete()
+					break
+				}
+
+				if(count > 100) {
+					println "ERROR: Bpipe was unable to read its startup PID file from $hostPidFile"
+					println "ERROR: This may indicate you are in a read-only directory or one to which you do not have full permissions"
+					System.exit(1)
+				}
+
+				// Spin a short time waiting
+				Thread.sleep(20)
+				++count
+			}
+		}
+		return pid
+	}
 }

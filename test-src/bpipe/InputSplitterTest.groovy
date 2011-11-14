@@ -19,6 +19,32 @@ class InputSplitterTest {
 		]	
 	}
     
+    /**
+     * A real example with a non-numeric sort group
+     */
+    @Test
+    void testRealSplitWithNonNumericSort() {
+		def inputs = [
+                      "SureSelect_Capture_11MG2107_AD0AN0ACXX_GATCAG_L002_R1.fastq",
+                      "SureSelect_Capture_11MG2107_AD0AN0ACXX_GATCAG_L002_R2.fastq",
+                      "SureSelect_Capture_11MG2108_AD0AN0ACXX_TAGCTT_L002_R1.fastq",
+                      "SureSelect_Capture_11MG2108_AD0AN0ACXX_TAGCTT_L002_R2.fastq"
+                     ]
+        
+        def regex = splitter.convertPattern("CXX_%_*.fastq")
+        println "regex = $regex"
+        def result = splitter.split("CXX_%_*.fastq",inputs) 
+        
+        println "Got result:  $result"
+        
+        assert result == [
+          GATCAG:
+                ["SureSelect_Capture_11MG2107_AD0AN0ACXX_GATCAG_L002_R1.fastq", "SureSelect_Capture_11MG2107_AD0AN0ACXX_GATCAG_L002_R2.fastq"],
+          TAGCTT:
+                ["SureSelect_Capture_11MG2108_AD0AN0ACXX_TAGCTT_L002_R1.fastq", "SureSelect_Capture_11MG2108_AD0AN0ACXX_TAGCTT_L002_R2.fastq"]
+        ]
+    }
+    
 	@Test
 	public void testSort() {
         

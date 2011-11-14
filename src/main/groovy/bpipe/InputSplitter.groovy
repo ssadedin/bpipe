@@ -123,7 +123,7 @@ class InputSplitter {
                     return n1.compareTo(n2)
 				}
                 else
-    				return g1.compareTo(g2)
+    				return s1.compareTo(s2)
 			}
             
 			log.fine "$i1 == $i2"
@@ -136,7 +136,7 @@ class InputSplitter {
      * format.
      * 
      * @return     a list containing two elements: the pattern generated 
-     *             and a in integer indicating the index of the capture group
+     *             and an integer indicating the index of the capture group
      *             representing the split point.
      */
 	List convertPattern(String pattern) {
@@ -174,7 +174,16 @@ class InputSplitter {
         def lastPos = -1
         def lastRight = ""
         for(c in sorted) {
-			def leftFlank = c && (lastPos < 0 || (c-1 != lastPos+1)) ? pattern[c-1] : ""
+			def leftFlank = new StringBuilder()
+            int lpos = c
+            while(lpos && (lastPos < 0 || (lpos-1 != lastPos+1))) {
+                leftFlank.append(pattern[lpos-1]) 
+                --lpos
+            }
+            leftFlank = leftFlank.toString().reverse()
+           
+            //			def leftFlank = c && (lastPos < 0 || (c-1 != lastPos+1)) ? pattern[c-1] : ""
+            
 			def rightFlank = c<pattern.size()-1 ? pattern[c+1].replaceAll(/\./,/\\./) : ""
             
             log.fine "Position $c : left=$leftFlank right=$rightFlank"

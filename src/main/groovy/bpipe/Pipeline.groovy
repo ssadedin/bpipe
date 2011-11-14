@@ -151,7 +151,7 @@ public class Pipeline {
 	        pipeline.execute(inputFile, host, pipelineBuilder)
         else
         if(mode in ["diagram","diagrameditor"])
-	        diagram(host, pipelineBuilder, Runner.opts.arguments()[0], mode == "diagrameditor")
+	        pipeline.diagram(host, pipelineBuilder, Runner.opts.arguments()[0], mode == "diagrameditor")
 	}
     
     /**
@@ -325,7 +325,16 @@ public class Pipeline {
     /**
      * This method creates a diagram of the pipeline instead of running it
      */
-	static def diagram(Object host, Closure pipeline, String fileName, boolean editor) {
+	def diagram(Object host, Closure pipeline, String fileName, boolean editor) {
+        
+        // We have to manually add all the external variables to the outer pipeline stage
+        this.externalBinding.variables.each {
+            log.info "Loaded external reference: $it.key"
+            if(!pipeline.binding.variables.containsKey(it.key))
+                pipeline.binding.variables.put(it.key,it.value)
+            else
+                log.info "External reference $it.key is overridden by local reference"
+        }
         
         // Figures out what the pipeline stages are 
         if(host)
