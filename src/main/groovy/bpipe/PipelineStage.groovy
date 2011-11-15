@@ -156,9 +156,13 @@ class PipelineStage {
             
             // If there are no new files, we can look at modified files instead
             if(!newFiles) {
-                newFiles = oldFiles.grep { it.lastModified() > modified[it] }.collect { context.outputDirectory + "/"+it.name }
+                newFiles = oldFiles.grep { it.lastModified() > modified[it] }.collect { it.name }
             }
             
+            // Since we operated on local file names only so far, we have to restore the 
+            // output directory to the name
+            newFiles = newFiles.collect { context.outputDirectory + "/" + it }
+  
             if(!context.nextInputs && this.context.@output != null) {
                 log.info("Inferring nextInputs from explicit output as $context.@output")
                 context.nextInputs = this.context.output

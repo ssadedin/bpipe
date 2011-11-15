@@ -75,9 +75,12 @@ class PipelineCategory {
             // that the inputs to the next stage are the same as the inputs
             // to the previous stage
             def nextInputs = currentStage.context.nextInputs
-            if(nextInputs == null)
+            log.info "Next inputs from stage = $nextInputs"
+            if(nextInputs == null) {
                 nextInputs = currentStage.context.@input
+            }
                 
+            log.info "Checking inputs for next stage:  $nextInputs"
             Utils.checkFiles(nextInputs)
                 
             currentStage = new PipelineStage(pipeline.createContext(), other)

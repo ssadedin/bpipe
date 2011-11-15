@@ -94,6 +94,14 @@ class PipelineContext {
        this.@output = toOutputFolder(o)
    }
    
+   /**
+    * A synonym for the output directory, designed to allow commands that really have to know
+    * what directory they are writing to access to it.
+    */
+   String getDir() {
+       return this.@outputDirectory
+   }
+   
    def getOutput() {
        if(output == null) { // Output not set elsewhere
            // If an input property was referenced, compute the default from that instead
