@@ -59,6 +59,11 @@ class PipelineContext {
     * The stage name for which this context is running
     */
    String stageName
+   
+   /**
+    * The directory to which the pipeline stage should write its outputs
+    */
+   String outputDirectory = "."
 
    private List<PipelineStage> pipelineStages
    
@@ -71,9 +76,10 @@ class PipelineContext {
     * by use of the transform, filter or produce constructs.  If so, the actual output
     * is stored in the output property.
     */
-   def defaultOutput
+   private def defaultOutput
    
    def getDefaultOutput() {
+//       log.info "Returning default output " + this.@defaultOutput
        return this.@defaultOutput
    }
    
@@ -95,7 +101,7 @@ class PipelineContext {
                log.info("Using non-default output due to input property reference: " + inputWrapper.resolvedInputs[0])
                return inputWrapper.resolvedInputs[0] +"." + this.stageName
            }
-           return defaultOutput
+           return this.getDefaultOutput()
        }
        return output
    }
@@ -105,9 +111,12 @@ class PipelineContext {
     * point to files in the local directory.
     */
    def toOutputFolder(outputs) {
-       File outputFolder = new File(".")
-       outputs = Utils.box(outputs).collect { new File(it).name }
-       return Utils.unbox(outputs)
+       File outputFolder = new File(this.outputDirectory)
+       if(!outputFolder.exists())
+           outputFolder.mkdirs()
+           
+       def newOutputs = Utils.box(outputs).collect { this.outputDirectory + "/" + new File(it).name }
+       return Utils.unbox(newOutputs)
    }
    
    /**
@@ -125,7 +134,7 @@ class PipelineContext {
      * Usually this is the same as context.output but it doesn't have
      * to be.
      */
-    def nextInputs
+   def nextInputs
    
    String getInput1() {
        return Utils.first(input)

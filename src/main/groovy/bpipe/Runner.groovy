@@ -109,7 +109,7 @@ diagrameditor""")
         else {
             cli = runCli
 	        cli.with {
-	             h longOpt:'help', 'uSage information'
+	             h longOpt:'help', 'usage information'
 	             d longOpt:'dir', 'output directory', args:1
 	             t longOpt:'test', 'test mode'
 	             v longOpt:'verbose', 'print internal logging to standard error'
@@ -135,6 +135,10 @@ diagrameditor""")
             console.setLevel(Level.FINE)
             parentLog.addHandler(console)
 		}
+        
+        if(opts.d) {
+            Config.config.defaultOutputDirectory = opts.d
+        }
         
         String pipelineFile = opts.arguments()[0]
         if(!new File(pipelineFile).exists()) {

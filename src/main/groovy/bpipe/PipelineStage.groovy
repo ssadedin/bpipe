@@ -99,7 +99,8 @@ class PipelineStage {
              } 
         }
         
-        def oldFiles = new File(".").listFiles() as List
+        def oldFiles = new File(context.outputDirectory).listFiles() as List
+        oldFiles = oldFiles?:[]
         try {
             oldFiles.removeAll { f -> IGNORE_NEW_FILE_PATTERNS.any { f.name.matches(it) } }
             def modified = oldFiles.inject([:]) { result, f -> result[f] = f.lastModified(); return result }
@@ -149,13 +150,13 @@ class PipelineStage {
             
             // If after everything we still don't have 
             // any outputs, we look to see if any files were created
-            def newFiles = new File(".").list() as Set
+            def newFiles = new File(context.outputDirectory).list() as Set
             newFiles.removeAll(oldFiles.collect { it.name })
             newFiles.removeAll { n -> IGNORE_NEW_FILE_PATTERNS.any { n.matches(it) } }
             
             // If there are no new files, we can look at modified files instead
             if(!newFiles) {
-                newFiles = oldFiles.grep { it.lastModified() > modified[it] }.collect { it.name }
+                newFiles = oldFiles.grep { it.lastModified() > modified[it] }.collect { context.outputDirectory + "/"+it.name }
             }
             
             if(!context.nextInputs && this.context.@output != null) {
@@ -167,6 +168,7 @@ class PipelineStage {
             if(nextInputs == null || Utils.isContainer(nextInputs) && !nextInputs) {
                 // TODO: Make configurable
                 newFiles.removeAll { it.endsWith(".bai") || it.endsWith(".log") }
+                
                 if(newFiles) {
                     // If the default output happens to be one of the created files, 
                     // prefer to use that

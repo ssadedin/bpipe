@@ -42,7 +42,13 @@ class Config {
         
         // Default mode is "run", but "define" will just produce a definition
         // of the pipeline without executing it.  
-        mode : "run"
+        mode : "run",
+        
+        // By default all outputs get created in the current directory, but
+        // the user can override it from the command line and in the future
+        // some features might make outputs go to separate directories
+        // (eg: per sample, etc.)
+        defaultOutputDirectory : "."
     ]
 }
 
@@ -238,7 +244,9 @@ public class Pipeline {
 	}
     
     PipelineContext createContext() {
-       new PipelineContext(this.externalBinding, this.stages, this.joiners) 
+       def ctx = new PipelineContext(this.externalBinding, this.stages, this.joiners) 
+       ctx.outputDirectory = Config.config.defaultOutputDirectory
+       return ctx
     }
     
     /**
