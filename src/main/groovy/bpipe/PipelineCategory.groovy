@@ -143,6 +143,9 @@ class PipelineCategory {
 			// Match the input
             InputSplitter splitter = new InputSplitter()
             Map samples = splitter.split(pattern, input)
+            
+            if(samples.isEmpty()) 
+                throw new PipelineError("The pattern provided '$pattern' did not match any of the files provided as input $input")
 			
             AtomicInteger runningCount = new AtomicInteger()
             

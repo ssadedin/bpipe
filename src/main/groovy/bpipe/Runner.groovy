@@ -165,7 +165,7 @@ diagrameditor""")
 			int count = 0
 			while(true) {
 				if(hostPidFile.exists()) {
-                    println "Found host pid file $hostPidFile"
+//                    println "Found host pid file $hostPidFile"
 					pid = hostPidFile.text.trim()
 					hostPidFile.delete()
 					break

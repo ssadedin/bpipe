@@ -48,11 +48,6 @@ class PipelineStage {
     private static Logger log = Logger.getLogger("bpipe.PipelineStage");
     
     /**
-     * File where half processed files will be listed on shutdown
-     */
-    public static File UNCLEAN_FILE_PATH = new File(".bpipe/unclean")
-    
-    /**
      * When new files are autodetected by the pipeline manager certain files
      * are treated as being unlikely to be actual outputs from the pipeline
      * that should be passed to next stages
@@ -136,7 +131,7 @@ class PipelineStage {
             if(!joiner)
 	            log.info("Stage $stageName returned $context.nextInputs as default inputs for next stage")
                 
-            UNCLEAN_FILE_PATH.text = ""
+            context.uncleanFilePath.text = ""
             
             // Try using several heuristics to figure out what the inputs passed to the 
             // next pipeline stage should be

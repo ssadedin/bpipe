@@ -201,30 +201,34 @@ ln -s `pwd`/.bpipe/jobs/$BPIPE_PID  ~/.bpipedb/jobs/$BPIPE_PID
 # Look for files marked dirty and clean them up
 cleanup() {
     # Check for any unclean files in .bpipe/unclean
-    if [ -f .bpipe/unclean ];
+    if [ -d .bpipe/inprogress ];
     then
-        for f in `cat .bpipe/unclean`;
-        do
-            if [ -e "$f" ];
-            then
-                target=".bpipe/trash/$f"
-                if [ ! -d .bpipe/trash ];
-                then
-                    mkdir -p .bpipe/trash
-                fi
-                count=1
-                realtarget="$target"
-                while [ -e "$realtarget" ];
-                do
-                  realtarget="${target}.${count}"
-                  let "count = count + 1"
-                done
-                target="$realtarget"
-                echo "Moving unclean file $f to $target"
-                echo
-                mv "$f" ".bpipe/trash/$f"
-            fi
-        done
+    	for ip in .bpipe/inprogress/* ;
+	do
+		echo "Cleaning up files from context $ip"
+		for f in `cat $ip`;
+		do
+		    if [ -e "$f" ];
+		    then
+			target=".bpipe/trash/$f"
+			if [ ! -d .bpipe/trash ];
+			then
+			    mkdir -p .bpipe/trash
+			fi
+			count=1
+			realtarget="$target"
+			while [ -e "$realtarget" ];
+			do
+			  realtarget="${target}.${count}"
+			  let "count = count + 1"
+			done
+			target="$realtarget"
+			echo "Moving unclean file $f to $target"
+			echo
+			mv "$f" ".bpipe/trash/$f"
+		    fi
+		done
+	done
     fi
 }
 

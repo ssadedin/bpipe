@@ -20,6 +20,11 @@ import static Utils.*
 * to all use this context.
 */
 class PipelineContext {
+    
+    /**
+     * File where half processed files will be listed on shutdown
+     */
+    public static File UNCLEAN_FILE_PATH = new File(".bpipe/inprogress")
    
    /**
     * Logger for this class to use
@@ -46,6 +51,7 @@ class PipelineContext {
        this.pipelineStages = pipelineStages
        this.extraBinding = extraBinding
        this.pipelineJoiners = pipelineJoiners
+       this.initUncleanFilePath()
    }
    
    /**
@@ -65,6 +71,8 @@ class PipelineContext {
     */
    String outputDirectory = "."
 
+   File uncleanFilePath
+   
    private List<PipelineStage> pipelineStages
    
    private List<Closure> pipelineJoiners
@@ -114,7 +122,24 @@ class PipelineContext {
        return output
    }
    
-   /**
+   def getOutput1() {
+       return Utils.box(getOutput())[0]
+   }
+   
+   def getOutput2() {
+       return Utils.box(getOutput())[1]
+   }
+   
+   def getOutput3() {
+       return Utils.box(getOutput())[2]
+   }
+   
+   def getOutput4() {
+       return Utils.box(getOutput())[3]
+   }
+    
+   
+    /**
     * Coerce all of the arguments (which may be an array of Strings or a single String) to
     * point to files in the local directory.
     */
@@ -263,7 +288,7 @@ class PipelineContext {
      * the extension.  Convenience wrapper for {@link #produce(Closure, Object, Closure)}
      * for the case where only the extension on the file is changed. 
      */
-    Object transform(String extension, Closure body) {
+    Object transform(def extension, Closure body) {
         def inp = Utils.first(this.@input)
         if(!inp) 
            throw new PipelineError("Expected input but no input provided") 
@@ -295,7 +320,8 @@ class PipelineContext {
         log.info "Producing $out from $this"
         
         // Unwrap any wrapped inputs that may have been passed in the outputs
-        out = Utils.unwrap(out)
+        // and cooerce them to the correct output folder
+        out = toOutputFolder(Utils.unwrap(out))
         
         def lastInputs = this.@input
         if(Utils.isNewer(out,lastInputs)) {
@@ -307,7 +333,7 @@ class PipelineContext {
             
             // Store the list of output files so that if we are killed 
             // they can be cleaned up
-            PipelineStage.UNCLEAN_FILE_PATH.text += Utils.box(this.output)?.join("\n") 
+	        this.uncleanFilePath.text += Utils.box(this.output)?.join("\n") 
             
             PipelineDelegate.setDelegateOn(this, body)
 	        log.info("Producing from inputs ${this.@input}")
@@ -423,7 +449,6 @@ class PipelineContext {
                    return o
                }
                log.info("Checking outputs ${s} vs $inp N")
-               
            }
        }
        
@@ -453,4 +478,16 @@ class PipelineContext {
    PipelineStage getCurrentStage() {
        return this.stages[-1]
    }
+   
+    /**
+     * First delete and then initialize with blank contents the list of 
+     * unclean files
+     */
+    void initUncleanFilePath() {
+        if(!UNCLEAN_FILE_PATH.exists()) 
+            UNCLEAN_FILE_PATH.mkdirs()
+            
+        this.uncleanFilePath = new File(UNCLEAN_FILE_PATH, String.valueOf(Thread.currentThread().id))   
+        this.uncleanFilePath.text = ""
+    }
 }

@@ -210,13 +210,17 @@ public class Pipeline {
 		def cmdlog = new File('commandlog.txt')
 		if(!cmdlog.exists())
 			cmdlog << ""
+        else
+            cmdlog << "\n"
 
+        String startDateTime = (new Date()).format("yyyy-MM-dd") + " "
+        cmdlog << "#"*Config.config.columns + "\n"
+        cmdlog << "# Starting pipeline at " + (new Date()) + "\n"
+        cmdlog << "# Input files:  $inputFile \n"
 		println("="*Config.config.columns)
-		println("|" + (" Starting Pipeline at " + (new Date()).format("yyyy-MM-dd") + " ").center(Config.config.columns-2) + "|")
+		println("|" + " Starting Pipeline at $startDateTime".center(Config.config.columns-2) + "|")
 		println("="*Config.config.columns)
 
-		initUncleanFilePath()
-        
 		use(PipelineCategory) {
             
             // Build the actual pipeline
@@ -247,22 +251,6 @@ public class Pipeline {
        def ctx = new PipelineContext(this.externalBinding, this.stages, this.joiners) 
        ctx.outputDirectory = Config.config.defaultOutputDirectory
        return ctx
-    }
-    
-    /**
-     * First delete and then initialize with blank contents the list of 
-     * unclean files
-     */
-    static initUncleanFilePath() {
-        if(!new File(".bpipe").exists())
-            new File(".bpipe").mkdir()
-            
-        if(PipelineStage.UNCLEAN_FILE_PATH.exists()) {
-            if(!PipelineStage.UNCLEAN_FILE_PATH.delete())
-                throw new PipelineError("Unable to delete old unclean file cache in ${PipelineStage.UNCLEAN_FILE_PATH}")
-                
-        }
-        PipelineStage.UNCLEAN_FILE_PATH.text = ""
     }
     
     /**
