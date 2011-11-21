@@ -171,8 +171,11 @@ class PipelineStage {
                 if(newFiles) {
                     // If the default output happens to be one of the created files, 
                     // prefer to use that
-                    if(context.defaultOutput in newFiles)
+                    log.info "Comparing default output $context.defaultOutput to new files $newFiles"
+                    if(context.defaultOutput in newFiles) {
                         nextInputs = context.defaultOutput
+                        log.info("Found default output $context.defaultOutput among detected new files:  using it")
+                    }
                     else {
                         // Use the oldest created file.  This means if the 
                         // body actually executed a series of steps we'll use the
@@ -189,7 +192,7 @@ class PipelineStage {
                 nextInputs = this.context.@input
             }
                 
-            if(!this.context.output)
+            if(!this.context.@output)
                 this.context.output = nextInputs
 
 			context.defaultOutput = null

@@ -66,7 +66,7 @@ class PipelineCategory {
         def result  = {  input1 ->
             
             def currentStage = new PipelineStage(pipeline.createContext(), c)
-            pipeline.stages << currentStage
+            pipeline.addStage(currentStage)
             currentStage.context.setInput(input1)
             currentStage.run()
             Utils.checkFiles(currentStage.context.output)
@@ -85,7 +85,7 @@ class PipelineCategory {
                 
             currentStage = new PipelineStage(pipeline.createContext(), other)
             currentStage.context.@input = nextInputs
-            pipeline.stages << currentStage
+            pipeline.addStage(currentStage)
             currentStage.run()
             return currentStage.context.nextInputs?:currentStage.context.output
         }
@@ -104,7 +104,7 @@ class PipelineCategory {
         def plusImplementation =  { input1 ->
             
             def currentStage = new PipelineStage(pipeline.createContext(), other)
-            pipeline.stages << currentStage
+            pipeline.addStage(currentStage)
             currentStage.context.setInput(input1)
             currentStage.run()
             Utils.checkFiles(currentStage.context.output)
@@ -137,7 +137,7 @@ class PipelineCategory {
 			log.info "multiply on input $input with pattern $pattern"
             
             def currentStage = new PipelineStage(pipeline.createContext(), {})
-            pipeline.stages << currentStage
+            pipeline.addStage(currentStage)
             currentStage.context.setInput(input)
             
 			// Match the input
@@ -159,8 +159,22 @@ class PipelineCategory {
 	                log.info "Creating pipeline to run sample $id with files $files"
 	                runningCount.incrementAndGet()
 	                Pipeline child = pipeline.fork()
+                    
+		                    
                     Closure segmentClosure = s
 	                Thread childThread = new Thread({
+                        
+			            // First we make a "dummy" stage that contains the inputs
+			            // to the next stage as outputs.  This allows later logic
+			            // to find these "inputs" correctly when it expects to see
+			            // all "inputs" reflected as some output of an earlier stage
+			            PipelineContext dummyPriorContext = pipeline.createContext()
+			            PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
+			            dummyPriorContext.output = files
+                        
+			            log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
+			            pipeline.addStage(dummyPriorStage)
+                        
 	                    // Each sample will decrement the running count as it finishes
 	                    child.runSegment(files, segmentClosure, runningCount)
 	                })

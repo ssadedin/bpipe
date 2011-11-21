@@ -62,6 +62,12 @@ public class Pipeline {
     private static Logger log = Logger.getLogger("bpipe.Pipeline");
     
     /**
+     * The thread id of the master thread that is running the baseline root
+     * pipeline
+     */
+    private static Long rootThreadId
+    
+    /**
      * Global binding - variables and functions (including pipeline stages)
      * that are available to all pipeline stages
      */
@@ -168,7 +174,8 @@ public class Pipeline {
         try {
             this.rootContext = createContext()
             def currentStage = new PipelineStage(rootContext, s)
-            this.stages << currentStage
+            log.info "Running segment with inputs $inputs"
+            this.addStage(currentStage)
             currentStage.context.@input = inputs
             try {
                 currentStage.run()
@@ -194,6 +201,8 @@ public class Pipeline {
     }
 
 	private void execute(def inputFile, Object host, Closure pipeline) {
+        
+        Pipeline.rootThreadId = Thread.currentThread().id
         
         // We have to manually add all the external variables to the outer pipeline stage
         this.externalBinding.variables.each { 
@@ -350,6 +359,12 @@ public class Pipeline {
 	        String outputFileName = fileName+".png"
 	        println "Creating diagram $outputFileName"
 	        g.render(outputFileName)
+        }
+    }
+    
+    void addStage(PipelineStage stage) {
+        synchronized(this.stages) {
+            this.stages << stage
         }
     }
 }

@@ -52,6 +52,7 @@ class PipelineContext {
        this.extraBinding = extraBinding
        this.pipelineJoiners = pipelineJoiners
        this.initUncleanFilePath()
+       this.threadId = Thread.currentThread().getId()
    }
    
    /**
@@ -70,6 +71,12 @@ class PipelineContext {
     * The directory to which the pipeline stage should write its outputs
     */
    String outputDirectory = "."
+   
+   /**
+    * The id of the thread that created this context
+    */
+   Long threadId
+   
 
    File uncleanFilePath
    
@@ -98,7 +105,10 @@ class PipelineContext {
    def output
    
    void setOutput(o) {
-       log.info "Setting output $o on context ${this.hashCode()}"
+       log.info "Setting output $o on context ${this.hashCode()} in thread ${Thread.currentThread().id}"
+       if(Thread.currentThread().id != threadId)
+           log.warn "Thread output being set to $o from wrong thread ${Thread.currentThread().id} instead of $threadId"
+           
        this.@output = toOutputFolder(o)
    }
    
@@ -425,7 +435,11 @@ class PipelineContext {
        def reversepipelineStages = pipelineStages.reverse()
        def orig = stageInputs
        
-       def reverseOutputs = pipelineStages.reverse().collect { Utils.box(it.context.output) }
+       // Find all the pipeline stages outputs that were created
+       // in the same thread
+       def reverseOutputs = pipelineStages.reverse().grep { 
+              isRelatedContext(it.context) 
+       }.collect { Utils.box(it.context.output) }
        
        // Add a final stage that represents the original inputs (bit of a hack)
        // You can think of it as the initial inputs being the output of some previous stage
@@ -437,6 +451,8 @@ class PipelineContext {
        // rather than searching backwards for a previous match
        reverseOutputs.add(0,Utils.box(this.@input))
        
+       log.info "Input list to check:  $reverseOutputs"
+       
        def resolvedInputs = Utils.box(stageInputs).collect { String inp ->
            
            if(!inp.startsWith("."))
@@ -445,10 +461,10 @@ class PipelineContext {
            for(s in reverseOutputs) {
                def o = s.find { it?.endsWith(inp) }
                if(o) {
-                   log.info("Checking ${s} vs $inp  Y")
+//                   log.info("Checking ${s} vs $inp  Y")
                    return o
                }
-               log.info("Checking outputs ${s} vs $inp N")
+//               log.info("Checking outputs ${s} vs $inp N")
            }
        }
        
@@ -489,5 +505,19 @@ class PipelineContext {
             
         this.uncleanFilePath = new File(UNCLEAN_FILE_PATH, String.valueOf(Thread.currentThread().id))   
         this.uncleanFilePath.text = ""
+    }
+    
+    boolean isRelatedContext(PipelineContext ctx) {
+        
+//        log.info "Checking ctx from thread $ctx.threadId with outputs $ctx.output"
+        
+        if(ctx.threadId == threadId)
+            return true
+            
+        // This is a hack: we allow inputs from the root pipeline, 
+        // which ensures child threads can see inputs that cascaded down
+        // from the parent "root".  But this would not work in a multi-level
+        // pipeline - threads launching threads.  
+        return ctx.threadId == Pipeline.rootThreadId
     }
 }
