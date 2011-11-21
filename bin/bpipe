@@ -3,6 +3,10 @@
 # Bpipe Runner Script
 #
 
+# This will be replaced by the build script
+VERSION=0.0.0
+BUILDDATE=0
+
 # Utility script
 # Kill a whole tree of processes
 # for some children it happens automatically, but for some it doesn't
@@ -181,7 +185,7 @@ echo "$0 $COMMAND $*" >> .bpipe/history
 # Run in the background with nohup so that jobs do not abort on logout
 # We pass the pid of this shell as a property.  This allows the bpipe runtime
 # to figure out its own process id which is otherwise hard to do in Java
-nohup java -classpath "$CP" -Dbpipe.pid=$$ bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
+nohup java -classpath "$CP" -Dbpipe.pid=$$ -Dbpipe.version=$VERSION bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
 
 BPIPE_PID="$!"
 

@@ -39,6 +39,11 @@ class Runner {
     
     private static Logger log = Logger.getLogger("bpipe.Runner");
     
+    final static String version = System.getProperty("bpipe.version")
+    
+    final static String builddate = System.getProperty("bpipe.builddate")?:System.currentTimeMillis()
+    
+    
     static CliBuilder runCli = new CliBuilder(usage: 
    """bpipe [run|test] [-h] [-t] [-d] [-v] <pipeline> <in1> <in2>...
 history 
@@ -47,7 +52,7 @@ jobs
 diagram
 diagrameditor""")
     
-    static CliBuilder diagramCli = new CliBuilder(usage: 'bpipe diagram [-e] <pipeline> <input1> <input2> ...\n')
+    static CliBuilder diagramCli = new CliBuilder(usage: "bpipe diagram [-e] <pipeline> <input1> <input2> ...\n")
     
     public static OptionAccessor opts = runCli.parse([])
     
@@ -116,11 +121,14 @@ diagrameditor""")
 	        }
         }
         
+        String versionInfo = "\nBpipe Version $version   Built on ${new Date(Long.parseLong(builddate))}\n"
+        
         def opt = cli.parse(args)
-        if(!opt)
+        if(!opt) 
             System.exit(1)
             
         if(!opt.arguments()) {
+            println versionInfo
             cli.usage()
             println "\n"
             System.exit(1)
