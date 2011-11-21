@@ -7,6 +7,7 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Robot;
 import java.awt.image.BufferedImage;
+import java.util.logging.Logger;
 
 import com.mxgraph.layout.hierarchical.mxHierarchicalLayout;
 import com.mxgraph.swing.mxGraphComponent as MxGraphComponent;
@@ -20,6 +21,8 @@ import javax.swing.SwingConstants;
 
 class Graph extends JFrame {
 
+    private static Logger log = Logger.getLogger("bpipe.Graph");
+    
 	Node stages
 
 	private List<String> stageNames
@@ -76,8 +79,8 @@ class Graph extends JFrame {
 		//		parent.append(report)
 
 		Graph g = new Graph(parent)
-		g.display()
-		// g.render("out.png")
+		// g.display()
+		g.render("out.png")
 	}
 
 	void display() {
@@ -92,7 +95,15 @@ class Graph extends JFrame {
 	 * @param fileName
 	 */
 	void render(String fileName) {
-
+        
+		log.info "Size = ${this.width} x ${this.height}"
+        
+//		int childCount = (stages.children().size()+1)
+//        
+//        int newWidth = childCount * defaultStageWidth + 40
+//        
+//		setSize(newWidth, this.height);
+        
 		layoutComponent(this.graphComponent);
 
 		BufferedImage img = new BufferedImage(this.width,this.height,BufferedImage.TYPE_INT_RGB);
@@ -131,13 +142,24 @@ class Graph extends JFrame {
 
 		graphComponent = new MxGraphComponent(graph);
 		getContentPane().add(graphComponent);
-		setSize((stages.children.size()+1) * defaultStageWidth + 40, stageBoxHeight + 40);
-		this.graphComponent.setSize(this.width, this.height)
-
 		MxHierarchicalLayout layout = new MxHierarchicalLayout(graph);
         layout.setDisableEdgeStyle(true)
 		layout.setOrientation(SwingConstants.WEST);
 		layout.execute(graph.getDefaultParent());
+        
+		// Find the "highest" vertext
+		def highestCell = vertices.values().max {  it.geometry.y + it.geometry.height }
+        double maxY = highestCell.geometry.y + highestCell.geometry.height
+        
+		def rightmostCell =vertices.values().max {  it.geometry.x + it.geometry.width } 
+        double maxX = rightmostCell.geometry.x + highestCell.geometry.width
+        
+		log.info "Outer vertices at $maxX,$maxY"
+        
+		setSize((int)maxX + 40, (int)maxY+ 40);
+		this.graphComponent.setSize(this.width, this.height)
+
+		
 	}
 
 	def vertices = [:]
