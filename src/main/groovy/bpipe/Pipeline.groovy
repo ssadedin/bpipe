@@ -65,7 +65,7 @@ public class Pipeline {
      * The thread id of the master thread that is running the baseline root
      * pipeline
      */
-    private static Long rootThreadId
+    static Long rootThreadId
     
     /**
      * Global binding - variables and functions (including pipeline stages)

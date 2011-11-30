@@ -89,8 +89,9 @@ class PipelineInput {
         // faux inheritance from String class
         if(name in String.metaClass.methods*.name)
             return String.metaClass.invokeMethod(this.toString(), name, args)
-        else
+        else {
             throw new MissingMethodException(name, PipelineInput, args)
+        }
     }
     
     def plus(String str) {
@@ -105,37 +106,40 @@ class PipelineInput {
     def resolveInputsWithExtensions(def exts) {    
         
         def orig = exts
-        
-        def reverseOutputs = stages.reverse().collect { Utils.box(it.context.output) }
-        
-        // Add a final stage that represents the original inputs (bit of a hack)
-        // You can think of it as the initial inputs being the output of some previous stage
-        // that we know nothing about
-        reverseOutputs.add(Utils.box(stages[0].context.@input))
-        
-        // Add an initial stage that represents the current input to this stage.  This way
-        // if the from() spec is used and matches the actual inputs then it will go with those
-        // rather than searching backwards for a previous match
-        // TODO: get rid of reference to PipelineCategory here
-        // how to model "current stage" when pipeline has parallel parts?
-        reverseOutputs.add(0,Utils.box(this.@input))
-        
-        def filesWithExts = Utils.box(exts).collect { String inp ->
+        def relatedThreads = [Thread.currentThread().id, Pipeline.rootThreadId]
+        synchronized(stages) {
             
-            if(!inp.startsWith("."))
-                inp = "." + inp
-            
-            for(s in reverseOutputs) {
-                log.info("Checking outputs ${s}")
-                def o = s.find { it?.endsWith(inp) }
-                if(o)
-                    return o
-            }
+	        def reverseOutputs = stages.reverse().grep { it.context.threadId in relatedThreads}.collect { Utils.box(it.context.output) }
+	        
+	        // Add a final stage that represents the original inputs (bit of a hack)
+	        // You can think of it as the initial inputs being the output of some previous stage
+	        // that we know nothing about
+	        reverseOutputs.add(Utils.box(stages[0].context.@input))
+	        
+	        // Add an initial stage that represents the current input to this stage.  This way
+	        // if the from() spec is used and matches the actual inputs then it will go with those
+	        // rather than searching backwards for a previous match
+	        // TODO: get rid of reference to PipelineCategory here
+	        // how to model "current stage" when pipeline has parallel parts?
+	        reverseOutputs.add(0,Utils.box(this.@input))
+	        
+	        def filesWithExts = Utils.box(exts).collect { String inp ->
+	            
+	            if(!inp.startsWith("."))
+	                inp = "." + inp
+	            
+	            for(s in reverseOutputs) {
+	                log.info("Checking outputs ${s}")
+	                def o = s.find { it?.endsWith(inp) }
+	                if(o)
+	                    return o
+	            }
+	        }
+	        
+	        if(filesWithExts.any { it == null})
+	            throw new PipelineError("Unable to locate one or more specified inputs from pipeline with extension(s) $orig")
+	            
+	        return filesWithExts
         }
-        
-        if(filesWithExts.any { it == null})
-            throw new PipelineError("Unable to locate one or more specified inputs from pipeline with extension(s) $orig")
-            
-        return filesWithExts
     }
 }

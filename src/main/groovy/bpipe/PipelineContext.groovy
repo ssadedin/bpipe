@@ -85,6 +85,11 @@ class PipelineContext {
    private List<Closure> pipelineJoiners
    
    /**
+    * Used when there are no other issues
+    */
+   boolean echoWhenNotFound = false
+   
+   /**
     * The default output is set prior to the body of the a pipeline stage being run.
     * If the pipeline stage does nothing else but references $output then the default output is
     * the one that is returned.  However the pipeline stage may modify the output
@@ -179,21 +184,22 @@ class PipelineContext {
      */
    def nextInputs
    
-   String getInput1() {
-       return Utils.first(input)
+   String getInputByIndex(int i) {
+       if(!Utils.isContainer(input) || input.size()<i)
+           throw new PipelineError("Expected $i or more inputs but fewer provided")
+       return input[i-1]
    }
    
-   String getInput2() {
-       if(!Utils.isContainer(input) || input.size()<2)
-           throw new PipelineError("Expected 2 or more inputs but 1 provided")
-       return input[1]
-    }
-   
-   String getInput3() {
-       if(!Utils.isContainer(input) || input.size()<3)
-           throw new PipelineError("Expected 3 or more inputs but 1 provided")
-       return input[2]
-   }
+   String getInput1() { return Utils.first(input) }
+   String getInput2() { return getInputByIndex(2) }
+   String getInput3() { return getInputByIndex(3) }
+   String getInput4() { return getInputByIndex(4) }
+   String getInput5() { return getInputByIndex(5) }
+   String getInput6() { return getInputByIndex(6) }
+   String getInput7() { return getInputByIndex(7) }
+   String getInput8() { return getInputByIndex(8) }
+   String getInput9() { return getInputByIndex(9) }
+   String getInput10() { return getInputByIndex(10) }
    
     /**
     * Check if there is an input, if so, return it.  If not,
@@ -364,8 +370,8 @@ class PipelineContext {
      * 
      * @see #async(Closure, String)
      */
-    void exec(String cmd) {
-      Process p = async(cmd)
+    void exec(String cmd, boolean joinNewLines = true) {
+      Process p = async(cmd, joinNewLines)
       if(p.waitFor() != 0) {
         // Output is still spooling from the process.  By waiting a bit we ensure
         // that we don't interleave the exception trace with the output
@@ -374,13 +380,35 @@ class PipelineContext {
       }
     }
     
+    /**
+     * Executes the specified script as R code 
+     * @param scr
+     */
+    void R(Closure c) {
+        log.info("Running some R code")
+        
+        if(!inputWrapper)
+           inputWrapper = new PipelineInput(this.@input, pipelineStages)
+           
+       try {
+	        this.echoWhenNotFound = true
+            log.info("Entering echo mode on context " + this.hashCode())
+            String scr = c()
+	        exec("""Rscript - <<'!'
+	        $scr
+!""",false)
+       }
+       finally {
+           this.echoWhenNotFound = false
+       }
+    }
+    
     String capture(String cmd) {
       new File('commandlog.txt').text += '\n'+cmd
       def joined = ""
       cmd.eachLine { joined += " " + it }
-      // println "Joined command is: $joined"
       
-      def p = Runtime.getRuntime().exec((String[])(['bash','-c',"$joined"].toArray()))
+      Process p = Runtime.getRuntime().exec((String[])(['bash','-c',"$joined"].toArray()))
       StringWriter outputBuffer = new StringWriter()
       p.consumeProcessOutput(outputBuffer,System.err)
       p.waitFor()
@@ -394,13 +422,16 @@ class PipelineContext {
      * for the command that is run is returned.  Callers can use the
      * {@link Process#waitFor()} to wait for the process to finish.
      */
-    Process async(String cmd) {
+    Process async(String cmd, boolean joinNewLines=true) {
       if(Runner.opts.t)
           throw new PipelineTestAbort("Would execute: $cmd")
           
       def joined = ""
-      cmd.eachLine { joined += " " + it }
-//      println "Joined command is: $joined"
+      if(joinNewLines) {
+	      cmd.eachLine { joined += " " + it }
+      }
+      else
+          joined = cmd
       
       new File('commandlog.txt').text += '\n'+cmd
       def p = Runtime.getRuntime().exec((String[])(['bash','-c',"$joined"].toArray()))
@@ -431,20 +462,21 @@ class PipelineContext {
    Object from(Object stageInputs, Closure body) {
        
        log.info "Searching for inputs matching spec $stageInputs"
-       
-       def reversepipelineStages = pipelineStages.reverse()
        def orig = stageInputs
        
        // Find all the pipeline stages outputs that were created
        // in the same thread
-       def reverseOutputs = pipelineStages.reverse().grep { 
-              isRelatedContext(it.context) 
-       }.collect { Utils.box(it.context.output) }
-       
-       // Add a final stage that represents the original inputs (bit of a hack)
-       // You can think of it as the initial inputs being the output of some previous stage
-       // that we know nothing about
-       reverseOutputs.add(Utils.box(pipelineStages[0].context.@input))
+       def reverseOutputs 
+       synchronized(pipelineStages) {
+	       reverseOutputs = pipelineStages.reverse().grep { 
+	              isRelatedContext(it.context) 
+	       }.collect { Utils.box(it.context.output) }
+           
+	       // Add a final stage that represents the original inputs (bit of a hack)
+	       // You can think of it as the initial inputs being the output of some previous stage
+	       // that we know nothing about
+	       reverseOutputs.add(Utils.box(pipelineStages[0].context.@input))
+       }
        
        // Add an initial stage that represents the current input to this stage.  This way
        // if the from() spec is used and matches the actual inputs then it will go with those

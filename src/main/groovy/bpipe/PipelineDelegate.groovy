@@ -37,7 +37,22 @@ class PipelineDelegate {
     }
     
     def propertyMissing(String name) {
-//        println "Query for $name on ${context.get()} via delegate ${this}"
-        return context.get().getProperty(name)
+        
+        // The context can be put into a mode where missing variables should echo themselves back
+        // ie.  $foo will produce value $foo.  This is used to preserve $'d values in 
+        // R scripts while still allowing interpretation of the ones we want ($input, $output, etc)
+		log.info "Query for $name on ${context.get()} via delegate ${this}"
+        if(context.get().echoWhenNotFound) {
+	        try {
+		        def result = context.get().getProperty(name)
+	            //log.info "Retrieved result for $name = $result"
+	            return result
+	        }
+	        catch(Throwable t) {
+	            return '$'+name
+	        }
+        }
+        else
+	        return context.get().getProperty(name)
     }
 }

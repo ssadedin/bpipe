@@ -191,14 +191,10 @@ class InputSplitter {
             // If there is no right hand flank then don't include
 			// any exclusion in the pattern.  If there is one,
 			// exclude characters matching the right flanking character
-            def wildcard = rightFlank ? "[^"+rightFlank+"]*" : ".*" 
+//            def wildcard = rightFlank ? "[^"+rightFlank+"]*" : ".*" 
+            def wildcard = rightFlank ? ".*?" : ".*"
             def group = "($wildcard)"
-            def between = ""
-            log.fine "tween range = " + (lastPos+1+lastRight.size()..c)
-            if(lastPos >= 0)
-                between =  pattern.substring(lastPos+1+lastRight.size(), c)
-            result << between + leftFlank + group + rightFlank
-			log.fine "between for $c:  " + between
+            result << leftFlank + group + rightFlank
 			log.fine "chunk for $c:  " + (leftFlank + group + rightFlank)
             lastPos = c
             lastRight = rightFlank
