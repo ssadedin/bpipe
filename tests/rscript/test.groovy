@@ -7,7 +7,13 @@ hello = {
 }
 
 world = {
-	exec "echo world > test.world.txt"
+    R{"""
+        read.table('$input')
+	print("hello $input")
+        x = c("cat","dog","tree")
+        d = data.frame(x=c(1,2,3,4), y=c("cow","dog","tree","house"))
+        print(d$x)
+       """}
 }
 
 Bpipe.run {
