@@ -45,6 +45,33 @@ class InputSplitterTest {
         ]
     }
     
+    
+    /**
+     * A real example from Nadia / RNA seq data
+     */
+    @Test
+    void testRealSplitOnRNASeqData() {
+		def inputs = [
+                      "temp_Blasto_female_1_Ac02g4acxx_CAGATC_L003_R1.fastq_paired",
+                      "temp_Blasto_female_1_Ac02g4acxx_CAGATC_L003_R1.fastq_unpaired",
+                      "temp_Blasto_female_1_Ac02g4acxx_CAGATC_L003_R2.fastq_paired",
+                      "temp_Blasto_female_1_Ac02g4acxx_CAGATC_L003_R2.fastq_unpaired"
+                     ]
+        
+        def pattern = "Blasto_%_L*.fastq_paired"
+        def regex = splitter.convertPattern(pattern)
+        
+        println "regex = $regex"
+        def result = splitter.split(pattern,inputs) 
+        
+        println "Got result:  $result"
+        assert result == [
+          female_1_Ac02g4acxx_CAGATC : 
+              ["temp_Blasto_female_1_Ac02g4acxx_CAGATC_L003_R1.fastq_paired", 
+               "temp_Blasto_female_1_Ac02g4acxx_CAGATC_L003_R2.fastq_paired"],
+        ]
+    }
+  
 	@Test
 	public void testSort() {
         
@@ -73,7 +100,7 @@ class InputSplitterTest {
 	@Test
 	public void testNoTrailing() {
         def pattern =  splitter.convertPattern("_%_*") 
-		assert pattern == ["_([^_]*)_(.*)",0]
+		assert pattern == ["_(.*?)_(.*)",0]
         def matches = ("_foo_bar" =~ pattern[0])
         assert matches[0][1] == "foo"
         assert matches[0][2] == "bar"
@@ -83,7 +110,7 @@ class InputSplitterTest {
 	@Test
 	public void testTrailing() {
         def pattern =  splitter.convertPattern("_%_*_") 
-		assert pattern == ["_([^_]*)_([^_]*)_",0]
+		assert pattern == ["_(.*?)_(.*?)_",0]
         def matches = ("_foo_bar_" =~ pattern[0])
         assert matches[0][1] == "foo"
         assert matches[0][2] == "bar"
@@ -92,7 +119,7 @@ class InputSplitterTest {
 	@Test
 	public void testNoStar() {
         def pattern =  splitter.convertPattern("_%_") 
-		assert pattern == ["_([^_]*)_",0]
+		assert pattern == ["_(.*?)_",0]
         def matches = ("_foo_bar_" =~ pattern[0])
         assert matches[0][1] == "foo"
 	}
@@ -100,7 +127,7 @@ class InputSplitterTest {
 	@Test
 	public void testTwoStar() {
         def pattern =  splitter.convertPattern("*_%_*") 
-		assert pattern == ["([^_]*)_([^_]*)_(.*)",1]
+		assert pattern == ["(.*?)_(.*?)_(.*)",1]
         def matches = ("cat_foo_bar" =~ pattern[0])
         assert matches[0][1] == "cat"
         assert matches[0][2] == "foo"
@@ -109,7 +136,7 @@ class InputSplitterTest {
 	@Test
 	public void testTwoStarTrailingUnderscore() {
         def pattern =  splitter.convertPattern("*_%_*_") 
-		assert pattern == ["([^_]*)_([^_]*)_([^_]*)_",1]
+		assert pattern == ["(.*?)_(.*?)_(.*?)_",1]
         def matches = ("cat_foo_bar_" =~ pattern[0])
         assert matches[0][1] == "cat"
         assert matches[0][2] == "foo"
@@ -120,6 +147,7 @@ class InputSplitterTest {
 	@Test
 	public void testWithExtension() {
         def pattern =  splitter.convertPattern(/_%_*.txt/) 
-		assert pattern == ["_([^_]*)_([^\\.]*)\\.txt",0]
-	}	
+		assert pattern == ["_(.*?)_(.*?)\\.txt",0]
+	}
+	
 }

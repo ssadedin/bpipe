@@ -185,9 +185,11 @@ echo "$0 $COMMAND $*" >> .bpipe/history
 # Run in the background with nohup so that jobs do not abort on logout
 # We pass the pid of this shell as a property.  This allows the bpipe runtime
 # to figure out its own process id which is otherwise hard to do in Java
-nohup java -classpath "$CP" -Dbpipe.pid=$$ -Dbpipe.version=$VERSION bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
+nohup java -classpath "$CP" -Dbpipe.pid=$$ -Dbpipe.home="$BPIPE_HOME" -Dbpipe.version=$VERSION bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
 
 BPIPE_PID="$!"
+
+echo "DEBUG:  Launched Java with PID $BPIPE_PID"
 
 createPidFile
 
@@ -270,10 +272,12 @@ RUNPID=$$
 
 # On Cygwin we can use automatic termination of tail,
 # but on Macs we have to emaulate that (grrr)
-if uname | grep -iq cygwin;
+if uname | grep -iq cygwin || uname | grep -iq Linux; 
 then
+        echo "DEBUG:  tailing log using native pid tracking RUNPID=$RUNPID"
 	tail -f --pid=$BPIPE_PID .bpipe/logs/$RUNPID.log 
 else
+        echo "DEBUG:  tailing log using native MacOSX pid tracking emulation RUNPID=$RUNPID"
 	tail -f .bpipe/logs/$RUNPID.log &
 	TAIL_PID="$!"
 

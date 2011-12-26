@@ -176,4 +176,26 @@ class Utils {
         def result = unbox(box(inputs).collect { it instanceof PipelineInput?it.input:it })
         return result
     }
+    
+    
+    /**
+     * Truncate the input at the first new line or at most 
+     * maxLen chars, whichever comes first, adding an ellipsis
+     * if the value was actually truncated.
+     * 
+     * @return truncated string
+     */
+    static String truncnl(String value, int maxLen) {
+        int truncLen = maxLen
+        if(maxLen > value.size())
+            truncLen = value.size()
+            
+        int nlIndex = value.indexOf('\n')
+        if(nlIndex >=0) 
+            return value.substring(0, Math.min(truncLen, nlIndex)) + "..."
+        else {
+            return value.substring(0, truncLen) + ((truncLen < maxLen) ? "" : "...")
+        }
+    }
+    
 }

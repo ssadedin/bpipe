@@ -156,9 +156,11 @@ diagrameditor""")
             System.exit(1)
         }
         
+        Config.readUserConfig()
+        
         org.codehaus.groovy.tools.GroovyStarter.main(groovyArgs as String[])
     }
-
+    
 	private static String resolvePID() {
         // If we weren't given a host pid, assume we are running as a generic
         // command and just put the log files, etc, under this name

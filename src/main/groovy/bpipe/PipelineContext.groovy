@@ -13,7 +13,9 @@ import static Utils.*
 
 /**
 * This context defines implicit functions and variables that are
-* made available to Bpipe scripts.
+* made available to Bpipe pipeline stages.   These functions are
+* only available inside the context of a Bpipe stage, when it is
+* executed by Bpipe (ie. they are introduced at runtime).
 * <p>
 * Note: currently other functions are also made available by the
 * PipelineCategory, however I hope to migrate these eventually
@@ -85,7 +87,10 @@ class PipelineContext {
    private List<Closure> pipelineJoiners
    
    /**
-    * Used when there are no other issues
+    * Flag that can be enabled to cause missing properties to resolve to 
+    * outputting the name of the property ie. a reference to $x will produce $x.
+    * This allows for a crude pass-through of variables from Bpipe to Bash 
+    * when executing commands.
     */
    boolean echoWhenNotFound = false
    
@@ -371,7 +376,7 @@ class PipelineContext {
      * @see #async(Closure, String)
      */
     void exec(String cmd, boolean joinNewLines = true) {
-      Process p = async(cmd, joinNewLines)
+      CommandExecutor p = async(cmd, joinNewLines)
       if(p.waitFor() != 0) {
         // Output is still spooling from the process.  By waiting a bit we ensure
         // that we don't interleave the exception trace with the output
@@ -416,31 +421,72 @@ class PipelineContext {
     }
     
     /**
-     * Asynchronously executes the given command by passing it to 
-     * a bash shell for execution.  The exit code is not checked and
-     * the command may still be running on return.  The Process object 
-     * for the command that is run is returned.  Callers can use the
-     * {@link Process#waitFor()} to wait for the process to finish.
+     * Asynchronously executes the given command by creating a CommandExecutor
+     * and starting the command using it.  The exit code is not checked and
+     * the command may still be running on return.  The Job instance 
+     * is returned.  Callers can use the
+     * {@link CommandExecutor#waitFor()} to wait for the Job to finish.
      */
-    Process async(String cmd, boolean joinNewLines=true) {
+    CommandExecutor async(String cmd, boolean joinNewLines=true) {
       if(Runner.opts.t)
           throw new PipelineTestAbort("Would execute: $cmd")
           
       def joined = ""
       if(joinNewLines) {
-	      cmd.eachLine { joined += " " + it }
+	      cmd.eachLine { if(!it.trim().isEmpty()) joined += " " + it else joined += "; "}
       }
       else
           joined = cmd
       
       new File('commandlog.txt').text += '\n'+cmd
-      def p = Runtime.getRuntime().exec((String[])(['bash','-c',"$joined"].toArray()))
-      p.consumeProcessOutput(System.out, System.err)
-      return p
+      
+      // How to run the job?  look in user config
+      String leadingToken = cmd.split(/\s/)[0]
+      def cmdConfig = Config.userConfig?.commands[leadingToken]
+      String executor = Config.userConfig.executor
+      if(cmdConfig && cmdConfig.executor)  {
+          executor = cmdConfig.executor 
+      }
+      
+      // Try and resolve the executor several ways
+      // It can be a file on the file system, 
+      // or it can map to a class
+      CommandExecutor job = null
+      File executorFile = new File(executor)
+      String name1 = "bpipe."+executor.capitalize()
+      if(executorFile.exists()) {
+          job = new CustomCommandExecutor(executorFile)
+      }
+      else
+      try {
+          job = Class.forName(name1).newInstance()
+      }
+      catch(Exception e) {
+	      String name2 = "bpipe."+executor.capitalize() + "CommandExecutor"
+          try {
+	          job = Class.forName(name2).newInstance() 
+          }
+          catch(Exception e2) {
+              log.info("Unable to create command executor using class $name2 : $e2")
+              String name3 = executor
+              try {
+		          job = Class.forName(name3).newInstance() 
+              }
+              catch(Exception e3) {
+                  throw new PipelineError("Could not resolve specified command executor ${executor} as a valid file path or a class named any of $name1, $name2, $name3")
+              }
+          }
+      }
+      
+      job.start(cmd)
+      return job
     }
     
     
-    static void msg(m) {
+    /**
+     * Write a message to the output of the current stage
+     */
+    static void msg(def m) {
         def date = (new Date()).format("HH:mm:ss")
         println "$date MSG:  $m"
     }
@@ -469,7 +515,7 @@ class PipelineContext {
        def reverseOutputs 
        synchronized(pipelineStages) {
 	       reverseOutputs = pipelineStages.reverse().grep { 
-	              isRelatedContext(it.context) 
+	              isRelatedContext(it.context) && !it.context.is(this)
 	       }.collect { Utils.box(it.context.output) }
            
 	       // Add a final stage that represents the original inputs (bit of a hack)
