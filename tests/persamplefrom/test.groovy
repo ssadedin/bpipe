@@ -8,25 +8,20 @@ copy_to_resource_folder = {
 }
 */
 
-@Filter("align")
 align = {
   exec "cat $input1 $input2 > $output"
 
 }
 
-@Filter("dedupe")
 dedupe = {
-  exec "cp $input $output"
-}
-
-compute_statistics = {
-  exec "wc $inputs > $output"
-}
-
-hello_there = {
-	echo "hello there"
+	from("txt") {
+		filter("foo") {
+		  msg "$input => $output"
+		  exec "cp $input $output"
+		}
+	}
 }
 
 Bpipe.run {
-  "s_%_*.txt" * [ align + dedupe, hello_there ] + compute_statistics 
+  "s_%_*.txt" * [ align + dedupe ] 
 }

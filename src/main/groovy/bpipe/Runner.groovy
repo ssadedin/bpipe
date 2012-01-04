@@ -52,6 +52,8 @@ jobs
 diagram
 diagrameditor""")
     
+    static CliBuilder stopCommandsCli = new CliBuilder(usage: "bpipe stopcommands\n")
+    
     static CliBuilder diagramCli = new CliBuilder(usage: "bpipe diagram [-e] <pipeline> <input1> <input2> ...\n")
     
     public static OptionAccessor opts = runCli.parse([])
@@ -111,6 +113,15 @@ diagrameditor""")
             Config.config["mode"] = "diagrameditor"
             
         }
+        else 
+        if(mode == "stopcommands") {
+            log.info("Stopping running commands")
+            cli = stopCommandsCli
+            Config.config["mode"] = "stopcommands"
+            int count = new CommandManager().stopAll()
+            println "Stopped $count commands"
+            System.exit(0)
+        } 
         else {
             cli = runCli
 	        cli.with {
@@ -161,28 +172,33 @@ diagrameditor""")
         org.codehaus.groovy.tools.GroovyStarter.main(groovyArgs as String[])
     }
     
+    /**
+     * Try to determine the process id of this Java process.
+     * Because the PID is read from a file that is created after
+     * starting of the Java process there is a race condition and thus
+     * this call *may* wait some (small) time for the file to appear.
+     * 
+     * @return    process ID of our process
+     */
 	private static String resolvePID() {
         // If we weren't given a host pid, assume we are running as a generic
         // command and just put the log files, etc, under this name
 		String pid = "command"
 
-		// This property is passed from the bpipe shell command line runner
-		// It is the PID of the bash shell that started this process, not
-		// the PID of this actual process
-		String hostPid = System.getProperty("bpipe.pid")
-		if(hostPid) {
-			File hostPidFile = new File(".bpipe/launch/${hostPid}")
+		// This property is stored as a file by the hosting bash script
+		String ourPid = System.getProperty("bpipe.pid")
+		if(ourPid) {
+			File pidFile = new File(".bpipe/launch/${ourPid}")
 			int count = 0
 			while(true) {
-				if(hostPidFile.exists()) {
-//                    println "Found host pid file $hostPidFile"
-					pid = hostPidFile.text.trim()
-					hostPidFile.delete()
+				if(pidFile.exists()) {
+					pid = pidFile.text.trim()
+					pidFile.delete()
 					break
 				}
 
 				if(count > 100) {
-					println "ERROR: Bpipe was unable to read its startup PID file from $hostPidFile"
+					println "ERROR: Bpipe was unable to read its startup PID file from $pidFile"
 					println "ERROR: This may indicate you are in a read-only directory or one to which you do not have full permissions"
 					System.exit(1)
 				}

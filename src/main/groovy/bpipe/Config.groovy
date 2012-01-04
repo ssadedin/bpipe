@@ -35,7 +35,7 @@ class Config {
     public static void readUserConfig() {
         File configFile = new File("bpiperc")
         if(configFile.exists()) {
-            log.info "Reading Bpipe configuration from $configFile"
+            log.info "Reading Bpipe configuration from ${configFile.absolutePath}"
             ConfigSlurper slurper = new ConfigSlurper()
             userConfig = slurper.parse(configFile.toURI().toURL())
         }

@@ -96,6 +96,11 @@ make_pbs_script () {
    else
       job_script_name="job.pbs"
    fi
+   
+   # set the account, if needed
+   if [[  ! -z $ACCOUNT ]]; then
+        account="#PBS -A $ACCOUNT"
+   fi
 
    # handle the batch and smp queues specially with regards to memory and procs
    case $QUEUE in
@@ -122,6 +127,7 @@ make_pbs_script () {
    cat > $job_script_name << HERE
 #!/bin/bash
 #PBS -N $NAME
+$account
 $memory_request
 #PBS -l walltime=$WALLTIME
 $procs_request

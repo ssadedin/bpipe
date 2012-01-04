@@ -198,4 +198,10 @@ class Utils {
         }
     }
     
+    /**
+     * Return the given string indented by 4 spaces.  Highly inefficient.
+     */
+    static String indent(String value) {
+        value.split("\n").collect { "    " + it }.join("\n")
+    }
 }

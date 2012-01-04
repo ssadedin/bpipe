@@ -1,27 +1,27 @@
 /*
-* Copyright (c) 2011 MCRI, authors
-*
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-*
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-*
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+ * Copyright (c) 2011 MCRI, authors
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
+ * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
 package bpipe
 
@@ -39,20 +39,39 @@ import java.util.logging.Logger;
  */
 class CustomCommandExecutor implements CommandExecutor {
     
+   public static final long serialVersionUID = 0L
+    
    /**
     * Logger for this class to use
     */
    private static Logger log = Logger.getLogger("bpipe.CustomCommandExecutor");
+   
+   /**
+    * We don't rely on commands to be 100% reliable, so we allow for retries,
+    * however the number number of retries is limited to this value.
+    */
+   private static int MAX_STATUS_ERROR = 4
     
     /**
      * The path to the script that is used to manage the custom command
      */
-    File managementScript
+    String managementScript
     
     /**
      * The id assigned to this command
      */
     String commandId
+    
+    /**
+     * Name of this job
+     */
+    String name = "BpipeJob"    
+    
+    /**
+     * The configuration of the custom command.
+     * Set after construction. 
+     */
+    ConfigObject config
     
     /**
      * Create a custom command with the specified script as its
@@ -64,32 +83,46 @@ class CustomCommandExecutor implements CommandExecutor {
      */
     public CustomCommandExecutor(File managementScript) {
         super();
-        this.managementScript = managementScript;
-        if(!this.managementScript.exists()) 
+        this.managementScript = managementScript.absolutePath;
+        this.config = config
+        if(!managementScript.exists()) 
             throw new IllegalArgumentException("Unable to locate specified script for custom command ${this.class.name} "
 		                     + managementScript.toString())
     }
 
+    /**
+     * Start the specified command by marshalling the correct information into environment variables and then
+     * launching the specified command.
+     */
     @Override
-    public void start(String cmd) {
+    public void start(String name, String cmd) {
         
-        log.info "Executing command using custom command runner ${managementScript.absolutePath}:  ${Utils.truncnl(cmd,100)}"
-        String startCmd = "bash -c ${managementScript.absolutePath} start" 
+        this.name = name
         
-        ProcessBuilder pb = new ProcessBuilder(managementScript.absolutePath, "start")
+        log.info "Executing command using custom command runner ${managementScript}:  ${Utils.truncnl(cmd,100)}"
+        String startCmd = "bash -c ${managementScript} start" 
+        
+        ProcessBuilder pb = new ProcessBuilder(managementScript, "start")
         Map env = pb.environment()
         
         // Environment variables that can be used to transmit 
         // essential information
-        env.COMMAND = startCmd
+        env.COMMAND = cmd
         
-        // TODO:  support reporting the stage name in here?  or a user specified name?
-        env.NAME = "BpipeJob"
+        env.NAME = name
+        
+        // If an account is specified by the config then use that
+        log.info "Using account: $config.account"
+        if(config?.account)
+            env.ACCOUNT = config.account
+        
+        if(config.walltime)
+            env.WALLTIME = config.walltime
         
         Process p = pb.start()
         StringBuilder out = new StringBuilder()
         StringBuilder err = new StringBuilder()
-        p.consumeProcessOutput(out, err)
+        p.waitForProcessOutput(out, err)
         int exitValue = p.waitFor()
         if(exitValue != 0) {
             reportStartError(startCmd, out,err,exitValue)
@@ -99,28 +132,50 @@ class CustomCommandExecutor implements CommandExecutor {
         if(this.commandId.isEmpty())
             throw new PipelineError("Job runner ${this.class.name} failed to return a job id despite reporting success exit code for command:\n\n$startCmd")
             
-        log.info "Started command with id $commandId"
+        log.info "Started command with id $commandId with environment: $env"
     }
 
     @Override
     public String status() {
-        return null;
+        String cmd = managementScript + " status ${commandId}"
+        Process p = Runtime.runtime.exec(cmd)
+        StringBuilder out = new StringBuilder()
+        StringBuilder err = new StringBuilder()
+        p.waitForProcessOutput(out, err)
+        int exitValue = p.waitFor() 
+        if(exitValue != 0)
+            return CommandStatus.UNKNOWN.name()
+        String result = out.toString()
+        return result.split()[0]
     }
 
     @Override
     public int waitFor() {
-        String cmd = managementScript.absolutePath + " status ${commandId}"
+        String cmd = managementScript + " status ${commandId}"
+        
+        // Don't rely on the queueing software to be completely reliable; a single
+        // failure to check shouldn't cause us to abort, so count errors 
+        int errorCount = 0
         while(true) {
             
             log.info "Polling status of job $commandId with command $cmd"
             
             Process p = Runtime.runtime.exec(cmd)
             StringBuilder out = new StringBuilder()
-            p.consumeProcessOutput(out, out)
-            
+            StringBuilder err = new StringBuilder()
+            p.waitForProcessOutput(out, err)
             int exitValue = p.waitFor()
-            if(exitValue > 0) 
-                throw new PipelineError("Failed to poll status for job $commandId using command $cmd:\n\n  $out")
+            if(exitValue > 0)  {
+                String msg = "Attempt to poll status for job $commandId return status $exitValue using command $cmd:\n\n  $out"
+                if(errorCount > MAX_STATUS_ERROR) 
+                    throw new PipelineError(msg)
+                log.warning(msg + "(retrying)")
+                errorCount++
+                Thread.sleep(100)
+                continue
+            }
+            else 
+                errorCount = 0
             
             String result = out.toString()
             log.info "Poll returned output: $result"
@@ -137,8 +192,56 @@ class CustomCommandExecutor implements CommandExecutor {
         }
     }
     
+    List<String> getIgnorableOutputs() {
+        return null;
+    }
+    
     void reportStartError(String cmd, def out, def err, int exitValue) {
         log.severe "Error starting custom command using command line: " + cmd
         System.err << "\nFailed to execute command using command line: $cmd\n\nReturned exit value $exitValue\n\nOutput:\n\n$out\n\n$err"
+    }
+    
+    /**
+     * Call the service script to stop the job
+     */
+    void stop() {
+        String cmd = "bash $managementScript stop ${commandId}"
+        log.info "Executing command to stop command $commandId: $cmd"
+        int errorCount = 0
+        while(true) {
+            StringBuilder err = new StringBuilder()
+            StringBuilder out = new StringBuilder()
+            Process p = Runtime.runtime.exec(cmd)
+            p.waitForProcessOutput(out,err)
+            int exitValue = p.waitFor()
+            
+            // Hack - ignore failures that are due to the job
+            // being unknown or completed.  These error messages are
+            // specific to Torque, and this check should perhaps be in the torque script?
+            if(exitValue != 0 && err.toString().indexOf("Unknown Job Id")<0 && err.toString().indexOf("invalid state for job - COMPLETE")<0) {
+                def msg = "Management script $managementScript failed to stop command $commandId, returned exit code $exitValue from command line: $cmd"
+                if(errorCount > MAX_STATUS_ERROR) {
+                    
+                    log.severe "Failed stop command produced output: \n$out\n$err"
+                    if(!err.toString().trim().isEmpty()) 
+                        msg += "\n" + Utils.indent(err.toString())
+                    throw new PipelineError(msg)
+                }
+                else {
+                    log.warning(msg + "(retrying)")
+                    Thread.sleep(100)
+                    errorCount++
+                    continue
+                }
+            }
+            
+            // Successful stop command
+            log.info "Successfully called script to stop command $commandId"
+            break
+        }
+    }
+    
+    String toString() {
+        "Command Id: $commandId Configuration: $config"
     }
 }

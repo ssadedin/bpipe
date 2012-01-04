@@ -1,7 +1,7 @@
 apply plugin: 'eclipse'
 apply plugin: 'groovy'
 
-VERSION="0.1.4"
+VERSION="0.1.4.1-test"
 STAGE="build/stage/bpipe-$VERSION"
 
 repositories {
@@ -22,6 +22,9 @@ task stage(dependsOn: jar) << {
 	ant.copy(todir: "$STAGE/bin") {
 		ant.fileset(dir: 'bin', includes: "**")
 	}
+        new File(STAGE+'/bin/bpipe').text = 
+                new File("bin/bpipe").text.replaceAll("VERSION=0.0.0","VERSION=$VERSION").replaceAll("BUILDDATE=''","BUILDDATE="+String.valueOf(System.currentTimeMillis()))
+
 	ant.copy(todir: "$STAGE/lib") {
 		ant.fileset(dir: 'local-lib', includes: "*.jar")
 		ant.fileset(dir: 'build/libs', includes: "bpipe.jar")

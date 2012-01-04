@@ -120,6 +120,7 @@ then
 elif [ "$COMMAND" == "stop" ];
 then
     shift 1
+
     # Find all the process ids and kill it
     JOBPID=`ls -tc .bpipe/jobs/* | head -1 | xargs basename`
 
@@ -140,7 +141,15 @@ then
       echo
     fi
 
+    # Now stop any remaining commands
+    java -classpath "$CP" -Dbpipe.mode=stopcommands bpipe.Runner
+
     exit
+elif [ "$COMMAND" == "cleancommands" ];
+then
+    # Clean all commands considered to be currently executing
+    rm -rf .bpipe/commands
+    exit 
 elif [ "$COMMAND" == "jobs" ];
 then
     if [ -e ~/.bpipedb/jobs/ ];
@@ -270,15 +279,31 @@ trap end SIGINT
 # Tail the output so that the user sees it
 RUNPID=$$
 
+LOGFILE=.bpipe/logs/$RUNPID.log
+
+# Very rarely we can find that nohup takes longer to launch in the background than this process takes to get here
+# so we wait for the file to become available
+count=0
+while [ ! -e $LOGFILE ];
+do
+    sleep 1    
+    let 'count=count+1'
+    if [ $count -ge 4 ];
+    then
+        echo "ERROR:  Bpipe process did not create expected log file $LOGFILE after 3 seconds.  Please check output."
+        exit
+    fi
+done
+
 # On Cygwin we can use automatic termination of tail,
 # but on Macs we have to emaulate that (grrr)
 if uname | grep -iq cygwin || uname | grep -iq Linux; 
 then
         echo "DEBUG:  tailing log using native pid tracking RUNPID=$RUNPID"
-	tail -f --pid=$BPIPE_PID .bpipe/logs/$RUNPID.log 
+	tail -f --pid=$BPIPE_PID $LOGFILE 
 else
         echo "DEBUG:  tailing log using native MacOSX pid tracking emulation RUNPID=$RUNPID"
-	tail -f .bpipe/logs/$RUNPID.log &
+	tail -f $LOGFILE &
 	TAIL_PID="$!"
 
         # Wait for the Java Bpipe process to finish naturally (not Ctrl-C, see above for that)

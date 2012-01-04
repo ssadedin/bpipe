@@ -22,7 +22,7 @@ class LocalCommandExecutor implements CommandExecutor {
      */
     boolean destroyed = false
     
-    void start(String cmd) {
+    void start(String name, String cmd) {
       new Thread({
 	      process = Runtime.getRuntime().exec((String[])(['bash','-c',"$cmd"].toArray()))
 	      process.consumeProcessOutput(System.out, System.err)
@@ -59,4 +59,13 @@ class LocalCommandExecutor implements CommandExecutor {
              }
         }
     }
+    
+    List<String> getIgnorableOutputs() {
+        return null;
+    }
+    
+    void stop() {
+        // Not implemented.  Java is too stupid to stop a process it previously started,
+    }
+    
 }

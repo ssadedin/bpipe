@@ -165,8 +165,8 @@ class PipelineStage {
 
             def nextInputs = context.nextInputs
             if(nextInputs == null || Utils.isContainer(nextInputs) && !nextInputs) {
-                // TODO: Make configurable
-                newFiles.removeAll { it.endsWith(".bai") || it.endsWith(".log") }
+                log.info "Removing inferred outputs matching $context.outputMask"
+                newFiles.removeAll {  fn -> context.outputMask.any { fn ==~ '^.*' + it } }
                 
                 if(newFiles) {
                     // If the default output happens to be one of the created files, 

@@ -23,6 +23,10 @@ compute_statistics = {
   exec "wc $inputs > $output"
 }
 
+hello_there = {
+	echo "hello there"
+}
+
 Bpipe.run {
-  "s_%_*.txt" * [ align + dedupe ] + compute_statistics 
+  "s_%_*.txt" * [ align + dedupe, hello_there ] + compute_statistics 
 }

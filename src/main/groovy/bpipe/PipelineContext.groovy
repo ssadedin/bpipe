@@ -79,6 +79,11 @@ class PipelineContext {
     */
    Long threadId
    
+    /**
+     * File patterns that will be excluded as inferred output files because they may be created 
+     * frequently as side effects that are not intended to be outputs
+     */
+    Set<String> outputMask = ['\\.bai$', '\\.log$'] as Set
 
    File uncleanFilePath
    
@@ -428,58 +433,23 @@ class PipelineContext {
      * {@link CommandExecutor#waitFor()} to wait for the Job to finish.
      */
     CommandExecutor async(String cmd, boolean joinNewLines=true) {
-      if(Runner.opts.t)
-          throw new PipelineTestAbort("Would execute: $cmd")
-          
       def joined = ""
       if(joinNewLines) {
 	      cmd.eachLine { if(!it.trim().isEmpty()) joined += " " + it else joined += "; "}
       }
       else
           joined = cmd
-      
+          
       new File('commandlog.txt').text += '\n'+cmd
       
-      // How to run the job?  look in user config
-      String leadingToken = cmd.split(/\s/)[0]
-      def cmdConfig = Config.userConfig?.commands[leadingToken]
-      String executor = Config.userConfig.executor
-      if(cmdConfig && cmdConfig.executor)  {
-          executor = cmdConfig.executor 
-      }
+      CommandManager commandManager = new CommandManager()
+      CommandExecutor cmdExec = commandManager.start(stageName, joined)
       
-      // Try and resolve the executor several ways
-      // It can be a file on the file system, 
-      // or it can map to a class
-      CommandExecutor job = null
-      File executorFile = new File(executor)
-      String name1 = "bpipe."+executor.capitalize()
-      if(executorFile.exists()) {
-          job = new CustomCommandExecutor(executorFile)
+      List outputFilter = cmdExec.ignorableOutputs
+      if(outputFilter) {
+          this.outputMask.addAll(outputFilter)
       }
-      else
-      try {
-          job = Class.forName(name1).newInstance()
-      }
-      catch(Exception e) {
-	      String name2 = "bpipe."+executor.capitalize() + "CommandExecutor"
-          try {
-	          job = Class.forName(name2).newInstance() 
-          }
-          catch(Exception e2) {
-              log.info("Unable to create command executor using class $name2 : $e2")
-              String name3 = executor
-              try {
-		          job = Class.forName(name3).newInstance() 
-              }
-              catch(Exception e3) {
-                  throw new PipelineError("Could not resolve specified command executor ${executor} as a valid file path or a class named any of $name1, $name2, $name3")
-              }
-          }
-      }
-      
-      job.start(cmd)
-      return job
+      return cmdExec
     }
     
     
@@ -586,8 +556,6 @@ class PipelineContext {
     }
     
     boolean isRelatedContext(PipelineContext ctx) {
-        
-//        log.info "Checking ctx from thread $ctx.threadId with outputs $ctx.output"
         
         if(ctx.threadId == threadId)
             return true

@@ -8,8 +8,13 @@ foo = {
     exec "echo hello > hello.txt"
 }
 
+baz = {
+    exec "echo hello there > test.foo"
+}
+
 bar = {
     transform("bar.txt") {
+        msg "echo $input ==> $output"
         exec "echo $input.txt > $output"
     }
 }
@@ -17,5 +22,5 @@ bar = {
 
 
 Bpipe.run {
-    foo + bar
+    "s_%_*.txt" * [ foo + baz + bar ]
 }
