@@ -78,14 +78,15 @@ class CommandManager {
      * @param cmd     the command line to run
      * @return the {@link CommandExecutor} that is executing the job.
      */
-    CommandExecutor start(String name, String cmd) {
+    CommandExecutor start(String name, String cmd, String configName) {
+        
         // How to run the job?  look in user config
-        String leadingToken = cmd.trim().split(/\s/)[0].trim()
+		if(!configName) 
+            configName = cmd.trim().split(/\s/)[0].trim()
         
-        log.info "Checking for configuration for command $leadingToken"
-        
+        log.info "Checking for configuration for command $configName"
         def cfg = Config.userConfig
-        def cmdConfig = Config.userConfig?.commands[leadingToken]
+        def cmdConfig = Config.userConfig?.commands[configName]
         if(cmdConfig && cmdConfig.executor)  {
             cfg = cmdConfig
         }
@@ -124,8 +125,6 @@ class CommandManager {
             }
         }
         
-        cmdExec.setConfig(cfg)
-        
         if(Runner.opts.t) {
             if(cmdExec instanceof LocalCommandExecutor)
               throw new PipelineTestAbort("Would execute: $cmd")
@@ -137,7 +136,7 @@ class CommandManager {
         String commandId = CommandId.newId()
         log.info "Created bpipe command id " + commandId
         
-        cmdExec.start(name, cmd)
+        cmdExec.start(cfg, commandId, name, cmd)
         
         new File(commandDir, commandId).withObjectOutputStream { it << cmdExec }
         

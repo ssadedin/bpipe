@@ -39,10 +39,10 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
      * These appear as files in the local directory.
      */
     @Override
-    public void start(String name, String cmd) {
+    public void start(String id, String name, String cmd) {
         
         // TODO: possibly wrap command in here so that we catch input / output?
-        super.start(name, cmd);
+        super.start(id, name, cmd);
         
         // After starting the process, we launch a background thread that waits for the error
         // and output files to appear and then forward those inputs

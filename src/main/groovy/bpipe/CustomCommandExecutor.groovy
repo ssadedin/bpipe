@@ -63,7 +63,8 @@ class CustomCommandExecutor implements CommandExecutor {
     String commandId
     
     /**
-     * Name of this job
+     * Name of this job - this is overridden with the stage name
+     * at runtime
      */
     String name = "BpipeJob"    
     
@@ -83,40 +84,50 @@ class CustomCommandExecutor implements CommandExecutor {
      */
     public CustomCommandExecutor(File managementScript) {
         super();
-        this.managementScript = managementScript.absolutePath;
-        this.config = config
+        
+        if(System.properties['file.separator']=='\\') {
+            this.managementScript = managementScript.absolutePath.replaceAll('\\\\', "/");
+        }
+        else
+            this.managementScript = managementScript.absolutePath;
+            
         if(!managementScript.exists()) 
             throw new IllegalArgumentException("Unable to locate specified script for custom command ${this.class.name} "
 		                     + managementScript.toString())
     }
-
+    
     /**
      * Start the specified command by marshalling the correct information into environment variables and then
      * launching the specified command.
      */
     @Override
-    public void start(String name, String cmd) {
+    public void start(ConfigObject cfg, String id, String name, String cmd) {
         
+		this.config = cfg
         this.name = name
         
         log.info "Executing command using custom command runner ${managementScript}:  ${Utils.truncnl(cmd,100)}"
-        String startCmd = "bash -c ${managementScript} start" 
+        String startCmd = "bash ${managementScript} start" 
         
-        ProcessBuilder pb = new ProcessBuilder(managementScript, "start")
+        ProcessBuilder pb = new ProcessBuilder("bash", "-c", managementScript + " start")
         Map env = pb.environment()
         
         // Environment variables that can be used to transmit 
         // essential information
         env.COMMAND = cmd
-        
         env.NAME = name
         
+		File jobDir = new File(".bpipe/commandtmp/$id")
+        if(!jobDir.exists())
+		    jobDir.mkdirs()
+        env.JOBDIR = jobDir.absolutePath
+        
         // If an account is specified by the config then use that
-        log.info "Using account: $config.account"
+        log.info "Using account: $config?.account"
         if(config?.account)
             env.ACCOUNT = config.account
         
-        if(config.walltime)
+        if(config?.walltime)
             env.WALLTIME = config.walltime
         
         Process p = pb.start()

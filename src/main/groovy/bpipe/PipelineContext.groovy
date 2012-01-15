@@ -372,6 +372,10 @@ class PipelineContext {
         return out
     }
     
+    void exec(String cmd, String config) {
+        exec(cmd, true, config)
+	}
+    
     /**
      * Provides an implicit "exec" function that pipeline stages can use
      * to run commands.  This variant blocks and waits for the 
@@ -432,7 +436,7 @@ class PipelineContext {
      * is returned.  Callers can use the
      * {@link CommandExecutor#waitFor()} to wait for the Job to finish.
      */
-    CommandExecutor async(String cmd, boolean joinNewLines=true) {
+    CommandExecutor async(String cmd, boolean joinNewLines=true, String config = null) {
       def joined = ""
       if(joinNewLines) {
 	      cmd.eachLine { if(!it.trim().isEmpty()) joined += " " + it else joined += "; "}
@@ -443,7 +447,7 @@ class PipelineContext {
       new File('commandlog.txt').text += '\n'+cmd
       
       CommandManager commandManager = new CommandManager()
-      CommandExecutor cmdExec = commandManager.start(stageName, joined)
+      CommandExecutor cmdExec = commandManager.start(stageName, joined, config)
       
       List outputFilter = cmdExec.ignorableOutputs
       if(outputFilter) {

@@ -33,7 +33,7 @@ class Config {
     public static ConfigObject userConfig
     
     public static void readUserConfig() {
-        File configFile = new File("bpiperc")
+        File configFile = new File("bpipe.config")
         if(configFile.exists()) {
             log.info "Reading Bpipe configuration from ${configFile.absolutePath}"
             ConfigSlurper slurper = new ConfigSlurper()

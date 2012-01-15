@@ -8,7 +8,7 @@ package bpipe
  */
 class LocalCommandExecutor implements CommandExecutor {
     
-    Process process
+    transient Process process
     
     /**
      * The exit code returned by the process, only
@@ -22,7 +22,7 @@ class LocalCommandExecutor implements CommandExecutor {
      */
     boolean destroyed = false
     
-    void start(String name, String cmd) {
+    void start(ConfigObject obj, String id, String name, String cmd) {
       new Thread({
 	      process = Runtime.getRuntime().exec((String[])(['bash','-c',"$cmd"].toArray()))
 	      process.consumeProcessOutput(System.out, System.err)

@@ -24,6 +24,8 @@
  */
 package bpipe;
 
+import groovy.util.ConfigObject;
+
 import java.io.Serializable;
 import java.util.List;
 
@@ -36,12 +38,17 @@ import java.util.List;
  * This is because Java doesn't give access to the process hierarchy so that 'child'
  * processes can be chased down.  Implementations still need to provide a 
  * "stop" command.
+ * <p>
+ * Implementations need to properly implement the serializable interface as 
+ * Bpipe ensures recovery of state by serializing running commands to the file
+ * system.  In particular, attributes that are not valid outside of 
+ * the running Bpipe process should be declared transient.
  * 
  * @author simon.sadedin@mcri.edu.au
  */
 interface CommandExecutor extends Serializable {
     
-    void start(String name, String cmd);
+    void start(ConfigObject cfg, String id, String name, String cmd);
     
     String status();
     
