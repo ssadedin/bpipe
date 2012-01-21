@@ -107,9 +107,7 @@ class CustomCommandExecutor implements CommandExecutor {
         this.name = name
         
         log.info "Executing command using custom command runner ${managementScript}:  ${Utils.truncnl(cmd,100)}"
-        String startCmd = "bash ${managementScript} start" 
-        
-        ProcessBuilder pb = new ProcessBuilder("bash", "-c", managementScript + " start")
+        ProcessBuilder pb = new ProcessBuilder("bash", managementScript, "start")
         Map env = pb.environment()
         
         // Environment variables that can be used to transmit 
@@ -129,7 +127,9 @@ class CustomCommandExecutor implements CommandExecutor {
         
         if(config?.walltime)
             env.WALLTIME = config.walltime
-        
+       
+        String startCmd = pb.command().join(' ')
+        log.info "Starting command: " + startCmd
         Process p = pb.start()
         StringBuilder out = new StringBuilder()
         StringBuilder err = new StringBuilder()
@@ -141,14 +141,18 @@ class CustomCommandExecutor implements CommandExecutor {
         }
         this.commandId = out.toString().trim()
         if(this.commandId.isEmpty())
-            throw new PipelineError("Job runner ${this.class.name} failed to return a job id despite reporting success exit code for command:\n\n$startCmd")
+            throw new PipelineError("Job runner ${this.class.name} failed to return a job id despite reporting success exit code for command:\n\n$startCmd\n\nRaw output was:[" + out.toString() + "]")
             
-        log.info "Started command with id $commandId with environment: $env"
+        log.info "Started command with id $commandId"
     }
 
+    /**
+     * For custom commands status is returned by calling the shell script with the
+     * 'status' argument and the stored command id.
+     */
     @Override
     public String status() {
-        String cmd = managementScript + " status ${commandId}"
+        String cmd = "bash $managementScript status ${commandId}"
         Process p = Runtime.runtime.exec(cmd)
         StringBuilder out = new StringBuilder()
         StringBuilder err = new StringBuilder()
@@ -162,7 +166,7 @@ class CustomCommandExecutor implements CommandExecutor {
 
     @Override
     public int waitFor() {
-        String cmd = managementScript + " status ${commandId}"
+        String cmd = "bash " + managementScript + " status ${commandId}"
         
         // Don't rely on the queueing software to be completely reliable; a single
         // failure to check shouldn't cause us to abort, so count errors 
