@@ -168,7 +168,7 @@ public class Pipeline {
                 failed = true
             }
             catch(PipelineTestAbort e) {
-                println "\n\nAbort due to Test Mode!\n\n  $e.message\n"
+                println "\n\nAbort due to Test Mode!\n\n" + Utils.indent(e.message) + "\n"
                 failed = true
             }
         }
@@ -251,7 +251,7 @@ public class Pipeline {
      * one without interfering with this one's state.
      * <p>
      * Note:  the new pipeline is not run by this method; instead you have to
-     *        call one of the l{@link #run(Closure)} methods on the returned pipeline
+     *        call one of the {@link #run(Closure)} methods on the returned pipeline
      */
     Pipeline fork() {
         Pipeline p = new Pipeline()

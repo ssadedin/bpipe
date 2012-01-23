@@ -197,7 +197,7 @@ class PipelineCategory {
             
             if(childPipelines.any { it.failed }) {
                 // TODO: make a much better error message!
-                throw new PipelineError("One or more parallel stages failed")
+                throw new PipelineError("One or more parallel stages aborted")
             }
             
             def nextInputs = []

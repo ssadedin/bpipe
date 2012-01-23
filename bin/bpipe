@@ -299,10 +299,10 @@ done
 # but on Macs we have to emaulate that (grrr)
 if uname | grep -iq cygwin || uname | grep -iq Linux; 
 then
-        echo "DEBUG:  tailing log using native pid tracking RUNPID=$RUNPID"
+        #echo "DEBUG:  tailing log using native pid tracking RUNPID=$RUNPID"
 	tail -f --pid=$BPIPE_PID $LOGFILE 
 else
-        echo "DEBUG:  tailing log using native MacOSX pid tracking emulation RUNPID=$RUNPID"
+        #echo "DEBUG:  tailing log using MacOSX pid tracking emulation RUNPID=$RUNPID"
 	tail -f $LOGFILE &
 	TAIL_PID="$!"
 

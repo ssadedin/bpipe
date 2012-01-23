@@ -129,7 +129,7 @@ class CommandManager {
             if(cmdExec instanceof LocalCommandExecutor)
               throw new PipelineTestAbort("Would execute: $cmd")
           else
-              throw new PipelineTestAbort("Would execute: $cmd using $cmdExec")
+              throw new PipelineTestAbort("Would execute: $cmd\n\n                using $cmdExec with config $cfg")
         }
 
         // Create a command id for the job

@@ -257,6 +257,6 @@ class CustomCommandExecutor implements CommandExecutor {
     }
     
     String toString() {
-        "Command Id: $commandId Configuration: $config"
+        "Command Id: $commandId " + (config?"Configuration: $config":"")
     }
 }
