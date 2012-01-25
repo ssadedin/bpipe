@@ -62,6 +62,12 @@ class CustomCommandExecutor implements CommandExecutor {
      */
     String commandId
     
+    
+    /**
+     * The job folder used for storing intermediate files 
+     */
+    String jobDir
+    
     /**
      * Name of this job - this is overridden with the stage name
      * at runtime
@@ -112,22 +118,23 @@ class CustomCommandExecutor implements CommandExecutor {
         
         // Environment variables that can be used to transmit 
         // essential information
-        env.COMMAND = cmd
         env.NAME = name
         
-		File jobDir = new File(".bpipe/commandtmp/$id")
-        if(!jobDir.exists())
-		    jobDir.mkdirs()
-        env.JOBDIR = jobDir.absolutePath
+        this.jobDir = ".bpipe/commandtmp/$id"
+		File jobDirFile = new File(this.jobDir)
+        if(!jobDirFile.exists())
+		    jobDirFile.mkdirs()
+        env.JOBDIR = jobDirFile.absolutePath
+        
+        env.COMMAND = '('+ cmd + ') > .bpipe/commandtmp/'+id+'/'+id+'.out 2>  .bpipe/commandtmp/'+id+'/'+id+'.err'
         
         // If an account is specified by the config then use that
         log.info "Using account: $config?.account"
         if(config?.account)
             env.ACCOUNT = config.account
         
-        if(config?.walltime) {
+        if(config?.walltime) 
             env.WALLTIME = config.walltime
-        }
        
         String startCmd = pb.command().join(' ')
         log.info "Starting command: " + startCmd

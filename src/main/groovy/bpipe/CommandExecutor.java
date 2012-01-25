@@ -24,8 +24,6 @@
  */
 package bpipe;
 
-import groovy.util.ConfigObject;
-
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +47,7 @@ import java.util.Map;
  */
 interface CommandExecutor extends Serializable {
     
-    void start(Map<String,?> cfg, String id, String name, String cmd);
+    void start(Map cfg, String id, String name, String cmd);
     
     String status();
     

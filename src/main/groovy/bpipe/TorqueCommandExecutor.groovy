@@ -39,15 +39,14 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
      * These appear as files in the local directory.
      */
     @Override
-    public void start(String id, String name, String cmd) {
+    public void start(Map cfg, String id, String name, String cmd) {
         
-        // TODO: possibly wrap command in here so that we catch input / output?
-        super.start(id, name, cmd);
+        super.start(cfg, id, name, cmd);
         
         // After starting the process, we launch a background thread that waits for the error
         // and output files to appear and then forward those inputs
-        forward(this.name+".o"+this.commandId, System.out)
-        forward(this.name+".e"+this.commandId, System.err)
+        forward(this.jobDir+"/${id}.out", System.out)
+        forward(this.jobDir+"/${id}.err", System.err)
         
         // Start another background thread to wait for our job to complete and cleanup the outputs
         // when it does
@@ -61,6 +60,7 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
 
     private void forward(String fileName, OutputStream s) {
         File f = new File(fileName)
+        log.info "Waiting for file $f.absolutePath to forward output"
         new Thread({
             while(true) {
                 if(f.exists())
