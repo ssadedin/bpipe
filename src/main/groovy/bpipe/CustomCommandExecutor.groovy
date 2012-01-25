@@ -72,7 +72,7 @@ class CustomCommandExecutor implements CommandExecutor {
      * The configuration of the custom command.
      * Set after construction. 
      */
-    ConfigObject config
+    Map config
     
     /**
      * Create a custom command with the specified script as its
@@ -101,7 +101,7 @@ class CustomCommandExecutor implements CommandExecutor {
      * launching the specified command.
      */
     @Override
-    public void start(ConfigObject cfg, String id, String name, String cmd) {
+    public void start(Map cfg, String id, String name, String cmd) {
         
 		this.config = cfg
         this.name = name
@@ -125,8 +125,9 @@ class CustomCommandExecutor implements CommandExecutor {
         if(config?.account)
             env.ACCOUNT = config.account
         
-        if(config?.walltime)
+        if(config?.walltime) {
             env.WALLTIME = config.walltime
+        }
        
         String startCmd = pb.command().join(' ')
         log.info "Starting command: " + startCmd

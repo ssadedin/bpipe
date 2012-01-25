@@ -28,6 +28,7 @@ import groovy.util.ConfigObject;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Abstract class that represents a shell command to be executed
@@ -48,7 +49,7 @@ import java.util.List;
  */
 interface CommandExecutor extends Serializable {
     
-    void start(ConfigObject cfg, String id, String name, String cmd);
+    void start(Map<String,?> cfg, String id, String name, String cmd);
     
     String status();
     

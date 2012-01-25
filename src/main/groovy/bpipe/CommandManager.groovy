@@ -28,7 +28,10 @@ import java.util.logging.Logger;
 
 /**
  * Manages execution, persistence and stopping of commands executed
- * by {@link CommandExecutor} objects.
+ * by {@link CommandExecutor} objects.  Uses information in 
+ * the local configuration to decide which {@link CommandExecutor} should be 
+ * used, creates the {@link CommandExecutor} and passes the execution options 
+ * to it.
  * 
  * @author simon.sadedin@mcri.edu.au
  */
@@ -78,22 +81,48 @@ class CommandManager {
      * @param cmd     the command line to run
      * @return the {@link CommandExecutor} that is executing the job.
      */
-    CommandExecutor start(String name, String cmd, String configName) {
+    CommandExecutor start(String name, String cmd, String configName, Collection inputs) {
         
         // How to run the job?  look in user config
 		if(!configName) 
             configName = cmd.trim().split(/\s/)[0].trim()
         
         log.info "Checking for configuration for command $configName"
-        def cfg = Config.userConfig
+        
+        // Use default properties from root entries into user config
+        def defaultConfig = Config.userConfig.findAll { !(it.value instanceof Map) }
+        log.info "Default command properties: $defaultConfig"
+        
+        def rawCfg = defaultConfig
         def cmdConfig = Config.userConfig?.commands[configName]
-        if(cmdConfig && cmdConfig.executor)  {
-            cfg = cmdConfig
+        if(cmdConfig && cmdConfig instanceof Map)  {
+            // override properties in default config with those for the
+            // specific command
+            rawCfg = defaultConfig + cmdConfig
+        }
+        
+        // Make a new map
+        def cfg = rawCfg.clone()
+        
+        // Resolve inputs to files
+        List fileInputs = inputs.collect { new File(it) }
+        
+        // Execute any executable properties that are closures
+        rawCfg.each { key, value ->
+            if(value instanceof Closure) {
+                cfg[key] = value(fileInputs)                
+            }
+            
+            // Special case - walltime can be specified as integer number of seconds
+            if(key == 'walltime' && !(cfg[key] instanceof String)) {
+                cfg[key] = formatWalltime(cfg[key])
+                log.info "Converted walltime is " + cfg[key]
+            }
         }
 
         String executor = cfg.executor
         
-        log.info "Using config $cfg for command"
+        log.info "Using config $rawCfg for command"
         
         // Try and resolve the executor several ways
         // It can be a file on the file system,
@@ -178,5 +207,13 @@ class CommandManager {
     private void cleanup(String commandId) {
         if(!new File(this.commandDir, commandId).renameTo(new File(this.completedDir, commandId)))
             log.warning("Unable to cleanup persisted file for command $commandId")
+    }
+    
+    private String formatWalltime(def walltime) {
+       // Treat as integer, convert to string
+       int hours = (int)Math.floor(walltime / 3600)
+       int minutes = (int)Math.floor((walltime - hours*3600)/60)
+       int seconds = walltime % 60
+       return String.format('%02d:%02d:%02d', hours, minutes, seconds )
     }
 }

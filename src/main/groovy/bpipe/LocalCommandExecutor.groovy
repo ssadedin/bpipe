@@ -22,7 +22,7 @@ class LocalCommandExecutor implements CommandExecutor {
      */
     boolean destroyed = false
     
-    void start(ConfigObject obj, String id, String name, String cmd) {
+    void start(Map cfg, String id, String name, String cmd) {
       new Thread({
 	      process = Runtime.getRuntime().exec((String[])(['bash','-c',"$cmd"].toArray()))
 	      process.consumeProcessOutput(System.out, System.err)

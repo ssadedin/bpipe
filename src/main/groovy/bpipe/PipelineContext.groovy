@@ -386,11 +386,12 @@ class PipelineContext {
      */
     void exec(String cmd, boolean joinNewLines = true) {
       CommandExecutor p = async(cmd, joinNewLines)
-      if(p.waitFor() != 0) {
+      int exitResult = p.waitFor()
+      if(exitResult != 0) {
         // Output is still spooling from the process.  By waiting a bit we ensure
         // that we don't interleave the exception trace with the output
         Thread.sleep(200)
-        throw new PipelineError("Command failed with exit status != 0: \n$cmd")
+        throw new PipelineError("Command failed with exit status = : \n$cmd")
       }
     }
     
@@ -447,7 +448,7 @@ class PipelineContext {
       new File('commandlog.txt').text += '\n'+cmd
       
       CommandManager commandManager = new CommandManager()
-      CommandExecutor cmdExec = commandManager.start(stageName, joined, config)
+      CommandExecutor cmdExec = commandManager.start(stageName, joined, config, Utils.box(this.input))
       
       List outputFilter = cmdExec.ignorableOutputs
       if(outputFilter) {
