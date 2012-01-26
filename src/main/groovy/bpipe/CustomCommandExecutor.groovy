@@ -48,7 +48,7 @@ class CustomCommandExecutor implements CommandExecutor {
    
    /**
     * We don't rely on commands to be 100% reliable, so we allow for retries,
-    * however the number number of retries is limited to this value.
+    * however the number of retries is limited to this value.
     */
    private static int MAX_STATUS_ERROR = 4
     

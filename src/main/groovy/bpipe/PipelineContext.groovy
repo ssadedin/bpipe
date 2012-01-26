@@ -97,7 +97,7 @@ class PipelineContext {
     * This allows for a crude pass-through of variables from Bpipe to Bash 
     * when executing commands.
     */
-   boolean echoWhenNotFound = false
+   boolean echoWhenNotFound = true
    
    /**
     * The default output is set prior to the body of the a pipeline stage being run.
@@ -405,6 +405,7 @@ class PipelineContext {
         if(!inputWrapper)
            inputWrapper = new PipelineInput(this.@input, pipelineStages)
            
+       boolean oldEchoFlag = this.echoWhenNotFound
        try {
 	        this.echoWhenNotFound = true
             log.info("Entering echo mode on context " + this.hashCode())
@@ -414,7 +415,7 @@ class PipelineContext {
 !""",false)
        }
        finally {
-           this.echoWhenNotFound = false
+           this.echoWhenNotFound = oldEchoFlag
        }
     }
     

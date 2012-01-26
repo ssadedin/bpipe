@@ -204,4 +204,12 @@ class Utils {
     static String indent(String value) {
         value.split("\n")*.replaceAll("\r","").collect { "    " + it }.join("\n")
     }
+    
+    /**
+     * Return true if the underlying operating system is Windows
+     */
+	public static boolean isWindows() {
+	   String os = System.getProperty("os.name").toLowerCase();
+	   return (os.indexOf("win") >= 0);
+   }
 }

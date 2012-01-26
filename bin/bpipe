@@ -184,6 +184,11 @@ then
     shift 1
     TESTMODE="-t"
     COMMAND="run"
+elif [ "$COMMAND" == "debug" ];
+then
+    shift 1
+    BPIPEDEBUG="-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=y"
+    COMMAND="run"
 fi
 
 ################# Default Command => Run ################
@@ -194,7 +199,7 @@ echo "$0 $COMMAND $*" >> .bpipe/history
 # Run in the background with nohup so that jobs do not abort on logout
 # We pass the pid of this shell as a property.  This allows the bpipe runtime
 # to figure out its own process id which is otherwise hard to do in Java
-nohup java -classpath "$CP" -Dbpipe.pid=$$ -Dbpipe.home="$BPIPE_HOME" -Dbpipe.version=$VERSION bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
+nohup java -classpath "$CP" $BPIPEDEBUG -Dbpipe.pid=$$ -Dbpipe.home="$BPIPE_HOME" -Dbpipe.version=$VERSION bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
 
 BPIPE_PID="$!"
 
