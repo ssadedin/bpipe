@@ -132,6 +132,16 @@ class PipelineCategory {
      */
 	static Object multiply(String pattern, List segments) {
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
+        
+                        
+        segments = segments.collect { 
+            if(it instanceof List) {
+                return multiply("*",it)
+    		}
+            else 
+			    return it
+        }
+		
 		def multiplyImplementation = { input ->
             
 			log.info "multiply on input $input with pattern $pattern"
@@ -174,8 +184,6 @@ class PipelineCategory {
                         
 			            log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
 			            pipeline.addStage(dummyPriorStage)
-                        
-	                    // Each sample will decrement the running count as it finishes
 	                    child.runSegment(files, segmentClosure, runningCount)
 	                })
                     childPipelines << child
@@ -214,6 +222,7 @@ class PipelineCategory {
             return nextInputs
 		}
         
+        log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
         pipeline.joiners << multiplyImplementation
         
         return multiplyImplementation

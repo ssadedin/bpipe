@@ -18,6 +18,9 @@ killtree() {
     if uname | grep -q Darwin;
     then
         pids=`ps -o pid,ppid | grep '^[0-9]' | grep ' '$ppid | cut -f 1 -d ' '`
+    elif uname | grep -iq cygwin;
+    then
+        pids=`ps -f  | awk '{ if(NR>1) print  $2 " " $3 }' | grep ' '$ppid | cut -f 1 -d ' '`
     else
         pids=$(ps -o pid --no-headers --ppid ${ppid})
     fi
@@ -33,11 +36,11 @@ killtree() {
 }
 
 createPidFile() {
-        # This creating dance is to try and make the
-        # launch pid file appear atomically
-        # The java runtime is going to read this file immediately after startup
-	echo $BPIPE_PID > .bpipe/launch/$$.tmp
-	mv .bpipe/launch/$$.tmp .bpipe/launch/$$
+    # This creating dance is to try and make the
+    # launch pid file appear atomically
+    # The java runtime is going to read this file immediately after startup
+    echo $BPIPE_PID > .bpipe/launch/$$.tmp
+    mv .bpipe/launch/$$.tmp .bpipe/launch/$$
 }
 
 # Locate Bpipe's home directory
@@ -160,18 +163,18 @@ then
            base=`basename $i`
            if [ "$base" != "*" ] && [ "$i" != "_" ];
            then
-	       if [ -e $i ];
-	       then
-	       	       if kill -0 $base > /dev/null 2>/dev/null ;
-		       then
-			       echo "$base : "`cat $i`
-		       else
-			       echo "$base : appears to have stopped but was not removed from database.  Maybe hard killed?"
-		       fi
-	       else
-		       echo "Found old PID file $i"
-		       #rm $i
-	       fi
+           if [ -e $i ];
+           then
+               if kill -0 $base > /dev/null 2>/dev/null ;
+               then
+                   echo "$base : "`cat $i`
+               else
+                   echo "$base : appears to have stopped but was not removed from database.  Maybe hard killed?"
+               fi
+           else
+               echo "Found old PID file $i"
+               #rm $i
+           fi
            fi
         done
     fi
@@ -203,7 +206,7 @@ nohup java -classpath "$CP" $BPIPEDEBUG -Dbpipe.pid=$$ -Dbpipe.home="$BPIPE_HOME
 
 BPIPE_PID="$!"
 
-echo "DEBUG:  Launched Java with PID $BPIPE_PID"
+#echo "DEBUG:  Launched Java with PID $BPIPE_PID"
 
 createPidFile
 
@@ -223,32 +226,32 @@ cleanup() {
     # Check for any unclean files in .bpipe/unclean
     if [ -d .bpipe/inprogress ];
     then
-    	for ip in .bpipe/inprogress/* ;
-	do
-		echo "Cleaning up files from context $ip"
-		for f in `cat $ip`;
-		do
-		    if [ -e "$f" ];
-		    then
-			target=".bpipe/trash/$f"
-			if [ ! -d .bpipe/trash ];
-			then
-			    mkdir -p .bpipe/trash
-			fi
-			count=1
-			realtarget="$target"
-			while [ -e "$realtarget" ];
-			do
-			  realtarget="${target}.${count}"
-			  let "count = count + 1"
-			done
-			target="$realtarget"
-			echo "Moving unclean file $f to $target"
-			echo
-			mv "$f" ".bpipe/trash/$f"
-		    fi
-		done
-	done
+      for ip in .bpipe/inprogress/* ;
+      do
+          echo "Cleaning up files from context $ip"
+          for f in `cat $ip`;
+          do
+              if [ -e "$f" ];
+              then
+              target=".bpipe/trash/$f"
+              if [ ! -d .bpipe/trash ];
+              then
+                  mkdir -p .bpipe/trash
+              fi
+              count=1
+              realtarget="$target"
+              while [ -e "$realtarget" ];
+              do
+                realtarget="${target}.${count}"
+                let "count = count + 1"
+              done
+              target="$realtarget"
+              echo "Moving unclean file $f to $target"
+              echo
+              mv "$f" ".bpipe/trash/$f"
+              fi
+          done
+      done
     fi
 }
 
@@ -271,9 +274,16 @@ function end() {
         fi
     fi
 
-    if kill -0 $TAIL_PID ;
+    # Note that TAIL_PID is only defined when we use
+    # non-native tracking of bpipe termination. So
+    # only try and kill tail if it wouldn't have terminated
+    # by itself
+    if [ ! -z "$TAIL_PID" ];
     then
-        kill $TAIL_PID
+      if kill -0 $TAIL_PID ;
+      then
+          kill $TAIL_PID
+      fi
     fi
     exit
 }
@@ -304,20 +314,20 @@ done
 # but on Macs we have to emaulate that (grrr)
 if uname | grep -iq cygwin || uname | grep -iq Linux; 
 then
-        #echo "DEBUG:  tailing log using native pid tracking RUNPID=$RUNPID"
-	tail -f --pid=$BPIPE_PID $LOGFILE 
+    #echo "DEBUG:  tailing log using native pid tracking RUNPID=$RUNPID"
+    tail -f --pid=$BPIPE_PID $LOGFILE 
 else
-        #echo "DEBUG:  tailing log using MacOSX pid tracking emulation RUNPID=$RUNPID"
-	tail -f $LOGFILE &
-	TAIL_PID="$!"
+    #echo "DEBUG:  tailing log using MacOSX pid tracking emulation RUNPID=$RUNPID"
+    tail -f $LOGFILE &
+    TAIL_PID="$!"
 
-        # Wait for the Java Bpipe process to finish naturally (not Ctrl-C, see above for that)
-	wait $BPIPE_PID
+    # Wait for the Java Bpipe process to finish naturally (not Ctrl-C, see above for that)
+    wait $BPIPE_PID
 
-        # Seems like The Java Bpipe process ended by itself: kill the background tail process 
-        # started above
-	if kill -0 $TAIL_PID  ;
-	then
-	    kill $TAIL_PID
-	fi
+    # Seems like The Java Bpipe process ended by itself: kill the background tail process 
+    # started above
+    if kill -0 $TAIL_PID  ;
+    then
+        kill $TAIL_PID
+    fi
 fi
