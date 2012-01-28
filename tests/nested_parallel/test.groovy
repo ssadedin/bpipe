@@ -19,11 +19,9 @@ how_are_you = {
 }
 
 take_me_to_your_leader = {
-  from("hello") {
-    msg "take_me inputs=$inputs"
-    exec "sed 's/f/g/g' $input > $output"
-    for(i in 0..5) { Thread.sleep(1000);  println "take_me $i" }
-  }
+  msg "take_me inputs=$inputs"
+  exec "sed 's/f/g/g' $input > $output"
+  for(i in 0..5) { Thread.sleep(1000);  println "take_me $i" }
 }
 
 end = {
