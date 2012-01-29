@@ -3,6 +3,7 @@
 if [ "$1" == "start" ];
 then
   #echo "Starting $*"
+  echo "$COMMAND" >> dummy1.log.txt
   bash -c "if $COMMAND ; then echo 0 > $$.txt ; else echo 1 > $$.txt; fi" &
   PROCID=$!
   echo $PROCID
