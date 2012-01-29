@@ -376,6 +376,10 @@ class PipelineContext {
         exec(cmd, true, config)
 	}
     
+    void exec(String cmd) {
+        exec(cmd, true)
+	}
+    
     /**
      * Provides an implicit "exec" function that pipeline stages can use
      * to run commands.  This variant blocks and waits for the 
@@ -384,14 +388,14 @@ class PipelineContext {
      * 
      * @see #async(Closure, String)
      */
-    void exec(String cmd, boolean joinNewLines = true) {
-      CommandExecutor p = async(cmd, joinNewLines)
+    void exec(String cmd, boolean joinNewLines, String config=null) {
+      CommandExecutor p = async(cmd, joinNewLines, config)
       int exitResult = p.waitFor()
       if(exitResult != 0) {
         // Output is still spooling from the process.  By waiting a bit we ensure
         // that we don't interleave the exception trace with the output
         Thread.sleep(200)
-        throw new PipelineError("Command failed with exit status = : \n$cmd")
+        throw new PipelineError("Command failed with exit status = $exitResult : \n$cmd")
       }
     }
     
