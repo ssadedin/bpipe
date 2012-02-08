@@ -45,7 +45,7 @@ class Runner {
     
     
     static CliBuilder runCli = new CliBuilder(usage: 
-   """bpipe [run|test] [-h] [-t] [-d] [-v] <pipeline> <in1> <in2>...
+   """bpipe [run|test] [-h] [-t] [-d] [-n <threads>] [-v] <pipeline> <in1> <in2>...
 history 
 log
 jobs
@@ -128,6 +128,7 @@ diagrameditor""")
 	             h longOpt:'help', 'usage information'
 	             d longOpt:'dir', 'output directory', args:1
 	             t longOpt:'test', 'test mode'
+	             n longOpt:'threads', 'maximum threads', args:1
 	             v longOpt:'verbose', 'print internal logging to standard error'
 	        }
         }
@@ -157,6 +158,11 @@ diagrameditor""")
         
         if(opts.d) {
             Config.config.defaultOutputDirectory = opts.d
+        }
+        
+        if(opts.n) {
+            log.info "Maximum threads specified as $opts.n"
+            Config.config.maxThreads = Integer.parseInt(opts.n)
         }
         
         String pipelineFile = opts.arguments()[0]

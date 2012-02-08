@@ -3,6 +3,7 @@ package bpipe
 import groovy.lang.Binding;
 import groovy.lang.Closure;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.List;
@@ -90,6 +91,23 @@ class PipelineContext {
    private List<PipelineStage> pipelineStages
    
    private List<Closure> pipelineJoiners
+      
+   /**
+    * All outputs from this stage, mapped by command 
+    * that created them
+    */
+   Map<String,List<String> > trackedOutputs = [:]
+   
+   /**
+    * When a command is run, output variables that are referenced in 
+    * the command are tracked.  This allows them then to be logged
+    * in the audit trail and saved in the history database 
+    * so that we know which command created the output.
+    * <p>
+    * This list is cleared with each new invocation 
+    * by {@link #exec(String, boolean, String)}
+    */
+   List<String> referencedOutputs = []
    
    /**
     * Flag that can be enabled to cause missing properties to resolve to 
@@ -98,6 +116,13 @@ class PipelineContext {
     * when executing commands.
     */
    boolean echoWhenNotFound = true
+   
+   /**
+    * When set to true, the context should not execute any commands, it should only 
+    * evaluate their arguments to probe $input and $output invocations
+    * so that files that will use can be determined
+    */
+   boolean probeMode = false
    
    /**
     * The default output is set prior to the body of the a pipeline stage being run.
@@ -138,31 +163,42 @@ class PipelineContext {
    def getOutput() {
        if(output == null) { // Output not set elsewhere
            // If an input property was referenced, compute the default from that instead
+           def out
            if(inputWrapper?.resolvedInputs) {
                log.info("Using non-default output due to input property reference: " + inputWrapper.resolvedInputs[0])
-               return inputWrapper.resolvedInputs[0] +"." + this.stageName
+               out = inputWrapper.resolvedInputs[0] +"." + this.stageName
            }
-           return this.getDefaultOutput()
+           else
+               out = this.getDefaultOutput()
+               
+           trackOutput(Utils.box(out))
+           return out
+           
        }
+       trackOutput(Utils.box(output))
        return output
    }
    
    def getOutput1() {
-       return Utils.box(getOutput())[0]
+       return trackOutput(Utils.box(getOutput())[0])
    }
    
    def getOutput2() {
-       return Utils.box(getOutput())[1]
+       return trackOutput(Utils.box(getOutput())[1])
    }
    
    def getOutput3() {
-       return Utils.box(getOutput())[2]
+       return trackOutput(Utils.box(getOutput())[2])
    }
    
    def getOutput4() {
-       return Utils.box(getOutput())[3]
+       return trackOutput(Utils.box(getOutput())[3])
    }
-    
+   
+   private trackOutput(def output) {
+       referencedOutputs << output
+       return output
+   } 
    
     /**
     * Coerce all of the arguments (which may be an array of Strings or a single String) to
@@ -252,6 +288,9 @@ class PipelineContext {
     */
    def filterLines(Closure c) {
        
+       if(probeMode)
+           return
+       
        if(!input)
            throw new PipelineError("Attempt to grep on input but no input available")
            
@@ -273,6 +312,9 @@ class PipelineContext {
     * not passed to the body.
     */
    def grep(String pattern, Closure c = null) {
+       if(probeMode)
+           return
+           
        if(!input)
            throw new PipelineError("Attempt to grep on input but no input available")
            
@@ -350,11 +392,28 @@ class PipelineContext {
         out = toOutputFolder(Utils.unwrap(out))
         
         def lastInputs = this.@input
+        boolean doExecute = true
+        
         if(Utils.isNewer(out,lastInputs)) {
-          msg("Skipping steps to create $out because newer than $lastInputs ")
 	      this.output = out
+          this.probeMode = true
+          this.trackedOutputs = [:]
+          try {
+            PipelineDelegate.setDelegateOn(this, body)
+	        log.info("Producing from inputs ${this.@input}")
+            body() 
+            
+            if(!checkForModifiedCommands()) {
+                msg("Skipping steps to create $out because newer than $lastInputs ")
+                doExecute = false
+            }
+          }
+          finally {
+              this.probeMode = false
+          }
         }
-        else {
+        
+        if(doExecute) {
             this.output = out
             
             // Store the list of output files so that if we are killed 
@@ -372,10 +431,19 @@ class PipelineContext {
         return out
     }
     
+    /**
+     * @see #exec(String, boolean, String)
+     * @param cmd
+     * @param config
+     */
     void exec(String cmd, String config) {
         exec(cmd, true, config)
 	}
     
+    /**
+     * @see #exec(String, boolean, String)
+     * @param cmd
+     */
     void exec(String cmd) {
         exec(cmd, true)
 	}
@@ -386,9 +454,19 @@ class PipelineContext {
      * shell command to exit.  If the command returns a failure exit code
      * (non zero) then an exception is thrown.
      * 
+     * @param cmd            the command line to execute, which will be 
+     *                       passed to a bash shell for execution
+     * @param joinNewLines   whether to concatentate the command into one long string
+     * @param config         optional configuration name to use in running the
+     *                       command
+     * 
      * @see #async(Closure, String)
      */
     void exec(String cmd, boolean joinNewLines, String config=null) {
+        
+      this.trackedOutputs[cmd] = this.referencedOutputs
+      this.referencedOutputs = []
+      
       CommandExecutor p = async(cmd, joinNewLines, config)
       int exitResult = p.waitFor()
       if(exitResult != 0) {
@@ -405,6 +483,12 @@ class PipelineContext {
      */
     void R(Closure c) {
         log.info("Running some R code")
+        
+        // When probing, just evaluate the string and return
+        if(probeMode) {
+            String rCode = c()
+            return
+        }
         
         if(!inputWrapper)
            inputWrapper = new PipelineInput(this.@input, pipelineStages)
@@ -424,7 +508,10 @@ class PipelineContext {
     }
     
     String capture(String cmd) {
-      new File('commandlog.txt').text += '\n'+cmd
+      if(probeMode)
+          return ""
+          
+      CommandLog.log.write(cmd)
       def joined = ""
       cmd.eachLine { joined += " " + it }
       
@@ -450,16 +537,21 @@ class PipelineContext {
       else
           joined = cmd
           
-      new File('commandlog.txt').text += '\n'+cmd
+      if(!probeMode) {
+          CommandLog.log.write(cmd)
       
-      CommandManager commandManager = new CommandManager()
-      CommandExecutor cmdExec = commandManager.start(stageName, joined, config, Utils.box(this.input))
-      
-      List outputFilter = cmdExec.ignorableOutputs
-      if(outputFilter) {
-          this.outputMask.addAll(outputFilter)
+          CommandManager commandManager = new CommandManager()
+          CommandExecutor cmdExec = commandManager.start(stageName, joined, config, Utils.box(this.input))
+          
+          List outputFilter = cmdExec.ignorableOutputs
+          if(outputFilter) {
+              this.outputMask.addAll(outputFilter)
+          }
+          return cmdExec
       }
-      return cmdExec
+      else {
+          return new ProbeCommandExecutor()
+      }
     }
     
     
@@ -575,5 +667,65 @@ class PipelineContext {
         // from the parent "root".  But this would not work in a multi-level
         // pipeline - threads launching threads.  
         return ctx.threadId == Pipeline.rootThreadId
+    }
+    
+    /**
+     * Return a {@link File} that indicates the path where
+     * metadata for the specified output & file should be stored.
+     * 
+     * @param cmd        The command that produced the output file
+     * @param outputFile The name of the output file
+     */
+    File getOutputMetaData(String outputFile) {
+        File outputsDir = new File(".bpipe/outputs/")
+        if(!outputsDir.exists()) 
+            outputsDir.mkdirs()
+        
+        return  new File(outputsDir,this.stageName + "." + new File(outputFile).name + ".properties")
+    }
+    
+    /**
+     * @return true iff one or more of the commands in the current 
+     *         {@link #trackedOutputs} is inconsistent with those
+     *         stored in the file system
+     */
+    boolean checkForModifiedCommands() {
+        boolean modified = false
+        trackedOutputs.each { String cmd, List<String> outputs ->
+            if(modified)
+                return
+                
+            for(def o in outputs) {
+                o = Utils.first(o)
+                if(!o)
+                    continue
+                    
+                // We do get outputs logged that weren't actually used,
+                // so in this phase we ignore files that don't 
+                // actually exist
+                if(!new File(o).exists()) 
+                    continue
+                    
+                File file = getOutputMetaData(o)
+                if(!file.exists()) {
+                    log.info "No metadata for file $o found"
+                    continue
+                }
+                
+                Properties p = new Properties()
+                p.load(new FileInputStream(file))
+                
+                String hash = Utils.sha1(cmd+"_"+o)
+                if(p.fingerprint != hash) {
+                    log.info "File $o was generated by command with different fingerprint [$p.fingerprint] to the one that produced current output [$hash]. Stage will run even though output files are newer than inputs."
+                    modified = true
+                    return
+                }
+                else
+                    log.info "Fingerprint for file $o matches: up to date"
+            }
+        }
+        
+        return modified
     }
 }

@@ -24,6 +24,9 @@
  */
 package bpipe
 
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+
 /**
  * Miscellaneous internal utilities used by Gruffus.
  * 
@@ -212,4 +215,29 @@ class Utils {
 	   String os = System.getProperty("os.name").toLowerCase();
 	   return (os.indexOf("win") >= 0);
    }
+    
+   public static String sha1(String message) {
+       
+       MessageDigest digest = MessageDigest.getInstance("SHA1")
+       
+       ByteArrayInputStream bytes = new ByteArrayInputStream(message.bytes)
+       DigestInputStream   dis = new DigestInputStream(bytes, digest);
+    
+        // read the file and update the hash calculation
+        while (dis.read() != -1);
+    
+        // get the hash value as byte array
+        byte[] hash = digest.digest();
+    
+        return byteArray2Hex(hash);
+    }
+    
+    private static String byteArray2Hex(byte[] hash) {
+        Formatter formatter = new Formatter();
+        for (byte b : hash) {
+            formatter.format("%02x", b);
+        }
+        return formatter.toString();
+    }
+        
 }

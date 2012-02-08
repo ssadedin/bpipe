@@ -1,0 +1,2 @@
+rm *.hello
+rm *.hello.*

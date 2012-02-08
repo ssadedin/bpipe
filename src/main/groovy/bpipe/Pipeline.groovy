@@ -199,16 +199,14 @@ public class Pipeline {
         // Add all the pipeline variables to the external binding
         this.externalBinding.variables += pipeline.binding.variables
         
-		def cmdlog = new File('commandlog.txt')
-		if(!cmdlog.exists())
-			cmdlog << ""
-        else
-            cmdlog << "\n"
+
+        def cmdlog = CommandLog.log
+        cmdlog.write("")
 
         String startDateTime = (new Date()).format("yyyy-MM-dd") + " "
-        cmdlog << "#"*Config.config.columns + "\n"
-        cmdlog << "# Starting pipeline at " + (new Date()) + "\n"
-        cmdlog << "# Input files:  $inputFile \n"
+        cmdlog << "#"*Config.config.columns 
+        cmdlog << "# Starting pipeline at " + (new Date())
+        cmdlog << "# Input files:  $inputFile"
 		println("="*Config.config.columns)
 		println("|" + " Starting Pipeline at $startDateTime".center(Config.config.columns-2) + "|")
 		println("="*Config.config.columns)
@@ -236,7 +234,7 @@ public class Pipeline {
 
 		// Make sure the command log ends with newline
 		// as output is not terminated with one by default
-		cmdlog << "\n"
+		cmdlog << ""
 	}
     
     PipelineContext createContext() {

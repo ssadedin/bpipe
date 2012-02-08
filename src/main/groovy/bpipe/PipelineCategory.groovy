@@ -29,6 +29,9 @@ import groovy.lang.Closure;
 import java.io.FileOutputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -156,13 +159,14 @@ class PipelineCategory {
             
             if(samples.isEmpty()) 
                 throw new PipelineError("The pattern provided '$pattern' did not match any of the files provided as input $input")
-			
+                
+                
             AtomicInteger runningCount = new AtomicInteger()
             
             // Now we have all our samples, make a 
 			// separate pipeline for each one, and for each parallel stage
            List<Pipeline> childPipelines = []
-           List<Thread> threads = []
+           List<Runnable> threads = []
            for(Closure s in segments) {
                 log.info "Processing segment ${s.hashCode()}"
 				samples.each { id, files ->
@@ -172,7 +176,7 @@ class PipelineCategory {
                     
 		                    
                     Closure segmentClosure = s
-	                Thread childThread = new Thread({
+                    threads << {
                         
 			            // First we make a "dummy" stage that contains the inputs
 			            // to the next stage as outputs.  This allows later logic
@@ -185,23 +189,31 @@ class PipelineCategory {
 			            log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
 			            pipeline.addStage(dummyPriorStage)
 	                    child.runSegment(files, segmentClosure, runningCount)
-	                })
+	                } as Runnable
                     childPipelines << child
-                    threads << childThread
 				}
             }
            
-           // Start all the threads
-           threads.each { it.start() }
-            
-			while(runningCount.get()) {
-				log.info("Waiting for " + runningCount.get() + " parallel stages to complete" )
-                synchronized(runningCount) {
-                    runningCount.wait(5)
-                }
-                // TODO: really here we should check if any of the pipelines that finished 
-                // have failed so that we can abort the other processes if they did
-			}
+            // Start all the threads
+            ThreadPoolExecutor pool = Executors.newFixedThreadPool(Config.config.maxThreads)
+            try {
+                threads.each { pool.execute(it) }
+                
+    			while(runningCount.get()) {
+    				log.info("Waiting for " + runningCount.get() + " parallel stages to complete" )
+                    synchronized(runningCount) {
+                        runningCount.wait(5)
+                    }
+                    
+                    if(runningCount.get())
+                        Thread.sleep(300)
+                    // TODO: really here we should check if any of the pipelines that finished 
+                    // have failed so that we can abort the other processes if they did
+    			}
+            }
+            finally {
+                pool.shutdown()
+            }
             
             if(childPipelines.any { it.failed }) {
                 // TODO: make a much better error message!

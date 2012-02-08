@@ -24,7 +24,11 @@ class Config {
         // the user can override it from the command line and in the future
         // some features might make outputs go to separate directories
         // (eg: per sample, etc.)
-        defaultOutputDirectory : "."
+        defaultOutputDirectory : ".",
+        
+        // The maximum number of threads that Bpipe will launch 
+        // when running jobs
+        maxThreads : 32
     ]
     
     /**

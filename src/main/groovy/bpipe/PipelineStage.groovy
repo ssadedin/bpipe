@@ -106,7 +106,7 @@ class PipelineStage {
 	            PipelineCategory.closureNames[body] : "${stageCount}"
 	            println ""
 	            println " Stage ${stageName} ".center(Config.config.columns,"=")
-			    new File('commandlog.txt').text += '\n'+"# Stage $stageName"
+			    CommandLog.log << "# Stage $stageName"
                 ++stageCount
                 
 	            if(context.output == null) {
@@ -202,26 +202,65 @@ class PipelineStage {
             throw e
         }
         catch(Exception e) {
-            // Out of caution we don't remove output files if they existed before this stage ran.
-            // Otherwise we might destroy existing data
-            if(this.context.output != null) {
-	            def newOutputFiles = Utils.box(this.context.output)
-                log.info("Retaining pre-existing files $oldFiles from outputs")
-                newOutputFiles.removeAll { fn ->
-                    def canonical = new File(fn).canonicalPath
-                    oldFiles.any { 
-                        // println "Checking $it vs $fn :" + (it.canonicalPath ==  canonical)
-	                    return it.canonicalPath == canonical
-	                }
-                }
-				log.info("Cleaning up: $newOutputFiles")
-	            Utils.cleanup(newOutputFiles)
-            }
+            log.info("Retaining pre-existing files $oldFiles from outputs")
+            cleanupOutputs(oldFiles)
             throw e
         }
         Utils.checkFiles(context.output,"output")
         
+        // Save the database of files created
+        saveOutputs()
+        
+        
         return context.nextInputs
+    }
+    
+    /**
+     * For each output file created in the context, save information
+     * about it such that it can be reliably loaded by this same stage
+     * if the pipeline is re-executed.
+     */
+    void saveOutputs() {
+        context.trackedOutputs.each { String cmd, List<String> outputs ->
+            for(def o in outputs) {
+                o = Utils.first(o)
+                if(!o)
+                    continue
+                    
+                File file = context.getOutputMetaData(o)
+                String hash = Utils.sha1(cmd+"_"+o)
+
+                Properties p = new Properties()
+                p.command = cmd
+                p.outputFile = o
+                p.fingerprint = hash
+                
+                log.info "Saving output file details to file $file for command " + Utils.truncnl(cmd, 20)
+                p.save(new FileOutputStream(file), "Bpipe File Creation Meta Data")
+            }
+        }
+    }
+    
+    /**
+     * Cleanup output files (ie. move them to trash folder).
+     * 
+     * @param keepFiles    Files that should not be removed
+     */
+    void cleanupOutputs(List<File> keepFiles) {
+        // Out of caution we don't remove output files if they existed before this stage ran.
+        // Otherwise we might destroy existing data
+        if(this.context.output != null) {
+            def newOutputFiles = Utils.box(this.context.output)
+            newOutputFiles.removeAll { fn ->
+                def canonical = new File(fn).canonicalPath
+                keepFiles.any {
+                    // println "Checking $it vs $fn :" + (it.canonicalPath ==  canonical)
+                    return it.canonicalPath == canonical
+                }
+            }
+            log.info("Cleaning up: $newOutputFiles")
+            Utils.cleanup(newOutputFiles)
+        }
     }
 
 }
