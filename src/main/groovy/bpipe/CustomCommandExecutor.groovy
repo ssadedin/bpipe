@@ -136,6 +136,12 @@ class CustomCommandExecutor implements CommandExecutor {
         if(config?.walltime) 
             env.WALLTIME = config.walltime
        
+        if(config?.memory) 
+            env.MEMORY = config.memory
+			 
+        if(config?.procs) 
+            env.PROCS = config.procs
+            
         String startCmd = pb.command().join(' ')
         log.info "Starting command: " + startCmd
         Process p = pb.start()
