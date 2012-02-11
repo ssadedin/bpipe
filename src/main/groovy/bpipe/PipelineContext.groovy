@@ -713,7 +713,9 @@ class PipelineContext {
                 }
                 
                 Properties p = new Properties()
-                p.load(new FileInputStream(file))
+                file.withInputStream { ifs ->
+                    p.load(ifs)
+                }
                 
                 String hash = Utils.sha1(cmd+"_"+o)
                 if(p.fingerprint != hash) {

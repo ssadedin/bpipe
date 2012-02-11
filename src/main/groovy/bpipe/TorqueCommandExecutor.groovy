@@ -70,7 +70,9 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
             log.info "Starting forward of output to file $f.absolutePath"
             Process p = Runtime.runtime.exec("tail -f $f.absolutePath")
             this.forwarders << p
-            p.consumeProcessOutputStream(s)
+            p.consumeProcessOutputStream(s).join()
+            p.outputStream.close()
+            p.errorStream.close()
         }).start()
     }
 

@@ -50,6 +50,8 @@ class LocalCommandExecutor implements CommandExecutor {
 	      process = Runtime.getRuntime().exec((String[])(['bash','-c',"$cmd"].toArray()))
 	      process.consumeProcessOutput(System.out, System.err)
           exitValue = process.waitFor()
+          process.outputStream.close()
+          process.inputStream.close()
           synchronized(this) {
 	          this.notifyAll()
           }

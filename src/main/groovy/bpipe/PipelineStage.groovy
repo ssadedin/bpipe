@@ -236,7 +236,9 @@ class PipelineStage {
                 p.fingerprint = hash
                 
                 log.info "Saving output file details to file $file for command " + Utils.truncnl(cmd, 20)
-                p.save(new FileOutputStream(file), "Bpipe File Creation Meta Data")
+                file.withOutputStream { ofs ->
+                    p.save(ofs, "Bpipe File Creation Meta Data")
+                }
             }
         }
     }
