@@ -25,8 +25,13 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
     /**
      * Child processes that are forwarding output from this torque command
      */
-    transient List<Process> forwarders = []
-
+    transient List<Forwarder> forwarders = []
+    
+    /**
+     * Schedules polling of files that are forwarded from Torque jobs
+     */
+    static Timer forwardingTimer
+    
     /**
      * Constructor
      */
@@ -59,21 +64,18 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
     }
 
     private void forward(String fileName, OutputStream s) {
-        File f = new File(fileName)
-        log.info "Waiting for file $f.absolutePath to forward output"
-        new Thread({
-            while(true) {
-                if(f.exists())
-                    break
-                Thread.sleep(200)
+        
+        // Start the forwarding timer task if it is not already running
+        synchronized(TorqueCommandExecutor.class) {
+            if(forwardingTimer == null) {
+                forwardingTimer = new  Timer()
             }
-            log.info "Starting forward of output to file $f.absolutePath"
-            Process p = Runtime.runtime.exec("tail -f $f.absolutePath")
-            this.forwarders << p
-            p.consumeProcessOutputStream(s).join()
-            p.outputStream.close()
-            p.errorStream.close()
-        }).start()
+        }
+        
+        Forwarder f = new Forwarder(new File(fileName), s)
+        forwardingTimer.schedule(f, 0, 2000)
+        
+        this.forwarders << f
     }
 
     /**
@@ -86,7 +88,7 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
     }
 
 	private cleanup() {
-		this.forwarders*.destroy()
+		this.forwarders*.cancel()
 		File of = new File(this.name+".o"+this.commandId)
 		if(of.exists())
 			of.delete()

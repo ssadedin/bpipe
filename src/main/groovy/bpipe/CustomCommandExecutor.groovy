@@ -39,18 +39,18 @@ import java.util.logging.Logger;
  */
 class CustomCommandExecutor implements CommandExecutor {
     
-   public static final long serialVersionUID = 0L
+    public static final long serialVersionUID = 0L
     
-   /**
-    * Logger for this class to use
-    */
-   private static Logger log = Logger.getLogger("bpipe.CustomCommandExecutor");
+    /**
+     * Logger for this class to use
+     */
+    private static Logger log = Logger.getLogger("bpipe.CustomCommandExecutor");
    
-   /**
-    * We don't rely on commands to be 100% reliable, so we allow for retries,
-    * however the number of retries is limited to this value.
-    */
-   private static int MAX_STATUS_ERROR = 4
+    /**
+     * We don't rely on commands to be 100% reliable, so we allow for retries,
+     * however the number of retries is limited to this value.
+     */
+    private static int MAX_STATUS_ERROR = 4
     
     /**
      * The path to the script that is used to manage the custom command
