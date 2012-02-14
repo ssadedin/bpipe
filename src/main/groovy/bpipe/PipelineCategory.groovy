@@ -195,6 +195,7 @@ class PipelineCategory {
             }
            
             // Start all the threads
+		    log.info "Creating thread pool with " + Config.config.maxThreads + " threads to execute parallel pipelines"
             ThreadPoolExecutor pool = Executors.newFixedThreadPool(Config.config.maxThreads)
             try {
                 threads.each { pool.execute(it) }
