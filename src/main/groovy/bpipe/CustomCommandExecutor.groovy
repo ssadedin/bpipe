@@ -27,6 +27,7 @@ package bpipe
 
 import java.io.File;
 import java.util.logging.Logger;
+import java.util.concurrent.Semaphore
 
 /**
  * Custom command executors are implemented by a shell script that implements the
@@ -79,6 +80,16 @@ class CustomCommandExecutor implements CommandExecutor {
      * Set after construction. 
      */
     Map config
+	
+	/**
+	 * The concurrency allowed for calling the custom command script.
+	 * By default, the concurrency is 1, meaning that we do not assume
+	 * that the custom script supports concurrency at all.  This also
+	 * prevents hitting resource constraints (such as max file handles)
+	 * on systems where small limits have been placed on the 
+	 * head node that is submitting jobs.
+	 */
+	static Semaphore concurrencyCounter;
     
     /**
      * Create a custom command with the specified script as its
@@ -108,7 +119,7 @@ class CustomCommandExecutor implements CommandExecutor {
      */
     @Override
     public void start(Map cfg, String id, String name, String cmd) {
-        
+		
 		this.config = cfg
         this.name = name
         
@@ -144,21 +155,32 @@ class CustomCommandExecutor implements CommandExecutor {
             
         String startCmd = pb.command().join(' ')
         log.info "Starting command: " + startCmd
-        Process p = pb.start()
-        StringBuilder out = new StringBuilder()
-        StringBuilder err = new StringBuilder()
-        p.waitForProcessOutput(out, err)
-        int exitValue = p.waitFor()
-        if(exitValue != 0) {
-            reportStartError(startCmd, out,err,exitValue)
-            throw new PipelineError("Failed to start command:\n\n$cmd")
-        }
-        this.commandId = out.toString().trim()
-        if(this.commandId.isEmpty())
-            throw new PipelineError("Job runner ${this.class.name} failed to return a job id despite reporting success exit code for command:\n\n$startCmd\n\nRaw output was:[" + out.toString() + "]")
-            
-        log.info "Started command with id $commandId"
+		
+		withLock(cfg) {
+	        Process p = pb.start()
+			
+	        StringBuilder out = new StringBuilder()
+	        StringBuilder err = new StringBuilder()
+	        p.waitForProcessOutput(out, err)
+	        int exitValue = p.waitFor()
+	        if(exitValue != 0) {
+	            reportStartError(startCmd, out,err,exitValue)
+	            throw new PipelineError("Failed to start command:\n\n$cmd")
+	        }
+	        this.commandId = out.toString().trim()
+	        if(this.commandId.isEmpty())
+	            throw new PipelineError("Job runner ${this.class.name} failed to return a job id despite reporting success exit code for command:\n\n$startCmd\n\nRaw output was:[" + out.toString() + "]")
+	            
+	        log.info "Started command with id $commandId"
+		}
     }
+	
+	static synchronized acquireLock(Map cfg) {
+		if(concurrencyCounter == null) {
+			concurrencyCounter = new Semaphore(cfg?.concurrency?:1)
+		}
+		concurrencyCounter.acquire()
+	}
 
     /**
      * For custom commands status is returned by calling the shell script with the
@@ -167,16 +189,41 @@ class CustomCommandExecutor implements CommandExecutor {
     @Override
     public String status() {
         String cmd = "bash $managementScript status ${commandId}"
-        Process p = Runtime.runtime.exec(cmd)
-        StringBuilder out = new StringBuilder()
-        StringBuilder err = new StringBuilder()
-        p.waitForProcessOutput(out, err)
-        int exitValue = p.waitFor() 
-        if(exitValue != 0)
-            return CommandStatus.UNKNOWN.name()
-        String result = out.toString()
+		String result
+		withLock {
+	        Process p = Runtime.runtime.exec(cmd)
+	        StringBuilder out = new StringBuilder()
+	        StringBuilder err = new StringBuilder()
+	        p.waitForProcessOutput(out, err)
+	        int exitValue = p.waitFor() 
+	        if(exitValue != 0)
+	            return CommandStatus.UNKNOWN.name()
+	        result = out.toString()
+        }
         return result.split()[0]
     }
+	
+	/**
+	 * Execute the action within the lock that ensures the
+	 * maximum concurrency for the custom script is not exceeded.
+	 */
+	def withLock(Closure action) {
+		withLock(null, action)
+	}
+	
+	/**
+	 * Execute the action within the lock that ensures the
+	 * maximum concurrency for the custom script is not exceeded.
+	 */
+	def withLock(Map cfg, Closure action) {
+		acquireLock(cfg) 
+		try {
+			action()
+		}
+		finally {
+			concurrencyCounter.release()
+		}
+	}
 
     @Override
     public int waitFor() {
@@ -238,11 +285,16 @@ class CustomCommandExecutor implements CommandExecutor {
         log.info "Executing command to stop command $commandId: $cmd"
         int errorCount = 0
         while(true) {
-            StringBuilder err = new StringBuilder()
-            StringBuilder out = new StringBuilder()
-            Process p = Runtime.runtime.exec(cmd)
-            p.waitForProcessOutput(out,err)
-            int exitValue = p.waitFor()
+			int exitValue
+			StringBuilder err
+			StringBuilder out
+			withLock {
+	            err = new StringBuilder()
+	            out = new StringBuilder()
+	            Process p = Runtime.runtime.exec(cmd)
+	            p.waitForProcessOutput(out,err)
+	            exitValue = p.waitFor()
+			}
             
             // Hack - ignore failures that are due to the job
             // being unknown or completed.  These error messages are
