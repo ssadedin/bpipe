@@ -23,6 +23,9 @@ public class ProbeCommandExecutor implements CommandExecutor {
     @Override
     public void stop() {
     }
+    
+    public void cleanup() {
+    }
 
     @Override
     public List<String> getIgnorableOutputs() {

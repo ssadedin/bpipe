@@ -239,5 +239,15 @@ class Utils {
         }
         return formatter.toString();
     }
-        
+    
+    public static withStreams(Process p, Closure c) {
+        try {
+            return c()
+        }
+        finally {
+          try { p.inputStream.close() } catch(Throwable t) { }      
+          try { p.outputStream.close() } catch(Throwable t) { }      
+          try { p.errorStream.close() } catch(Throwable t) { }      
+        }
+    }
 }

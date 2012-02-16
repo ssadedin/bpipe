@@ -93,4 +93,7 @@ class LocalCommandExecutor implements CommandExecutor {
         // Not implemented.  Java is too stupid to stop a process it previously started,
     }
     
+    void cleanup() {
+    }
+    
 }

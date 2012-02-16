@@ -209,7 +209,7 @@ class PipelineContext {
        if(!outputFolder.exists())
            outputFolder.mkdirs()
            
-       def newOutputs = Utils.box(outputs).collect { this.outputDirectory + "/" + new File(it).name }
+       def newOutputs = Utils.box(outputs).collect { this.outputDirectory + "/" + new File(it.toString()).name }
        return Utils.unbox(newOutputs)
    }
    

@@ -80,6 +80,11 @@ class CustomCommandExecutor implements CommandExecutor {
      * Set after construction. 
      */
     Map config
+  
+    /**
+     * Whether cleanup has been called 
+     */
+    boolean cleanedUp
 	
 	/**
 	 * The concurrency allowed for calling the custom command script.
@@ -158,20 +163,21 @@ class CustomCommandExecutor implements CommandExecutor {
 		
 		withLock(cfg) {
 	        Process p = pb.start()
-			
-	        StringBuilder out = new StringBuilder()
-	        StringBuilder err = new StringBuilder()
-	        p.waitForProcessOutput(out, err)
-	        int exitValue = p.waitFor()
-	        if(exitValue != 0) {
-	            reportStartError(startCmd, out,err,exitValue)
-	            throw new PipelineError("Failed to start command:\n\n$cmd")
+            Utils.withStreams(p) {
+    	        StringBuilder out = new StringBuilder()
+    	        StringBuilder err = new StringBuilder()
+    	        p.waitForProcessOutput(out, err)
+    	        int exitValue = p.waitFor()
+    	        if(exitValue != 0) {
+    	            reportStartError(startCmd, out,err,exitValue)
+    	            throw new PipelineError("Failed to start command:\n\n$cmd")
+    	        }
+    	        this.commandId = out.toString().trim()
+    	        if(this.commandId.isEmpty())
+    	            throw new PipelineError("Job runner ${this.class.name} failed to return a job id despite reporting success exit code for command:\n\n$startCmd\n\nRaw output was:[" + out.toString() + "]")
+    	            
+    	        log.info "Started command with id $commandId"
 	        }
-	        this.commandId = out.toString().trim()
-	        if(this.commandId.isEmpty())
-	            throw new PipelineError("Job runner ${this.class.name} failed to return a job id despite reporting success exit code for command:\n\n$startCmd\n\nRaw output was:[" + out.toString() + "]")
-	            
-	        log.info "Started command with id $commandId"
 		}
     }
 	
@@ -192,13 +198,15 @@ class CustomCommandExecutor implements CommandExecutor {
 		String result
 		withLock {
 	        Process p = Runtime.runtime.exec(cmd)
-	        StringBuilder out = new StringBuilder()
-	        StringBuilder err = new StringBuilder()
-	        p.waitForProcessOutput(out, err)
-	        int exitValue = p.waitFor() 
-	        if(exitValue != 0)
-	            return CommandStatus.UNKNOWN.name()
-	        result = out.toString()
+            Utils.withStreams(p) {
+    	        StringBuilder out = new StringBuilder()
+    	        StringBuilder err = new StringBuilder()
+    	        p.waitForProcessOutput(out, err)
+    	        int exitValue = p.waitFor() 
+    	        if(exitValue != 0)
+    	            return CommandStatus.UNKNOWN.name()
+    	        result = out.toString()
+	        }
         }
         return result.split()[0]
     }
@@ -218,7 +226,7 @@ class CustomCommandExecutor implements CommandExecutor {
 	def withLock(Map cfg, Closure action) {
 		acquireLock(cfg) 
 		try {
-			action()
+			return action()
 		}
 		finally {
 			concurrencyCounter.release()
@@ -236,11 +244,16 @@ class CustomCommandExecutor implements CommandExecutor {
             
             log.info "Polling status of job $commandId with command $cmd"
             
-            Process p = Runtime.runtime.exec(cmd)
             StringBuilder out = new StringBuilder()
             StringBuilder err = new StringBuilder()
-            p.waitForProcessOutput(out, err)
-            int exitValue = p.waitFor()
+            int exitValue = withLock {
+                Process p = Runtime.runtime.exec(cmd)
+                Utils.withStreams(p) {
+                    p.waitForProcessOutput(out, err)
+                    p.waitFor()
+                }
+                
+            }
             if(exitValue > 0)  {
                 String msg = "Attempt to poll status for job $commandId return status $exitValue using command $cmd:\n\n  $out"
                 if(errorCount > MAX_STATUS_ERROR) 
@@ -260,12 +273,20 @@ class CustomCommandExecutor implements CommandExecutor {
             if(status == CommandStatus.COMPLETE.name()) {
 	            if(parts.size() != 2)
 	                throw new PipelineError("Unexpected format in output of job status command [$cmd]:  $result")
+                    
+                if(!this.cleanedUp) {
+                    this.cleanedUp = true
+                    cleanup()
+                }
+                
 	            return Integer.parseInt(parts[1])
             }
             
             // Job not complete, keep waiting
             Thread.sleep(2000)
         }
+        
+        
     }
     
     List<String> getIgnorableOutputs() {
@@ -292,8 +313,10 @@ class CustomCommandExecutor implements CommandExecutor {
 	            err = new StringBuilder()
 	            out = new StringBuilder()
 	            Process p = Runtime.runtime.exec(cmd)
-	            p.waitForProcessOutput(out,err)
-	            exitValue = p.waitFor()
+                Utils.withStreams(p) {
+    	            p.waitForProcessOutput(out,err)
+    	            exitValue = p.waitFor()
+	            }
 			}
             
             // Hack - ignore failures that are due to the job
@@ -324,5 +347,8 @@ class CustomCommandExecutor implements CommandExecutor {
     
     String toString() {
         "Command Id: $commandId " + (config?"Configuration: $config":"")
+    }
+    
+    void cleanup() {
     }
 }

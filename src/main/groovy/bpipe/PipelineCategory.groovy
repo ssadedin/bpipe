@@ -177,19 +177,24 @@ class PipelineCategory {
 		                    
                     Closure segmentClosure = s
                     threads << {
-                        
-			            // First we make a "dummy" stage that contains the inputs
-			            // to the next stage as outputs.  This allows later logic
-			            // to find these "inputs" correctly when it expects to see
-			            // all "inputs" reflected as some output of an earlier stage
-			            PipelineContext dummyPriorContext = pipeline.createContext()
-			            PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
-			            dummyPriorContext.output = files
-                        
-			            log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
-			            pipeline.addStage(dummyPriorStage)
-	                    child.runSegment(files, segmentClosure, runningCount)
-	                } as Runnable
+                            try {
+        			            // First we make a "dummy" stage that contains the inputs
+        			            // to the next stage as outputs.  This allows later logic
+        			            // to find these "inputs" correctly when it expects to see
+        			            // all "inputs" reflected as some output of an earlier stage
+        			            PipelineContext dummyPriorContext = pipeline.createContext()
+        			            PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
+        			            dummyPriorContext.output = files
+                                
+        			            log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
+        			            pipeline.addStage(dummyPriorStage)
+        	                    child.runSegment(files, segmentClosure, runningCount)
+                            }
+                            catch(Exception e) {
+                                log.severe("Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message)
+                                child.failed = true
+                            }
+    	                } as Runnable
                     childPipelines << child
 				}
             }

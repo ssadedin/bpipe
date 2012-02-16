@@ -55,12 +55,12 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
         
         // Start another background thread to wait for our job to complete and cleanup the outputs
         // when it does
-        new Thread({
-            while(status() != CommandStatus.COMPLETE.name()) {
-                Thread.sleep(5000)
-            }
-            cleanup()
-        }).start()
+//        new Thread({
+//            while(status() != CommandStatus.COMPLETE.name()) {
+//                Thread.sleep(5000)
+//            }
+//            cleanup()
+//        }).start()
     }
 
     private void forward(String fileName, OutputStream s) {
@@ -87,7 +87,7 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
         cleanup()
     }
 
-	private cleanup() {
+	void cleanup() {
 		this.forwarders*.cancel()
 		File of = new File(this.name+".o"+this.commandId)
 		if(of.exists())

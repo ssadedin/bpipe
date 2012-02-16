@@ -28,6 +28,10 @@ class Forwarder extends TimerTask {
      * Destinations to which the file should be forwarded
      */
     Map<File, OutputStream> fileDestinations = [:]
+    
+    Forwarder(File f, OutputStream out) {
+        forward(f,out)
+    }
    
     void forward(File file, OutputStream out) {
         synchronized(files) {
