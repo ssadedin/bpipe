@@ -24,7 +24,7 @@ compute_statistics = {
 }
 
 hello_there = {
-	echo "hello there"
+	exec """ echo "hello there" """
 }
 
 Bpipe.run {

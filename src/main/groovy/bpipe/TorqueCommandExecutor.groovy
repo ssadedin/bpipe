@@ -68,7 +68,7 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
         // Start the forwarding timer task if it is not already running
         synchronized(TorqueCommandExecutor.class) {
             if(forwardingTimer == null) {
-                forwardingTimer = new  Timer()
+                forwardingTimer = new  Timer(true)
             }
         }
         

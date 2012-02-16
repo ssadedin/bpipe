@@ -5,7 +5,7 @@ init = {
 }
 
 hello = {
-  exec """for i in 1 2 3;  do echo "Hello World $i"; done """
+  exec """for i in 1 2 3;  do echo "Hello World $i" sleep 5; done """
 
   if(!new File("dummy1.log.txt").exists())
     throw new Exception("Failed to create expected log dummy1.log.txt")

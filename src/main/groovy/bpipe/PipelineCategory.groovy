@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
@@ -120,6 +121,8 @@ class PipelineCategory {
                 nextInputs = currentStage.context.@input
                 
             Utils.checkFiles(nextInputs)
+            
+            
             return mul(nextInputs)
 		}
         pipeline.joiners << plusImplementation
@@ -201,7 +204,12 @@ class PipelineCategory {
            
             // Start all the threads
 		    log.info "Creating thread pool with " + Config.config.maxThreads + " threads to execute parallel pipelines"
-            ThreadPoolExecutor pool = Executors.newFixedThreadPool(Config.config.maxThreads)
+            ThreadPoolExecutor pool = Executors.newFixedThreadPool(Config.config.maxThreads, { Runnable r ->
+              def t = new Thread(r)  
+              t.setDaemon(true)
+              return t
+            } as ThreadFactory)
+            
             try {
                 threads.each { pool.execute(it) }
                 

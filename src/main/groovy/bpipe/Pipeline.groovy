@@ -164,10 +164,12 @@ public class Pipeline {
                 currentStage.run()
             }
             catch(PipelineError e) {
+                log.info "Pipeline segment failed (2): " + e.message
                 System.err << "Pipeline failed!\n\n"+e.message << "\n\n"
                 failed = true
             }
             catch(PipelineTestAbort e) {
+                log.info "Pipeline segment aborted due to test mode"
                 println "\n\nAbort due to Test Mode!\n\n" + Utils.indent(e.message) + "\n"
                 failed = true
             }
