@@ -209,8 +209,8 @@ class PipelineStage {
         Utils.checkFiles(context.output,"output")
         
         // Save the database of files created
-        saveOutputs()
-        
+        if(Config.config.enableCommandTracking)
+            saveOutputs()
         
         return context.nextInputs
     }

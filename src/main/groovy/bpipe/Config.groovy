@@ -28,7 +28,13 @@ class Config {
         
         // The maximum number of threads that Bpipe will launch 
         // when running jobs
-        maxThreads : 32
+        maxThreads : 32,
+        
+        // Whether to enable detection of changes to commands so
+        // that outputs produced by them can be invalidated
+        // This feature is still experimental, so off by 
+        // default for now
+        enableCommandTracking : false
     ]
     
     /**
@@ -53,5 +59,18 @@ class Config {
         }
         else
             log.info "Default executor is $userConfig.executor"
+            
+            
+       // Allow user to over ride any value in config with local config 
+       userConfig.flatten().each { k,v ->
+           
+           if(k == "mode") 
+               return
+           
+           if(config.containsKey(k)) {
+               log.info "Overriding default config value ${config[k]} with user defined value ${v}"
+               config[k] = v
+           }
+       }
     }
 }

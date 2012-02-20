@@ -80,9 +80,16 @@ class PipelineInput {
     def propertyMissing(String name) {
         def exts = [name]
         def inputs = resolveInputsWithExtensions(exts)
-        def result = String.valueOf(inputs[0])
-        this.resolvedInputs << result
-        return result
+        
+        if(Utils.isContainer(inputs[0])) {
+            inputs[0].each { this.resolvedInputs << String.valueOf(it) }   
+            return inputs[0].collect { String.valueOf(it) }.join(' ')
+        }
+        else {
+            def result = String.valueOf(inputs[0])
+            this.resolvedInputs << result
+            return result
+        }
     }
     
     def methodMissing(String name, args) {
@@ -119,8 +126,6 @@ class PipelineInput {
 	        // Add an initial stage that represents the current input to this stage.  This way
 	        // if the from() spec is used and matches the actual inputs then it will go with those
 	        // rather than searching backwards for a previous match
-	        // TODO: get rid of reference to PipelineCategory here
-	        // how to model "current stage" when pipeline has parallel parts?
 	        reverseOutputs.add(0,Utils.box(this.@input))
 	        
 	        def filesWithExts = Utils.box(exts).collect { String inp ->
@@ -132,7 +137,8 @@ class PipelineInput {
 	                log.info("Checking outputs ${s}")
 	                def o = s.find { it?.endsWith(inp) }
 	                if(o)
-	                    return o
+	                    return s.grep { it?.endsWith(inp) }
+//	                    return o
 	            }
 	        }
 	        

@@ -395,6 +395,8 @@ class PipelineContext {
         boolean doExecute = true
         
         if(Utils.isNewer(out,lastInputs)) {
+          // No inputs were newer than outputs, 
+          // but were the commands that created the outputs modified?
 	      this.output = out
           this.probeMode = true
           this.trackedOutputs = [:]
@@ -403,7 +405,7 @@ class PipelineContext {
 	        log.info("Producing from inputs ${this.@input}")
             body() 
             
-            if(!checkForModifiedCommands()) {
+            if(!Config.config.enableCommandTracking || !checkForModifiedCommands()) {
                 msg("Skipping steps to create $out because newer than $lastInputs ")
                 doExecute = false
             }
@@ -532,7 +534,7 @@ class PipelineContext {
     CommandExecutor async(String cmd, boolean joinNewLines=true, String config = null) {
       def joined = ""
       if(joinNewLines) {
-	      cmd.eachLine { if(!it.trim().isEmpty()) joined += " " + it else joined += "; "}
+	      cmd.eachLine { if(!it.trim().isEmpty() || joined.isEmpty()) joined += " " + it else joined += "; "}
       }
       else
           joined = cmd
