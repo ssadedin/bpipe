@@ -43,6 +43,10 @@ createPidFile() {
     mv .bpipe/launch/$$.tmp .bpipe/launch/$$
 }
 
+get_last_run_pid() {
+    LAST_PID=`ls -tc .bpipe/jobs/* | head -1 | xargs basename`
+}
+
 # Locate Bpipe's home directory
 # Need something more sophisticated to deal with symbolic links?
 BPIPE_HOME=`dirname $0`/..
@@ -120,29 +124,57 @@ elif [ "$COMMAND" == "log" ];
 then
     shift 1
     # TODO: will fail if spaces in path
-    ls -tc .bpipe/logs/*.log | grep -v 'bpipe\.' | head -1 | xargs tail -f $*
+    
+    if [ ! -e .bpipe/logs ];
+    then
+    	echo 
+    	echo "It doesn't look like Bpipe has been run in this directory"
+    	echo
+    	exit
+	fi
+    
+    
+    get_last_run_pid
+   
+    LOG_ID=`ls -tc .bpipe/logs/*.log | grep -v 'bpipe\.' | head -1 | grep -o '[0-9]*.log$' | sed 's/[^0-9]//g'`
+    
+    if kill -0 $LAST_PID > /dev/null 2>&1 ;
+    then
+	    tail -f $* .bpipe/logs/$LOG_ID.log
+    else
+        echo
+        echo ""
+        echo "MSG: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"
+        echo "MSG:               NOTE: Pipeline completed as process $LAST_PID.  Last log lines follow."
+        echo "MSG: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+        echo ""
+        echo ""
+        
+	    tail -n 80 $* .bpipe/logs/$LOG_ID.log
+    fi
+	    
     exit
 elif [ "$COMMAND" == "stop" ];
 then
     shift 1
 
     # Find all the process ids and kill it
-    JOBPID=`ls -tc .bpipe/jobs/* | head -1 | xargs basename`
+    get_last_run_pid
 
     echo
-    echo "PID of last job is $JOBPID"
+    echo "PID of last job is $LAST_PID"
     
-    if kill -0 $JOBPID > /dev/null 2>&1 ;
+    if kill -0 $LAST_PID > /dev/null 2>&1 ;
     then
       # TODO: would be nicer to show a little info and 
       # let the the user confirm?
       echo
-      echo "Killing job $JOBPID"
+      echo "Killing job $LAST_PID"
       echo
-      killtree $JOBPID
+      killtree $LAST_PID
     else
       echo
-      echo "Job $JOBPID appears to be finished"
+      echo "Job $LAST_PID appears to be finished"
       echo
     fi
 
