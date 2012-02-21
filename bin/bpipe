@@ -44,6 +44,15 @@ createPidFile() {
 }
 
 get_last_run_pid() {
+
+    if [ ! -e .bpipe/jobs ];
+    then
+    	echo 
+    	echo "It doesn't look like Bpipe has been run in this directory"
+    	echo
+    	exit
+	fi
+
     LAST_PID=`ls -tc .bpipe/jobs/* | head -1 | xargs basename`
 }
 
@@ -123,35 +132,49 @@ then
 elif [ "$COMMAND" == "log" ];
 then
     shift 1
-    # TODO: will fail if spaces in path
     
-    if [ ! -e .bpipe/logs ];
-    then
-    	echo 
-    	echo "It doesn't look like Bpipe has been run in this directory"
-    	echo
-    	exit
-	fi
-    
-    
+    # Set LAST_PID variable
     get_last_run_pid
+    
+    if uname | grep -q Darwin ;
+    then
+        TERM_HEIGHT=`stty -a | grep -o '[0-9]* rows;' | sed 's/[^0-9]//g'`
+    else
+        TERM_HEIGHT=`stty -a | grep -o 'rows [0-9]*;' | sed 's/[^0-9]//g'`
+    fi
+    
+    if [ -z "$TERM_HEIGHT" ];
+    then
+        TERM_HEIGHT=80
+    fi
+    
+    #echo "TERM_HEIGHT=$TERM_HEIGHT LAST_PID=$LAST_PID"
    
     LOG_ID=`ls -tc .bpipe/logs/*.log | grep -v 'bpipe\.' | head -1 | grep -o '[0-9]*.log$' | sed 's/[^0-9]//g'`
     
     if kill -0 $LAST_PID > /dev/null 2>&1 ;
     then
-	    tail -f $* .bpipe/logs/$LOG_ID.log
+	    TAIL_OPT="-f"
+        TAIL_ROWS=$TERM_HEIGHT
     else
+        let 'TAIL_ROWS=TERM_HEIGHT-7'
         echo
         echo ""
         echo "MSG: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"
-        echo "MSG:               NOTE: Pipeline completed as process $LAST_PID.  Last log lines follow."
+        echo "MSG:     NOTE: Pipeline completed as process $LAST_PID.  Trailing lines follow."
+        echo "MSG:     Use bpipe log -n <lines> to see more lines"
         echo "MSG: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
         echo ""
-        echo ""
-        
-	    tail -n 80 $* .bpipe/logs/$LOG_ID.log
     fi
+    
+    if echo "$*" | grep -q '\-n' ;
+    then
+        ROWS_OPT=""
+    else
+        ROWS_OPT="-n $TAIL_ROWS"
+    fi
+    
+    tail $ROWS_OPT $TAIL_OPT $* .bpipe/logs/$LOG_ID.log
 	    
     exit
 elif [ "$COMMAND" == "stop" ];
