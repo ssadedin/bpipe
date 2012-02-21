@@ -4,7 +4,7 @@
 #
 
 # This will be replaced by the build script
-VERSION=0.0.0
+VERSION=0.9.1
 BUILDDATE=0
 
 # Utility script
@@ -44,6 +44,15 @@ createPidFile() {
 }
 
 get_last_run_pid() {
+
+    if [ ! -e .bpipe/jobs ];
+    then
+    	echo 
+    	echo "It doesn't look like Bpipe has been run in this directory"
+    	echo
+    	exit
+	fi
+
     LAST_PID=`ls -tc .bpipe/jobs/* | head -1 | xargs basename`
 }
 
@@ -123,35 +132,48 @@ then
 elif [ "$COMMAND" == "log" ];
 then
     shift 1
-    # TODO: will fail if spaces in path
     
-    if [ ! -e .bpipe/logs ];
-    then
-    	echo 
-    	echo "It doesn't look like Bpipe has been run in this directory"
-    	echo
-    	exit
-	fi
-    
-    
+    # Set LAST_PID variable
     get_last_run_pid
+    
+    if uname | grep -q Darwin ;
+    then
+        TERM_HEIGHT=`stty -a | grep -o '[0-9]* rows;' | sed 's/[^0-9]//g'`
+    else
+        TERM_HEIGHT=`stty -a | grep -o 'rows [0-9]*;' | sed 's/[^0-9]//g'`
+    fi
+    
+    if [ -z "$TERM_HEIGHT" ];
+    then
+        TERM_HEIGHT=80
+    fi
+    
+    # echo "TERM_HEIGHT=$TERM_HEIGHT LAST_PID=$LAST_PID"
    
     LOG_ID=`ls -tc .bpipe/logs/*.log | grep -v 'bpipe\.' | head -1 | grep -o '[0-9]*.log$' | sed 's/[^0-9]//g'`
     
     if kill -0 $LAST_PID > /dev/null 2>&1 ;
     then
-	    tail -f $* .bpipe/logs/$LOG_ID.log
+	    TAIL_OPT="-f"
+        TAIL_ROWS=$TERM_HEIGHT
     else
-        echo
+        let 'TAIL_ROWS=TERM_HEIGHT-7'
         echo ""
         echo "MSG: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"
-        echo "MSG:               NOTE: Pipeline completed as process $LAST_PID.  Last log lines follow."
+        echo "MSG:     NOTE: Pipeline completed as process $LAST_PID.  Trailing lines follow."
+        echo "MSG:     Use bpipe log -n <lines> to see more lines"
         echo "MSG: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
         echo ""
-        echo ""
-        
-	    tail -n 80 $* .bpipe/logs/$LOG_ID.log
     fi
+    
+    if echo "$*" | grep -q '\-n' ;
+    then
+        ROWS_OPT=""
+    else
+        ROWS_OPT="-n $TAIL_ROWS"
+    fi
+    
+    tail $ROWS_OPT $TAIL_OPT $* .bpipe/logs/$LOG_ID.log
 	    
     exit
 elif [ "$COMMAND" == "stop" ];
@@ -191,24 +213,23 @@ elif [ "$COMMAND" == "jobs" ];
 then
     if [ -e ~/.bpipedb/jobs/ ];
     then
-     
         for i in ~/.bpipedb/jobs/* _ ;
         do
            base=`basename $i`
            if [ "$base" != "*" ] && [ "$i" != "_" ];
            then
-           if [ -e $i ];
-           then
-               if kill -0 $base > /dev/null 2>/dev/null ;
-               then
-                   echo "$base : "`cat $i`
-               else
-                   echo "$base : appears to have stopped but was not removed from database.  Maybe hard killed?"
-               fi
-           else
-               echo "Found old PID file $i"
-               #rm $i
-           fi
+             if [ -e $i ];
+             then
+                 if kill -0 $base > /dev/null 2>/dev/null ;
+                 then
+                     echo "$base : "`cat $i`
+                 else
+                     echo "$base : appears to have stopped but was not removed from database.  Maybe hard killed?"
+                 fi
+             else
+                 echo "Found old PID file $i"
+                 #rm $i
+             fi
            fi
         done
     fi
@@ -260,6 +281,14 @@ echo "$0 $COMMAND $*" >> .bpipe/jobs/$BPIPE_PID
 mkdir -p ~/.bpipedb/jobs
 ln -s `pwd`/.bpipe/jobs/$BPIPE_PID  ~/.bpipedb/jobs/$BPIPE_PID
 
+# Check if the log files were flagged for cleanup
+function clean_logs() {
+    if [ -e .bpipe/logs/$$.erase.log ];
+    then
+      rm .bpipe/logs/$$.erase.log
+      rm .bpipe/logs/$$.log
+    fi
+}
 
 # Look for files marked dirty and clean them up
 cleanup() {
@@ -325,6 +354,8 @@ function end() {
           kill $TAIL_PID
       fi
     fi
+
+    clean_logs
     exit
 }
 
@@ -371,3 +402,6 @@ else
         kill $TAIL_PID
     fi
 fi
+
+clean_logs
+
