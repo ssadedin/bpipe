@@ -148,7 +148,7 @@ then
         TERM_HEIGHT=80
     fi
     
-    #echo "TERM_HEIGHT=$TERM_HEIGHT LAST_PID=$LAST_PID"
+    # echo "TERM_HEIGHT=$TERM_HEIGHT LAST_PID=$LAST_PID"
    
     LOG_ID=`ls -tc .bpipe/logs/*.log | grep -v 'bpipe\.' | head -1 | grep -o '[0-9]*.log$' | sed 's/[^0-9]//g'`
     
@@ -158,7 +158,6 @@ then
         TAIL_ROWS=$TERM_HEIGHT
     else
         let 'TAIL_ROWS=TERM_HEIGHT-7'
-        echo
         echo ""
         echo "MSG: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"
         echo "MSG:     NOTE: Pipeline completed as process $LAST_PID.  Trailing lines follow."
@@ -214,24 +213,23 @@ elif [ "$COMMAND" == "jobs" ];
 then
     if [ -e ~/.bpipedb/jobs/ ];
     then
-     
         for i in ~/.bpipedb/jobs/* _ ;
         do
            base=`basename $i`
            if [ "$base" != "*" ] && [ "$i" != "_" ];
            then
-           if [ -e $i ];
-           then
-               if kill -0 $base > /dev/null 2>/dev/null ;
-               then
-                   echo "$base : "`cat $i`
-               else
-                   echo "$base : appears to have stopped but was not removed from database.  Maybe hard killed?"
-               fi
-           else
-               echo "Found old PID file $i"
-               #rm $i
-           fi
+             if [ -e $i ];
+             then
+                 if kill -0 $base > /dev/null 2>/dev/null ;
+                 then
+                     echo "$base : "`cat $i`
+                 else
+                     echo "$base : appears to have stopped but was not removed from database.  Maybe hard killed?"
+                 fi
+             else
+                 echo "Found old PID file $i"
+                 #rm $i
+             fi
            fi
         done
     fi
@@ -283,6 +281,14 @@ echo "$0 $COMMAND $*" >> .bpipe/jobs/$BPIPE_PID
 mkdir -p ~/.bpipedb/jobs
 ln -s `pwd`/.bpipe/jobs/$BPIPE_PID  ~/.bpipedb/jobs/$BPIPE_PID
 
+# Check if the log files were flagged for cleanup
+function clean_logs() {
+    if [ -e .bpipe/logs/$$.erase.log ];
+    then
+      rm .bpipe/logs/$$.erase.log
+      rm .bpipe/logs/$$.log
+    fi
+}
 
 # Look for files marked dirty and clean them up
 cleanup() {
@@ -348,6 +354,8 @@ function end() {
           kill $TAIL_PID
       fi
     fi
+
+    clean_logs
     exit
 }
 
@@ -394,3 +402,6 @@ else
         kill $TAIL_PID
     fi
 fi
+
+clean_logs
+
