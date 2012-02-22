@@ -7,7 +7,7 @@ align = {
 dedupe = {
     filter("foo") {
       msg "$input.txt => $output"
-      exec "cp $input.txt $output"
+      exec "cat $input.txt > $output"
     }
 }
 
