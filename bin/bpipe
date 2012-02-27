@@ -47,11 +47,11 @@ get_last_run_pid() {
 
     if [ ! -e .bpipe/jobs ];
     then
-    	echo 
-    	echo "It doesn't look like Bpipe has been run in this directory"
-    	echo
-    	exit
-	fi
+        echo 
+        echo "It doesn't look like Bpipe has been run in this directory"
+        echo
+        exit
+    fi
 
     LAST_PID=`ls -tc .bpipe/jobs/* | head -1 | xargs basename`
 }
@@ -281,12 +281,17 @@ echo "$0 $COMMAND $*" >> .bpipe/jobs/$BPIPE_PID
 mkdir -p ~/.bpipedb/jobs
 ln -s `pwd`/.bpipe/jobs/$BPIPE_PID  ~/.bpipedb/jobs/$BPIPE_PID
 
-# Check if the log files were flagged for cleanup
-function clean_logs() {
+# Check if the job files were flagged for cleanup
+function clean_job_files() {
     if [ -e .bpipe/logs/$$.erase.log ];
     then
       rm .bpipe/logs/$$.erase.log
       rm .bpipe/logs/$$.log
+
+      if [ ! -z $BPIPE_PID ] && [ -e .bpipe/jobs/$BPIPE_PID ];
+      then
+          rm .bpipe/jobs/$BPIPE_PID
+      fi
     fi
 }
 
@@ -355,7 +360,7 @@ function end() {
       fi
     fi
 
-    clean_logs
+    clean_job_files
     exit
 }
 
@@ -403,5 +408,5 @@ else
     fi
 fi
 
-clean_logs
+clean_job_files
 
