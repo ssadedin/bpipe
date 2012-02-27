@@ -79,6 +79,11 @@ diagrameditor""")
                     println("WARN: Unable to delete job file for job $pid")
                 }
             }
+			
+			if(Config.config.eraseLogsOnExit) {
+				String ourPid = System.getProperty("bpipe.pid")
+				new File(".bpipe/logs/${ourPid}.erase.log").text=""
+			}
         }
                 
         def parentLog = log.getParent()
@@ -175,6 +180,12 @@ diagrameditor""")
         
         Config.readUserConfig()
         
+		
+		// If we got this far and are not in test mode, then it's time to 
+		// make the logs stick around
+		if(!opts.t)
+			Config.config.eraseLogsOnExit = false
+		
         org.codehaus.groovy.tools.GroovyStarter.main(groovyArgs as String[])
     }
     

@@ -34,7 +34,14 @@ class Config {
         // that outputs produced by them can be invalidated
         // This feature is still experimental, so off by 
         // default for now
-        enableCommandTracking : false
+        enableCommandTracking : false, 
+		
+		// For many commands we don't want the log files to persist
+		// eg: the output of the help info
+		// This flag is read on shutdown and if true, a 
+		// marker file is written that causes the log files to be 
+		// ignored / cleaned up 
+		eraseLogsOnExit : true
     ]
     
     /**

@@ -78,19 +78,24 @@ class PipelineInput {
      * that has the given file extension
      */
     def propertyMissing(String name) {
+		log.info "Searching for missing property: $name"
         def exts = [name]
-        def inputs = resolveInputsWithExtensions(exts)
-        
-        if(Utils.isContainer(inputs[0])) {
-            inputs[0].each { this.resolvedInputs << String.valueOf(it) }   
-            return inputs[0].collect { String.valueOf(it) }.join(' ')
-        }
-        else {
-            def result = String.valueOf(inputs[0])
-            this.resolvedInputs << result
-            return result
-        }
-    }
+        def resolved = resolveInputsWithExtensions(exts)
+		return mapToCommandValue(resolved[0])
+     }
+	
+	/**
+	 * Maps given values to a form ready to be included
+	 * in an executing command.
+	 * <p>
+	 * In this case, maps to the first value resolved in the 
+	 * given values.  See also {@link MultiPipelineInput#mapToCommandValue(Object)}
+	 */
+	String mapToCommandValue(def values) {
+        def result = String.valueOf(Utils.first(values))
+        this.resolvedInputs << result
+        return result
+	}
     
     def methodMissing(String name, args) {
         // faux inheritance from String class

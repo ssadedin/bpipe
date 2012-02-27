@@ -271,7 +271,8 @@ class PipelineContext {
    }
    
    def getInputs() {
-       return Utils.box(this.@input).join(" ")
+//       return Utils.box(this.@input).join(" ")
+	   return new MultiPipelineInput(this.@input, pipelineStages)
    }
    
    /**

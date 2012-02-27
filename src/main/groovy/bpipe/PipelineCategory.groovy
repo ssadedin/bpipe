@@ -37,6 +37,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
+import org.codehaus.groovy.runtime.StackTraceUtils;
+
 import static Utils.*
 
 
@@ -195,6 +197,7 @@ class PipelineCategory {
                             }
                             catch(Exception e) {
                                 log.severe("Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message)
+								StackTraceUtils.sanitize(e).printStackTrace()
                                 child.failed = true
                             }
     	                } as Runnable
