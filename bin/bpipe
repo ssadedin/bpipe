@@ -56,6 +56,16 @@ get_last_run_pid() {
     LAST_PID=`ls -tc .bpipe/jobs/* | head -1 | xargs basename`
 }
 
+# Return status 0 if the most recent 
+# pipeline is still running 
+is_running() {
+
+    # Sets LAST_PID
+    get_last_run_pid
+
+    kill -0 $LAST_PID > /dev/null 2>&1
+}
+
 # Locate Bpipe's home directory
 # Need something more sophisticated to deal with symbolic links?
 BPIPE_HOME=`dirname $0`/..
@@ -133,9 +143,6 @@ elif [ "$COMMAND" == "log" ];
 then
     shift 1
     
-    # Set LAST_PID variable
-    get_last_run_pid
-    
     if uname | grep -q Darwin ;
     then
         TERM_HEIGHT=`stty -a | grep -o '[0-9]* rows;' | sed 's/[^0-9]//g'`
@@ -152,7 +159,7 @@ then
    
     LOG_ID=`ls -tc .bpipe/logs/*.log | grep -v 'bpipe\.' | head -1 | grep -o '[0-9]*.log$' | sed 's/[^0-9]//g'`
     
-    if kill -0 $LAST_PID > /dev/null 2>&1 ;
+    if is_running ;
     then
 	    TAIL_OPT="-f"
         TAIL_ROWS=$TERM_HEIGHT
@@ -236,6 +243,25 @@ then
     exit
 elif [ "$COMMAND" == "run" ];
 then
+    if is_running ;
+    then
+      echo
+      echo "WARNING:  there appears to be a pipeline already running in this directory as process $LAST_PID"
+      echo
+      echo "Running more than one pipeline simultaneously may cause inconsistent results to be returned"
+      echo "or even incorrect files to be used in your pipeline."
+      echo
+      echo "Use 'bpipe stop' to stop an existing pipeline if you want to run another one."
+      echo
+      read -p "Are you sure you want to continue? (y/n): "
+      if [ "$REPLY" != y ];
+      then
+        echo
+        echo "Aborting ..."
+        echo
+        exit 
+      fi
+    fi
     shift 1
 elif [ "$COMMAND" == "test" ];
 then
