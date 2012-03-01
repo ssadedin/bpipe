@@ -82,13 +82,11 @@ get_last_run_pid() {
 
     if [ ! -e .bpipe/jobs ];
     then
-        echo 
-        echo "It doesn't look like Bpipe has been run in this directory"
-        echo
-        exit
+      LAST_PID="-1"
+    else
+      LAST_PID=`ls -tc .bpipe/jobs/* | head -1 | xargs basename`
     fi
 
-    LAST_PID=`ls -tc .bpipe/jobs/* | head -1 | xargs basename`
 }
 
 #----------------------------------------------------------
@@ -101,6 +99,13 @@ is_running() {
     # Sets LAST_PID
     get_last_run_pid
 
+    # Never run before?
+    if [ "$LAST_PID" == "-1" ];
+    then
+      return 1
+    fi
+
+    # Has been run, is it finished?
     kill -0 $LAST_PID > /dev/null 2>&1
 }
 
