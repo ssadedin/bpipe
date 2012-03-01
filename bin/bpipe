@@ -1,15 +1,39 @@
 #!/bin/bash
+#----------------------------------------------------------
 #
 # Bpipe Runner Script
 #
+# This wrapper script performs a number of small functions 
+# itself but also acts as a wrapper to launch the 'real'
+# Bpipe code which operates as a Java process.
+#
+# When a pipeline is run, this script creates a PID file
+# in the local folder, .bpipe/jobs.  This file is 
+# named with the PID of the Java process that was launched,
+# (not the PID of this script) and containing the command
+# that was used to invoke the bpipe script.  In this script,
+# the BPIPE_PID is used to refer to this PID.
+#
+# Author:  Simon Sadedin, simon.sadedin@mcri.edu.au
+#----------------------------------------------------------
 
-# This will be replaced by the build script
+# Version of Bpipe - this should be 0.0.0 in the source tree,
+# it will be replaced by the build script at build time
 VERSION=0.0.0
+
+
+# Build date as an integer (unix epoch time)
+# This should be 0 in the source tree, 
+# it will be replaced by the build script at build time
 BUILDDATE=0
 
-# Utility script
-# Kill a whole tree of processes
-# for some children it happens automatically, but for some it doesn't
+#----------------------------------------------------------
+# Kill a whole tree of processes in a cross platform way.
+# Note, in some situations killing the parent process is 
+# sufficient ot kill the children, however this doesn't
+# happen universally, so this function actually recursively
+# calls itself to iterate all child processes and kill them
+#----------------------------------------------------------
 killtree() {
     local ppid=$1
     
@@ -35,14 +59,25 @@ killtree() {
     kill -TERM ${ppid}
 }
 
-createPidFile() {
+#----------------------------------------------------------
+# Create a file containing the PID of the Java process
+# that was launched to run the pipeline.
+# The PID of the Java process is provided as the first
+# argument.
+#----------------------------------------------------------
+create_pid_file() {
     # This creating dance is to try and make the
     # launch pid file appear atomically
     # The java runtime is going to read this file immediately after startup
-    echo $BPIPE_PID > .bpipe/launch/$$.tmp
+    echo $1 > .bpipe/launch/$$.tmp
     mv .bpipe/launch/$$.tmp .bpipe/launch/$$
 }
 
+#---------------------------------------------------------
+# Determine the process ID of the most recent
+# Bpipe execution's Java process.
+# The output is set in the LAST_PID variable
+#---------------------------------------------------------
 get_last_run_pid() {
 
     if [ ! -e .bpipe/jobs ];
@@ -56,14 +91,184 @@ get_last_run_pid() {
     LAST_PID=`ls -tc .bpipe/jobs/* | head -1 | xargs basename`
 }
 
-# Return status 0 if the most recent 
-# pipeline is still running 
+#----------------------------------------------------------
+# Determine if the most recent Bpipe execution is
+# still currently running.
+# The output is returned as an exit code (0==running, 1==not)
+#----------------------------------------------------------
 is_running() {
 
     # Sets LAST_PID
     get_last_run_pid
 
     kill -0 $LAST_PID > /dev/null 2>&1
+}
+
+#----------------------------------------------------------
+# Check if the job files were flagged for cleanup
+# Files are flagged for cleanup when the Java process
+# is launched but aborts before doing anything useful
+# (for example, if it just prints help).
+#----------------------------------------------------------
+function clean_job_files() {
+    if [ -e .bpipe/logs/$$.erase.log ];
+    then
+      rm .bpipe/logs/$$.erase.log
+      rm .bpipe/logs/$$.log
+
+      if [ ! -z $BPIPE_PID ] ;
+      then
+         rm -f .bpipe/jobs/$BPIPE_PID
+         rm -f ~/.bpipedb/jobs/$BPIPE_PID
+      fi
+    fi
+}
+
+#----------------------------------------------------------
+# Look for files marked dirty and clean them up
+# Dirty files are output files that are created 
+# but their commands failed before completion.
+# These are usually cleaned up by the Java process
+# itself, however we still do it here to deal with
+# the case where the Java process is hard-killed.
+#----------------------------------------------------------
+cleanup() {
+    # Check for any unclean output files 
+    if [ -d .bpipe/inprogress ];
+    then
+      for ip in .bpipe/inprogress/* ;
+      do
+          echo "Cleaning up files from context $ip"
+          for f in `cat $ip`;
+          do
+              if [ -e "$f" ];
+              then
+              target=".bpipe/trash/$f"
+              if [ ! -d .bpipe/trash ];
+              then
+                  mkdir -p .bpipe/trash
+              fi
+              count=1
+              realtarget="$target"
+              while [ -e "$realtarget" ];
+              do
+                realtarget="${target}.${count}"
+                let "count = count + 1"
+              done
+              target="$realtarget"
+              echo "Moving unclean file $f to $target"
+              echo
+              mv "$f" ".bpipe/trash/$f"
+              fi
+          done
+      done
+    fi
+}
+
+#----------------------------------------------------------
+# Signal handler that intercepts Ctrl+C
+# This allows us to do cleanup, better termination of child 
+# processes and other useful stuff.
+#----------------------------------------------------------
+function handle_sigint() {
+    if kill -0 $BPIPE_PID  ;
+    then
+        echo
+        read -p "Pipeline job running as process $BPIPE_PID.  Terminate? (y/n): "
+        if [ "$REPLY" == "y" ];
+        then
+            echo
+            echo "Terminating process $BPIPE_PID ..."
+            killtree $BPIPE_PID
+
+            # Don't carry on until Bpipe actually finishes
+            wait $BPIPE_PID > /dev/null 2>&1
+            echo 
+            cleanup
+        fi
+    fi
+
+    # Note that TAIL_PID is only defined when we use
+    # non-native tracking of bpipe termination. So
+    # only try and kill tail if it wouldn't have terminated
+    # by itself
+    if [ ! -z "$TAIL_PID" ];
+    then
+      if kill -0 $TAIL_PID ;
+      then
+          kill $TAIL_PID
+      fi
+    fi
+
+    clean_job_files
+    exit
+}
+
+#----------------------------------------------------------
+# Compute a classpath for running the Bpipe Java process
+# This path takes into account OS (so Cygwin gets a Windows
+# style path) and also recognizes when you are running in-situ
+# in the development tree so it will let classes from the
+# build directory override the jar files. 
+#----------------------------------------------------------
+get_classpath() {
+  LIB=lib
+  if [ -e $BPIPE_HOME/local-lib ];
+  then
+    LIB="local-lib"
+  fi
+
+  CP="$BPIPE_HOME"/$LIB/bpipe.jar:"$BPIPE_HOME"/$LIB/groovy-all-1.8.2.jar:$BPIPE_HOME/$LIB/commons-cli-1.2.jar:$BPIPE_HOME/$LIB/jgraphx.jar
+
+  # In case we are running in place in the bpipe project root, we pre-empt any other 
+  # bpipe classes with those from the build directory and the eclipse compile path
+  if [ -e $BPIPE_HOME/build/classes/main ];
+  then
+    CP="$BPIPE_HOME/eclipse-build:$BPIPE_HOME/build/classes/main:$CP"
+  fi
+
+  # Support for Cygwin: convert the class path to windows format 
+  if uname | grep -iq cygwin;
+  then
+     CP=`cygpath -pw "$CP"`
+  fi
+}
+
+#----------------------------------------------------------
+# Print out a list of currently active jobs
+# Bpipe stores a list of currently active jobs in the
+# user's home directory under .bpipedb/jobs.
+# 
+#----------------------------------------------------------
+print_jobs() {
+    if [ -e ~/.bpipedb/jobs/ ];
+    then
+        for i in ~/.bpipedb/jobs/* _ ;
+        do
+           base=`basename $i`
+           if [ "$base" != "*" ] && [ "$i" != "_" ];
+           then
+             if [ -e $i ];
+             then
+                 if kill -0 $base > /dev/null 2>/dev/null ;
+                 then
+                     # Resolve the directory where it is running
+                     JOB_DIR=`ls -l ~/.bpipedb/jobs/$base | sed 's/^.*->//g' | xargs dirname | xargs dirname | xargs dirname`
+                     echo "$base : $JOB_DIR :  "`cat $i`
+                 else
+                    # Since the process is not running, it was 
+                    # probably hard killed somehow, so 
+                    # just clean up the file quietly 
+                    rm -f ~/.bpipedb/jobs/$base
+                    rm -f .bpipe/jobs/$base
+                 fi
+             else
+                 echo "Found old PID file $i"
+                 #rm $i
+             fi
+           fi
+        done
+    fi
 }
 
 # Locate Bpipe's home directory
@@ -73,37 +278,13 @@ BPIPE_HOME=`dirname $0`/..
 # Default directory for pipes - user can override by setting BPIPE_LIB themselves
 : ${BPIPE_LIB:="$HOME/bpipes"}
 
-# Last bpipe commands
-if [ ! -e .bpipe/logs ];
-then
-    mkdir -p .bpipe/logs
-fi
-
-mkdir -p .bpipe/launch
+# Make sure needed directories exist
+mkdir -p .bpipe/launch .bpipe/logs
 
 COMMAND="$1"
 TESTMODE=""
 
-LIB=lib
-if [ -e $BPIPE_HOME/local-lib ];
-then
-  LIB="local-lib"
-fi
-
-CP="$BPIPE_HOME"/$LIB/bpipe.jar:"$BPIPE_HOME"/$LIB/groovy-all-1.8.2.jar:$BPIPE_HOME/$LIB/commons-cli-1.2.jar:$BPIPE_HOME/$LIB/jgraphx.jar
-
-# In case we are running in place in the bpipe project root, we pre-empt any other 
-# bpipe classes with those from the build directory and the eclipse compile path
-if [ -e $BPIPE_HOME/build/classes/main ];
-then
-  CP="$BPIPE_HOME/eclipse-build:$BPIPE_HOME/build/classes/main:$CP"
-fi
-
-# Token support for Cygwin: convert the class path to windows format so we can at least find the jars
-if uname | grep -iq cygwin;
-then
-   CP=`cygpath -pw "$CP"`
-fi
+get_classpath
 
 SHOWDEBUG=false
 
@@ -155,13 +336,15 @@ then
         TERM_HEIGHT=80
     fi
     
-    # echo "TERM_HEIGHT=$TERM_HEIGHT LAST_PID=$LAST_PID"
-   
+    # Note that the log is not named with the PID of the Java process (unfortunately) but rather
+    # with the PID of the shell script that started it.  Therefore we have to 
+    # list files to find the 'most recent' log.
+    # TODO: for consistency / sanity should try to change this
     LOG_ID=`ls -tc .bpipe/logs/*.log | grep -v 'bpipe\.' | head -1 | grep -o '[0-9]*.log$' | sed 's/[^0-9]//g'`
     
     if is_running ;
     then
-	    TAIL_OPT="-f"
+        TAIL_OPT="-f"
         TAIL_ROWS=$TERM_HEIGHT
     else
         let 'TAIL_ROWS=TERM_HEIGHT-7'
@@ -193,7 +376,7 @@ then
     echo
     echo "PID of last job is $LAST_PID"
     
-    if kill -0 $LAST_PID > /dev/null 2>&1 ;
+    if is_running ;
     then
       # TODO: would be nicer to show a little info and 
       # let the the user confirm?
@@ -218,28 +401,7 @@ then
     exit 
 elif [ "$COMMAND" == "jobs" ];
 then
-    if [ -e ~/.bpipedb/jobs/ ];
-    then
-        for i in ~/.bpipedb/jobs/* _ ;
-        do
-           base=`basename $i`
-           if [ "$base" != "*" ] && [ "$i" != "_" ];
-           then
-             if [ -e $i ];
-             then
-                 if kill -0 $base > /dev/null 2>/dev/null ;
-                 then
-                     echo "$base : "`cat $i`
-                 else
-                     echo "$base : appears to have stopped but was not removed from database.  Maybe hard killed?"
-                 fi
-             else
-                 echo "Found old PID file $i"
-                 #rm $i
-             fi
-           fi
-        done
-    fi
+    print_jobs
     exit
 elif [ "$COMMAND" == "run" ];
 then
@@ -295,7 +457,7 @@ $SHOWDEBUG && {
   echo "DEBUG:  Launched Java with PID $BPIPE_PID"
 }
 
-createPidFile
+create_pid_file $BPIPE_PID
 
 # Save the job in the local folder, linked to its PID
 mkdir -p .bpipe/jobs
@@ -307,91 +469,8 @@ echo "$0 $COMMAND $*" >> .bpipe/jobs/$BPIPE_PID
 mkdir -p ~/.bpipedb/jobs
 ln -s `pwd`/.bpipe/jobs/$BPIPE_PID  ~/.bpipedb/jobs/$BPIPE_PID
 
-# Check if the job files were flagged for cleanup
-function clean_job_files() {
-    if [ -e .bpipe/logs/$$.erase.log ];
-    then
-      rm .bpipe/logs/$$.erase.log
-      rm .bpipe/logs/$$.log
-
-      if [ ! -z $BPIPE_PID ] && [ -e .bpipe/jobs/$BPIPE_PID ];
-      then
-          rm .bpipe/jobs/$BPIPE_PID
-      fi
-    fi
-}
-
-# Look for files marked dirty and clean them up
-cleanup() {
-    # Check for any unclean files in .bpipe/unclean
-    if [ -d .bpipe/inprogress ];
-    then
-      for ip in .bpipe/inprogress/* ;
-      do
-          echo "Cleaning up files from context $ip"
-          for f in `cat $ip`;
-          do
-              if [ -e "$f" ];
-              then
-              target=".bpipe/trash/$f"
-              if [ ! -d .bpipe/trash ];
-              then
-                  mkdir -p .bpipe/trash
-              fi
-              count=1
-              realtarget="$target"
-              while [ -e "$realtarget" ];
-              do
-                realtarget="${target}.${count}"
-                let "count = count + 1"
-              done
-              target="$realtarget"
-              echo "Moving unclean file $f to $target"
-              echo
-              mv "$f" ".bpipe/trash/$f"
-              fi
-          done
-      done
-    fi
-}
-
-# Signal handler that intercepts Ctrl+C
-function end() {
-    if kill -0 $BPIPE_PID  ;
-    then
-        echo
-        read -p "Pipeline job running as process $BPIPE_PID.  Terminate? (y/n): "
-        if [ "$REPLY" == "y" ];
-        then
-            echo
-            echo "Terminating process $BPIPE_PID ..."
-            killtree $BPIPE_PID
-
-            # Don't carry on until Bpipe actually finishes
-            wait $BPIPE_PID > /dev/null 2>&1
-            echo 
-            cleanup
-        fi
-    fi
-
-    # Note that TAIL_PID is only defined when we use
-    # non-native tracking of bpipe termination. So
-    # only try and kill tail if it wouldn't have terminated
-    # by itself
-    if [ ! -z "$TAIL_PID" ];
-    then
-      if kill -0 $TAIL_PID ;
-      then
-          kill $TAIL_PID
-      fi
-    fi
-
-    clean_job_files
-    exit
-}
-
 # Set up signal handler to trap Ctrl-C so that we can cleanly abort the job
-trap end SIGINT
+trap handle_sigint SIGINT
 
 # Tail the output so that the user sees it
 RUNPID=$$
