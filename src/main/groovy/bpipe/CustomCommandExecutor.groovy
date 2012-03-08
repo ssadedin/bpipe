@@ -158,7 +158,10 @@ class CustomCommandExecutor implements CommandExecutor {
         if(config?.procs) 
             env.PROCS = config.procs
             
-        String startCmd = pb.command().join(' ')
+        if(config?.queue) 
+            env.QUEUE = config.queue
+            
+         String startCmd = pb.command().join(' ')
         log.info "Starting command: " + startCmd
 		
 		withLock(cfg) {

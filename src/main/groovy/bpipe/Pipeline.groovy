@@ -112,6 +112,19 @@ public class Pipeline {
 	}
     
     /**
+     * Define a pipeline segment - allows a pipeline segment to
+     * be created and stored in a variable
+     */
+	static def define(Closure pipelineBuilder) {
+        
+		Pipeline pipeline = new Pipeline()
+        PipelineCategory.addStages(pipelineBuilder.binding)
+        pipeline.loadExternalStages()
+
+        return pipeline.execute([], pipelineBuilder.binding, pipelineBuilder, false)
+    }
+    
+    /**
      * Default run method - introspects all the inputs from the binding of the
      * pipeline closure.
      */
@@ -140,7 +153,6 @@ public class Pipeline {
             
         pipeline.loadExternalStages()
 
-		// Create a command log file to capture all commands executed
         def mode = Config.config.mode 
         if(mode == "run")
 	        pipeline.execute(inputFile, host, pipelineBuilder)
@@ -185,7 +197,7 @@ public class Pipeline {
         }
     }
 
-	private void execute(def inputFile, Object host, Closure pipeline) {
+	private Closure execute(def inputFile, Object host, Closure pipeline, boolean launch=true) {
         
         Pipeline.rootThreadId = Thread.currentThread().id
         
@@ -201,42 +213,45 @@ public class Pipeline {
         // Add all the pipeline variables to the external binding
         this.externalBinding.variables += pipeline.binding.variables
         
-
         def cmdlog = CommandLog.log
-        cmdlog.write("")
-
-        String startDateTime = (new Date()).format("yyyy-MM-dd") + " "
-        cmdlog << "#"*Config.config.columns 
-        cmdlog << "# Starting pipeline at " + (new Date())
-        cmdlog << "# Input files:  $inputFile"
-		println("="*Config.config.columns)
-		println("|" + " Starting Pipeline at $startDateTime".center(Config.config.columns-2) + "|")
-		println("="*Config.config.columns)
-
+        if(launch) {
+            cmdlog.write("")
+            String startDateTime = (new Date()).format("yyyy-MM-dd") + " "
+            cmdlog << "#"*Config.config.columns 
+            cmdlog << "# Starting pipeline at " + (new Date())
+            cmdlog << "# Input files:  $inputFile"
+    		println("="*Config.config.columns)
+    		println("|" + " Starting Pipeline at $startDateTime".center(Config.config.columns-2) + "|")
+    		println("="*Config.config.columns)
+        }
+    
+		def constructedPipeline
 		use(PipelineCategory) {
             
             // Build the actual pipeline
-			def constructedPipeline
             Pipeline.withCurrentUnderConstructionPipeline(this) {
 				constructedPipeline = pipeline()
 			}
 			
-            runSegment(inputFile, constructedPipeline, null)
-
-			println("\n"+" Pipeline Finished ".center(Config.config.columns,"="))
-			rootContext.msg "Finished at " + (new Date())
-
-            if(!failed) {
-				def outputFile = Utils.first(stages[-1].context.output)
-				if(outputFile && !outputFile.startsWith("null") /* hack */ && new File(outputFile).exists()) {
-					rootContext.msg "Output is " + outputFile
-				}
-            }
+            if(launch) {
+                runSegment(inputFile, constructedPipeline, null)
+    			println("\n"+" Pipeline Finished ".center(Config.config.columns,"="))
+    			rootContext.msg "Finished at " + (new Date())
+    
+                if(!failed) {
+    				def outputFile = Utils.first(stages[-1].context.output)
+    				if(outputFile && !outputFile.startsWith("null") /* hack */ && new File(outputFile).exists()) {
+    					rootContext.msg "Output is " + outputFile
+    				}
+                }
+    		}
 		}
 
 		// Make sure the command log ends with newline
 		// as output is not terminated with one by default
 		cmdlog << ""
+        
+        return constructedPipeline
 	}
     
     PipelineContext createContext() {
