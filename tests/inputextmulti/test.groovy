@@ -12,7 +12,7 @@ hello = {
 }
 
 world = {
-	exec "cat $input.txt > $output"
+	exec "cat $inputs.txt > $output"
 }
 
 Bpipe.run {
