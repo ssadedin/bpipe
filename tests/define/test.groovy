@@ -23,11 +23,11 @@ saturn = {
 }
 
 
-defined = Bpipe.define { hello + world }
+defined = segment { hello + world }
 
-defined2 = Bpipe.define { jupiter + saturn }
+defined2 = segment { jupiter + saturn }
 
 
 Bpipe.run {
-	defined + defined2 + mars
+	defined + all_external + defined2 + mars
 }

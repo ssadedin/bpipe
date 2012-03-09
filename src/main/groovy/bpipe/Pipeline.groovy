@@ -115,11 +115,12 @@ public class Pipeline {
      * Define a pipeline segment - allows a pipeline segment to
      * be created and stored in a variable
      */
-	static def define(Closure pipelineBuilder) {
+	static def segment(Closure pipelineBuilder) {
         
 		Pipeline pipeline = new Pipeline()
         PipelineCategory.addStages(pipelineBuilder.binding)
-        pipeline.loadExternalStages()
+		if(!pipelineBuilder.binding.variables.containsKey("BPIPE_NO_EXTERNAL_STAGES"))
+	        pipeline.loadExternalStages()
 
         return pipeline.execute([], pipelineBuilder.binding, pipelineBuilder, false)
     }
@@ -290,7 +291,7 @@ public class Pipeline {
         def scripts = pipeFolder.listFiles().grep { it.name.endsWith("groovy") }.each { scriptFile ->
             log.info("Evaluating library file $scriptFile")
             try {
-		        shell.evaluate(scriptFile)
+		        shell.evaluate("import static Bpipe.*; binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true; " + scriptFile.text)
             }
             catch(Exception ex) {
                 log.severe("Failed to evaluate script $scriptFile: "+ ex)
