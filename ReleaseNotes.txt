@@ -3,53 +3,53 @@
     --------: Updated to groovy 1.8.6
 
     Issue 17: Composable Pipelines - Ability to Define
-	      Reusable Pipeline Segments
+              Reusable Pipeline Segments
 
     Issue 9:  Pipeline file can't have same name as
-	      pipeline stage
+              pipeline stage
 
     -------:  Added printout of job directory when running 'bpipe
-	      jobs'
+              jobs'
 
     -------:  added check to ensure that no existing pipeline is
-	      running in a directory when starting a new one
+              running in a directory when starting a new one
 
     Issue 15: Output from commands like 'bpipe test'
-	      or printing help should not become the most recent log
+              or printing help should not become the most recent log
 
     Issue 16: Ability to resolve multiple files using
-	      input variable with extensions
+              input variable with extensions
 
     Issue 11: 'bpipe log' shows output from runs
-	      even when Bpipe didn't successfully start - fixed
-	      regression, bpipe log incorrectly showing job as
-	      finished
+              even when Bpipe didn't successfully start - fixed
+              regression, bpipe log incorrectly showing job as
+              finished
 
     --------: made output from 'bpipe log' adjust number of lines
-	      displayed according to terminal height
+              displayed according to terminal height
 
     Issue 4:  Bpipe log command hangs requiring Ctrl-C
-	      when Job is Finished
+              when Job is Finished
 
     --------: fixed spurious semilcolon prepended to command when
-	      leading blank lines inlcuded
+              leading blank lines inlcuded
 
     --------: changed various thread pools to create daemon threads to
-	      prevent java process living on after bpipe exits
+              prevent java process living on after bpipe exits
 
     --------: numerous measures to use less file handles and avoid
               leaking / holding open file handles to prevent issues
               running where file handles are constrained
 
     Issue 14: Support for Detecting when Commands have
-	      Changed in Rerunning Pipeline (disabled by default, to
+              Changed in Rerunning Pipeline (disabled by default, to
               enable set flag in bpipe.config).
 
     Issue 13: Bpipe should offer some way to control how
-	      many threads it will create
+              many threads it will create
 
     Issue 12: Deadlock and Corrupted Command Log when
-	      running huge number of Parallel Stages (>100)
+              running huge number of Parallel Stages (>100)
 
 =========== Changes for Bpipe Version 0.2 ============
     fixed exit code not displaying when command fails
