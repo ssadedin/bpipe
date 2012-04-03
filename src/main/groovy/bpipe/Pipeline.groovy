@@ -110,6 +110,23 @@ public class Pipeline {
             currentUnderConstructionPipeline = null
         }
 	}
+	
+	static def chr(Object... objs) {
+		Set<Chr> result = [] as Set
+		for(Object o in objs) {
+			if(o instanceof Range) {
+				for(r in o) {
+					result << new Chr('chr'+r)
+				}
+			}
+			else 
+			if(o instanceof String || o instanceof Integer) {
+				result << new Chr('chr'+o)
+			}
+		}
+		
+		return result
+	}
     
     /**
      * Define a pipeline segment - allows a pipeline segment to
@@ -124,7 +141,7 @@ public class Pipeline {
 
         return pipeline.execute([], pipelineBuilder.binding, pipelineBuilder, false)
     }
-    
+	
     /**
      * Default run method - introspects all the inputs from the binding of the
      * pipeline closure.
@@ -166,9 +183,14 @@ public class Pipeline {
      * Runs the specified closure in the context of this pipeline 
      * and both decrements and notifies the given counter when finished.
      */
-    void runSegment(def inputs, Closure s, AtomicInteger counter) {
+    void runSegment(def inputs, Closure s, AtomicInteger counter, Map extraVars = [:]) {
         try {
             this.rootContext = createContext()
+			if(!rootContext.extraBinding)
+				rootContext.extraBinding = new Binding()
+				
+			rootContext.extraBinding.variables += extraVars
+			
             def currentStage = new PipelineStage(rootContext, s)
             log.info "Running segment with inputs $inputs"
             this.addStage(currentStage)
