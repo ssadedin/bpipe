@@ -58,7 +58,7 @@ class PipelineCategory {
      * This is how predeclared Transform and Filters work.
      */
     static Map wrappers = [:]
-    
+	
     /**
      * Joins two closures representing pipeline stages together by
      * creating wrapping closure that executes each one in turn.  This is the 
@@ -131,6 +131,69 @@ class PipelineCategory {
         return plusImplementation
 	}
     
+	static Object multiply(Set objs, List segments) {
+		if(!objs) 
+			throw new PipelineError("Multiply syntax requires a non-empty list of files or chromosomes, but no entries were in the supplied set")
+		
+        Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
+		
+		def multiplyImplementation = { input ->
+            
+			log.info "multiply on input $input on set " + objs
+            
+            def currentStage = new PipelineStage(pipeline.createContext(), {})
+            pipeline.addStage(currentStage)
+            currentStage.context.setInput(input)
+            
+            AtomicInteger runningCount = new AtomicInteger()
+			
+			List chrs = []
+			chrs.addAll(objs)
+			chrs.sort()
+            
+            // Now we have all our samples, make a 
+		    // separate pipeline for each one, and for each parallel stage
+            List<Pipeline> childPipelines = []
+            List<Runnable> threads = []
+            for(Closure s in segments) {
+                log.info "Processing segment ${s.hashCode()}"
+				chrs.each { chr ->
+	                log.info "Creating pipeline to run on chromosome $chr"
+	                runningCount.incrementAndGet()
+	                Pipeline child = pipeline.fork()
+                    Closure segmentClosure = s
+                    threads << {
+                            try {
+        			            // First we make a "dummy" stage that contains the inputs
+        			            // to the next stage as outputs.  This allows later logic
+        			            // to find these "inputs" correctly when it expects to see
+        			            // all "inputs" reflected as some output of an earlier stage
+        			            PipelineContext dummyPriorContext = pipeline.createContext()
+        			            PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
+        			            dummyPriorContext.output = input
+                                
+        			            log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
+        			            pipeline.addStage(dummyPriorStage)
+        	                    child.runSegment(input, segmentClosure, runningCount, [chr: chr.name])
+                            }
+                            catch(Exception e) {
+                                log.severe("Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message)
+								StackTraceUtils.sanitize(e).printStackTrace()
+                                child.failed = true
+                            }
+	                } as Runnable
+                    childPipelines << child
+				}
+            }
+            return runAndWaitFor(currentStage, childPipelines, threads, runningCount)
+		}
+        
+        log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
+        pipeline.joiners << multiplyImplementation
+        
+        return multiplyImplementation
+	}
+	
     /**
      * Implements the syntax that allows an input filter to 
      * break inputs into samples and pass to multiple parallel 
@@ -140,8 +203,6 @@ class PipelineCategory {
      */
 	static Object multiply(String pattern, List segments) {
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
-        
-                        
         segments = segments.collect { 
             if(it instanceof List) {
                 return multiply("*",it)
@@ -169,17 +230,15 @@ class PipelineCategory {
             AtomicInteger runningCount = new AtomicInteger()
             
             // Now we have all our samples, make a 
-			// separate pipeline for each one, and for each parallel stage
-           List<Pipeline> childPipelines = []
-           List<Runnable> threads = []
-           for(Closure s in segments) {
+		    // separate pipeline for each one, and for each parallel stage
+            List<Pipeline> childPipelines = []
+            List<Runnable> threads = []
+            for(Closure s in segments) {
                 log.info "Processing segment ${s.hashCode()}"
 				samples.each { id, files ->
 	                log.info "Creating pipeline to run sample $id with files $files"
 	                runningCount.incrementAndGet()
 	                Pipeline child = pipeline.fork()
-                    
-		                    
                     Closure segmentClosure = s
                     threads << {
                             try {
@@ -204,7 +263,16 @@ class PipelineCategory {
                     childPipelines << child
 				}
             }
-           
+            return runAndWaitFor(currentStage, childPipelines, threads, runningCount)
+		}
+        
+        log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
+        pipeline.joiners << multiplyImplementation
+        
+        return multiplyImplementation
+	}
+	
+	static runAndWaitFor(PipelineStage currentStage, List<Pipeline> pipelines, List<Runnable> threads, AtomicInteger runningCount) {
             // Start all the threads
 		    log.info "Creating thread pool with " + Config.config.maxThreads + " threads to execute parallel pipelines"
             ThreadPoolExecutor pool = Executors.newFixedThreadPool(Config.config.maxThreads, { Runnable r ->
@@ -232,13 +300,13 @@ class PipelineCategory {
                 pool.shutdown()
             }
             
-            if(childPipelines.any { it.failed }) {
+            if(pipelines.any { it.failed }) {
                 // TODO: make a much better error message!
                 throw new PipelineError("One or more parallel stages aborted")
             }
             
             def nextInputs = []
-            childPipelines.eachWithIndex { c,i ->
+            pipelines.eachWithIndex { c,i ->
                 def out = c.stages[-1].context.nextInputs
                 log.info "Outputs from child $i :  $out context=${c.stages[-1].context.hashCode()}"
                 if(out)
@@ -249,13 +317,6 @@ class PipelineCategory {
             Utils.checkFiles(currentStage.context.output)
             
             return nextInputs
-		}
-        
-        log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
-        pipeline.joiners << multiplyImplementation
-        
-        return multiplyImplementation
-        
 	}
     
     static void addStages(Binding binding) {
