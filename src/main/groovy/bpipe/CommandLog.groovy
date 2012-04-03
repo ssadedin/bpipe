@@ -11,6 +11,7 @@ class CommandLog {
      */
     synchronized void write(String line) {
         writer.println(line)
+        writer.flush()
     }
     
     void leftShift(String line) {
