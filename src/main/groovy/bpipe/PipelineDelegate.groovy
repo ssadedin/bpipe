@@ -42,9 +42,20 @@ class PipelineDelegate {
         // ie.  $foo will produce value $foo.  This is used to preserve $'d values in 
         // R scripts while still allowing interpretation of the ones we want ($input, $output, etc)
 		log.info "Query for $name on ${context.get()} via delegate ${this}"
-        if(name != "input" && !context.get().hasProperty(name) && context.get().echoWhenNotFound) {
+        
+        PipelineContext ctx = context.get()
+        
+        if(ctx.hasProperty(name)) {
+	        return ctx.getProperty(name)
+        }
+        else
+        if(Pipeline.currentRuntimePipeline.get()?.variables?.containsKey(name)) {
+            return Pipeline.currentRuntimePipeline.get().variables.get(name)
+        }
+        else
+        if(name != "input" && ctx.echoWhenNotFound) {
 	        try {
-		        def result = context.get().getProperty(name)
+		        def result = ctx.getProperty(name)
 	            //log.info "Retrieved result for $name = $result"
 	            return result
 	        }
@@ -52,7 +63,5 @@ class PipelineDelegate {
 	            return '$'+name
 	        }
         }
-        else
-	        return context.get().getProperty(name)
     }
 }

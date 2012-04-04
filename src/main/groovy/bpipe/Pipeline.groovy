@@ -52,9 +52,19 @@ public class Pipeline {
     
     /**
      * Global binding - variables and functions (including pipeline stages)
-     * that are available to all pipeline stages
+     * that are available to all pipeline stages.  Don't put
+     * variables that are specific to a pipeline in here (even though this
+     * is an instance method) because they are injected in a way that makes
+     * them appear across all pipeline instances.  For pipeline instance 
+     * specific variables, see {@link #variables}
      */
     Binding externalBinding = new Binding()
+    
+    /**
+     * Variables that are only available to this specific instance of a 
+     * running pipeline.
+     */
+    Map<String,String> variables = [:]
     
     /**
      * List of past stages that have already produced outputs.  This 
@@ -66,6 +76,21 @@ public class Pipeline {
      * A list of "dummy" stages that are actually used to link other stages together
      */
     def joiners = []
+    
+    /**
+     * A name for the pipeline that is added to output file names when 
+     * the pipeline is run as a child pipeline.  This is null and not used
+     * in the default, root pipeline
+     */
+    String name 
+    
+    /**
+     * Whether the name for the pipeline has been applied in the naming of
+     * files that are produced by the pipeline.  A pipeline segment with a 
+     * name should only inject its name into the output file name sequence
+     * once, so this flag is set true when that happens.
+     */
+    boolean nameApplied = false
     
     /**
      * Flag that is set to true if this pipeline has executed and experienced 
@@ -89,6 +114,14 @@ public class Pipeline {
      * are accessed at the same time.
      */
 	static Pipeline currentUnderConstructionPipeline = null
+    
+    /**
+     * In a situation where multiple parallel exeuction paths are
+     * running there are child pipelines. The child stages
+     * inside the child pipeline are associated with the pipeline 
+     * by this thread local variable
+     */
+    static ThreadLocal<Pipeline> currentRuntimePipeline = new ThreadLocal()
     
     /**
      * Due to certain constraints in how Groovy handles operator 
@@ -183,14 +216,13 @@ public class Pipeline {
      * Runs the specified closure in the context of this pipeline 
      * and both decrements and notifies the given counter when finished.
      */
-    void runSegment(def inputs, Closure s, AtomicInteger counter, Map extraVars = [:]) {
+    void runSegment(def inputs, Closure s, AtomicInteger counter) {
         try {
             this.rootContext = createContext()
-			if(!rootContext.extraBinding)
-				rootContext.extraBinding = new Binding()
-				
-			rootContext.extraBinding.variables += extraVars
-			
+            
+            if(currentRuntimePipeline.get() == null) 
+                currentRuntimePipeline.set(this)
+		
             def currentStage = new PipelineStage(rootContext, s)
             log.info "Running segment with inputs $inputs"
             this.addStage(currentStage)

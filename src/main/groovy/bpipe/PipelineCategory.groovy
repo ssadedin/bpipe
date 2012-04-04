@@ -124,7 +124,6 @@ class PipelineCategory {
                 
             Utils.checkFiles(nextInputs)
             
-            
             return mul(nextInputs)
 		}
         pipeline.joiners << plusImplementation
@@ -174,7 +173,9 @@ class PipelineCategory {
                                 
         			            log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
         			            pipeline.addStage(dummyPriorStage)
-        	                    child.runSegment(input, segmentClosure, runningCount, [chr: chr.name])
+                                child.variables += [chr: chr.name]
+                                child.name = chr.name
+        	                    child.runSegment(input, segmentClosure, runningCount)
                             }
                             catch(Exception e) {
                                 log.severe("Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message)
@@ -284,8 +285,14 @@ class PipelineCategory {
             try {
                 threads.each { pool.execute(it) }
                 
+                long lastLogTimeMillis = 0
     			while(runningCount.get()) {
-    				log.info("Waiting for " + runningCount.get() + " parallel stages to complete" )
+                    
+                    if(lastLogTimeMillis < System.currentTimeMillis() - 5000) {
+        				log.info("Waiting for " + runningCount.get() + " parallel stages to complete (pool.active=${pool.activeCount} pool.tasks=${pool.taskCount})" )
+                        lastLogTimeMillis = System.currentTimeMillis()
+                    }
+                        
                     synchronized(runningCount) {
                         runningCount.wait(5)
                     }

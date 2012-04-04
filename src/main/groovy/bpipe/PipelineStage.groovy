@@ -100,18 +100,29 @@ class PipelineStage {
             oldFiles.removeAll { f -> IGNORE_NEW_FILE_PATTERNS.any { f.name.matches(it) } }
             def modified = oldFiles.inject([:]) { result, f -> result[f] = f.lastModified(); return result }
             
+            def pipeline = Pipeline.currentRuntimePipeline.get()
             boolean joiner = (body in this.context.pipelineJoiners)
             if(!joiner) {
-	            stageName = PipelineCategory.closureNames.containsKey(body) ?
-	            PipelineCategory.closureNames[body] : "${stageCount}"
+	            stageName = 
+                    PipelineCategory.closureNames.containsKey(body) ? PipelineCategory.closureNames[body] : "${stageCount}"
+                    
 	            println ""
 	            println " Stage ${stageName} ".center(Config.config.columns,"=")
 			    CommandLog.log << "# Stage $stageName"
                 ++stageCount
                 
-	            if(context.output == null) {
-                    if(context.@input)
-		                context.defaultOutput = Utils.first(context.@input) + "." + stageName
+	            if(context.output == null && context.@defaultOutput == null) {
+                    if(context.@input) {
+                        if(pipeline.name && !pipeline.nameApplied) {
+                            context.defaultOutput = Utils.first(context.@input) + "." + pipeline.name + "."+stageName
+                            // Note we don't set pipeline.nameApplied = true here
+                            // if it is really applied then that is flagged in PipelineContext
+                            // Setting the applied flag here will stop it from being applied
+                            // in the transform / filter constructs 
+                        }
+                        else
+    		                context.defaultOutput = Utils.first(context.@input) + "." + stageName
+                    }
 	            }
 	            log.info("Stage $stageName : INPUT=${context.@input} OUTPUT=${context.output}")
             }   

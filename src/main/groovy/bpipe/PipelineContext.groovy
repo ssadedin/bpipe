@@ -29,56 +29,56 @@ class PipelineContext {
      */
     public static File UNCLEAN_FILE_PATH = new File(".bpipe/inprogress")
    
-   /**
-    * Logger for this class to use
-    */
-   private static Logger log = Logger.getLogger("bpipe.PipelineContext");
+    /**
+     * Logger for this class to use
+     */
+    private static Logger log = Logger.getLogger("bpipe.PipelineContext");
    
-   /**
-    * Create a Pipeline Context with the specified adidtional bound variables and
-    * pipeline stages as well.
-    *
-    * @param extraBinding    extra variables to make referenceable by pipeline stages
-    *                        that execute using this context
-    * @param pipelineStages  list of known pipeline stages.  These are used to resolve
-    *                        inputs when the user uses the implicit 'from' by appending
-    *                        an extension to the implicit input variable (eg: $input.csv).
-    *                        The stages are searched to find the most recent stage with
-    *                        an output that matches the specified extension.
-    *
-    */
-   public PipelineContext(Binding extraBinding, List<PipelineStage> pipelineStages, List<Closure> pipelineJoiners) {
-       super();
-       if(pipelineStages == null)
-           throw new IllegalArgumentException("pipelineStages cannot be null")
-       this.pipelineStages = pipelineStages
-       this.extraBinding = extraBinding
-       this.pipelineJoiners = pipelineJoiners
-       this.initUncleanFilePath()
-       this.threadId = Thread.currentThread().getId()
-   }
+    /**
+     * Create a Pipeline Context with the specified adidtional bound variables and
+     * pipeline stages as well.
+     *
+     * @param extraBinding    extra variables to make referenceable by pipeline stages
+     *                        that execute using this context
+     * @param pipelineStages  list of known pipeline stages.  These are used to resolve
+     *                        inputs when the user uses the implicit 'from' by appending
+     *                        an extension to the implicit input variable (eg: $input.csv).
+     *                        The stages are searched to find the most recent stage with
+     *                        an output that matches the specified extension.
+     *
+     */
+    public PipelineContext(Binding extraBinding, List<PipelineStage> pipelineStages, List<Closure> pipelineJoiners) {
+        super();
+        if(pipelineStages == null)
+            throw new IllegalArgumentException("pipelineStages cannot be null")
+        this.pipelineStages = pipelineStages
+        this.extraBinding = extraBinding
+        this.pipelineJoiners = pipelineJoiners
+        this.initUncleanFilePath()
+        this.threadId = Thread.currentThread().getId()
+    }
    
-   /**
-    * Additional variables that are injected into the pipeline stage when it executes.
-    * In practice, these allow it to resolve pipeline stages that are loaded from external
-    * files (which otherwise would not be in scope).
-    */
-   Binding extraBinding
-   
-   /**
-    * The stage name for which this context is running
-    */
-   String stageName
-   
-   /**
-    * The directory to which the pipeline stage should write its outputs
-    */
-   String outputDirectory = "."
-   
-   /**
-    * The id of the thread that created this context
-    */
-   Long threadId
+    /**
+     * Additional variables that are injected into the pipeline stage when it executes.
+     * In practice, these allow it to resolve pipeline stages that are loaded from external
+     * files (which otherwise would not be in scope).
+     */
+    Binding extraBinding
+    
+    /**
+     * The stage name for which this context is running
+     */
+    String stageName
+    
+    /**
+     * The directory to which the pipeline stage should write its outputs
+     */
+    String outputDirectory = "."
+    
+    /**
+     * The id of the thread that created this context
+     */
+    Long threadId
    
     /**
      * File patterns that will be excluded as inferred output files because they may be created 
@@ -361,7 +361,16 @@ class PipelineContext {
         def inp = Utils.first(this.@input)
         if(!inp) 
            throw new PipelineError("Expected input but no input provided") 
-        this.produce(inp.replaceAll('\\.[^\\.]*$','.'+extension),body)
+        
+        def pipeline = Pipeline.currentRuntimePipeline.get()
+        def result
+        if(pipeline.name && !pipeline.nameApplied) {
+            result = this.produce(inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+'.'+extension),body)
+            pipeline.nameApplied = true
+        }
+        else
+            result = this.produce(inp.replaceAll('\\.[^\\.]*$','.'+extension),body)
+        return result
     }
   
    
@@ -377,7 +386,17 @@ class PipelineContext {
         if(!inp) 
            throw new PipelineError("Expected input but no input provided") 
            
-        this.produce(inp.replaceAll('(\\.[^\\.]*$)','.'+type+'$1'),body)
+        String oldExt = (inp =~ '\\.[^\\.]*$')[0]
+        
+        def pipeline = Pipeline.currentRuntimePipeline.get()
+        def result
+        if(pipeline.name && !pipeline.nameApplied) {
+            result = this.produce(inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+oldExt),body)
+            pipeline.nameApplied = true
+        }
+        else 
+            result = this.produce(inp.replaceAll('(\\.[^\\.]*$)','.'+type+oldExt),body)
+        return result
     }
     
        /**
