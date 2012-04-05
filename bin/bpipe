@@ -27,6 +27,8 @@ VERSION=0.0.0
 # it will be replaced by the build script at build time
 BUILDDATE=0
 
+: ${JAVA_MEM:=256m}
+
 #----------------------------------------------------------
 # Kill a whole tree of processes in a cross platform way.
 # Note, in some situations killing the parent process is 
@@ -318,12 +320,12 @@ then
 elif [ "$COMMAND" == "diagram" ];
 then
     shift 1
-    java -classpath "$CP" -Dbpipe.mode=diagram bpipe.Runner $* 
+    java -Xmx$JAVA_MEM -classpath "$CP" -Dbpipe.mode=diagram bpipe.Runner $* 
     exit
 elif [ "$COMMAND" == "diagrameditor" ];
 then
     shift 1
-    java -classpath "$CP" -Dbpipe.mode=diagrameditor bpipe.Runner $* 
+    java -Xmx$JAVA_MEM -classpath "$CP" -Dbpipe.mode=diagrameditor bpipe.Runner $* 
     exit
 elif [ "$COMMAND" == "log" ];
 then
@@ -396,7 +398,7 @@ then
     fi
 
     # Now stop any remaining commands
-    java -classpath "$CP" -Dbpipe.mode=stopcommands bpipe.Runner
+    java -Xmx$JAVA_MEM -classpath "$CP" -Dbpipe.mode=stopcommands bpipe.Runner
 
     exit
 elif [ "$COMMAND" == "cleancommands" ];
@@ -453,8 +455,9 @@ echo "$0 $COMMAND $*" >> .bpipe/history
 # to figure out its own process id which is otherwise hard to do in Java
 $SHOWDEBUG && { 
   echo "DEBUG: classpath=$CP"
+  echo "JAVA_MEM: $JAVA_MEM"
 }
-nohup java -classpath "$CP" $BPIPEDEBUG -Dbpipe.pid=$$ -Dbpipe.home="$BPIPE_HOME" -Dbpipe.version=$VERSION bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
+nohup java -Xmx$JAVA_MEM -classpath "$CP" $BPIPEDEBUG -Dbpipe.pid=$$ -Dbpipe.home="$BPIPE_HOME" -Dbpipe.version=$VERSION bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
 
 BPIPE_PID="$!"
 
