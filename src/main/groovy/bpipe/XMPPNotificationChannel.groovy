@@ -75,6 +75,12 @@ class XMPPNotificationChannel implements NotificationChannel {
 		username = cfg.username
 		password = cfg.password
 	}
+	
+	/**
+	 * Used by child class
+	 */
+	protected XMPPNotificationChannel() {
+	}
 
 	@Override
 	public void notify(PipelineEvent event, String subject, Map<String, Object> model) {
@@ -90,7 +96,7 @@ class XMPPNotificationChannel implements NotificationChannel {
 		
 		ChatManager chatmanager = connection.getChatManager();
 		boolean failed = false
-		String content = "Pipeline " + event.name().toLowerCase() + ": " + subject + " in directory " + (new File(".").absoluteFile.name)
+		String content = "Pipeline " + event.name().toLowerCase() + ": " + subject + " in directory " + (new File(".").absoluteFile.parentFile.name)
 		recipients.split(",").each {
 			try {
 				Chat chat = chatmanager.createChat(it, null);
@@ -105,4 +111,18 @@ class XMPPNotificationChannel implements NotificationChannel {
 		}
 		connection.disconnect()
 	}
+}
+
+/**
+ * XMPP with defaults for google chat built in
+ * 
+ * @author ssadedin
+ */
+class GTALKNotificationChannel extends XMPPNotificationChannel {
+	GTALKNotificationChannel(ConfigObject cfg) {
+		connConfig = new ConnectionConfiguration("talk.google.com", 5222, "gmail.com");
+		recipients = cfg.to
+		username = cfg.username
+		password = cfg.password
+	}	
 }

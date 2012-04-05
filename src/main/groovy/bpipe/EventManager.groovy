@@ -77,7 +77,8 @@ class EventManager {
 				channel.notify(evt, desc, detail)
 			}
 			catch(Throwable t) {
-				log.warning("Failed to send notification via channel '$name' ("+ channel + ") with configuration " + channelCfg)
+				log.warning("Failed to send notification via channel '$name' ("+ channel + ") with configuration " + channelCfg + ": " + t)
+				t.printStackTrace()
 			}
 		}
 	}

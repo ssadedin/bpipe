@@ -76,6 +76,9 @@ class SMTPNotificationChannel implements NotificationChannel {
 		from = cfg.from?:username
 	}
 
+	protected SMTPNotificationChannel() {
+	}
+	
 	@Override
 	public void notify(PipelineEvent event, String subject, Map<String, Object> model) {
 		Properties props = new Properties();
@@ -95,14 +98,14 @@ class SMTPNotificationChannel implements NotificationChannel {
 			session = Session.getDefaultInstance(props,
 				new javax.mail.Authenticator() {
 					protected javax.mail.PasswordAuthentication getPasswordAuthentication() {
-						return new javax.mail.PasswordAuthentication(username,password);
+						return new javax.mail.PasswordAuthentication(SMTPNotificationChannel.this.username,SMTPNotificationChannel.this.password);
 					}
 				});
 		}
 		else 
 			session = Session.getDefaultInstance(props)
  
-		String subjectLine = "Pipeline " + event.name().toLowerCase() + ": " + subject + " in directory " + (new File(".").absoluteFile.name)
+		String subjectLine = "Pipeline " + event.name().toLowerCase() + ": " + subject + " in directory " + (new File(".").absoluteFile.parentFile.name)
 		Message message = new MimeMessage(session);
 		message.setFrom(new InternetAddress(from));
 
@@ -113,4 +116,18 @@ class SMTPNotificationChannel implements NotificationChannel {
 
 		System.out.println("Done");
 	}
+}
+
+class GMAILNotificationChannel extends SMTPNotificationChannel {
+	GMAILNotificationChannel(ConfigObject cfg) {
+		host = "smtp.gmail.com"
+		ssl = true
+		port = 465
+		username = cfg.username
+		password = cfg.password
+		auth = true
+		recipients = cfg.to
+		from = cfg.from?:username
+	}
+	
 }
