@@ -41,7 +41,12 @@ class Config {
 		// This flag is read on shutdown and if true, a 
 		// marker file is written that causes the log files to be 
 		// ignored / cleaned up 
-		eraseLogsOnExit : true
+		eraseLogsOnExit : true, 
+		
+		// Set to comma separated list of 
+		// notification channels to use.  Currently only
+		// XMPP supported
+		notifications : null
     ]
     
     /**

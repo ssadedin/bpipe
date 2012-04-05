@@ -1,0 +1,28 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+COMPLETE	groovy/bpipe/CommandStatus.java	/^    COMPLETE, $/;"	e	enum:CommandStatus	file:
+CommandExecutor	groovy/bpipe/CommandExecutor.java	/^interface CommandExecutor extends Serializable {$/;"	i
+CommandStatus	groovy/bpipe/CommandStatus.java	/^public enum CommandStatus {$/;"	g
+ProbeCommandExecutor	groovy/bpipe/ProbeCommandExecutor.java	/^public class ProbeCommandExecutor implements CommandExecutor {$/;"	c
+QUEUEING	groovy/bpipe/CommandStatus.java	/^    QUEUEING,$/;"	e	enum:CommandStatus	file:
+RUNNING	groovy/bpipe/CommandStatus.java	/^    RUNNING, $/;"	e	enum:CommandStatus	file:
+UNKNOWN	groovy/bpipe/CommandStatus.java	/^    UNKNOWN$/;"	e	enum:CommandStatus	file:
+bpipe	groovy/bpipe/CommandExecutor.java	/^package bpipe;$/;"	p
+bpipe	groovy/bpipe/CommandStatus.java	/^package bpipe;$/;"	p
+bpipe	groovy/bpipe/ProbeCommandExecutor.java	/^package bpipe;$/;"	p
+cleanup	groovy/bpipe/CommandExecutor.java	/^    void cleanup();$/;"	m	interface:CommandExecutor
+cleanup	groovy/bpipe/ProbeCommandExecutor.java	/^    public void cleanup() {$/;"	m	class:ProbeCommandExecutor
+getIgnorableOutputs	groovy/bpipe/CommandExecutor.java	/^    List<String> getIgnorableOutputs();$/;"	m	interface:CommandExecutor
+getIgnorableOutputs	groovy/bpipe/ProbeCommandExecutor.java	/^    public List<String> getIgnorableOutputs() {$/;"	m	class:ProbeCommandExecutor
+start	groovy/bpipe/CommandExecutor.java	/^    void start(Map cfg, String id, String name, String cmd);$/;"	m	interface:CommandExecutor
+start	groovy/bpipe/ProbeCommandExecutor.java	/^    public void start(Map cfg, String id, String name, String cmd) {$/;"	m	class:ProbeCommandExecutor
+status	groovy/bpipe/CommandExecutor.java	/^    String status();$/;"	m	interface:CommandExecutor
+status	groovy/bpipe/ProbeCommandExecutor.java	/^    public String status() {$/;"	m	class:ProbeCommandExecutor
+stop	groovy/bpipe/CommandExecutor.java	/^    void stop();$/;"	m	interface:CommandExecutor
+stop	groovy/bpipe/ProbeCommandExecutor.java	/^    public void stop() {$/;"	m	class:ProbeCommandExecutor
+waitFor	groovy/bpipe/CommandExecutor.java	/^    int waitFor(); $/;"	m	interface:CommandExecutor
+waitFor	groovy/bpipe/ProbeCommandExecutor.java	/^    public int waitFor() {$/;"	m	class:ProbeCommandExecutor

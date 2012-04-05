@@ -110,6 +110,8 @@ class PipelineStage {
 	            println " Stage ${stageName} ".center(Config.config.columns,"=")
 			    CommandLog.log << "# Stage $stageName"
                 ++stageCount
+				
+				EventManager.instance.signal(PipelineEvent.STAGE_STARTED, "Starting stage $stageName")
                 
 	            if(context.output == null && context.@defaultOutput == null) {
                     if(context.@input) {
@@ -139,8 +141,12 @@ class PipelineStage {
             else 
 	            context.nextInputs = body(context.@input)
             
-            if(!joiner)
+				
+            if(!joiner) {
 	            log.info("Stage $stageName returned $context.nextInputs as default inputs for next stage")
+				
+				EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $stageName")
+            }
                 
             context.uncleanFilePath.text = ""
             

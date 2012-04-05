@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 MCRI, authors
+ * Copyright (c) 2012 MCRI, authors
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -292,7 +292,8 @@ public class Pipeline {
                 runSegment(inputFile, constructedPipeline, null)
     			println("\n"+" Pipeline Finished ".center(Config.config.columns,"="))
     			rootContext.msg "Finished at " + (new Date())
-    
+				
+				EventManager.instance.signal(PipelineEvent.FINISHED, failed?"Failed":"Succeeded")
                 if(!failed) {
     				def outputFile = Utils.first(stages[-1].context.output)
     				if(outputFile && !outputFile.startsWith("null") /* hack */ && new File(outputFile).exists()) {
@@ -308,7 +309,7 @@ public class Pipeline {
         
         return constructedPipeline
 	}
-    
+	
     PipelineContext createContext() {
        def ctx = new PipelineContext(this.externalBinding, this.stages, this.joiners) 
        ctx.outputDirectory = Config.config.defaultOutputDirectory
