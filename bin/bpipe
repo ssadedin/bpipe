@@ -27,6 +27,11 @@ VERSION=0.0.0
 # it will be replaced by the build script at build time
 BUILDDATE=0
 
+# Default memory used
+# Mainly here to limit memory on systems with very large memory
+# as otherwise Java can default to extreme amounts (gigabytes)
+: ${MAX_JAVA_MEM:="256m"}
+
 #----------------------------------------------------------
 # Kill a whole tree of processes in a cross platform way.
 # Note, in some situations killing the parent process is 
@@ -300,7 +305,16 @@ then
 
     if [ -e .bpipe/lastcmd ];
     then
-        bash < .bpipe/lastcmd
+        if [ "$1" == "test" ];
+        then
+            sed 's/bpipe run/bpipe test/' .bpipe/lastcmd | bash 
+        else
+            bash < .bpipe/lastcmd
+        fi
+    else
+        echo
+        echo "No previous Bpipe command seems to have been run in this directory."
+        echo
     fi
     exit
 elif [ "$COMMAND" == "history" ];
@@ -318,12 +332,12 @@ then
 elif [ "$COMMAND" == "diagram" ];
 then
     shift 1
-    java -classpath "$CP" -Dbpipe.mode=diagram bpipe.Runner $* 
+    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.mode=diagram bpipe.Runner $* 
     exit
 elif [ "$COMMAND" == "diagrameditor" ];
 then
     shift 1
-    java -classpath "$CP" -Dbpipe.mode=diagrameditor bpipe.Runner $* 
+    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.mode=diagrameditor bpipe.Runner $* 
     exit
 elif [ "$COMMAND" == "log" ];
 then
@@ -396,7 +410,7 @@ then
     fi
 
     # Now stop any remaining commands
-    java -classpath "$CP" -Dbpipe.mode=stopcommands bpipe.Runner
+    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.mode=stopcommands bpipe.Runner
 
     exit
 elif [ "$COMMAND" == "cleancommands" ];
@@ -438,7 +452,7 @@ then
 elif [ "$COMMAND" == "debug" ];
 then
     shift 1
-    BPIPEDEBUG="-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=y"
+    BPIPEDEBUG="-Xdebug -Xrunjdwp:transport=dt_socket,address=8010,server=y,suspend=y"
     SHOWDEBUG=true
     COMMAND="run"
 fi
@@ -454,7 +468,7 @@ echo "$0 $COMMAND $*" >> .bpipe/history
 $SHOWDEBUG && { 
   echo "DEBUG: classpath=$CP"
 }
-nohup java -classpath "$CP" $BPIPEDEBUG -Dbpipe.pid=$$ -Dbpipe.home="$BPIPE_HOME" -Dbpipe.version=$VERSION bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
+nohup java -Xmx${MAX_JAVA_MEM} -classpath "$CP" $BPIPEDEBUG -Dbpipe.pid=$$ -Dbpipe.home="$BPIPE_HOME" -Dbpipe.version=$VERSION bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
 
 BPIPE_PID="$!"
 
