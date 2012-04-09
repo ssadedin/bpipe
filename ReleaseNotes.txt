@@ -1,3 +1,19 @@
+
+=========== Changes for Bpipe Version 0.9.2 ============
+
+    --------: added default max memory to java proc for bpipe itself
+              to stop it using huge amounts on systems with very
+              high resources
+
+    Issue 19: Support for Email and other Notifications
+              about Pipeline Progress
+
+    Issue 18: Support for an easy way to parallelize based
+              on (DNA) region (chromsome name)
+
+    Issue 12: Deadlock and Corrupted Command Log when
+              Command log sometimes corrupted (regression)
+
 =========== Changes for Bpipe Version 0.9.1 ============
 
     --------: Updated to groovy 1.8.6

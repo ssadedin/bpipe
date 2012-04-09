@@ -228,7 +228,7 @@ get_classpath() {
     LIB="local-lib"
   fi
 
-  CP="$BPIPE_HOME"/$LIB/bpipe.jar:"$BPIPE_HOME"/$LIB/groovy-all-1.8.6.jar:$BPIPE_HOME/$LIB/commons-cli-1.2.jar:$BPIPE_HOME/$LIB/jgraphx.jar
+  CP="$BPIPE_HOME"/$LIB/bpipe.jar:"$BPIPE_HOME"/$LIB/groovy-all-1.8.6.jar:$BPIPE_HOME/$LIB/commons-cli-1.2.jar:$BPIPE_HOME/$LIB/jgraphx.jar:$BPIPE_HOME/$LIB/smack-3.2.2.jar:$BPIPE_HOME/$LIB/mail.jar
 
   # In case we are running in place in the bpipe project root, we pre-empt any other 
   # bpipe classes with those from the build directory and the eclipse compile path
@@ -411,7 +411,6 @@ then
 
     # Now stop any remaining commands
     java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.mode=stopcommands bpipe.Runner
-
     exit
 elif [ "$COMMAND" == "cleancommands" ];
 then
@@ -467,6 +466,7 @@ echo "$0 $COMMAND $*" >> .bpipe/history
 # to figure out its own process id which is otherwise hard to do in Java
 $SHOWDEBUG && { 
   echo "DEBUG: classpath=$CP"
+  echo "JAVA_MEM: $JAVA_MEM"
 }
 nohup java -Xmx${MAX_JAVA_MEM} -classpath "$CP" $BPIPEDEBUG -Dbpipe.pid=$$ -Dbpipe.home="$BPIPE_HOME" -Dbpipe.version=$VERSION bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
 
