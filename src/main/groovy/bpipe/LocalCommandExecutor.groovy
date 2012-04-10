@@ -10,6 +10,8 @@ import java.util.logging.Logger;
  */
 class LocalCommandExecutor implements CommandExecutor {
     
+    public static final long serialVersionUID = 0L
+    
     transient Process process
     
     /**

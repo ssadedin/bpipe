@@ -60,6 +60,10 @@ class EventManager {
 	void signal(PipelineEvent evt, String desc, Map detail=[:]) {
 		if(!cfg.notifications)
 			return
+            
+        // Don't send notifications at all if the user is just testing their pipeline
+        if(Runner.opts.t)
+           return
 		
 		cfg.notifications.each { name, channelCfg ->
 			PipelineEvent [] eventFilter = 
