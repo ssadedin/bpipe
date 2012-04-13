@@ -41,6 +41,11 @@ public enum PipelineEvent {
 	/**
 	 * Future
 	 */
+	STAGE_FAILED,
+	
+	/**
+	 * Future
+	 */
 	COMMAND_STARTED,
 	
 	/**

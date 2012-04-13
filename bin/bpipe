@@ -487,7 +487,13 @@ echo "$0 $COMMAND $*" >> .bpipe/jobs/$BPIPE_PID
 # what jobs they have running from anywhere
 # Note that it is up to the Java code to remove this when it shuts down
 mkdir -p ~/.bpipedb/jobs
-ln -s `pwd`/.bpipe/jobs/$BPIPE_PID  ~/.bpipedb/jobs/$BPIPE_PID
+
+JOBDB_FILE=~/.bpipedb/jobs/$BPIPE_PID
+if [ -e $JOBDB_FILE ];
+then
+  rm $JOBDB_FILE;
+fi
+ln -s `pwd`/.bpipe/jobs/$BPIPE_PID  $JOBDB_FILE
 
 # Set up signal handler to trap Ctrl-C so that we can cleanly abort the job
 trap handle_sigint SIGINT

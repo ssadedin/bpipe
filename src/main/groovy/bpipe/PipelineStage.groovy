@@ -25,6 +25,7 @@
  */
 package bpipe
 
+import java.io.File;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.logging.Logger;
 
@@ -94,27 +95,31 @@ class PipelineStage {
              } 
         }
         
+        boolean succeeded = false
         def oldFiles = new File(context.outputDirectory).listFiles() as List
         oldFiles = oldFiles?:[]
+        boolean joiner = (body in this.context.pipelineJoiners)
         try {
             oldFiles.removeAll { f -> IGNORE_NEW_FILE_PATTERNS.any { f.name.matches(it) } }
             def modified = oldFiles.inject([:]) { result, f -> result[f] = f.lastModified(); return result }
             
             def pipeline = Pipeline.currentRuntimePipeline.get()
-            boolean joiner = (body in this.context.pipelineJoiners)
             if(!joiner) {
-	            stageName = 
+                stageName = 
                     PipelineCategory.closureNames.containsKey(body) ? PipelineCategory.closureNames[body] : "${stageCount}"
                     
-	            println ""
-	            println " Stage ${stageName} ".center(Config.config.columns,"=")
-			    CommandLog.log << "# Stage $stageName"
+                println ""
+                println " Stage ${stageName} ".center(Config.config.columns,"=")
+                CommandLog.log << "# Stage $stageName"
                 ++stageCount
-				
-				EventManager.instance.signal(PipelineEvent.STAGE_STARTED, "Starting stage $stageName")
                 
-	            if(context.output == null && context.@defaultOutput == null) {
+                EventManager.instance.signal(PipelineEvent.STAGE_STARTED, "Starting stage $stageName")
+                
+                if(context.output == null && context.@defaultOutput == null) {
                     if(context.@input) {
+                        // If we are running in a sub-pipeline that has a name, make sure we
+                        // reflect that in the output file name.  The name should only be applied to files
+                        // produced form the first stage in the sub-pipeline
                         if(pipeline.name && !pipeline.nameApplied) {
                             context.defaultOutput = Utils.first(context.@input) + "." + pipeline.name + "."+stageName
                             // Note we don't set pipeline.nameApplied = true here
@@ -123,106 +128,52 @@ class PipelineStage {
                             // in the transform / filter constructs 
                         }
                         else
-    		                context.defaultOutput = Utils.first(context.@input) + "." + stageName
+                            context.defaultOutput = Utils.first(context.@input) + "." + stageName
                     }
-	            }
-	            log.info("Stage $stageName : INPUT=${context.@input} OUTPUT=${context.output}")
+                }
+                log.info("Stage $stageName : INPUT=${context.@input} OUTPUT=${context.output}")
             }   
             context.stageName = stageName
             
             this.running = true
-            
             PipelineDelegate.setDelegateOn(context,body)
-            
             if(PipelineCategory.wrappers.containsKey(stageName)) {
                 log.info("Executing stage $stageName inside wrapper")
                 PipelineCategory.wrappers[stageName](body, context.@input)
             }
             else 
-	            context.nextInputs = body(context.@input)
-            
-				
+                context.nextInputs = body(context.@input)
+                
+            succeeded = true
             if(!joiner) {
-	            log.info("Stage $stageName returned $context.nextInputs as default inputs for next stage")
-				
-				EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $stageName")
+                log.info("Stage $stageName returned $context.nextInputs as default inputs for next stage")
+                EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $stageName")
             }
                 
             context.uncleanFilePath.text = ""
             
-            // Try using several heuristics to figure out what the inputs passed to the 
-            // next pipeline stage should be
-            // 1.  if outputs were specified explicitly then use those
-            // 2.  if no outputs were specified but we observe new files were created
-            //     by the pipeline stage, then use those as long as they don't look
-            //     like files that should never be used as input (*.log, *.bai, etc.)
-            // 3.  if we still don't have anything, default to using the inputs
-            //     from the previous stage, assuming that this stage was just
-            //     producing "side effects"
-            
-            // If after everything we still don't have 
-            // any outputs, we look to see if any files were created
-            def newFiles = new File(context.outputDirectory).list() as Set
-            newFiles.removeAll(oldFiles.collect { it.name })
-            newFiles.removeAll { n -> IGNORE_NEW_FILE_PATTERNS.any { n.matches(it) } }
-            
-            // If there are no new files, we can look at modified files instead
-            if(!newFiles) {
-                newFiles = oldFiles.grep { it.lastModified() > modified[it] }.collect { it.name }
-            }
-            
-            // Since we operated on local file names only so far, we have to restore the 
-            // output directory to the name
-            newFiles = newFiles.collect { context.outputDirectory + "/" + it }
-  
-            if(!context.nextInputs && this.context.@output != null) {
-                log.info("Inferring nextInputs from explicit output as $context.@output")
-                context.nextInputs = this.context.output
-            }
-
-            def nextInputs = context.nextInputs
-            if(nextInputs == null || Utils.isContainer(nextInputs) && !nextInputs) {
-                log.info "Removing inferred outputs matching $context.outputMask"
-                newFiles.removeAll {  fn -> context.outputMask.any { fn ==~ '^.*' + it } }
-                
-                if(newFiles) {
-                    // If the default output happens to be one of the created files, 
-                    // prefer to use that
-                    log.info "Comparing default output $context.defaultOutput to new files $newFiles"
-                    if(context.defaultOutput in newFiles) {
-                        nextInputs = context.defaultOutput
-                        log.info("Found default output $context.defaultOutput among detected new files:  using it")
-                    }
-                    else {
-                        // Use the oldest created file.  This means if the 
-                        // body actually executed a series of steps we'll use the
-                        // last file it made
-	                    // nextInputs = newFiles.iterator().next()
-                        nextInputs = newFiles.sort { new File(it).lastModified() }.reverse().iterator().next()
-                    }
-                    log.info "Using next input inferred from created files $newFiles : ${nextInputs}"
-                }
-            }
-            
-            if(!nextInputs) {
-                log.info("Inferring nextInputs from inputs $context.@input")
-                nextInputs = this.context.@input
-            }
+            def newFiles = findNewFiles(oldFiles, modified)
+            def nextInputs = determineForwardedFiles(newFiles)
                 
             if(!this.context.@output)
                 this.context.output = nextInputs
 
-			context.defaultOutput = null
+            context.defaultOutput = null
             context.nextInputs = nextInputs
         }
         catch(PipelineTestAbort e) {
             throw e
         }
         catch(Exception e) {
+            
+            if(!succeeded && !joiner) 
+                EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $context.stageName has Failed")
+            
             log.info("Retaining pre-existing files $oldFiles from outputs")
             cleanupOutputs(oldFiles)
             throw e
         }
+        
         Utils.checkFiles(context.output,"output")
         
         // Save the database of files created
@@ -230,6 +181,107 @@ class PipelineStage {
             saveOutputs()
         
         return context.nextInputs
+    }
+
+    /**
+     * Interrogate the PipelineContext and the specified list of 
+     * new or modified files to determine an appropriate list of 
+     * files that should be forwarded as default inputs to the next 
+     * stage in the pipeline.
+     * <p>
+     * Bpipe operates in two modes here.  If the user has specified
+     * outputs for their pipeline stage (eg., using "produce", "transform",
+     * or "filter") then those are <i>always</i> preferred.  However if 
+     * the user has not specified what the outputs are then the file(s) to be
+     * forwarded are chosen from the list of files that are new or modified
+     * during the stages execution (presumed to be output files from the stage).
+     * 
+     * This implemented using the following heuristics:
+     * 
+     * 1.  if outputs were specified explicitly then use those
+     * 2.  if no outputs were specified but we observe new files were created
+     *     by the pipeline stage, then use those as long as they don't look
+     *     like files that should never be used as input (*.log, *.bai, etc.)
+     * 3.  if we still don't have anything, default to using the inputs
+     *     from the previous stage, assuming that this stage was just
+     *     producing "side effects"
+     *
+     * If after everything we still don't have any outputs, we look to see if 
+     * any files were created
+     * 
+     * @param newFiles    Files that were created or modified in the execution
+     *                     of this pipeline stage
+     * @return String|List<String>    a list of files to send to the next pipeline stage
+     *                                 as default inputs
+     */
+    private determineForwardedFiles(List newFiles) {
+        
+        // Start by initialzing the next inputs from any specifically 
+        // set outputs
+        if(!context.nextInputs && this.context.@output != null) {
+            log.info("Inferring nextInputs from explicit output as $context.@output")
+            context.nextInputs = this.context.output
+        }
+
+        def nextInputs = context.nextInputs
+        if(nextInputs == null || Utils.isContainer(nextInputs) && !nextInputs) {
+            log.info "Removing inferred outputs matching $context.outputMask"
+            newFiles.removeAll {  fn -> context.outputMask.any { fn ==~ '^.*' + it } }
+
+            if(newFiles) {
+                // If the default output happens to be one of the created files,
+                // prefer to use that
+                log.info "Comparing default output $context.defaultOutput to new files $newFiles"
+                if(context.defaultOutput in newFiles) {
+                    nextInputs = context.defaultOutput
+                    log.info("Found default output $context.defaultOutput among detected new files:  using it")
+                }
+                else {
+                    // Use the oldest created file.  This means if the
+                    // body actually executed a series of steps we'll use the
+                    // last file it made
+                    // nextInputs = newFiles.iterator().next()
+                    nextInputs = newFiles.sort { new File(it).lastModified() }.reverse().iterator().next()
+                }
+                log.info "Using next input inferred from created files $newFiles : ${nextInputs}"
+            }
+        }
+
+        if(!nextInputs) {
+            log.info("Inferring nextInputs from inputs $context.@input")
+            nextInputs = this.context.@input
+        }
+        return nextInputs
+    }
+
+    /**
+     * Finds either:
+     * <ul>
+     *   <li>all the files in the output directory not in the
+     *      specified <code>oldFiles</code> List
+     *   <li><b>or</b> all the files in the <code>oldFiles</code>
+     *       list that have been modified since the timestamps
+     *       recorded in the <code>timestamps</code> hash
+     *     
+     * Certain predetermined files are ignored and never returned
+     * (see IGNORE_NEW_FILE_PATTERNS).
+     * 
+     * @param oldFiles        List of {@link File} objects
+     * @param timestamps    List of previous timestamps (long values) of the oldFiles files
+     */
+    protected List<String> findNewFiles(List oldFiles, HashMap<File,Long> timestamps) {
+        def newFiles = new File(context.outputDirectory).list() as Set
+        newFiles.removeAll(oldFiles.collect { it.name })
+        newFiles.removeAll { n -> IGNORE_NEW_FILE_PATTERNS.any { n.matches(it) } }
+
+        // If there are no new files, we can look at modified files instead
+        if(!newFiles) {
+            newFiles = oldFiles.grep { it.lastModified() > timestamps[it] }.collect { it.name }
+        }
+
+        // Since we operated on local file names only so far, we have to restore the
+        // output directory to the name
+        return newFiles.collect { context.outputDirectory + "/" + it }
     }
     
     /**

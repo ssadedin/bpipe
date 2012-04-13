@@ -24,11 +24,13 @@
  */
 package bpipe
 
+import groovyjarjarantlr.StringUtils;
+
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 
 /**
- * Miscellaneous internal utilities used by Gruffus.
+ * Miscellaneous internal utilities used by Bpipe
  * 
  * @author ssadedin@mcri.edu.au
  */
@@ -250,4 +252,8 @@ class Utils {
           try { p.errorStream.close() } catch(Throwable t) { }      
         }
     }
+	
+	public static String upperCaseWords(String text) {
+		return text.split().collect { it.capitalize() }.join(' ')
+	}
 }

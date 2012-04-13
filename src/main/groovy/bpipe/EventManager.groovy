@@ -66,8 +66,16 @@ class EventManager {
            return
 		
 		cfg.notifications.each { name, channelCfg ->
-			PipelineEvent [] eventFilter = 
-				channelCfg.events ? channelCfg.events.split(",").collect { PipelineEvent.valueOf(it) } : [PipelineEvent.FINISHED]
+			PipelineEvent [] eventFilter = [PipelineEvent.FINISHED]
+			if(channelCfg.events)  {
+				try {
+					eventFilter = channelCfg.events.split(",").collect { PipelineEvent.valueOf(it) } 
+				}
+				catch(IllegalArgumentException e) {
+					System.err.println("ERROR: unknown type of Pipeline Event configured for notification type $name: " + channelCfg.events)
+					log.severe("ERROR: unknown type of Pipeline Event configured for notification type $name: " + channelCfg.events)
+				}
+			}
 				
 			// Check that the filter is active for this event
 			if(!(evt in eventFilter))

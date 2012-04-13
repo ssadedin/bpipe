@@ -26,6 +26,7 @@ package bpipe
 
 import java.util.Map
 import java.util.logging.Logger;
+import java.util.regex.Pattern.LastNode;
 
 import org.jivesoftware.smack.Chat;
 import org.jivesoftware.smack.ChatManager;
@@ -57,6 +58,10 @@ class XMPPNotificationChannel implements NotificationChannel {
 	
 	String password
 	
+	long interval = 0
+	
+	static long lastNotificationTimeMs = -1L
+	
 	/**
 	 * Create an XMPP notification channel using the provided configuration
 	 * @param cfg
@@ -74,6 +79,9 @@ class XMPPNotificationChannel implements NotificationChannel {
 		recipients = cfg.to
 		username = cfg.username
 		password = cfg.password
+		interval = cfg.interval?:0
+		
+		// Note: if you add stuff here, also add it in GTalkNotificationChannel construtor below
 	}
 	
 	/**
@@ -84,32 +92,48 @@ class XMPPNotificationChannel implements NotificationChannel {
 
 	@Override
 	public void notify(PipelineEvent event, String subject, Map<String, Object> model) {
-
-		XMPPConnection connection = new XMPPConnection(connConfig);
-		connection.connect();
-		connection.login(username, password);
 		
-		log.info("Logged in as " + connection.getUser());
-
-		Presence presence = new Presence(Presence.Type.available);
-		connection.sendPacket(presence);
-		
-		ChatManager chatmanager = connection.getChatManager();
-		boolean failed = false
-		String content = "Pipeline " + event.name().toLowerCase() + ": " + subject + " in directory " + (new File(".").absoluteFile.parentFile.name)
-		recipients.split(",").each {
-			try {
-				Chat chat = chatmanager.createChat(it, null);
-				Message msg = new Message(it, Message.Type.chat);
-				msg.setBody(content);
-				chat.sendMessage(msg);
+		synchronized(XMPPNotificationChannel.class) {
+			// This is a hack until I implement something better: don't send masses of notifications
+			// all at once. Ignore if a notification was sent less than interval seconds ago.
+			if(interval > 0 && lastNotificationTimeMs > 0) {
+				if(System.currentTimeMillis() - lastNotificationTimeMs < interval) {
+					log.info("Ignoring notification $subject for event $event because it occurred too soon after the last notification")
+					return
+				}
 			}
-			catch(Exception e) {
-				log.warning("Failed to notify user $it of result (message: $content): " + e)
-				failed = true
+			
+			lastNotificationTimeMs = System.currentTimeMillis()
+			
+			XMPPConnection connection = new XMPPConnection(connConfig);
+			connection.connect();
+			connection.login(username, password);
+			
+			log.info("Logged in as " + connection.getUser());
+	
+			Presence presence = new Presence(Presence.Type.available);
+			connection.sendPacket(presence);
+			
+			ChatManager chatmanager = connection.getChatManager();
+			boolean failed = false
+			
+			String eventDescr = Utils.upperCaseWords(event.name().toLowerCase().replaceAll("_"," "))
+			
+			String content = eventDescr + ": " + subject + " (" + (new File(".").absoluteFile.parentFile.name) + ")"
+			recipients.split(",").each {
+				try {
+					Chat chat = chatmanager.createChat(it, null);
+					Message msg = new Message(it, Message.Type.chat);
+					msg.setBody(content);
+					chat.sendMessage(msg);
+				}
+				catch(Exception e) {
+					log.warning("Failed to notify user $it of result (message: $content): " + e)
+					failed = true
+				}
 			}
+			connection.disconnect()
 		}
-		connection.disconnect()
 	}
 }
 
@@ -124,5 +148,6 @@ class GTALKNotificationChannel extends XMPPNotificationChannel {
 		recipients = cfg.to
 		username = cfg.username
 		password = cfg.password
+		interval = cfg.interval?:0
 	}	
 }
