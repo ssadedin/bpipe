@@ -85,13 +85,14 @@ create_pid_file() {
 #---------------------------------------------------------
 get_last_run_pid() {
 
-    if [ ! -e .bpipe/jobs ];
+    # Note: it's possible for the .bpipe/jobs folder to get created
+    # but be empty here when bpipe is run for the first time
+    if [ ! -e .bpipe/jobs ] || [ `ls -1A .bpipe/jobs/ | wc -l` == 0 ];
     then
       LAST_PID="-1"
     else
       LAST_PID=`ls -tc .bpipe/jobs/* | head -1 | xargs basename`
     fi
-
 }
 
 #----------------------------------------------------------
