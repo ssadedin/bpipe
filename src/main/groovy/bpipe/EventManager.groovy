@@ -104,6 +104,10 @@ class EventManager {
 	 */
 	NotificationChannel createChannel(String name, ConfigObject channelCfg) {
 		String clazz = channelCfg.type?:name
+        
+        // Try and be a little bit more flexible with how things are specified
+        if(channelCfg.interval && channelCfg.interval instanceof String)
+            channelCfg.interval = Integer.parseInt(channelCfg.interval)
 		
 		// We try a few different permutations to allow a natural an easy specification
 		// of the class name rather than making the user use the fully qualified one.
@@ -116,9 +120,15 @@ class EventManager {
 				log.info "Successfully created notification channel using class $fullClazz" 
 				return nc
 			}
+            catch(ClassNotFoundException e) {
+                // This is expected  
+				log.info("Unable to create notification channel using class " + fullClazz + ": " + e)
+            }
 			catch(Exception e) {
-				log.info("Unable to create notification channel using class " + fullClazz + ": " + e.message)
+				log.severe("Unable to create notification channel using class " + fullClazz + ": " + e)
+                e.printStackTrace()
 			}
 		}
+        throw new PipelineError("Configured notification channel type $clazz could not be created")
 	}
 }
