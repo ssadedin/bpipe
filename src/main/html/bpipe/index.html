@@ -1,0 +1,101 @@
+<?doctype html?>
+<html>
+    <head>
+        <style type='text/css'>
+
+            body {
+                font-family: Georgia;
+                margin: 0;
+                padding: 0;
+            }
+            #hd {
+                padding: 1em;
+                background-color: #f6f2f0;
+            }
+            #bd {
+                padding: 1em;
+            }
+            .docLabel, .constraintLabel { font-weight: bold; margin-right: 1em; }
+            .constraintLabel { color: orange; }
+            .creationDate { font-size: 80%; font-style: italic; color: #555; }
+        </style>
+    </head>
+    <body>
+        <div id='hd'>
+            <h1>${title}</h1>
+            <p class='creationDate'>Created ${new Date()}</p>
+        </div>
+
+        <div id='bd'>
+            <h2>Pipeline Stages</h2>
+            <ol>
+            <%stages*.context.each { stage -> %>
+                <li class='stageList'>
+                    <h3 class='stageTitle'>
+                        <% if(stage.documentation?.title) { %>
+                            ${stage.documentation.title} (${stage.stageName})
+                        <%} else {%>
+                            ${stage.stageName}
+                        <% } %>
+                    </h3>
+
+                    <%if(stage.documentation) {%>
+                        <% def doc = stage.documentation; %>
+
+                        <%if(doc.desc) {%>
+                            <p class='descBody'>${doc.desc}</p>
+                        <%}%>
+
+                        <%if(doc.author) {%>
+                            <p class='authorBody'>
+                                <span class='docLabel'>Author:</span>
+                                ${doc.author}
+                            </p>
+                        <%}%>
+
+                        <%if(doc.inputs) {%>
+                            <% if(doc.inputs instanceof List) { %>
+                                <span class='docLabel'>Inputs:</span>
+                                <ul class='inputs'>
+                                    <% doc.inputs.each { inp -> %>
+                                        <li class='input'>${inp}</li>
+                                    <% } %>
+                                </ul>
+                            <% } else { %>
+                                <p class='inputBody'>
+                                    <span class='docLabel'>Inputs:</span>
+                                    ${doc.inputs}
+                                </p>
+                            <% } %>
+                        <%}%>
+
+
+                        <%if(doc.outputs) {%>
+                            <% if(doc.outputs instanceof List) { %>
+                                <span class='docLabel'>Outputs:</span>
+                                <ul class='outputs'>
+                                    <% doc.outputs.each { inp -> %>
+                                        <li class='input'>${inp}</li>
+                                    <% } %>
+                                </ul>
+                            <% } else { %>
+                                <p class='inputBody'>
+                                    <span class='docLabel'>Outputs:</span>
+                                    ${doc.outputs}
+                                </p>
+                            <% } %>
+                        <%}%>
+
+
+
+                        <%if(doc?.constraints) {%>
+                            <p class='constraintsBody'><span class='constraintLabel'>Constraints:</span>${doc.constraints}</p>
+                        <%}%>
+                    <%}%>
+                </li>
+                <hr/>
+            <%}%>
+            </ol>
+        </div>
+    </body>
+</html>
