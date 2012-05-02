@@ -24,6 +24,9 @@
  */
 package bpipe
 
+import groovy.text.GStringTemplateEngine;
+import groovy.text.GStringTemplateEngine.GStringTemplate;
+
 import java.lang.annotation.Retention;
 
 import java.lang.annotation.RetentionPolicy;
@@ -205,11 +208,15 @@ public class Pipeline {
         pipeline.loadExternalStages()
 
         def mode = Config.config.mode 
-        if(mode == "run")
+        if(mode == "run" || mode == "documentation") // todo: documentation should be its own mode! but can't support that right now
 	        pipeline.execute(inputFile, host, pipelineBuilder)
         else
         if(mode in ["diagram","diagrameditor"])
 	        pipeline.diagram(host, pipelineBuilder, Runner.opts.arguments()[0], mode == "diagrameditor")
+        else
+        if(mode in ["documentation"])
+	        pipeline.documentation(host, pipelineBuilder, Runner.opts.arguments()[0])
+            
 	}
     
     /**
@@ -307,6 +314,10 @@ public class Pipeline {
 		// as output is not terminated with one by default
 		cmdlog << ""
         
+        if(Config.config.mode == "documentation") {
+            documentation()
+        }
+        
         return constructedPipeline
 	}
 	
@@ -382,6 +393,41 @@ public class Pipeline {
     }
     
     /**
+     * This method creates documentation for a pipeline based on the 
+     * pipeline stage names and any configured documentation that is added to them
+     */
+	def documentation() {
+        
+        // Now make a graph
+        File docDir = new File("doc")
+        if(!docDir.exists()) {
+            docDir.mkdir()
+        }
+        
+         Map docBinding = [
+            title: "Pipeline Documentation",
+            stages: stages.grep { !(it.body in joiners) }
+        ]
+        
+        // Use HTML templates to generate documentation
+        InputStream templateStream
+        File srcTemplateDir = new File("src/main/html/bpipe")
+        if(srcTemplateDir.exists())
+            templateStream = new FileInputStream(new File(srcTemplateDir, "index.html"))
+        else
+            templateStream = getClass().getClassLoader().resourceAsStream("bpipe/index.html")
+            
+        GStringTemplateEngine e = new GStringTemplateEngine()
+        templateStream.withReader { r ->
+            def template = e.createTemplate(r).make(docBinding)
+            new File(docDir,"index.html").text = template.toString()
+        }
+        templateStream.close()
+        
+        println "Generated documentation in $docDir"
+    }
+    
+    /**
      * This method creates a diagram of the pipeline instead of running it
      */
 	def diagram(Object host, Closure pipeline, String fileName, boolean editor) {
@@ -415,6 +461,7 @@ public class Pipeline {
 	        g.render(outputFileName)
         }
     }
+    
     
     void addStage(PipelineStage stage) {
         synchronized(this.stages) {

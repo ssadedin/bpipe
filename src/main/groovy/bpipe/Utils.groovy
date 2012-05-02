@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 MCRI, authors
+ * Copyright (c) 2012 MCRI, authors
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -242,6 +242,16 @@ class Utils {
         return formatter.toString();
     }
     
+    /**
+     * Close all the streams associated with the given process
+     * ignoring all exceptions.
+     * <p>
+     * Note: this is necessary because if the streams are not closed
+     * this way it seems they can take a while to be closed, even though
+     * the process may have ended. If many processes are executed consecutively
+     * the file handle limit can be exhausted even though processes are not 
+     * executed concurrently.
+     */
     public static withStreams(Process p, Closure c) {
         try {
             return c()

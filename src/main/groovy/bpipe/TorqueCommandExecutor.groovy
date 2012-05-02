@@ -1,3 +1,27 @@
+/*
+* Copyright (c) 2012 MCRI, authors
+*
+* Permission is hereby granted, free of charge, to any person
+* obtaining a copy of this software and associated documentation
+* files (the "Software"), to deal in the Software without
+* restriction, including without limitation the rights to use,
+* copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the
+* Software is furnished to do so, subject to the following
+* conditions:
+*
+* The above copyright notice and this permission notice shall be
+* included in all copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
+* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
 package bpipe
 
 import java.util.logging.Logger;
@@ -13,6 +37,7 @@ import java.util.logging.Logger;
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+@Mixin(ForwardHost)
 class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExecutor {
 
     public static final long serialVersionUID = 0L
@@ -22,16 +47,6 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
      */
     private static Logger log = Logger.getLogger("bpipe.TorqueCommandExecutor");
 
-    /**
-     * Child processes that are forwarding output from this torque command
-     */
-    transient List<Forwarder> forwarders = []
-    
-    /**
-     * Schedules polling of files that are forwarded from Torque jobs
-     */
-    static Timer forwardingTimer
-    
     /**
      * Constructor
      */
@@ -52,30 +67,6 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
         // and output files to appear and then forward those inputs
         forward(this.jobDir+"/${id}.out", System.out)
         forward(this.jobDir+"/${id}.err", System.err)
-        
-        // Start another background thread to wait for our job to complete and cleanup the outputs
-        // when it does
-//        new Thread({
-//            while(status() != CommandStatus.COMPLETE.name()) {
-//                Thread.sleep(5000)
-//            }
-//            cleanup()
-//        }).start()
-    }
-
-    private void forward(String fileName, OutputStream s) {
-        
-        // Start the forwarding timer task if it is not already running
-        synchronized(TorqueCommandExecutor.class) {
-            if(forwardingTimer == null) {
-                forwardingTimer = new  Timer(true)
-            }
-        }
-        
-        Forwarder f = new Forwarder(new File(fileName), s)
-        forwardingTimer.schedule(f, 0, 2000)
-        
-        this.forwarders << f
     }
 
     /**

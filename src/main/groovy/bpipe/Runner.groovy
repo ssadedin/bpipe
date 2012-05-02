@@ -111,6 +111,12 @@ diagrameditor""")
             cli = diagramCli
             Config.config["mode"] = "diagram"
         }
+        else
+        if(mode == "documentation")  {
+            log.info("Mode is documentation")
+            cli = diagramCli
+            Config.config["mode"] = "documentation"
+        }
         else 
         if(mode == "diagrameditor") {
             log.info("Mode is diagram editor")

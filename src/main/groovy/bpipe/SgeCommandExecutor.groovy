@@ -31,6 +31,7 @@ import java.util.logging.Logger
  * 
  * @author Paolo Di Tommaso <paolo.ditommaso@gmail.com>
  */
+@Mixin(ForwardHost)
 class SgeCommandExecutor implements CommandExecutor {
 
     /**
@@ -242,8 +243,7 @@ class SgeCommandExecutor implements CommandExecutor {
 			throw new PipelineError(msg)
 
 		}
-
-			
+        
 		// Successful stop command
 		log.info "Successfully called script to stop command $id"
     }
@@ -257,25 +257,5 @@ class SgeCommandExecutor implements CommandExecutor {
     List<String> getIgnorableOutputs() {
 		//TODO ?? 
         return null 
-    }
-
-
-    static Timer forwardingTimer
-
-    transient List<Forwarder> forwarders = []
-
-    private void forward(String fileName, OutputStream s) {
-
-        // Start the forwarding timer task if it is not already running
-        synchronized(TorqueCommandExecutor.class) {
-            if(forwardingTimer == null) {
-                forwardingTimer = new  Timer(true)
-            }
-        }
-
-        Forwarder f = new Forwarder(new File(fileName), s)
-        forwardingTimer.schedule(f, 0, 2000)
-
-        this.forwarders << f
     }
 }

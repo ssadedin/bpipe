@@ -88,6 +88,11 @@ class PipelineContext {
 
    File uncleanFilePath
    
+   /**
+    * Documentation attributes for the the pipeline stage
+    */
+   Map<String, Object> documentation
+   
    private List<PipelineStage> pipelineStages
    
    private List<Closure> pipelineJoiners
@@ -469,6 +474,10 @@ class PipelineContext {
     void exec(String cmd) {
         exec(cmd, true)
 	}
+    
+    void doc(Object attributes) {
+        this.documentation = attributes
+    }
     
     /**
      * Provides an implicit "exec" function that pipeline stages can use

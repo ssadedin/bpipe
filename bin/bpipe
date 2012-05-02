@@ -335,6 +335,11 @@ then
     shift 1
     java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.mode=diagram bpipe.Runner $* 
     exit
+elif [ "$COMMAND" == "documentation" ];
+then
+    shift 1
+    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.mode=documentation bpipe.Runner $* 
+    exit
 elif [ "$COMMAND" == "diagrameditor" ];
 then
     shift 1
