@@ -50,6 +50,10 @@ class SgeCommandExecutor implements CommandExecutor {
 
     private String jobDir;
 	
+    /* Mark the job as stopped by the user */
+    private boolean stopped
+
+    /* The ID of the job as returned by the JOB scheduler */
 	private String commandId;
 	
 	private static String CMD_EXIT_FILENAME = "cmd.exit"
@@ -76,7 +80,7 @@ class SgeCommandExecutor implements CommandExecutor {
         this.config = cfg
         this.id = id
         this.name = name;
-        this.cmd = cmd;
+        this.cmd = cmd?.trim();
 
         this.jobDir = ".bpipe/commandtmp/$id"
         File jobDirFile = new File(this.jobDir)
@@ -187,7 +191,7 @@ class SgeCommandExecutor implements CommandExecutor {
 		
 		int count=0
 		File exitFile = new File( jobDir, CMD_EXIT_FILENAME )
-		while( true ) {
+		while( !stopped ) {
 			
 			if( exitFile.exists() ) {
 				def val = exitFile.text?.trim()
@@ -209,7 +213,8 @@ class SgeCommandExecutor implements CommandExecutor {
 		
 			Thread.sleep(5000)	
 		}
-		
+
+        return -1
     }
 
     /**
@@ -217,6 +222,10 @@ class SgeCommandExecutor implements CommandExecutor {
      */
     @Override
     void stop() {
+
+        // mark the job as stopped
+        // this will break the {@link #waitFor} method as well
+        stopped = true
 		
 		String cmd = "qdel $commandId"
 		log.info "Executing command to stop command $id: $cmd"
