@@ -87,6 +87,11 @@ class PipelineStage {
     def run() {
         Utils.checkFiles(context.@input)
         
+		// Note: although it would appear these are being injected at a per-pipeline level,
+		// in fact they end up as globally shared variables across all parallel threads
+		// (there IS only ONE binding for a closure and only ONE closure instance getting 
+		// executed, even by multiple threads). All per-pipeline state is maintined inside
+		// the PipelineContext.
         if(body.properties.containsKey("binding")) {
              this.context.extraBinding.variables.each { k,v ->
                  if(!body.binding.variables.containsKey(k)) {
@@ -100,7 +105,7 @@ class PipelineStage {
         oldFiles = oldFiles?:[]
         boolean joiner = (body in this.context.pipelineJoiners)
         try {
-            oldFiles.removeAll { f -> IGNORE_NEW_FILE_PATTERNS.any { f.name.matches(it) } }
+            oldFiles.removeAll { File f -> IGNORE_NEW_FILE_PATTERNS.any { f.name.matches(it) } || f.isDirectory() }
             def modified = oldFiles.inject([:]) { result, f -> result[f] = f.lastModified(); return result }
             
             def pipeline = Pipeline.currentRuntimePipeline.get()
@@ -141,8 +146,11 @@ class PipelineStage {
                 log.info("Executing stage $stageName inside wrapper")
                 PipelineCategory.wrappers[stageName](body, context.@input)
             }
-            else 
-                context.nextInputs = body(context.@input)
+            else { 
+                def returnedInputs = body(context.@input)
+				if(joiner)
+					context.nextInputs = returnedInputs
+            }
                 
             succeeded = true
             if(!joiner) {
@@ -270,7 +278,8 @@ class PipelineStage {
      * @param timestamps    List of previous timestamps (long values) of the oldFiles files
      */
     protected List<String> findNewFiles(List oldFiles, HashMap<File,Long> timestamps) {
-        def newFiles = new File(context.outputDirectory).list() as Set
+        def newFiles = (new File(context.outputDirectory).listFiles().grep {!it.isDirectory() }*.name) as Set
+		
         newFiles.removeAll(oldFiles.collect { it.name })
         newFiles.removeAll { n -> IGNORE_NEW_FILE_PATTERNS.any { n.matches(it) } }
 

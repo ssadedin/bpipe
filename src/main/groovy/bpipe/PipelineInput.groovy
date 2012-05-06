@@ -30,6 +30,11 @@ import java.util.logging.Logger;
 /**
  * Represents a "magic" input object that automatically 
  * understands property references as file extensions. 
+ * All "input" variables that are implicitly passed to 
+ * Bpipe stages are actually PipelineInput objects.  Apart from their 
+ * special "magic" properties they look and behave just like String objects
+ * because they dynamically defer missing method invocations to 
+ * the wrapped string objec that they contain. 
  * 
  * @author simon.sadedin@mcri.edu.au
  */

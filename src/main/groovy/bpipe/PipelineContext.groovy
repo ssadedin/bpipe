@@ -668,6 +668,12 @@ class PipelineContext {
        return this.nextInputs
    }
    
+   public void forward(nextInputOverride) {
+	   this.nextInputs = nextInputOverride
+	   if(this.nextInputs instanceof PipelineInput)
+	   		this.nextInputs = this.nextInputs.@input
+   }
+   
    /**
     * The current stage is always the most recent stage to have executed
     * @return
