@@ -25,19 +25,24 @@
 package bpipe
 
 import java.util.logging.Logger
+import java.util.regex.Pattern
+import java.util.regex.Matcher
 
 /**
- * Implements a command executor based on the Sun Grid Engine (SGE) resource manager 
+ * Implements a command executor submitting jobs to a Load Sharing Facility (LSF) cluster
+ * <p>
+ * See http://en.wikipedia.org/wiki/Platform_LSF
+ *     http://www.platform.com/workload-management/high-performance-computing
  * 
  * @author Paolo Di Tommaso <paolo.ditommaso@gmail.com>
  */
 @Mixin(ForwardHost)
-class SgeCommandExecutor implements CommandExecutor {
+class LsfCommandExecutor implements CommandExecutor {
 
     /**
      * Logger for this class to use
      */
-    private static Logger log = Logger.getLogger("bpipe.SgeCommandExecutor");
+    private static Logger log = Logger.getLogger("bpipe.LsfCommandExecutor");
 
     private Map config;
 
@@ -45,11 +50,12 @@ class SgeCommandExecutor implements CommandExecutor {
 
     private String name;
 
-    /* The command to execute through SGE 'qsub' command */
+    /* The command to execute through the LSF 'bsub' command */
     private String cmd;
 
+    /* The path in which the job will run */
     private String jobDir;
-	
+
     /* Mark the job as stopped by the user */
     private boolean stopped
 
@@ -65,14 +71,14 @@ class SgeCommandExecutor implements CommandExecutor {
     private static String CMD_ERR_FILENAME = "cmd.err"
 
 	/**
-	 * Start the execution of the command in the SGE environment. 
+	 * Start the execution of the command in the LSF environment.
 	 * <p> 
-	 * The command have to be wrapper by a script shell that will be specified on the 'qsub' command line. 
-	 * This method does the following 
-	 * - Create a command script wrapper named '.cmd.sh' in the job execution directory 
-	 * - Redirect the command stdout to the file ..
-	 * - Redirect the command stderr to the file ..
-	 * - The script wrapper save the command exit code in a file named '.cmd.exit' containing
+	 * The command have to be wrapper by a script shell that will be specified on the 'bsub' command line.
+	 * This method does the following:
+	 * - Create a command script wrapper named {@link #CMD_SCRIPT_FILENAME} in the job execution directory
+	 * - Redirect the command stdout to the file {@link #CMD_OUT_FILENAME}
+	 * - Redirect the command stderr to the file {@link #CMD_ERR_FILENAME}
+	 * - The script wrapper save the command exit code in a file named {@link #CMD_EXIT_FILENAME} containing
 	 *   the job exit code. To monitor for job termination will will wait for that file to exist
 	 */
     @Override
@@ -92,13 +98,13 @@ class SgeCommandExecutor implements CommandExecutor {
         log.info "Using account: $config?.account"
 		
 		/*
-		 * Create '.cmd.sh' wrapper used by the 'qsub' command
+		 * Create 'cmd.sh' wrapper used by the 'bsub' command
 		 */
 		def cmdWrapperScript = new File(jobDir, CMD_SCRIPT_FILENAME)
 		cmdWrapperScript.text =  
 			"""\
 			#!/bin/sh
-			${cmd}
+			(${cmd}) > $jobDir/$CMD_OUT_FILENAME
 			result=\$?
 			echo -n \$result > $jobDir/$CMD_EXIT_FILENAME
 			exit \$result
@@ -106,20 +112,26 @@ class SgeCommandExecutor implements CommandExecutor {
 			.stripIndent()
 		
 		/*
-		 * Prepare the 'qsub' cmdline. The following options are used
-		 * - wd: define the job working directory 
-		 * - terse: output just the job id on the output stream
-		 * - o: define the file to which redirect the standard output
-		 * - e: define the file to which redirect the error output 
+		 * Prepare the 'bsub' cmdline. The following options are used:
+		 * - cwd: defines the job working directory
+		 * - o: redirect the standard output to the specified file
+		 * - eo: redirect the error output to the specified file
+		 * - J: defines the job name
+		 * - q: declares the queue to use
+		 *
+		 * Note: since LSF append a noise report information to the standard out
+		 * we suppress it, and save the 'cmd' output in the above script
 		 */
-		def startCmd = "qsub -wd \$PWD -terse -o $jobDir/$CMD_OUT_FILENAME -e $jobDir/$CMD_ERR_FILENAME -V "
+		def startCmd = "bsub -cwd \$PWD -o /dev/null -eo $jobDir/$CMD_ERR_FILENAME "
 		// add other parameters (if any)
 		if(config?.queue) {
 			startCmd += "-q ${config.queue} "
 		}
-		
+        if(config?.jobname) {
+            startCmd += "-J ${config.jobname} "
+        }
 		// at the end append the command script wrapped file name
-		startCmd += "$jobDir/$CMD_SCRIPT_FILENAME"
+		startCmd += "< $jobDir/$CMD_SCRIPT_FILENAME"
 		
 		/*
 		 * prepare the command to invoke
@@ -137,13 +149,14 @@ class SgeCommandExecutor implements CommandExecutor {
 				reportStartError(startCmd, out,err,exitValue)
 				throw new PipelineError("Failed to start command:\n\n$cmd")
 			}
-			this.commandId = out.toString().trim()
+
+            // Parse the 'bsub' standard output reading the job ID of the submitted job
+			this.commandId = parseCommandId(out.toString().trim())
 			if(this.commandId.isEmpty())
 				throw new PipelineError("Job runner ${this.class.name} failed to return a job id despite reporting success exit code for command:\n\n$startCmd\n\nRaw output was:[" + out.toString() + "]")
 				
 			log.info "Started command with id $commandId"
 		}
-
 
 
         // After starting the process, we launch a background thread that waits for the error
@@ -152,7 +165,34 @@ class SgeCommandExecutor implements CommandExecutor {
         forward("$jobDir/$CMD_ERR_FILENAME", System.err)
 		
     }
-	
+
+
+    static final Pattern JOB_PATTERN = Pattern.compile('^Job <(\\d+)> .*$');
+
+    /**
+     * Parse the 'bsub' text output fetching the ID of the submitted job
+     *
+     * @param text The text as returned by the {@code bsub} command
+     * @return The ID of the new newly submitted job
+     */
+    private String parseCommandId(String text) {
+        def reader = new BufferedReader(new StringReader(text));
+        def line
+        try {
+            while( (line=reader.readLine()?.trim()) != null ) {
+
+                Matcher matcher = JOB_PATTERN.matcher(line);
+                if(matcher.matches()) {
+                    return matcher.group(1);
+                }
+            }
+        }
+        finally {
+            reader.close();
+        }
+
+        return null
+    }
 	
 	void reportStartError(String cmd, def out, def err, int exitValue) {
 		log.severe "Error starting custom command using command line: " + cmd
@@ -219,6 +259,7 @@ class SgeCommandExecutor implements CommandExecutor {
 
     /**
      * Kill the job execution
+     *
      */
     @Override
     void stop() {
@@ -226,8 +267,9 @@ class SgeCommandExecutor implements CommandExecutor {
         // mark the job as stopped
         // this will break the {@link #waitFor} method as well
         stopped = true
-		
-		String cmd = "qdel $commandId"
+
+
+		String cmd = "bkill $commandId"
 		log.info "Executing command to stop command $id: $cmd"
 
 		int exitValue
@@ -244,7 +286,7 @@ class SgeCommandExecutor implements CommandExecutor {
 		
 		if( !exitValue ) {
 			
-			def msg = "SGE failed to stop command $id, returned exit code $exitValue from command line: $cmd"
+			def msg = "LSF failed to stop command $id, returned exit code $exitValue from command line: $cmd"
 			log.severe "Failed stop command produced output: \n$out\n$err"
 			if(!err.toString().trim().isEmpty()) {
 				msg += "\n" + Utils.indent(err.toString())
