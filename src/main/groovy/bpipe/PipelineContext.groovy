@@ -356,55 +356,127 @@ class PipelineContext {
        return outFile
    }
    
-    /**
-     * Specifies an output that is a transformation of the input 
-     * to a different format - keeps same file name but replaces
-     * the extension.  Convenience wrapper for {@link #produce(Closure, Object, Closure)}
-     * for the case where only the extension on the file is changed. 
-     */
-    Object transform(def extension, Closure body) {
-        def inp = Utils.first(this.@input)
-        if(!inp) 
+   /**
+	* Specifies an output that keeps the same type of file but modifies
+	* it ("filters" it). Convenience wrapper for {@link #produce(Closure, Object, Closure)}
+	* for the case where the same file extension is kept but a transformation
+	* type is added to the name.
+	*/
+   Object transform(List<String> exts, Closure body) {
+	   
+	   def pipeline = Pipeline.currentRuntimePipeline.get()
+	   def inp = Utils.first(this.@input)
+       if(!inp) 
            throw new PipelineError("Expected input but no input provided") 
-        
-        def pipeline = Pipeline.currentRuntimePipeline.get()
-        def result
-        if(pipeline.name && !pipeline.nameApplied) {
-            result = this.produce(inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+'.'+extension),body)
-            pipeline.nameApplied = true
-        }
-        else
-            result = this.produce(inp.replaceAll('\\.[^\\.]*$','.'+extension),body)
-        return result
-    }
-  
-   
+	   
+	   boolean applyName = pipeline.name && !pipeline.nameApplied
+	   
+	   def files = exts.collect { String extension ->
+		   if(applyName)
+			   return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+'.'+extension)
+		   else
+			   return inp.replaceAll('\\.[^\\.]*$','.'+extension)
+	   }
+	   
+	   log.info "Transform using $exts produces outputs $files"
+	   
+	   if(applyName)
+		   pipeline.nameApplied = true
+		   
+	   produce(files, body)
+   }
+ 
+	
     /**
      * Specifies an output that keeps the same type of file but modifies 
      * it ("filters" it). Convenience wrapper for {@link #produce(Closure, Object, Closure)}
      * for the case where the same file extension is kept but a transformation
      * type is added to the name.
      */
-    Object filter(String type, Closure body) {
+    Object filter(List<String> types, Closure body) {
+		
+		def pipeline = Pipeline.currentRuntimePipeline.get()
         def inp = Utils.first(this.@input)
-        log.info("Filter $type defined on inputs $inp")
         if(!inp) 
            throw new PipelineError("Expected input but no input provided") 
-           
-        String oldExt = (inp =~ '\\.[^\\.]*$')[0]
-        
-        def pipeline = Pipeline.currentRuntimePipeline.get()
-        def result
-        if(pipeline.name && !pipeline.nameApplied) {
-            result = this.produce(inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+oldExt),body)
-            pipeline.nameApplied = true
-        }
-        else 
-            result = this.produce(inp.replaceAll('(\\.[^\\.]*$)','.'+type+oldExt),body)
-        return result
+		
+		boolean applyName = pipeline.name && !pipeline.nameApplied
+		
+		def files = types.collect { String type ->
+	        String oldExt = (inp =~ '\\.[^\\.]*$')[0]
+	        if(applyName) 
+				return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+oldExt)
+			else
+				return inp.replaceAll('(\\.[^\\.]*$)','.'+type+oldExt)
+		}
+		
+		log.info "Filtering using $types produces outputs $files"
+		
+		if(applyName)
+			pipeline.nameApplied = true
+			
+        produce(files, body)
+    }
+  
+    Object filter(String type, Closure body) {
+		filter([type],body)
+	}
+	
+    Object filter(String type1, String type2, Closure body) { 
+		filter([type1,type2],body)
     }
     
-       /**
+    Object filter(String type1, String type2, String type3, Closure body) { 
+		filter([type1,type2,type3],body)
+    }
+    
+    Object filter(String type1, String type2, String type3, String type4, Closure body) { 
+		filter([type1,type2,type3,type4],body)
+    }
+    
+    Object filter(String type1, String type2, String type3, String type4, String type5, Closure body) { 
+		filter([type1,type2,type3,type4,type5],body)
+    }
+	
+    Object transform(String ext, Closure body) {
+		transform([ext],body)
+	}
+	
+    Object transform(String ext1, String ext2, Closure body) { 
+		transform([ext1,ext2],body)
+    }
+    
+    Object transform(String ext1, String ext2, String ext3, Closure body) { 
+		transform([ext1,ext2,ext3],body)
+    }
+    
+    Object transform(String ext1, String ext2, String ext3, String ext4, Closure body) { 
+		transform([ext1,ext2,ext3,ext4],body)
+    }
+    
+    Object transform(String ext1, String ext2, String ext3, String ext4, String ext5, Closure body) { 
+		transform([ext1,ext2,ext3,ext4,ext5],body)
+    }
+	
+    Object produce(String out1, String out2, Closure body) { 
+		produce([out1,out2],body)
+    }
+    
+    Object produce(String out1, String out2, String out3, Closure body) { 
+		produce([out1,out2,out3],body)
+    }
+    
+    Object produce(String out1, String out2, String out3, String out4, Closure body) { 
+		produce([out1,out2,out3,out4],body)
+    }
+    
+    Object produce(String out1, String out2, String out3, String out4, String out5, Closure body) { 
+		produce([out1,out2,out3,out4,out5],body)
+    }
+	
+	
+    
+    /**
      * Specifies that the given output (out) will be produced
      * by the given closure, and skips execution of the closure
      * if the output is newer than all the current inputs.  
