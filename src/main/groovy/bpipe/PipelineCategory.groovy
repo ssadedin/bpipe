@@ -58,8 +58,42 @@ class PipelineCategory {
      * This is how predeclared Transform and Filters work.
      */
     static Map wrappers = [:]
-	
-    /**
+    
+    static Closure getAt(Closure c, String... params) {
+        return c
+    }
+   
+    static Closure cfg(Closure c, Map params) {
+        c.binding.variables += params
+        return c
+    }
+    
+   static Closure using(Closure c, Map params) {
+        c.binding.variables += params
+        return c
+    }
+    
+    static Closure with(Closure c, Map params) {
+        cfg(c,params)
+    }
+    
+    static Closure bitwiseNegate(Closure c, Map params) {
+        cfg(c,params)
+    }
+    
+    static Closure cfg(Closure c, Object... args) {
+        c.binding.variables["args"] = args
+        return c
+    }
+    
+    static Closure with(Closure c, Object... args) {
+        cfg(c,args)
+    }
+    
+    static Closure bitwiseNegate(Closure c, Object... args) {
+        cfg(c,args)
+    }
+     /**
      * Joins two closures representing pipeline stages together by
      * creating wrapping closure that executes each one in turn.  This is the 
      * basis of Bpipes's + syntax for joining sequential pipeline stages.
