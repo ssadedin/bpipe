@@ -64,13 +64,11 @@ class PipelineCategory {
     }
    
     static Closure cfg(Closure c, Map params) {
-        c.binding.variables += params
-        return c
+        new ParameterizedClosure(params, c)
     }
     
    static Closure using(Closure c, Map params) {
-        c.binding.variables += params
-        return c
+        cfg(c,params)
     }
     
     static Closure with(Closure c, Map params) {
@@ -86,6 +84,10 @@ class PipelineCategory {
         return c
     }
     
+    static Closure using(Closure c, Object... args) {
+        cfg(c,args)
+    }
+    
     static Closure with(Closure c, Object... args) {
         cfg(c,args)
     }
@@ -93,6 +95,7 @@ class PipelineCategory {
     static Closure bitwiseNegate(Closure c, Object... args) {
         cfg(c,args)
     }
+    
      /**
      * Joins two closures representing pipeline stages together by
      * creating wrapping closure that executes each one in turn.  This is the 

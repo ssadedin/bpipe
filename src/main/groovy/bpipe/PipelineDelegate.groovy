@@ -21,6 +21,11 @@ class PipelineDelegate {
     
     static void setDelegateOn(PipelineContext context, Closure body) {
         synchronized(body) {
+            if(body instanceof ParameterizedClosure) {
+                ParameterizedClosure pc = body
+                context.localVariables = pc.getExtraVariables()
+            }
+            
             if(body.getDelegate() == null || !(body.getDelegate() instanceof PipelineDelegate)) {
                 def d = new PipelineDelegate(context)
                 body.setDelegate(d)
@@ -51,6 +56,10 @@ class PipelineDelegate {
         else
         if(Pipeline.currentRuntimePipeline.get()?.variables?.containsKey(name)) {
             return Pipeline.currentRuntimePipeline.get().variables.get(name)
+        }
+        else
+        if(ctx.localVariables.containsKey(name)) {
+            return ctx.localVariables[name]
         }
         else
         if(name != "input" && ctx.echoWhenNotFound) {

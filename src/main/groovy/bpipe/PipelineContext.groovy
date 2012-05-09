@@ -1,3 +1,28 @@
+/*
+ * Copyright (c) 2012 MCRI, authors
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
+ * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 package bpipe
 
 import groovy.lang.Binding;
@@ -66,6 +91,13 @@ class PipelineContext {
     Binding extraBinding
     
     /**
+     * Local variables are specific to this instance of this pipeline stage.
+     * These are injected in and take values separately even if a stage is used 
+     * twice in a single pipeline
+     */
+    Map<String,Object> localVariables = [:]
+    
+    /**
      * The stage name for which this context is running
      */
     String stageName
@@ -86,16 +118,16 @@ class PipelineContext {
      */
     Set<String> outputMask = ['\\.bai$', '\\.log$'] as Set
 
-   File uncleanFilePath
+    File uncleanFilePath
    
-   /**
-    * Documentation attributes for the the pipeline stage
-    */
-   Map<String, Object> documentation
+    /**
+     * Documentation attributes for the the pipeline stage
+     */
+    Map<String, Object> documentation
    
-   private List<PipelineStage> pipelineStages
+    private List<PipelineStage> pipelineStages
    
-   private List<Closure> pipelineJoiners
+    private List<Closure> pipelineJoiners
       
    /**
     * All outputs from this stage, mapped by command 
