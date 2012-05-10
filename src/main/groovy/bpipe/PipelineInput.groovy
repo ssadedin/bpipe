@@ -1,9 +1,5 @@
-package bpipe
-
-import java.util.logging.Logger;
-
 /*
- * Copyright (c) 2011 MCRI, authors
+ * Copyright (c) 2012 MCRI, authors
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -26,6 +22,9 @@ import java.util.logging.Logger;
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
  * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package bpipe
+
+import java.util.logging.Logger;
 
 /**
  * Represents a "magic" input object that automatically 
@@ -155,6 +154,7 @@ class PipelineInput {
 	        if(filesWithExts.any { it == null})
 	            throw new PipelineError("Unable to locate one or more specified inputs from pipeline with extension(s) $orig")
 	            
+			log.info "Found files with exts $exts : $filesWithExts"
 	        return filesWithExts
         }
     }

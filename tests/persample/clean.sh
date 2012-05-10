@@ -1,0 +1,2 @@
+rm -f *align*
+

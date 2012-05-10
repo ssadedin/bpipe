@@ -64,7 +64,10 @@ class PipelineCategory {
     }
    
     static Closure cfg(Closure c, Map params) {
-        new ParameterizedClosure(params, c)
+        def pc = new ParameterizedClosure(params, c)
+		if(closureNames.containsKey(c))
+			closureNames[pc] = closureNames[c]
+		return pc
     }
     
    static Closure using(Closure c, Map params) {

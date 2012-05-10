@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 MCRI, authors
+ * Copyright (c) 2012 MCRI, authors
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
