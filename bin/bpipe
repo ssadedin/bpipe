@@ -335,11 +335,11 @@ then
     shift 1
     java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.mode=diagram bpipe.Runner $* 
     exit
-elif [ "$COMMAND" == "documentation" ];
-then
-    shift 1
-    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.mode=documentation bpipe.Runner $* 
-    exit
+#elif [ "$COMMAND" == "documentation" ];
+#then
+#    shift 1
+#    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.mode=documentation bpipe.Runner $* 
+#    exit
 elif [ "$COMMAND" == "diagrameditor" ];
 then
     shift 1
@@ -474,7 +474,14 @@ $SHOWDEBUG && {
   echo "DEBUG: classpath=$CP"
   echo "JAVA_MEM: $JAVA_MEM"
 }
-nohup java -Xmx${MAX_JAVA_MEM} -classpath "$CP" $BPIPEDEBUG -Dbpipe.pid=$$ -Dbpipe.home="$BPIPE_HOME" -Dbpipe.version=$VERSION bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
+
+JVM_BPIPE_HOME="$BPIPE_HOME"
+if uname | grep -iq cygwin;
+then
+    JVM_BPIPE_HOME=`cygpath -ma "$BPIPE_HOME"`
+fi
+
+nohup java -Xmx${MAX_JAVA_MEM} -classpath "$CP" $BPIPEDEBUG -Dbpipe.pid=$$ -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.version=$VERSION bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
 
 BPIPE_PID="$!"
 

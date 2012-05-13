@@ -45,7 +45,7 @@ class Runner {
     
     
     static CliBuilder runCli = new CliBuilder(usage: 
-   """bpipe [run|test] [-h] [-t] [-d] [-n <threads>] [-v] <pipeline> <in1> <in2>...
+   """bpipe [run|test|debug] [-h] [-t] [-d] [-r] [-n <threads>] [-v] <pipeline> <in1> <in2>...
 history 
 log
 jobs
@@ -139,6 +139,7 @@ diagrameditor""")
 	             h longOpt:'help', 'usage information'
 	             d longOpt:'dir', 'output directory', args:1
 	             t longOpt:'test', 'test mode'
+	             r longOpt:'report', 'generate an HTML report / documentation for pipeline'
 	             n longOpt:'threads', 'maximum threads', args:1
 	             v longOpt:'verbose', 'print internal logging to standard error'
 	        }
@@ -174,6 +175,10 @@ diagrameditor""")
             log.info "Maximum threads specified as $opts.n"
             Config.config.maxThreads = Integer.parseInt(opts.n)
         }
+		
+		if(opts.r) {
+			Config.config.report = true
+		}
         
 		File pipelineFile = new File(opt.arguments()[0])
         if(!pipelineFile.exists()) {
@@ -188,6 +193,8 @@ diagrameditor""")
 			groovyArgs += opt.arguments()[1..-1]
         
         Config.readUserConfig()
+		
+		ToolDatabase.instance.init(Config.userConfig)
 		
 		// Add event listeners that come directly from configuration
 		EventManager.instance.configure(Config.userConfig)

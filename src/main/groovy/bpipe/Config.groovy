@@ -46,7 +46,10 @@ class Config {
 		// Set to comma separated list of 
 		// notification channels to use.  Currently only
 		// XMPP supported
-		notifications : null
+		notifications : null,
+		
+		// If set to true an HTML report of the run is generated
+		report: false
     ]
     
     /**
@@ -55,17 +58,47 @@ class Config {
     public static ConfigObject userConfig
     
     public static void readUserConfig() {
+		
+        ConfigSlurper slurper = new ConfigSlurper()
+		
+//		println "bpipe.home = " + System.getProperty("bpipe.home")
+		
+		File builtInConfigFile = new File(System.getProperty("bpipe.home") +"/bpipe.config")
+		// Allows running in-situ in project source distro root dir to work
+		if(!builtInConfigFile.exists()) {
+			builtInConfigFile = new File(System.getProperty("bpipe.home") + "/src/main/config", "bpipe.config")
+		}
+		
+		ConfigObject builtInConfig = slurper.parse(builtInConfigFile.toURI().toURL())
+		
+		File homeConfigFile = new File(System.getProperty("user.home"), ".bpipeconfig")
+		ConfigObject homeConfig
+		if(homeConfigFile.exists()) {
+            homeConfig = slurper.parse(homeConfigFile.toURI().toURL())
+		}
+		
         File configFile = new File("bpipe.config")
+		ConfigObject localConfig
         if(configFile.exists()) {
             log.info "Reading Bpipe configuration from ${configFile.absolutePath}"
-            ConfigSlurper slurper = new ConfigSlurper()
-            userConfig = slurper.parse(configFile.toURI().toURL())
+            localConfig = slurper.parse(configFile.toURI().toURL())
         }
         else {
             log.info "No local configuration file found"
-            userConfig = new ConfigObject()
         }
-            
+		
+		
+        userConfig = builtInConfig ? builtInConfig : new ConfigObject()
+		if(homeConfig) {
+			log.info "Merging home config file"
+			userConfig.merge(homeConfig)
+		}
+        
+		if(localConfig) {
+			log.info "Merging local config file"
+			userConfig.merge(localConfig)
+		}
+		
         if(!userConfig.executor) {
             userConfig.executor = "local"
         }

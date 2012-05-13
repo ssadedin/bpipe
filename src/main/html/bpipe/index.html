@@ -10,7 +10,7 @@
             }
             #hd {
                 padding: 1em;
-                background-color: #f6f2f0;
+                background-color: #f5f2f0;
             }
             #bd {
                 padding: 1em;
@@ -66,7 +66,7 @@
                                     <span class='docLabel'>Inputs:</span>
                                     ${doc.inputs}
                                 </p>
-                            <% } %>
+                            <% } %> 
                         <%}%>
 
 
@@ -86,7 +86,25 @@
                             <% } %>
                         <%}%>
 
-
+                        <%if(doc.tools) {%>
+                            <span class='docLabel'>Tools:</span>
+                            <ul class='tools'>
+                                <% doc.tools.each { name, detail -> %>
+                                  <li class='input'>
+                                  	<% if(detail.meta.link) { %>
+                                  		<a href='${detail.meta.link}'>${name}</a>
+                                  	<% } else { %>
+                                  		${name}  
+	                                <% } %> :
+                                    ${detail.version}
+                                    
+                                  	<% if(detail.meta.desc) { %>
+                                  	 - <span class=toolDesc>${detail.meta.desc}</span>
+	                                <% } %> 
+                                  </li>
+                                <% } %>
+                            </ul>
+                        <%}%>
 
                         <%if(doc?.constraints) {%>
                             <p class='constraintsBody'><span class='constraintLabel'>Constraints:</span>${doc.constraints}</p>

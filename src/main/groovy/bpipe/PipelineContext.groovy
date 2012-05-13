@@ -122,8 +122,10 @@ class PipelineContext {
    
     /**
      * Documentation attributes for the the pipeline stage
+     * Mostly this is a map of String => String, but 
+     * tool information is stored as {@link Tool} objects
      */
-    Map<String, Object> documentation
+    Map<String, Object> documentation = [:]
    
     private List<PipelineStage> pipelineStages
    
@@ -580,7 +582,7 @@ class PipelineContext {
 	}
     
     void doc(Object attributes) {
-        this.documentation = attributes
+        this.documentation += attributes
     }
     
     /**
@@ -674,6 +676,13 @@ class PipelineContext {
           
       if(!probeMode) {
           CommandLog.log.write(cmd)
+		  
+		  // Check the command for versions of tools it uses
+		  def toolsDiscovered = ToolDatabase.instance.probe(cmd)
+		  
+		  // Add the tools to our documentation
+		  if(toolsDiscovered)
+			  this.doc(["tools" : toolsDiscovered])
       
           CommandManager commandManager = new CommandManager()
           CommandExecutor cmdExec = commandManager.start(stageName, joined, config, Utils.box(this.input))

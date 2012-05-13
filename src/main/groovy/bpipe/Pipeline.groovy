@@ -314,7 +314,7 @@ public class Pipeline {
 		// as output is not terminated with one by default
 		cmdlog << ""
         
-        if(Config.config.mode == "documentation") {
+        if(Config.config.mode == "documentation" || Config.config.report) {
             documentation()
         }
         
@@ -411,11 +411,11 @@ public class Pipeline {
         
         // Use HTML templates to generate documentation
         InputStream templateStream
-        File srcTemplateDir = new File("src/main/html/bpipe")
+        File srcTemplateDir = new File(System.getProperty("bpipe.home") + "/src/main/html/bpipe")
         if(srcTemplateDir.exists())
             templateStream = new FileInputStream(new File(srcTemplateDir, "index.html"))
         else
-            templateStream = getClass().getClassLoader().resourceAsStream("bpipe/index.html")
+            templateStream = new FileInputStream(new File(System.getProperty("bpipe.home") + "/html", "index.html"))
             
         GStringTemplateEngine e = new GStringTemplateEngine()
         templateStream.withReader { r ->
