@@ -280,6 +280,7 @@ class PipelineCategory {
 	                log.info "Creating pipeline to run sample $id with files $files"
 	                runningCount.incrementAndGet()
 	                Pipeline child = pipeline.fork()
+					currentStage.children << child
                     Closure segmentClosure = s
                     threads << {
                             try {

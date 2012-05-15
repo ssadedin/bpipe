@@ -79,6 +79,12 @@ public class Pipeline {
      * A list of "dummy" stages that are actually used to link other stages together
      */
     def joiners = []
+	
+	/**
+	 * If this pipeline was spawned as a child of another pipeline, then
+	 * the parent is set to that pipeline
+	 */
+	Pipeline parent = null
     
     /**
      * A name for the pipeline that is added to output file names when 
@@ -339,6 +345,7 @@ public class Pipeline {
         Pipeline p = new Pipeline()
         p.stages = [] + this.stages
         p.joiners = [] + this.joiners
+		p.parent = this
         return p
     }
     
@@ -403,10 +410,14 @@ public class Pipeline {
         if(!docDir.exists()) {
             docDir.mkdir()
         }
-        
+		
+		def docStages = [] 
+		fillDocStages(docStages)
+	        
          Map docBinding = [
             title: "Pipeline Documentation",
-            stages: stages.grep { !(it.body in joiners) }
+            stages: docStages
+//            stages: stages.grep { !(it.body in joiners) }
         ]
         
         // Use HTML templates to generate documentation
@@ -426,6 +437,31 @@ public class Pipeline {
         
         println "Generated documentation in $docDir"
     }
+	
+	void fillDocStages(List docStages) {
+		
+		for(PipelineStage s in stages) {
+				
+			// No documentation for anonymous joiner stages
+			if(s.body in joiners)
+				continue
+				
+//		    println "docStages = " + docStages + " parent = $parent"
+			if(s in docStages || (parent != null && s in parent.stages))
+				continue
+				
+			if(s.stageName == null || s.stageName == "null")
+				continue
+				
+			// if it has children, generate them
+			if(s.children) {
+//				println "Filling " + s.children[0]
+				s.children[0].fillDocStages(docStages)
+			}
+			else
+				docStages << s
+		}
+	}
     
     /**
      * This method creates a diagram of the pipeline instead of running it

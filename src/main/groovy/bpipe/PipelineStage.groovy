@@ -62,6 +62,13 @@ class PipelineStage {
         this.context = context
         this.body = body
     }
+	
+	/**
+	 * If a pipeline forks to run multiple parallel branches, each 
+	 * branch becomes a child of a pipeline stage that acts as a node
+	 * at the head of those stages.
+	 */
+	List<Pipeline> children = []
     
     PipelineContext context
     
