@@ -209,7 +209,7 @@ class ToolDatabase {
 			if(!commandContainsTool(command,name))
 				return
 			
-			tool.probe(command)
+			tool.probe(command) 
 			
 			result[name] = tool
 		}

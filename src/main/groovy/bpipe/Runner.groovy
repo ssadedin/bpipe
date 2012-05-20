@@ -102,7 +102,7 @@ diagrameditor""")
         
         log.info("Starting")
         
-        def cli
+        def cli 
         
         def groovyArgs = ["--main", "groovy.ui.GroovyMain", "-e"] 
         String mode = System.getProperty("bpipe.mode")
@@ -178,6 +178,9 @@ diagrameditor""")
 		
 		if(opts.r) {
 			Config.config.report = true
+			def reportStats = new ReportStatisticsListener()
+			EventManager.instance.addListener(PipelineEvent.STAGE_STARTED, reportStats)
+			EventManager.instance.addListener(PipelineEvent.STAGE_COMPLETED, reportStats)
 		}
         
 		File pipelineFile = new File(opt.arguments()[0])

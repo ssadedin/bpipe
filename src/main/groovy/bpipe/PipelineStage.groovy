@@ -86,6 +86,11 @@ class PipelineStage {
      * is printed out
      */
     static int stageCount = 1
+	
+	/**
+	 * Set to false if the pipeline stage experiences a failure during execution
+	 */
+	boolean succeeded = true
     
     /**
      * Executes the pipeline stage body, wrapping it with logic and instrumentation
@@ -107,7 +112,7 @@ class PipelineStage {
              } 
         }
         
-        boolean succeeded = false
+        succeeded = false
         def oldFiles = new File(context.outputDirectory).listFiles() as List
         oldFiles = oldFiles?:[]
         boolean joiner = (body in this.context.pipelineJoiners)
@@ -125,7 +130,7 @@ class PipelineStage {
                 CommandLog.log << "# Stage $stageName"
                 ++stageCount
                 
-                EventManager.instance.signal(PipelineEvent.STAGE_STARTED, "Starting stage $stageName")
+                EventManager.instance.signal(PipelineEvent.STAGE_STARTED, "Starting stage $stageName", [stage:this])
                 
                 if(context.output == null && context.@defaultOutput == null) {
                     if(context.@input) {
@@ -162,7 +167,7 @@ class PipelineStage {
             succeeded = true
             if(!joiner) {
                 log.info("Stage $stageName returned $context.nextInputs as default inputs for next stage")
-                EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $stageName")
+                EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $stageName", [stage:this])
             }
                 
             context.uncleanFilePath.text = ""

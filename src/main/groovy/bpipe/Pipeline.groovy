@@ -131,6 +131,19 @@ public class Pipeline {
      * by this thread local variable
      */
     static ThreadLocal<Pipeline> currentRuntimePipeline = new ThreadLocal()
+	
+	
+	/**
+	 * Documentation about this pipeline
+	 */
+	static Map<String,Object> documentation = [:]
+	
+	/**
+	 * Allow user to add arbitrary documentation about their pipeline
+	 */
+	static about(Map<String,Object> docs) {
+		documentation += docs
+	}
     
     /**
      * Due to certain constraints in how Groovy handles operator 
@@ -291,6 +304,8 @@ public class Pipeline {
     		println("="*Config.config.columns)
     		println("|" + " Starting Pipeline at $startDateTime".center(Config.config.columns-2) + "|")
     		println("="*Config.config.columns)
+			
+			about(startedAt: new Date())
         }
     
 		def constructedPipeline
@@ -305,6 +320,7 @@ public class Pipeline {
                 runSegment(inputFile, constructedPipeline, null)
     			println("\n"+" Pipeline Finished ".center(Config.config.columns,"="))
     			rootContext.msg "Finished at " + (new Date())
+				about(finishedAt: new Date())
 				
 				EventManager.instance.signal(PipelineEvent.FINISHED, failed?"Failed":"Succeeded")
                 if(!failed) {
@@ -413,12 +429,17 @@ public class Pipeline {
 		
 		def docStages = [] 
 		fillDocStages(docStages)
+		
+		if(!documentation.title)
+			documentation.title = "Pipeline Documentation"
 	        
          Map docBinding = [
-            title: "Pipeline Documentation",
-            stages: docStages
-//            stages: stages.grep { !(it.body in joiners) }
+            stages: docStages,
+			pipeline: this
         ]
+		 
+		if(docStages.any { it.stageName == null })
+			throw new IllegalStateException("Should NEVER have a null stage name here")
         
         // Use HTML templates to generate documentation
         InputStream templateStream
@@ -450,16 +471,16 @@ public class Pipeline {
 			if(s in docStages || (parent != null && s in parent.stages))
 				continue
 				
-			if(s.stageName == null || s.stageName == "null")
-				continue
 				
 			// if it has children, generate them
 			if(s.children) {
 //				println "Filling " + s.children[0]
 				s.children[0].fillDocStages(docStages)
 			}
-			else
-				docStages << s
+			else {
+				if(s?.context?.stageName != null)
+					docStages << s
+			}
 		}
 	}
     

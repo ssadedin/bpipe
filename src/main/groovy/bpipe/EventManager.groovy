@@ -39,6 +39,8 @@ class EventManager {
 	
     private static Logger log = Logger.getLogger("bpipe.EventManager");
 	
+	Map<PipelineEvent,PipelineEventListener> listeners = [:]
+
 	ConfigObject cfg
 	
 	/**
@@ -51,13 +53,35 @@ class EventManager {
 	}
 	
 	/**
+	 * Subscribe to hear notifications about this event
+	 * @param evt
+	 * @param listener
+	 */
+	synchronized void addListener(PipelineEvent evt, PipelineEventListener listener) {
+		if(!listeners[evt])
+			this.listeners[evt] = []
+		this.listeners[evt] << listener
+	}
+	
+	/**
+	 * Send notifications to all the listeners for this event
+	 */
+	synchronized void notifyListeners(PipelineEvent evt, String desc, Map<String,Object> detail=[:]) {
+		if(listeners[evt])
+			listeners[evt]*.onEvent(evt,desc,detail)
+	}
+	
+	/**
 	 * Notify that an event has occured
 	 * 
 	 * @param evt	Kind of event
 	 * @param desc	brief description (eg: fits in email subject)
 	 * @param detail arbitrary key / value data about the event, specific to individual event
 	 */
-	void signal(PipelineEvent evt, String desc, Map detail=[:]) {
+	void signal(PipelineEvent evt, String desc, Map<String,Object> detail=[:]) {
+		
+		notifyListeners(evt,desc,detail)
+		
 		if(!cfg.notifications)
 			return
             

@@ -200,6 +200,7 @@ class PipelineCategory {
 	                log.info "Creating pipeline to run on chromosome $chr"
 	                runningCount.incrementAndGet()
 	                Pipeline child = pipeline.fork()
+					currentStage.children << child
                     Closure segmentClosure = s
                     threads << {
                             try {
