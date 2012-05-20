@@ -218,6 +218,10 @@ class PipelineContext {
        return output
    }
    
+   def getOutputs() {
+	   return Utils.box(getOutput())
+   }
+   
    def getOutput1() {
        return trackOutput(Utils.box(getOutput())[0])
    }
@@ -581,8 +585,19 @@ class PipelineContext {
         exec(cmd, true)
 	}
     
+	/**
+	 * Adds user provided documentation to the pipeline stage
+	 * 
+	 * @param attributes	can be a string or Map of attributes
+	 */
     void doc(Object attributes) {
-        this.documentation += attributes
+		if(attributes instanceof Map) {
+	        this.documentation += attributes
+		}
+		else
+		if(attributes instanceof String) {
+			this.documentation["desc"] = attributes
+		}
     }
     
     /**

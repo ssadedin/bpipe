@@ -481,7 +481,7 @@ then
     JVM_BPIPE_HOME=`cygpath -ma "$BPIPE_HOME"`
 fi
 
-nohup java -Xmx${MAX_JAVA_MEM} -classpath "$CP" $BPIPEDEBUG -Dbpipe.pid=$$ -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.version=$VERSION bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
+nohup java -Xmx${MAX_JAVA_MEM} -classpath "$CP" $BPIPEDEBUG -Dbpipe.pid=$$ -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.version=$VERSION -Dbpipe.builddate=$BUILDDATE bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
 
 BPIPE_PID="$!"
 
