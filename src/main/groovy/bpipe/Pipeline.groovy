@@ -427,11 +427,14 @@ public class Pipeline {
             docDir.mkdir()
         }
 		
-		def docStages = [] 
+		// We build up a list of pipeline stages
+		// so the seed for that is a list with one empty list
+		def docStages = [ [] ]
+		 
 		fillDocStages(docStages)
 		
 		if(!documentation.title)
-			documentation.title = "Pipeline Documentation"
+			documentation.title = "Pipeline Report"
 	        
          Map docBinding = [
             stages: docStages,
@@ -459,29 +462,43 @@ public class Pipeline {
         println "Generated documentation in $docDir"
     }
 	
-	void fillDocStages(List docStages) {
+	void fillDocStages(List pipelines) {
 		
-		for(PipelineStage s in stages) {
+		log.fine "Filling stages $stages"
+		
+		for(List docStages in pipelines.clone()) {
+			
+			for(PipelineStage s in stages) {
+					
+				// No documentation for anonymous joiner stages
+				if(s.body in joiners)
+					continue
+					
+				if(!s.children && s?.context?.stageName != null) {
+					log.fine "adding stage $s.context.stageName from pipeline $this"
+					pipelines.each { it << s }
+				}
+					
+				if(s in docStages || (parent != null && s in parent.stages))
+					continue
+					
+				// if it has children, generate them
+				if(s.children) {
 				
-			// No documentation for anonymous joiner stages
-			if(s.body in joiners)
-				continue
-				
-//		    println "docStages = " + docStages + " parent = $parent"
-			if(s in docStages || (parent != null && s in parent.stages))
-				continue
-				
-				
-			// if it has children, generate them
-			if(s.children) {
-//				println "Filling " + s.children[0]
-				s.children[0].fillDocStages(docStages)
-			}
-			else {
-				if(s?.context?.stageName != null)
-					docStages << s
+					// Take out the original
+					pipelines.remove(docStages)
+					
+					// Replace it for an entry with each child pipeline
+					pipelines.addAll s.children.collect { Pipeline childPipeline ->
+						List childStages = [ [] ]
+						childPipeline.fillDocStages(childStages)
+						return childStages
+					}.collect { it[0] }
+				}
 			}
 		}
+		
+		log.fine "Result: $pipelines"
 	}
     
     /**

@@ -34,6 +34,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
@@ -105,12 +106,13 @@ class PipelineCategory {
      * basis of Bpipes's + syntax for joining sequential pipeline stages.
      */
     static Object plus(Closure c, Closure other) {
-        Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
         
 		// What we return is actually a closure to be executed later
 		// when the pipeline is run.  
         def result  = {  input1 ->
             
+			Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
+			 
             def currentStage = new PipelineStage(pipeline.createContext(), c)
             pipeline.addStage(currentStage)
             currentStage.context.setInput(input1)
@@ -135,7 +137,7 @@ class PipelineCategory {
             currentStage.run()
             return currentStage.context.nextInputs?:currentStage.context.output
         }
-        pipeline.joiners << result
+        Pipeline.currentUnderConstructionPipeline.joiners << result
         return result
     }
     
@@ -219,7 +221,7 @@ class PipelineCategory {
         	                    child.runSegment(input, segmentClosure, runningCount)
                             }
                             catch(Exception e) {
-                                log.severe("Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message)
+                                log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
 								StackTraceUtils.sanitize(e).printStackTrace()
                                 child.failed = true
                             }
@@ -280,6 +282,7 @@ class PipelineCategory {
 				samples.each { id, files ->
 	                log.info "Creating pipeline to run sample $id with files $files"
 	                runningCount.incrementAndGet()
+					
 	                Pipeline child = pipeline.fork()
 					currentStage.children << child
                     Closure segmentClosure = s
@@ -292,13 +295,14 @@ class PipelineCategory {
         			            PipelineContext dummyPriorContext = pipeline.createContext()
         			            PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
         			            dummyPriorContext.output = files
+        			            dummyPriorContext.@input = files
                                 
         			            log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
-        			            pipeline.addStage(dummyPriorStage)
+        			            child.addStage(dummyPriorStage)
         	                    child.runSegment(files, segmentClosure, runningCount)
                             }
                             catch(Exception e) {
-                                log.severe("Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message)
+                                log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
 								StackTraceUtils.sanitize(e).printStackTrace()
                                 child.failed = true
                             }

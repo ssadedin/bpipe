@@ -19,7 +19,7 @@ function err() {
 
 # Convenience function to run the test
 function run() {
-	bpipe run test.groovy $* > test.out 2>&1
+	bpipe run -r test.groovy $* > test.out 2>&1
 }
 
 # Convenience function to run in test mode

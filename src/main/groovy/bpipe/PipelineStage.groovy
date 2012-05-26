@@ -167,7 +167,6 @@ class PipelineStage {
             succeeded = true
             if(!joiner) {
                 log.info("Stage $stageName returned $context.nextInputs as default inputs for next stage")
-                EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $stageName", [stage:this])
             }
                 
             context.uncleanFilePath.text = ""
@@ -193,6 +192,10 @@ class PipelineStage {
             cleanupOutputs(oldFiles)
             throw e
         }
+		finally {
+            if(!joiner) 
+	            EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $stageName", [stage:this])
+		}
         
         Utils.checkFiles(context.output,"output")
         
