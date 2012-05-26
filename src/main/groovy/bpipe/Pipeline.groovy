@@ -336,7 +336,7 @@ public class Pipeline {
 		// as output is not terminated with one by default
 		cmdlog << ""
         
-        if(Config.config.mode == "documentation" || Config.config.report) {
+        if(launch && (Config.config.mode == "documentation" || Config.config.report)) {
             documentation()
         }
         
