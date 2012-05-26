@@ -631,10 +631,15 @@ class PipelineContext {
         // Output is still spooling from the process.  By waiting a bit we ensure
         // that we don't interleave the exception trace with the output
         Thread.sleep(200)
-		this.commandManager.cleanup(p)
+		
+		if(!this.probeMode)
+			this.commandManager.cleanup(p)
+			
         throw new PipelineError("Command failed with exit status = $exitResult : \n$cmd")
       }
-	  this.commandManager.cleanup(p)
+	  
+	  if(!this.probeMode)
+		    this.commandManager.cleanup(p)
     }
     
     /**
