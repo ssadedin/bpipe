@@ -1,5 +1,60 @@
+=========== Changes for Bpipe Version 0.9.4 ============
 
-=========== Changes for Bpipe Version 0.9.2 ============
+    Issue 25: Support for Report of Run in HTML Form
+ 
+    Issue 31: Running bpipe stop reports stopping many
+ 
+    Issue 29: ConcurrentModificationException when
+    	      Running Parallel Pipeline
+
+    Issue 30: Fixed race deadlock condition causing local commands
+              to hang
+
+    --------: Support for arbitrary listeners to pipeline events
+
+
+    Issue 25: Support for Report of Run in HTML Form
+
+    --------: Fixed build date displayed by bpipe 
+              help info incorrect
+
+    Issue 26: Bpipe configuration defaults
+
+    Issue 27: Ability to Detect and Record the Versions of Tools that Run
+
+    Issue 28: Ability to Parameterize Pipeline Stages
+
+    Issue 23: Transform and Filter should accept multiple
+	      arguments
+
+    Issue 22: Returning an Object from a Pipeline Stage
+              Should not be Treated as an Output
+
+    --------: Support for LSF executor
+
+    --------: Added Sun Grid Engine implementation for resource
+              manager, courtesy of Paolo Di Tommaso
+
+=========== Changes for Bpipe Version 0.9.3 ============
+
+    --------: fix occasional error about symbolic links already
+              existing when running Bpipe
+
+    --------: support for STAGE_FAILED event type in notifications
+
+    --------: support for limiting notification rate with interval
+              configuration (documentation TODO)
+
+    Issue 20: Errors printed out when Bpipe run in Directory 
+              for First Time
+
+    --------: fixed notifications being sent when pipeline only run
+              in test mode
+
+    --------: fixed serialization error when trying to stop jobs
+              after upgrading
+
+========== Changes for Bpipe Version 0.9.2 ============
 
     --------: added default max memory to java proc for bpipe itself
               to stop it using huge amounts on systems with very
