@@ -61,6 +61,11 @@ class CommandManager {
      * The location under which completed command information will be stored
      */
     File completedDir
+	
+	/**
+	 * Track the ids of commands that were launched by this command manager
+	 */
+	private Map<CommandExecutor,String> commandIds = [:]
 
     /**
      * Create a command manager
@@ -94,7 +99,8 @@ class CommandManager {
         log.info "Default command properties: $defaultConfig"
         
         def rawCfg = defaultConfig
-        def cmdConfig = Config.userConfig?.commands[configName]
+		
+        def cmdConfig = Config.userConfig.containsKey("commands")?Config.userConfig.commands[configName]:null
         if(cmdConfig && cmdConfig instanceof Map)  {
             // override properties in default config with those for the
             // specific command
@@ -166,6 +172,8 @@ class CommandManager {
         log.info "Created bpipe command id " + commandId
         
         cmdExec.start(cfg, commandId, name, cmd)
+		
+		this.commandIds[cmdExec] = commandId
         
         new File(commandDir, commandId).withObjectOutputStream { it << cmdExec }
         
@@ -178,7 +186,7 @@ class CommandManager {
      * Looks in the file system for known commands and iterates over them all,
      * stopping each one.
      */
-    int stopAll() {
+    int stopAll() { 
         int count = 0
         commandDir.eachFileMatch(~/[0-9]+/) { File f ->
             log.info "Loading command info from $f.absolutePath"
@@ -199,12 +207,19 @@ class CommandManager {
         return count
     }
     
+    public void cleanup(CommandExecutor cmd) {
+		if(!commandIds.containsKey(cmd))
+			throw new IllegalStateException("Attempt to clean up commmand $cmd that was not launched by this command manager / context")
+			
+		this.cleanup(this.commandIds[cmd])
+	}
+	
     /**
      * Move a command information file from the running location to completed location
      * 
      * @param commandId id of the command to move
      */
-    private void cleanup(String commandId) {
+    public void cleanup(String commandId) {
         if(!new File(this.commandDir, commandId).renameTo(new File(this.completedDir, commandId)))
             log.warning("Unable to cleanup persisted file for command $commandId")
     }

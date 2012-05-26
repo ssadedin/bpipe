@@ -82,7 +82,7 @@ class LocalCommandExecutor implements CommandExecutor {
             if(status() == CommandStatus.COMPLETE.name())
                 return exitValue
              synchronized(this) {
-                 this.wait()
+                 this.wait(500)
              }
         }
     }

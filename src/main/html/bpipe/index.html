@@ -25,7 +25,10 @@
             }
             .docLabel, .constraintLabel { font-weight: bold; margin-right: 1em; }
             .constraintLabel { xcolor: orange; }
-            .creationDate { font-size: 80%; font-style: italic; color: #555; }
+            .creationDate  { font-size: 80%; font-style: italic; color: #555; }
+            .creationDate a:link, .creationDate a:visited { color: inherit; text-decoration: none; } 
+            .creationDate a:hover, .creationDate a:active { color: inherit; text-decoration: underline; } 
+            
             .timeline {
             	height: 2em;
             	font-size: 70%;
@@ -86,6 +89,15 @@
             	right: 2px;
             }
             
+            a.stageLink:link, a.stageLink:visited {
+            	color: white;
+            	text-decoration: none;
+            }
+            a.stageLink:hover, a.stageLink:active {
+            	color: white;
+            	text-decoration: underline;
+            }
+            
             hr {
             	margin-top: 2.8em;
             }
@@ -144,6 +156,10 @@
 			     border-top-right-radius: 3px;
 			     font-size: 12pt;
 			 }
+			 a:target {
+			   color: yellow !important;
+			 }
+			 
 			 .stageList .bd {
 			   margin: 0.5em;            
 			   padding-bottom: 1em;
@@ -168,12 +184,17 @@
 		     p.descBody { 
 		     	font-size: 92%; 
 	     	 }
+	     	 .branchTitle {
+	     	 	clear: both;
+	     	 	text-decoration: underline;
+	     	 	font-size: 95%;
+	     	 }
         </style>
     </head>
     <body>
         <div id='hd'>
             <h1>${pipeline.documentation.title}</h1>
-            <p class='creationDate'>Created ${new Date()}</p>
+            <p class='creationDate'>Created by <a class='unobtrusiveLink' href='http://bpipe.org'>Bpipe</a>, ${new Date()}</p>
         </div>
 
         <div id='bd'>
@@ -182,7 +203,7 @@
             <br class='h2hr'>
             <div class='status <%=pipeline.failed?"fail":"success"%>'>
 	            <%if(pipeline.failed) {%>
-	            Failed in stage <%=stages.find {!it.succeeded}.context.stageName%>
+	            Failed in stage <%=stages.flatten().reverse().find { list -> list.find {!it.succeeded} }.context.stageName%>
 	            <%} else {%>
 	            Succeeded
 	            <%}%>
@@ -191,211 +212,223 @@
         	<hr>
             <h2 class='hr'>Timeline</h2>
             <br class='h2hr'>
+        	<%stages.each { branch -> %>
             <div class='timeline'>
             	<div class='timelineborder'> </div>
             	<div class='timelineborder right'> </div>
-	            	<%long totalTimeMs = stages*.context*.documentation.grep{it != null}.sum{ it.elapsedMs?:0 }; int count=0;%>
-	            	<%def widths=[] %>
-		            <%stages.each { stage ->  def ctx = stage.context; 
-		            	     	def width = (ctx.documentation.elapsedMs?:0)/(float)totalTimeMs*100;
-		            	     	if(width<5.0)
-		            	     		width=5.0f
-		            	     	widths << width;
-        	     	 }
-			         // width can be greater than 100%, so scale here:
-			         def total = widths.sum()
-			         widths = widths.collect { it / (total/100.0f)  }
-			         // Make sure the last width is right aligned
-			         widths[-1] += 100.0f - widths.sum() + 1.0f
-        	     	%>
-		            
-		            <%
-		            float left = 0; 
-		            stages.each { stage ->  def ctx = stage.context; %>
-		            <div class='timerow'>
-		            	<div <% 
-		            	     def width = widths[count++];
-	            	     	 %>
-	            	     	 class='timeblock <%if(!stage.succeeded){%>failed<%}%> <%=stage==stages[-1]?"right":""%>' 
-	            	     	 style='left: ${left}%;  width: ${width-1}%'>
-	            	     	 <%
-	            	     	   // Just a heuristic here, we roughly assume 1% width per char (for 1024px, 10px char width)
-	            	     	   // So truncate when text is wider than that. The -1 nudges it down for the extreme case
-	            	     	   // so that the minimum 5% only gets 4 characters before truncation
-	            	     	 %>
-	            	     	 <%=bpipe.Utils.truncnl(ctx.stageName,(int)(width-1))%>
-	            	     	 </div>
-	            	     	 <% left += width %>
+		            	<%long totalTimeMs = branch*.context*.documentation.grep{it != null}.sum{ it.elapsedMs?:0 }; int count=0; int branchCount=0;%>
+		            	<%def widths=[] %>
+			            <%branch.each { stage ->  def ctx = stage.context; 
+			            	     	def width = (ctx.documentation.elapsedMs?:0)/(float)totalTimeMs*100;
+			            	     	if(width<5.0)
+			            	     		width=5.0f
+			            	     	widths << width;
+	        	     	 }
+				         // width can be greater than 100%, so scale here:
+				         def total = widths.sum()
+				         widths = widths.collect { it / (total/100.0f)  }
+				         // Make sure the last width is right aligned
+				         widths[-1] += 100.0f - widths.sum() + 1.0f
+	        	     	%>
+			            
+			            <%
+			            float left = 0; 
+			            branch.each { stage ->  def ctx = stage.context; branchCount++; %>
+			            <div class='timerow'>
+			            	<div <% 
+			            	     def width = widths[count++];
+		            	     	 %>
+		            	     	 class='timeblock <%if(!stage.succeeded){%>failed<%}%> <%=stage==branch[-1]?"right":""%>' 
+		            	     	 style='left: ${left}%;  width: ${width-1}%'>
+		            	     	 <%
+		            	     	   // Just a heuristic here, we roughly assume 1% width per char (for 1024px, 10px char width)
+		            	     	   // So truncate when text is wider than that. The -1 nudges it down for the extreme case
+		            	     	   // so that the minimum 5% only gets 4 characters before truncation
+		            	     	 %>
+		            	     	 <a class='stageLink' href='#stage_${branchCount}_${ctx.stageName}'><%=bpipe.Utils.truncnl(ctx.stageName,(int)(width-1))%></a>
+		            	     	 </div>
+		            	     	 <% left += width %>
+				            </div>
+			            <%}%>
+	            </div>
+	            <div class='timeline'>
+		            	<%count = 0 %>
+		            	<%left = 0 %>
+			            <%branch*.context.each { stage -> %>
+			            <div class='timerow'>
+			            	<div <% 
+			            	     	def width = widths[count++]
+		            	     	 %>
+		            	     	 class='timeblock duration' style='left: ${left}%;  width: ${width-1}%'>
+		            	     	 
+		            	     	 <%if(stage.documentation?.finishedAt) {%>
+	                              <% use(groovy.time.TimeCategory) { %>
+	                                <%=(stage.documentation.finishedAt - stage.documentation.startedAt).toString().replaceAll('seconds','s').replaceAll('minutes','mins')%>
+	                                <% } %> 
+	                            <% } %> 
+		            	     	 </div>
+		            	     	 
+		            	     	 <% left += width %>
 			            </div>
-		            <%}%>
-            </div>
-            <div class='timeline'>
-	            	<%count = 0 %>
-	            	<%left = 0 %>
-		            <%stages*.context.each { stage -> %>
-		            <div class='timerow'>
-		            	<div <% 
-		            	     	def width = widths[count++]
-	            	     	 %>
-	            	     	 class='timeblock duration' style='left: ${left}%;  width: ${width-1}%'>
-	            	     	 
-	            	     	 <%if(stage.documentation?.finishedAt) {%>
-                              <% use(groovy.time.TimeCategory) { %>
-                                <%=(stage.documentation.finishedAt - stage.documentation.startedAt).toString().replaceAll('seconds','s').replaceAll('minutes','mins')%>
-                                <% } %> 
-                            <% } %> 
-	            	     	 </div>
-	            	     	 
-	            	     	 <% left += width %>
-		            </div>
-		            <%}%>
-            </div>
+			            <%}%>
+	            </div>
+            <%}%>
+            
             
         	<hr>
             <h2 class='hr'>Pipeline Stages</h2>
             <br class='h2hr'>
+            <% int branchCount = 0; %>
+        	<%stages.each { branch -> ++branchCount; %>
             <ol class='stageListOuter'>
-            <%stages.each { stage -> def ctx = stage.context; %>
-                <li class='stageList'>
-                    <h3 class='stageTitle'>
-                        <% if(ctx.documentation?.title) { %>
-                            ${ctx.stageName} : ${ctx.documentation.title} 
-                        <%} else {%>
-                            ${ctx.stageName}
-                        <% } %>
-                        
-                        <span class='statusMark <%=stage.succeeded?"success":"fail"%>' >
-                        <%if(stage.succeeded) {%>
-                        &#10003;
-                        <%} else {%>
-                        X
-                        <%}%>
-                        </span>
-                    </h3>
-                    <div class='bd'>
-
-                    <%if(ctx.documentation) {%>
-                        <% def doc = ctx.documentation; %>
-                        <%if(doc.desc) {%>
-                            <p class='descBody'>${doc.desc}</p>
-                        <%}%>
-
-						<table>
-                        <%if(doc.author) {%>
-						<tr>
-                            <th class='authorBody'>Author</th>
-                            <td>${doc.author}</td>
-                        </tr>
-                        <%}%>
-
-                        <%if(doc.inputs || ctx.inputs) {%>
-						<tr>
-                            <th class='docLabel'>Inputs</th>
-                        	<%if(ctx.inputs) {%>
+            
+            	<%if(stages.size()>1) {%>
+            		<p class='branchTitle'>Branch ${branchCount}</p>
+        		<%}%>
+            
+	            <%branch.each { stage -> def ctx = stage.context; %>
+	                <li class='stageList'>
+	                    <h3 class='stageTitle'><a name='stage_${branchCount}_${ctx.stageName}'>
+	                        <% if(ctx.documentation?.title) { %>
+	                            ${ctx.stageName} : ${ctx.documentation.title} 
+	                        <%} else {%>
+	                            ${ctx.stageName}
+	                        <% } %>
+	                        </a>
+	                        
+	                        <span class='statusMark <%=stage.succeeded?"success":"fail"%>' >
+	                        <%if(stage.succeeded) {%>
+	                        &#10003;
+	                        <%} else {%>
+	                        X
+	                        <%}%>
+	                        </span>
+	                    </h3>
+	                    <div class='bd'>
+	
+	                    <%if(ctx.documentation) {%>
+	                        <% def doc = ctx.documentation; %>
+	                        <%if(doc.desc) {%>
+	                            <p class='descBody'>${doc.desc}</p>
+	                        <%}%>
+	
+							<table>
+	                        <%if(doc.author) {%>
+							<tr>
+	                            <th class='authorBody'>Author</th>
+	                            <td>${doc.author}</td>
+	                        </tr>
+	                        <%}%>
+	
+	                        <%if(doc.inputs || ctx.inputs) {%>
+							<tr>
+	                            <th class='docLabel'>Inputs</th>
+	                        	<%if(ctx.inputs) {%>
+		                            <td>
+		                            <ul class='inputs'>
+	                                <% ctx.inputs.each { inp -> %>
+	                                    <li class='input'>${inp.replaceAll("^\\./","")}</li>
+	                                <% } %>
+	                                </ul>
+	                                </td>
+	                        	<%} else {%>
+		                            <% if(doc.inputs instanceof List) { %>
+		                                <td>
+		                                <ul class='inputs'>
+			                                    <% doc.inputs.each { inp -> %>
+			                                        <li class='input'>${inp}</li>
+			                                    <% } %>
+		                                </ul>
+		                            <% } else { %>
+	                                    <td>${doc.inputs}</td>
+		                            <% } %> 
+	                            <% } %>
+	                            </td>
+	                        </tr>
+	                        <%}%>
+	
+	
+	                        <%if(doc.outputs || ctx.outputs) {%>
+							<tr>
+	                            <th class='docLabel'>Outputs</th>
+	                            <% if(ctx.outputs) { %>
 	                            <td>
-	                            <ul class='inputs'>
-                                <% ctx.inputs.each { inp -> %>
-                                    <li class='input'>${inp.replaceAll("^\\./","")}</li>
-                                <% } %>
-                                </ul>
-                                </td>
-                        	<%} else {%>
-	                            <% if(doc.inputs instanceof List) { %>
-	                                <td>
-	                                <ul class='inputs'>
-		                                    <% doc.inputs.each { inp -> %>
+	                            	<ul class='outputs'>
+	                            	<%ctx.outputs.each { output ->%>
+	                            		<li>${output.replaceAll("^\\./","")}</li>
+	                            	<%}%>
+	                            	</ul>
+	                        	</td>
+	                            <% } else { %>
+		                            <% if(doc.outputs instanceof List) { %>
+		                            <td>
+		                                <ul class='outputs'>
+		                                    <% doc.outputs.each { inp -> %>
 		                                        <li class='input'>${inp}</li>
 		                                    <% } %>
-	                                </ul>
-	                            <% } else { %>
-                                    <td>${doc.inputs}</td>
-	                            <% } %> 
-                            <% } %>
-                            </td>
-                        </tr>
-                        <%}%>
-
-
-                        <%if(doc.outputs || ctx.outputs) {%>
-						<tr>
-                            <th class='docLabel'>Outputs</th>
-                            <% if(ctx.outputs) { %>
-                            <td>
-                            	<ul class='outputs'>
-                            	<%ctx.outputs.each { output ->%>
-                            		<li>${output.replaceAll("^\\./","")}</li>
-                            	<%}%>
-                            	</ul>
-                        	</td>
-                            <% } else { %>
-	                            <% if(doc.outputs instanceof List) { %>
-	                            <td>
-	                                <ul class='outputs'>
-	                                    <% doc.outputs.each { inp -> %>
-	                                        <li class='input'>${inp}</li>
-	                                    <% } %>
-	                                </ul>
-	                            </td>
-	                            <% } else { %>
-	                                <td>${doc.outputs}</td>
+		                                </ul>
+		                            </td>
+		                            <% } else { %>
+		                                <td>${doc.outputs}</td>
+		                            <% } %>
 	                            <% } %>
-                            <% } %>
-                        </tr>
-                        <%}%>
-
-                        <%if(doc.tools) {%>
-						<tr>
-                            <th class='docLabel'>Tools</th>
-                            <td>
-                            <ul class='tools'>
-                                <% doc.tools.each { name, detail -> %>
-                                  <li class='input'>
-                                  	<% if(detail.meta.link) { %>
-                                  		<a href='${detail.meta.link}'>${name}</a>
-                                  	<% } else { %>
-                                  		${name}  
-	                                <% } %> :
-                                    ${detail.version}
-                                    
-                                  	<% if(detail.meta.desc) { %>
-                                  	 - <span class=toolDesc>${detail.meta.desc}</span>
-	                                <% } %> 
-                                  </li>
-                                <% } %>
-                            </ul>
-                            </td>
-                        </tr>
-                        <%}%>
-
-                        <%if(doc?.constraints) {%>
-						<tr>
-                            <th class='constraintLabel'>Constraints</th>
-                            <td>${doc.constraints}</td>
-                        </tr>
-                        <%}%>
-                        
-                        <%if(doc.startedAt) {%>
-						<tr>
-                            <th class='docLabel'>Execution Time</th>
-                            <td>
-                            	<%if(doc.elapsedMs<1000 || !doc.finishedAt) { %>
-	                                ${dateFormat.format(doc.startedAt)} 
-                                <% } else {%>
-	                                ${dateFormat.format(doc.startedAt)} - ${dateFormat.format(doc.finishedAt)}
-                                <% } %>
-                                <%if(doc.finishedAt) use(groovy.time.TimeCategory) { %>
-                                (${doc.finishedAt - doc.startedAt})
-                                <% } %>
-                            </td>
-                        </tr>
-                        <%}%>
-						</table>
-                    <%}%>
-                    
-                    </div>
-                </li>
-            <%}%>
-            </ol>
-        </div>
+	                        </tr>
+	                        <%}%>
+	
+	                        <%if(doc.tools) {%>
+							<tr>
+	                            <th class='docLabel'>Tools</th>
+	                            <td>
+	                            <ul class='tools'>
+	                                <% doc.tools.each { name, detail -> %>
+	                                  <li class='input'>
+	                                  	<% if(detail.meta.link) { %>
+	                                  		<a href='${detail.meta.link}'>${name}</a>
+	                                  	<% } else { %>
+	                                  		${name}  
+		                                <% } %> :
+	                                    ${detail.version}
+	                                    
+	                                  	<% if(detail.meta.desc) { %>
+	                                  	 - <span class=toolDesc>${detail.meta.desc}</span>
+		                                <% } %> 
+	                                  </li>
+	                                <% } %>
+	                            </ul>
+	                            </td>
+	                        </tr>
+	                        <%}%>
+	
+	                        <%if(doc?.constraints) {%>
+							<tr>
+	                            <th class='constraintLabel'>Constraints</th>
+	                            <td>${doc.constraints}</td>
+	                        </tr>
+	                        <%}%>
+	                        
+	                        <%if(doc.startedAt) {%>
+							<tr>
+	                            <th class='docLabel'>Execution Time</th>
+	                            <td>
+	                            	<%if(doc.elapsedMs<1000 || !doc.finishedAt) { %>
+		                                ${dateFormat.format(doc.startedAt)} 
+	                                <% } else {%>
+		                                ${dateFormat.format(doc.startedAt)} - ${dateFormat.format(doc.finishedAt)}
+	                                <% } %>
+	                                <%if(doc.finishedAt) use(groovy.time.TimeCategory) { %>
+	                                (${doc.finishedAt - doc.startedAt})
+	                                <% } %>
+	                            </td>
+	                        </tr>
+	                        <%}%>
+							</table>
+	                    <%}%>
+	                    
+	                    </div>
+	                </li>
+	            <%}%>
+	            </ol>
+	        <%}%>
+	        </div>
     </body>
 </html>
