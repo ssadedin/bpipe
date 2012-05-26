@@ -243,6 +243,26 @@ class PipelineContext {
        return trackOutput(Utils.box(getOutput())[3])
    }
    
+   def getOutput5() {
+       return trackOutput(Utils.box(getOutput())[4])
+   }
+    
+   def getOutput6() {
+       return trackOutput(Utils.box(getOutput())[5])
+   }
+   
+   def getOutput7() {
+       return trackOutput(Utils.box(getOutput())[6])
+   }
+    
+   def getOutput8() {
+       return trackOutput(Utils.box(getOutput())[7])
+   }
+   
+   def getOutput9() {
+       return trackOutput(Utils.box(getOutput())[8])
+   }
+	 
    private trackOutput(def output) {
        referencedOutputs << output
        return output
