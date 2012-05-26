@@ -130,6 +130,11 @@ class PipelineContext {
     private List<PipelineStage> pipelineStages
    
     private List<Closure> pipelineJoiners
+	
+	/**
+	 * Manager for commands executed by this context
+	 */
+    CommandManager commandManager = new CommandManager()
       
    /**
     * All outputs from this stage, mapped by command 
@@ -303,8 +308,9 @@ class PipelineContext {
        if(this.@input == null || Utils.isContainer(this.@input) && this.@input.size() == 0) {
            throw new PipelineError("Input expected but not provided")
        }
-       if(!inputWrapper)
+       if(!inputWrapper) {
            inputWrapper = new PipelineInput(this.@input, pipelineStages)
+       }
            
        return inputWrapper
    }
@@ -625,8 +631,10 @@ class PipelineContext {
         // Output is still spooling from the process.  By waiting a bit we ensure
         // that we don't interleave the exception trace with the output
         Thread.sleep(200)
+		this.commandManager.cleanup(p)
         throw new PipelineError("Command failed with exit status = $exitResult : \n$cmd")
       }
+	  this.commandManager.cleanup(p)
     }
     
     /**
@@ -699,9 +707,7 @@ class PipelineContext {
 		  if(toolsDiscovered)
 			  this.doc(["tools" : toolsDiscovered])
       
-          CommandManager commandManager = new CommandManager()
           CommandExecutor cmdExec = commandManager.start(stageName, joined, config, Utils.box(this.input))
-          
           List outputFilter = cmdExec.ignorableOutputs
           if(outputFilter) {
               this.outputMask.addAll(outputFilter)
