@@ -336,7 +336,7 @@ class PipelineContext {
     * If header is true, lines beginning with # will be passed to the
     * body, otherwise they will be automatically output.
     */
-   def filterLines(Closure c) {
+   void filterLines(Closure c) {
        
        if(probeMode)
            return

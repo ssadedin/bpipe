@@ -26,3 +26,10 @@ do
 		let 'fail=fail+1'
 	fi
 done
+
+echo 
+echo "=========== Summary ==========="
+echo
+echo "Success: $succ"
+echo "Fail:    $fail"
+echo
