@@ -538,7 +538,21 @@ class PipelineContext {
 		produce([out1,out2,out3,out4,out5],body)
     }
 	
+    Object produce(String out1, String out2, String out3, String out4, String out5, String out6, Closure body) { 
+		produce([out1,out2,out3,out4,out5,out6],body)
+    }
 	
+    Object produce(String out1, String out2, String out3, String out4, String out5, String out6, String out7, Closure body) { 
+		produce([out1,out2,out3,out4,out5,out6,out7],body)
+    }
+	
+    Object produce(String out1, String out2, String out3, String out4, String out5, String out6, String out7, String out8, Closure body) { 
+		produce([out1,out2,out3,out4,out5,out6,out7,out8],body)
+    }
+	
+    Object produce(String out1, String out2, String out3, String out4, String out5, String out6, String out7, String out8, String out9, Closure body) { 
+		produce([out1,out2,out3,out4,out5,out6,out7,out8,out9],body)
+    }
     
     /**
      * Specifies that the given output (out) will be produced
