@@ -94,7 +94,8 @@ class CommandManager {
         log.info "Default command properties: $defaultConfig"
         
         def rawCfg = defaultConfig
-        def cmdConfig = Config.userConfig?.commands[configName]
+		
+        def cmdConfig = Config.userConfig.containsKey("commands")?Config.userConfig.commands[configName]:null
         if(cmdConfig && cmdConfig instanceof Map)  {
             // override properties in default config with those for the
             // specific command
