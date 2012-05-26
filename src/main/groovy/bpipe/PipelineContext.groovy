@@ -697,7 +697,18 @@ class PipelineContext {
     CommandExecutor async(String cmd, boolean joinNewLines=true, String config = null) {
       def joined = ""
       if(joinNewLines) {
-	      cmd.eachLine { if(!it.trim().isEmpty() || joined.isEmpty()) joined += " " + it else joined += "; "}
+		  def prev
+	      cmd.eachLine { 
+			  if(!it.trim().isEmpty() || joined.isEmpty()) { 
+				  joined += " " + it
+			  }
+			  else {
+				  if(!joined.trim().endsWith(";"))
+					  joined += ";"
+					  
+				  joined += " "
+			  }
+		  }
       }
       else
           joined = cmd
