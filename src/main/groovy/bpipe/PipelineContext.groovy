@@ -557,7 +557,11 @@ class PipelineContext {
         }
         
         if(doExecute) {
-            this.output = out
+			if(Utils.box(this.@output)) {
+				this.output = this.@output + out
+			}
+			else
+	            this.output = out
             
             // Store the list of output files so that if we are killed 
             // they can be cleaned up
