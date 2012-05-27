@@ -4,6 +4,11 @@ BPIPE_LIB_OLD="$BPIPE_LIB"
 
 export BPIPE_LIB=`pwd`/bpipes
 
+
+uname -a | grep -i -q cygwin && {
+  export BPIPE_LIB=`cygpath -ma $BPIPE_LIB`
+}
+
 echo "Using BPIPE_LIB=$BPIPE_LIB"
 
 rm -f test.world.txt test.txt

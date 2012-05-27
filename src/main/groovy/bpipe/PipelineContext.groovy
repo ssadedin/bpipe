@@ -209,8 +209,9 @@ class PipelineContext {
            // If an input property was referenced, compute the default from that instead
            def out
            if(inputWrapper?.resolvedInputs) {
-               log.info("Using non-default output due to input property reference: " + inputWrapper.resolvedInputs[0])
-               out = inputWrapper.resolvedInputs[0] +"." + this.stageName
+			   def resolved = Utils.unbox(inputWrapper.resolvedInputs[0])
+               log.info("Using non-default output due to input property reference: " + resolved)
+               out = resolved +"." + this.stageName
            }
            else
                out = this.getDefaultOutput()
@@ -796,10 +797,10 @@ class PipelineContext {
     * @param body
     * @return
     */
-   Object from(Object stageInputs, Closure body) {
+   Object from(Object exts, Closure body) {
        
-       log.info "Searching for inputs matching spec $stageInputs"
-       def orig = stageInputs
+       log.info "Searching for inputs matching spec $exts"
+       def orig = exts
        
        // Find all the pipeline stages outputs that were created
        // in the same thread
@@ -822,16 +823,16 @@ class PipelineContext {
        
        log.info "Input list to check:  $reverseOutputs"
        
-       def resolvedInputs = Utils.box(stageInputs).collect { String inp ->
+       def resolvedInputs = Utils.box(exts).collect { String ext ->
            
-           if(!inp.startsWith("."))
-               inp = "." + inp
+           if(!ext.startsWith("."))
+               ext = "." + ext
            
            for(s in reverseOutputs) {
-               def o = s.find { it?.endsWith(inp) }
+               def o = s.grep { it?.endsWith(ext) }
                if(o) {
-//                   log.info("Checking ${s} vs $inp  Y")
-                   return o
+                   log.info("Checking ${s} vs $ext  Y")
+                   return o 
                }
 //               log.info("Checking outputs ${s} vs $inp N")
            }
@@ -840,9 +841,10 @@ class PipelineContext {
        if(resolvedInputs.any { it == null})
            throw new PipelineError("Unable to locate one or more specified resolvedInputs matching spec $orig")
            
-       log.info "Found inputs $resolvedInputs for spec $orig"
+       // resolvedInputs = Utils.unbox(resolvedInputs)
+	   resolvedInputs = resolvedInputs.flatten()
        
-       resolvedInputs = Utils.unbox(resolvedInputs)
+       log.info "Found inputs $resolvedInputs for spec $orig"
        
        def oldInputs = this.@input
        this.@input  = resolvedInputs
