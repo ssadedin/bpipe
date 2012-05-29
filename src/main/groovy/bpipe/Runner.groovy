@@ -183,18 +183,11 @@ diagrameditor""")
 			EventManager.instance.addListener(PipelineEvent.STAGE_COMPLETED, reportStats)
 		}
         
-		File pipelineFile = new File(opt.arguments()[0])
-        if(!pipelineFile.exists()) {
-            println "\nCould not understand command $pipelineFile or find it as a file\n"
-            cli.usage()
-            println "\n"
-            System.exit(1)
-        }
-        
-		groovyArgs += "import static Bpipe.*; " + pipelineFile.text
+		String pipelineSrc = loadPipelineSrc(cli, opt.arguments()[0])
+		groovyArgs += pipelineSrc
 		if(opt.arguments().size() > 1) 
 			groovyArgs += opt.arguments()[1..-1]
-        
+		
         Config.readUserConfig()
 		
 		ToolDatabase.instance.init(Config.userConfig)
@@ -210,91 +203,6 @@ diagrameditor""")
         org.codehaus.groovy.tools.GroovyStarter.main(groovyArgs as String[])
     }
 	
-//    public static void launch(String [] args) {
-//        String conf = System.getProperty("groovy.starter.conf",null);
-//        LoaderConfiguration lc = new LoaderConfiguration();
-//        
-//        // evaluate parameters
-//        boolean hadMain=false, hadConf=false, hadCP=false;
-//        int argsOffset = 0;
-//        while (args.length-argsOffset>0 && !(hadMain && hadConf && hadCP)) {
-//            if (args[argsOffset].equals("--classpath")) {
-//                if (hadCP) break;
-//                if (args.length==argsOffset+1) {
-//                    exit("classpath parameter needs argument");
-//                }
-//                lc.addClassPath(args[argsOffset+1]);
-//                argsOffset+=2;
-//                hadCP=true;
-//            } else if (args[argsOffset].equals("--main")) {
-//                if (hadMain) break;
-//                if (args.length==argsOffset+1) {
-//                    exit("main parameter needs argument");
-//                }
-//                lc.setMainClass(args[argsOffset+1]);
-//                argsOffset+=2;
-//                hadMain=true;
-//            } else if (args[argsOffset].equals("--conf")) {
-//                if (hadConf) break;
-//                if (args.length==argsOffset+1) {
-//                    exit("conf parameter needs argument");
-//                }
-//                conf=args[argsOffset+1];
-//                argsOffset+=2;
-//                hadConf=true;
-//            } else {
-//                break;
-//            }            
-//        }
-//
-//        // this allows to override the commandline conf
-//        String confOverride = System.getProperty("groovy.starter.conf.override",null);
-//        if (confOverride!=null) conf = confOverride;
-//
-//        // we need to know the class we want to start
-//        if (lc.getMainClass()==null && conf==null) {
-//            exit("no configuration file or main class specified");
-//        }
-//        
-//        // copy arguments for main class 
-//        String[] newArgs = new String[args.length-argsOffset];
-//        for (int i=0; i<newArgs.length; i++) {
-//            newArgs[i] = args[i+argsOffset];
-//        }        
-//        // load configuration file
-//        if (conf!=null) {
-//            try {
-//                lc.configure(new FileInputStream(conf));
-//            } catch (Exception e) {
-//                System.err.println("exception while configuring main class loader:");
-//                exit(e);
-//            }
-//        }
-//        // create loader and execute main class
-//        ClassLoader loader = new RootLoader(lc);
-//        Method m=null;
-//        try {
-//            Class c = loader.loadClass(lc.getMainClass());
-//            m = c.getMethod("main", new Class[]{String[].class});
-//        } catch (ClassNotFoundException e1) {
-//            exit(e1);
-//        } catch (SecurityException e2) {
-//            exit(e2);
-//        } catch (NoSuchMethodException e2) {
-//            exit(e2);
-//        }
-//        try {
-//            m.invoke(null, new Object[]{newArgs});
-//        } catch (IllegalArgumentException e3) {
-//            exit(e3);
-//        } catch (IllegalAccessException e3) {
-//            exit(e3);
-//        } catch (InvocationTargetException e3) {
-//            exit(e3);
-//        } 
-//    }
-//	
-    
     /**
      * Try to determine the process id of this Java process.
      * Because the PID is read from a file that is created after
@@ -333,4 +241,25 @@ diagrameditor""")
 		}
 		return pid
 	}
+					
+    static String loadPipelineSrc(def cli, def srcFilePath) {
+		File pipelineFile = new File(srcFilePath)
+        if(!pipelineFile.exists()) {
+            println "\nCould not understand command $pipelineFile or find it as a file\n"
+            cli.usage()
+            println "\n"
+            System.exit(1)
+        }
+		
+		
+		String pipelineSrc = "import static Bpipe.*; " + pipelineFile.text
+		if(pipelineFile.text.indexOf("return null") >= 0) {
+			println """
+					   ================================================================================================================
+					   | WARNING: since 0.9.4 using 'return null' in pipeline stages is incorrect. Please use 'forward input' instead.|
+					   ================================================================================================================
+			""".stripIndent()
+		}
+		return pipelineSrc
+    }
 }

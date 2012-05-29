@@ -286,6 +286,13 @@ print_jobs() {
 # Need something more sophisticated to deal with symbolic links?
 BPIPE_HOME=`dirname $0`/..
 
+# For Cygwin, we need windows compatible version of path for JVM to use
+JVM_BPIPE_HOME="$BPIPE_HOME"
+if uname | grep -iq cygwin;
+then
+    JVM_BPIPE_HOME=`cygpath -ma "$BPIPE_HOME"`
+fi
+
 # Default directory for pipes - user can override by setting BPIPE_LIB themselves
 : ${BPIPE_LIB:="$HOME/bpipes"}
 
@@ -333,7 +340,7 @@ then
 elif [ "$COMMAND" == "diagram" ];
 then
     shift 1
-    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.mode=diagram bpipe.Runner $* 
+    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=diagram bpipe.Runner $* 
     exit
 #elif [ "$COMMAND" == "documentation" ];
 #then
@@ -343,7 +350,7 @@ then
 elif [ "$COMMAND" == "diagrameditor" ];
 then
     shift 1
-    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.mode=diagrameditor bpipe.Runner $* 
+    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=diagrameditor bpipe.Runner $* 
     exit
 elif [ "$COMMAND" == "log" ];
 then
@@ -474,12 +481,6 @@ $SHOWDEBUG && {
   echo "DEBUG: classpath=$CP"
   echo "JAVA_MEM: $JAVA_MEM"
 }
-
-JVM_BPIPE_HOME="$BPIPE_HOME"
-if uname | grep -iq cygwin;
-then
-    JVM_BPIPE_HOME=`cygpath -ma "$BPIPE_HOME"`
-fi
 
 nohup java -Xmx${MAX_JAVA_MEM} -classpath "$CP" $BPIPEDEBUG -Dbpipe.pid=$$ -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.version=$VERSION -Dbpipe.builddate=$BUILDDATE bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
 
