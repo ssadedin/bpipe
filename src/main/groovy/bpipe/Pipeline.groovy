@@ -237,6 +237,7 @@ public class Pipeline {
             PipelineCategory.addStages(pipelineBuilder.binding)
             
         pipeline.loadExternalStages()
+        pipeline.joiners += segmentJoiners
 
         def mode = Config.config.mode 
         if(mode == "run" || mode == "documentation") // todo: documentation should be its own mode! but can't support that right now
