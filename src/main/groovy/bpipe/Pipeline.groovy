@@ -137,6 +137,14 @@ public class Pipeline {
 	 * Documentation about this pipeline
 	 */
 	static Map<String,Object> documentation = [:]
+    
+    /**
+     * Create a pipeline, initialized with all the already discovered
+     * segment-joining closures
+     */
+    Pipeline() {
+        this.joiners = segmentJoiners.clone()
+    }
 	
 	/**
 	 * Allow user to add arbitrary documentation about their pipeline
@@ -194,8 +202,12 @@ public class Pipeline {
 		if(!pipelineBuilder.binding.variables.containsKey("BPIPE_NO_EXTERNAL_STAGES"))
 	        pipeline.loadExternalStages()
 
-        return pipeline.execute([], pipelineBuilder.binding, pipelineBuilder, false)
+        Object result = pipeline.execute([], pipelineBuilder.binding, pipelineBuilder, false)
+        segmentJoiners.addAll(pipeline.joiners)
+        return result
     }
+    
+    static List<Closure> segmentJoiners = []
 	
     /**
      * Default run method - introspects all the inputs from the binding of the
