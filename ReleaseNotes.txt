@@ -1,3 +1,4 @@
+
 =========== Changes for Bpipe Version 0.9.4 ============
 
     Issue 25: Support for Report of Run in HTML Form
@@ -34,6 +35,9 @@
 
     --------: Added Sun Grid Engine implementation for resource
               manager, courtesy of Paolo Di Tommaso
+
+    --------: fixed consecutive blank lines and other situations
+              causing consecutive semicolons and breaking commands
 
 =========== Changes for Bpipe Version 0.9.3 ============
 
