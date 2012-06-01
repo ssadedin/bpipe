@@ -607,8 +607,6 @@ class PipelineContext {
             def nextIn= body()
             if(nextIn)
                 this.nextInputs = nextIn
-            else
-                this.nextInputs = null
         }
         return out
     }
