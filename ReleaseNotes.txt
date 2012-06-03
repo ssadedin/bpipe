@@ -1,3 +1,10 @@
+=========== Changes for Bpipe Version 0.9.5 ============
+
+    Issue 33: Trailing Variable Assignment inside Produce
+              Causes Incorrect Inputs Passed to next Stage
+
+    Issue 32: Forward not working inside Transform /
+	      Filter / Produce
 
 =========== Changes for Bpipe Version 0.9.4 ============
 
