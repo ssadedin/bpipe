@@ -24,10 +24,8 @@
  */
 package bpipe
 
-import groovyjarjarantlr.StringUtils;
-
-import java.security.DigestInputStream;
-import java.security.MessageDigest;
+import java.security.DigestInputStream
+import java.security.MessageDigest
 
 /**
  * Miscellaneous internal utilities used by Bpipe
@@ -226,7 +224,7 @@ class Utils {
        DigestInputStream   dis = new DigestInputStream(bytes, digest);
     
         // read the file and update the hash calculation
-        while (dis.read() != -1);
+        while (dis.read() != -1) {} ;
     
         // get the hash value as byte array
         byte[] hash = digest.digest();
