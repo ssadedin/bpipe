@@ -22,7 +22,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
  * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package bpipe;
+package bpipe.executor;
 
 import java.io.Serializable;
 import java.util.List;
@@ -45,7 +45,7 @@ import java.util.Map;
  * 
  * @author simon.sadedin@mcri.edu.au
  */
-interface CommandExecutor extends Serializable {
+public interface CommandExecutor extends Serializable {
     
     void start(Map cfg, String id, String name, String cmd);
     

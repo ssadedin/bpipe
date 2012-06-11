@@ -22,9 +22,10 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
 * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-package bpipe
+package bpipe.executor
 
-import java.util.logging.Logger;
+import java.util.logging.Logger
+import bpipe.ForwardHost;
 
 /**
  * Implementation of support for TORQUE resource manager.
@@ -45,7 +46,7 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
     /**
      * Logger for this class to use
      */
-    private static Logger log = Logger.getLogger("bpipe.TorqueCommandExecutor");
+    private static Logger log = Logger.getLogger("bpipe.executor.TorqueCommandExecutor");
 
     /**
      * Constructor

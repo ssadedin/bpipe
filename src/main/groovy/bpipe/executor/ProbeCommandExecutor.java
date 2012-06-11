@@ -1,4 +1,4 @@
-package bpipe;
+package bpipe.executor;
 
 import java.util.List;
 import java.util.Map;

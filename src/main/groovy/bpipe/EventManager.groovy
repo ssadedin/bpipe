@@ -62,6 +62,21 @@ class EventManager {
 			this.listeners[evt] = []
 		this.listeners[evt] << listener
 	}
+
+    /**
+     * Unsubscribe a listener
+     *
+     * @param evt
+     * @param listener
+     */
+    synchronized void removeListener(PipelineEvent evt, PipelineEventListener listener) {
+       if( !listeners[evt] ) {
+           return
+        }
+
+        this.listeners[evt] -= listener
+
+    }
 	
 	/**
 	 * Send notifications to all the listeners for this event

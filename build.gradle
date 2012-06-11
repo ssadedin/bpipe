@@ -7,11 +7,14 @@ STAGE="build/stage/bpipe-$VERSION"
 repositories {
     flatDir(dirs: file('local-lib'))
     mavenCentral()
+    maven { url "http://www.gridgainsystems.com/maven2" }
 }
 
 dependencies {
     groovy group: 'org.codehaus.groovy', name: 'groovy', version: '1.8.2'
     compile files(fileTree(dir:'local-lib', includes:['*.jar']))
+    compile ('org.gridgain:gridgain:4.0.2c') { transitive = false }
+    compile ('com.hazelcast:hazelcast-all:2.1.2') { transitive = false }
     testCompile group: 'junit', name: 'junit', version: '4.8.2'
 }
 
