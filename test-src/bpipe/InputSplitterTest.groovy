@@ -45,6 +45,27 @@ class InputSplitterTest {
         ]
     }
     
+    /**
+     * A real example from bpipe user Rory
+     */
+    @Test
+    void testUnderscoreTrainingStuff() {
+		def inputs = [
+                      "120206Bha_D12-530_1_sequence.fastq",
+                      "120206Bha_D12-530_2_sequence.fastq"
+                     ]
+        
+        def pattern = "530_%_sequence.fastq"
+        def regex = splitter.convertPattern(pattern)
+        println "regex = $regex"
+        def result = splitter.split(pattern,inputs) 
+        
+        println "Got result:  $result"
+        
+        assert result == [
+          "1": ["120206Bha_D12-530_1_sequence.fastq"], "2": ["120206Bha_D12-530_2_sequence.fastq"]
+        ]
+    }
     
     /**
      * A real example from Nadia / RNA seq data
