@@ -1,6 +1,6 @@
 source ../testsupport.sh
 
-. cleanup.sh
+. ./cleanup.sh
 
 run
 

@@ -604,11 +604,7 @@ class PipelineContext {
             
             PipelineDelegate.setDelegateOn(this, body)
 	        log.info("Producing from inputs ${this.@input}")
-            def nextIn= body()
-            if(nextIn)
-                this.nextInputs = nextIn
-            else
-                this.nextInputs = null
+            body()
         }
         return out
     }
