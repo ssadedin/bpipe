@@ -38,7 +38,7 @@ import java.util.logging.Logger;
  */
 class Forwarder extends TimerTask {
     
-    private static Logger log = Logger.getLogger("bpipe.CustomCommandExecutor");
+    private static Logger log = Logger.getLogger("bpipe.Forwarder");
     
     /**
      * Global list of all forwarders
@@ -91,19 +91,17 @@ class Forwarder extends TimerTask {
         synchronized(files) {
             try {
                 scanFiles = files.clone().grep { it.exists() }
-                log.info "Synchronizing ${scanFiles.size()} files"
                 byte [] buffer = new byte[8096]
                 for(File f in scanFiles) {
                     try {
                         f.withInputStream { ifs ->
                             long skip = filePositions[f]
-                            log.info "Skipping $skip characters"
                             ifs.skip(skip)
                             int count = ifs.read(buffer)
                             if(count < 0)
                                 return
                             
-                            log.info "Read " + count + " chars: " + new String(buffer, 0, count)
+                            log.info "Read " + count + " chars from $f starting with " + Utils.truncnl(new String(buffer, 0, Math.min(count,30)),25)
                             
                             // TODO: for neater output we could trim the output to the 
                             // most recent newline here
