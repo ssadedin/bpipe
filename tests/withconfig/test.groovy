@@ -1,11 +1,11 @@
 init = {
   // start by cleaning up all the files
   ["dummy1.log.txt","dummy2.log.txt","dummy3.log.txt"].collect { new File(it) }.each { if(it.exists()) it.delete() } 
-  return null
+  forward null
 }
 
 hello = {
-  exec """for i in 1 2 3;  do echo "Hello World $i" sleep 5; done """
+  exec """for i in 1 2 3;  do echo "Hello World $i"; sleep 5; done """
 
   if(!new File("dummy1.log.txt").exists())
     throw new Exception("Failed to create expected log dummy1.log.txt")

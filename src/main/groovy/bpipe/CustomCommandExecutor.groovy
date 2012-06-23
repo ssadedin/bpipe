@@ -243,9 +243,21 @@ class CustomCommandExecutor implements CommandExecutor {
         // Don't rely on the queueing software to be completely reliable; a single
         // failure to check shouldn't cause us to abort, so count errors 
         int errorCount = 0
+		
+		// To save on excessive polling while avoiding large latency for short jobs
+		// implement an exponential backoff for time between polling for status
+		int minSleep = Config.userConfig.minimumCommandStatusPollInterval?:2000
+		int maxSleep = Config.userConfig.maxCommandStatusPollInterval?:15000
+		int backoffPeriod = Config.userConfig.commandStatusBackoffPeriod?:180000 // 3 minutes default to reach maximum sleep
+		
+		// Calculate an exponential backoff factor
+		double factor = Math.log(maxSleep - minSleep) / backoffPeriod
+		
+		long startTimeMillis = System.currentTimeMillis()
+		int currentSleep = minSleep
         while(true) {
             
-            log.info "Polling status of job $commandId with command $cmd"
+            log.info "Polling status of job $commandId with command $cmd with sleep for $currentSleep"
             
             StringBuilder out = new StringBuilder()
             StringBuilder err = new StringBuilder()
@@ -286,7 +298,9 @@ class CustomCommandExecutor implements CommandExecutor {
             }
             
             // Job not complete, keep waiting
-            Thread.sleep(2000)
+            Thread.sleep(currentSleep)
+			
+			currentSleep = minSleep + Math.min(maxSleep, Math.exp(factor * (System.currentTimeMillis() - startTimeMillis)))
         }
         
         
