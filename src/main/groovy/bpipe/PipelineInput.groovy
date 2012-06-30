@@ -65,6 +65,10 @@ class PipelineInput {
     String toString() {
         return String.valueOf(Utils.first(input));
     }
+	
+	String getPrefix() {
+        return PipelineCategory.getPrefix(String.valueOf(Utils.first(input)));
+	}
     
     /**
      * Support accessing inputs by index - allows the user to use the form
