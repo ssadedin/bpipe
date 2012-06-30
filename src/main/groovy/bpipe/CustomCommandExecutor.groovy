@@ -247,7 +247,7 @@ class CustomCommandExecutor implements CommandExecutor {
 		// To save on excessive polling while avoiding large latency for short jobs
 		// implement an exponential backoff for time between polling for status
 		int minSleep = Config.userConfig.minimumCommandStatusPollInterval?:2000
-		int maxSleep = Config.userConfig.maxCommandStatusPollInterval?:15000
+		int maxSleep = Config.userConfig.maxCommandStatusPollInterval?:5000
 		int backoffPeriod = Config.userConfig.commandStatusBackoffPeriod?:180000 // 3 minutes default to reach maximum sleep
 		
 		// Calculate an exponential backoff factor
