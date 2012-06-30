@@ -217,51 +217,57 @@ class PipelineContext {
                out = this.getDefaultOutput()
                
            trackOutput(Utils.box(out))
-           return out
-           
+		   
+           return out ? new PipelineOutput(out, this.stageName, { setOutput(it)}) : null
        }
+	   
        trackOutput(Utils.box(output))
-       return output
+       return output ? new PipelineOutput(output,this.stageName, { setOutput(it)}) : null
    }
    
    def getOutputs() {
 	   return Utils.box(getOutput())
    }
    
+   def getOutputByIndex(int index) {
+	   def o = getOutput()
+       return trackOutput(Utils.box(o.output)[index])
+   }
+   
    def getOutput1() {
-       return trackOutput(Utils.box(getOutput())[0])
+       return getOutputByIndex(0)
    }
    
    def getOutput2() {
-       return trackOutput(Utils.box(getOutput())[1])
+       return getOutputByIndex(1)
    }
    
    def getOutput3() {
-       return trackOutput(Utils.box(getOutput())[2])
+       return getOutputByIndex(2)
    }
    
    def getOutput4() {
-       return trackOutput(Utils.box(getOutput())[3])
+       return getOutputByIndex(3)
    }
    
    def getOutput5() {
-       return trackOutput(Utils.box(getOutput())[4])
+       return getOutputByIndex(4)
    }
     
    def getOutput6() {
-       return trackOutput(Utils.box(getOutput())[5])
+       return getOutputByIndex(5)
    }
    
    def getOutput7() {
-       return trackOutput(Utils.box(getOutput())[6])
+       return getOutputByIndex(6)
    }
     
    def getOutput8() {
-       return trackOutput(Utils.box(getOutput())[7])
+       return getOutputByIndex(7)
    }
    
    def getOutput9() {
-       return trackOutput(Utils.box(getOutput())[8])
+       return getOutputByIndex(8)
    }
 	 
    private trackOutput(def output) {

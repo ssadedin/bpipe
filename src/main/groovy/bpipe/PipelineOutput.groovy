@@ -28,7 +28,7 @@ import java.util.logging.Logger;
  */
 
 /**
- * Represents a "magic" input object that automatically 
+ * Represents a "magic" output object that automatically 
  * understands property references as file extensions. 
  * 
  * @author simon.sadedin@mcri.edu.au
@@ -38,12 +38,12 @@ class PipelineOutput {
     /**
      * Logger to use with this class
      */
-    private static Logger log = Logger.getLogger("bpipe.PipelineInput");
+    private static Logger log = Logger.getLogger("bpipe.PipelineOutput");
     
     /**
      * Raw inputs
      */
-    def input
+    def output
     
     /**
      * The name of the stage that this output is being created for.
@@ -53,24 +53,28 @@ class PipelineOutput {
     String stageName
     
     def outputUsed
+	
+	Closure outputChangeListener
     
-    PipelineOutput(def input, String stageName) {
-        this.input = input
+    PipelineOutput(def output, String stageName, Closure listener) {
+        this.output = output
+		this.outputChangeListener = listener
+		this.stageName = stageName
     }
     
     String toString() {
-        return String.valueOf(Utils.first(input)) + "." + stageName;
+        return String.valueOf(Utils.first(output))
     }
-    
+   
     /**
      * Support accessing outputs by index - allows the user to use the form
      *   exec "cp foo.txt ${output[0]}"
      */
     String getAt(int i) {
-        def inputs = Utils.box(this.input)
+        def inputs = Utils.box(this.output)
         if(inputs.size() <= i)
-            throw new PipelineError("Insufficient inputs:  output $i was referenced but there are only ${inputs.size()} inputs on which to base output file names")
-        return this.input[i] + "."+stageName
+            throw new PipelineError("Insufficient outputs:  output $i was referenced but there are only ${output.size()} outputs to choose from")
+        return this.output[i]
     }
     
     /**
@@ -78,13 +82,19 @@ class PipelineOutput {
      * one specified.
      */
     def propertyMissing(String name) {
-        
-        def inp = Utils.first(input)
-        if(!inp)
-           throw new PipelineError("Expected input but no input provided")
-           
-        this.outputUsed = inp.replaceAll('\\.[^\\.]*$','.'+extension)
-        
+        this.outputUsed = this.output.replaceAll('\\.[^\\.]*$','.'+name)
+		if(this.outputChangeListener != null) {
+			this.outputChangeListener(this.outputUsed)
+		}
         return this.outputUsed
     }
+	
+	def methodMissing(String name, args) {
+		// faux inheritance from String class
+		if(name in String.metaClass.methods*.name)
+			return String.metaClass.invokeMethod(this.toString(), name, args)
+		else {
+			throw new MissingMethodException(name, PipelineOutput, args)
+		}
+	}
 }

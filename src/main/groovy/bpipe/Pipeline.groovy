@@ -177,6 +177,10 @@ public class Pipeline {
 	static def chr(Object... objs) {
 		Set<Chr> result = [] as Set
 		for(Object o in objs) {
+			
+			if(o instanceof Closure) 
+				o = o()
+			
 			if(o instanceof Range) {
 				for(r in o) {
 					result << new Chr('chr'+r)
@@ -338,7 +342,7 @@ public class Pipeline {
 				EventManager.instance.signal(PipelineEvent.FINISHED, failed?"Failed":"Succeeded")
                 if(!failed) {
     				def outputFile = Utils.first(stages[-1].context.output)
-    				if(outputFile && !outputFile.startsWith("null") /* hack */ && new File(outputFile).exists()) {
+    				if(outputFile && !outputFile.startsWith("null") /* hack */ && new File(outputFile.toString()).exists()) {
     					rootContext.msg "Output is " + outputFile
     				}
                 }

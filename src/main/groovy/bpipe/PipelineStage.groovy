@@ -31,6 +31,12 @@ import java.util.logging.Logger;
 
 import groovy.lang.Closure;
 
+class StringExtrasCategory {
+	static String getPrefix(String value) {
+		return value.replaceAll('\\.[^\\.]*?$', '')
+	}
+}
+
 /**
  * Encapsulates a Pipeline stage including its body (a closure to run)
  * and all the metadata about it (its name, status, inputs, outputs, etc.).
@@ -124,6 +130,7 @@ class PipelineStage {
             if(!joiner) {
                 stageName = 
                     PipelineCategory.closureNames.containsKey(body) ? PipelineCategory.closureNames[body] : "${stageCount}"
+	            context.stageName = stageName
                     
                 println ""
                 println " Stage ${stageName} ".center(Config.config.columns,"=")
@@ -159,9 +166,11 @@ class PipelineStage {
                 PipelineCategory.wrappers[stageName](body, context.@input)
             }
             else { 
-                def returnedInputs = body(context.@input)
-				if(joiner)
-					context.nextInputs = returnedInputs
+				use(StringExtrasCategory) {
+	                def returnedInputs = body(context.@input)
+					if(joiner)
+						context.nextInputs = returnedInputs
+				}
             }
                 
             succeeded = true
@@ -242,8 +251,8 @@ class PipelineStage {
         // Start by initialzing the next inputs from any specifically 
         // set outputs
         if(!context.nextInputs && this.context.@output != null) {
-            log.info("Inferring nextInputs from explicit output as $context.@output")
-            context.nextInputs = this.context.output
+            log.info("Inferring nextInputs from explicit output as ${context.@output}")
+            context.nextInputs = Utils.box(this.context.@output).collect { it.toString() }
         }
 
         def nextInputs = context.nextInputs
@@ -345,7 +354,7 @@ class PipelineStage {
         // Out of caution we don't remove output files if they existed before this stage ran.
         // Otherwise we might destroy existing data
         if(this.context.output != null) {
-            def newOutputFiles = Utils.box(this.context.output)
+            def newOutputFiles = Utils.box(this.context.output).collect { it.toString() }
             newOutputFiles.removeAll { fn ->
                 def canonical = new File(fn).canonicalPath
                 keepFiles.any {

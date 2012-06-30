@@ -42,7 +42,6 @@ import org.codehaus.groovy.runtime.StackTraceUtils;
 
 import static Utils.*
 
-
 /**
  * A category that adds default Bpipe functions to closures
  * to enable basic operators such as the + operator to work.
@@ -381,6 +380,10 @@ class PipelineCategory {
             }
         }
     }
+	
+	static String getPrefix(String value) {
+		return value.replaceAll('\\.[^\\.]*?$', '')	
+	}
     
     /**
      * Add all properties of type Closure belonging to the class of the given 

@@ -61,8 +61,6 @@ class Config {
 		
         ConfigSlurper slurper = new ConfigSlurper()
 		
-//		println "bpipe.home = " + System.getProperty("bpipe.home")
-		
 		File builtInConfigFile = new File(System.getProperty("bpipe.home") +"/bpipe.config")
 		// Allows running in-situ in project source distro root dir to work
 		if(!builtInConfigFile.exists()) {
