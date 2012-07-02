@@ -144,4 +144,8 @@ class PipelineOutput {
 			throw new MissingMethodException(name, PipelineOutput, args)
 		}
 	}
+    
+   	String getPrefix() {
+        return PipelineCategory.getPrefix(String.valueOf(Utils.first(input)));
+	} 
 }
