@@ -5,6 +5,8 @@ import java.util.Map;
 
 public class ProbeCommandExecutor implements CommandExecutor {
 
+    private static final long serialVersionUID = 1L;
+
     @Override
     public void start(Map cfg, String id, String name, String cmd) {
 

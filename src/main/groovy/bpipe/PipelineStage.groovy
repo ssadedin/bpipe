@@ -100,7 +100,11 @@ class PipelineStage {
     
     /**
      * Executes the pipeline stage body, wrapping it with logic and instrumentation
-     * to manage the pipeline
+     * to manage the pipeline. 
+     * <p>
+     * After the body has been executed, the output files are interrogated to check
+     * they are valid and exist and then they are connected to the next 
+     * pipeline stage.
      */
     def run() {
         Utils.checkFiles(context.@input)
@@ -247,6 +251,11 @@ class PipelineStage {
      *                                 as default inputs
      */
     private determineForwardedFiles(List newFiles) {
+        
+        if(!context.@output && context.allInferredOutputs) {
+            log.info "Using inferred outputs $context.allInferredOutputs as outputs because no explicit outputs set"
+            context.@output = context.allInferredOutputs
+        }
         
         // Start by initialzing the next inputs from any specifically 
         // set outputs

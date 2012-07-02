@@ -52,14 +52,36 @@ class PipelineOutput {
      */
     String stageName
     
+    /**
+     * The name from which output file names created by ".<ext>" extensions will be derived
+     */
+    String defaultOutput
+    
     def outputUsed
 	
 	Closure outputChangeListener
     
-    PipelineOutput(def output, String stageName, Closure listener) {
+    List<String> overrideOutputs
+    
+    /**
+     * Create a pipeline output wrapper
+     * 
+     * @param output            the output to be returned if this object is directly converted to a string
+     * @param stageName         the pipeline stage for which this wrapper is going to create derived output names
+     * @param defaultOutput     the default pre-computed stage name (used to created drived names)
+     * @param overrideOutputs   a set of outputs that, if provided, become a mandatory set from which outputs
+     *                          must be selected. If provided, it will be an error to request an output extension
+     *                          that is not in this set.
+     * 
+     * @param listener          a closure that will be called whenever a property is requested from this object 
+     *                          and provided with the computed property value
+     */
+    PipelineOutput(def output, String stageName, String defaultOutput, List<String> overrideOutputs, Closure listener) {
         this.output = output
 		this.outputChangeListener = listener
 		this.stageName = stageName
+        this.defaultOutput = defaultOutput
+        this.overrideOutputs = overrideOutputs
     }
     
     String toString() {
@@ -82,7 +104,32 @@ class PipelineOutput {
      * one specified.
      */
     def propertyMissing(String name) {
-        this.outputUsed = this.output.replaceAll('\\.[^\\.]*$','.'+name)
+        
+        if(this.overrideOutputs) {
+           return selectFromOverrides(name)  
+        }
+        else 
+           return synthesiseFromName(name)
+    }
+    
+    def selectFromOverrides(String name) {
+        String result = this.overrideOutputs.find { it.endsWith('.' + name) }
+        if(!result)
+            throw new PipelineError("An output of type ." + name + " was referenced, however such an output was not specified to occur by an outer transform / filter / produce statement")
+        return result
+    }
+    
+    def synthesiseFromName(String name) {
+        
+        // If the file extension of the output 
+        if(this.output.endsWith(name+"."+stageName)) {
+            log.info("Replacing " + name+"\\."+stageName + " with " +  stageName+'.'+name)
+            this.outputUsed = this.defaultOutput.replaceAll(name+"\\."+stageName, stageName+'.'+name)
+        }
+        else {
+            this.outputUsed = this.defaultOutput.replaceAll('\\.'+stageName+'$', '').replaceAll('\\.[^\\.]*$','.'+stageName + '.'+name)
+        }
+            
 		if(this.outputChangeListener != null) {
 			this.outputChangeListener(this.outputUsed)
 		}

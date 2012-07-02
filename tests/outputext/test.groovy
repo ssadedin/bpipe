@@ -7,9 +7,17 @@ hello = {
 }
 
 world = {
-	exec "cp $input $output.xml"
+	exec "cp $input $output.txt; cp $input $output.xml"
+
+	exec "cp $input $output.tsv"
+}
+
+there = {
+    produce("test.foo", "test.bar") {
+	exec "cp $input $output.bar"
+    }
 }
 
 Bpipe.run {
-	hello + world 
+	hello + world + there
 }

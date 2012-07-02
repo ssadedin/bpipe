@@ -69,25 +69,27 @@ class Utils {
 		// Box into a collection for simplicity
         outputs = box(outputs)
 	
-		outputs.collect { new File(it) }.every { f ->
+		outputs.collect { new File(it) }.every { outFile ->
 			
 //            println "Check $f"
-			if(!f.exists()) {
+			if(!outFile.exists()) {
 				return false
 			}
                 
 			if(inputs instanceof String || inputs instanceof GString) {
-	            if(f.name == inputs)
+	            if(outFile.name == inputs) {
 	                return true
+	            }
                 else {
-					return (new File(inputs).lastModified() <= f.lastModified()) 
+//					println "Check $inputs : " + new File(inputs).lastModified() + " <=  " + outFile + " : " + outFile.lastModified() 
+					return (new File(inputs).lastModified() <= outFile.lastModified()) 
                 }
 			}
 			else
 			if(isContainer(inputs)) {
-				return !inputs.collect { new File(it) }.any { 
-					// println "Check $it : " + it.lastModified() + " >  " + "$f : " + f.lastModified() 
-					it.lastModified() > f.lastModified() 
+				return !inputs.collect { new File(it) }.any { inFile ->
+//					println "Check $inFile : " + inFile.lastModified() + " >  " + "$outFile : " + outFile.lastModified() 
+					inFile.lastModified() > outFile.lastModified() 
 				}
 			}
 			else 

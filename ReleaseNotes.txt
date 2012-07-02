@@ -1,3 +1,9 @@
+=========== Changes for Bpipe Version 0.9.5.2 ============
+
+    --------: Support for output file extensions - fix dependency 
+              tracking not working in conjunction with this feature
+
+
 =========== Changes for Bpipe Version 0.9.5.1 ============
 
     --------: Support for output file extensions

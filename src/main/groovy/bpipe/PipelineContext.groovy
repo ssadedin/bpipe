@@ -76,6 +76,7 @@ class PipelineContext {
         super();
         if(pipelineStages == null)
             throw new IllegalArgumentException("pipelineStages cannot be null")
+            
         this.pipelineStages = pipelineStages
         this.extraBinding = extraBinding
         this.pipelineJoiners = pipelineJoiners
@@ -204,10 +205,28 @@ class PipelineContext {
        return this.@outputDirectory
    }
    
+   /**
+    * Outputs referenced through output property extensions 
+    * since the last exec command.  The occurrence of an exec
+    * clears this property.
+    */
+   def inferredOutputs = []
+   
+   /**
+    * All outputs referenced through output property extensions during the 
+    * execution of the pipeline stage
+    */
+   def allInferredOutputs = []
+   
+   /**
+    * The default output property reference.  Actually returns a quasi
+    * String-like object that intercepts property references
+    */
    def getOutput() {
-       if(output == null) { // Output not set elsewhere
+       def out = output
+       if(out == null) { // Output not set elsewhere
+           
            // If an input property was referenced, compute the default from that instead
-           def out
            if(inputWrapper?.resolvedInputs) {
 			   def resolved = Utils.unbox(inputWrapper.resolvedInputs[0])
                log.info("Using non-default output due to input property reference: " + resolved)
@@ -215,14 +234,11 @@ class PipelineContext {
            }
            else
                out = this.getDefaultOutput()
-               
-           trackOutput(Utils.box(out))
-		   
-           return out ? new PipelineOutput(out, this.stageName, { setOutput(it)}) : null
        }
 	   
-       trackOutput(Utils.box(output))
-       return output ? new PipelineOutput(output,this.stageName, { setOutput(it)}) : null
+       trackOutput(Utils.box(out))
+       
+       return out ? new PipelineOutput(out,this.stageName, Utils.first(this.getDefaultOutput()), Utils.box(this.@output), { allInferredOutputs << it; inferredOutputs << it; }) : null
    }
    
    def getOutputs() {
@@ -754,6 +770,23 @@ class PipelineContext {
       else
           joined = cmd
           
+      
+      // Inferred outputs are outputs that are picked up through the user's use of 
+      // $ouput.<ext> form in their commands. These are intercepted at string evaluation time
+      // (prior to the async or exec command entry) and set as inferredOutputs until
+      // the command is executed, and then we wipe them out
+      if(!probeMode && this.inferredOutputs && Utils.isNewer(this.inferredOutputs,this.@input)) {
+          String message = "Skipping execution of command " + Utils.truncnl(joined, 30) + " due to inferred outputs newer than inputs"
+          log.info message
+          msg message
+          
+          // Reset the inferred outputs - once they are used the user should have to refer to them
+          // again to re-invoke them
+          return new ProbeCommandExecutor()
+      }
+          
+      this.inferredOutputs = []
+      
       if(!probeMode) {
           CommandLog.log.write(cmd)
 		  
@@ -960,3 +993,4 @@ class PipelineContext {
         return modified
     }
 }
+

@@ -57,7 +57,7 @@ class InputSplitter {
 			    continue
                 
             String group = m[0][splitGroup+1]
-            println "The group:  $group"
+            log.fine "The group:  $group"
             if(!unsortedResult.containsKey(group))
                 unsortedResult[group] = []
                 
@@ -94,7 +94,7 @@ class InputSplitter {
             List g1 = [], g2 = []
             int count = 0
             for(m in m1[0]) {
-                println "==>  $m"
+                log.fine "==>  $m"
                 if(count++ == skipGroup)
                     continue
 			    g1 << m
@@ -107,14 +107,14 @@ class InputSplitter {
             }
             
 			// Work through each group and return on the first difference
-            println "groups:  $g1  $g2"
+            log.fine "groups:  $g1  $g2"
 			for(int i=0; i<g1.size(); ++i) {
                 String s1=g1[i], s2=g2[i]
                 
 				if(s1 == s2)
 				    continue
                 
-				println "Compare:  $s1 : $s1"
+				log.fine "Compare:  $s1 : $s1"
                 
                 // Numeric 
 				if(s1.matches("^[0-9].*") && s2.matches("^[0-9].*")) {
@@ -126,7 +126,7 @@ class InputSplitter {
     				return s1.compareTo(s2)
 			}
             
-			println "$i1 == $i2"
+			log.fine "$i1 == $i2"
             return 0
 		}    }
     
@@ -153,11 +153,11 @@ class InputSplitter {
 		    starPos << starMatch.start()   
 		}
         
-		println "Found * pattern at $starPos and % at $percPos"
+		log.fine "Found * pattern at $starPos and % at $percPos"
         
         List sorted = (starPos + percPos).sort()
 		
-        println "Sorted: $sorted"
+        log.fine "Sorted: $sorted"
         
 		int percGroupPos = sorted.indexOf(percPos)
         if(percPos < 0) {
@@ -165,7 +165,7 @@ class InputSplitter {
             sorted.sort()
         }
         
-		println "% is group # " + percGroupPos
+		log.fine "% is group # " + percGroupPos
         
 		// Figure out flanking characters.  Rather than making the user 
 		// specify which characters delimit their expression we just use the 
@@ -174,7 +174,7 @@ class InputSplitter {
         def lastPos = -1
         def lastRight = ""
         for(c in sorted) {
-            println "----- $c ----"
+            log.fine "----- $c ----"
 			def leftFlank = new StringBuilder()
             int lpos = c
             while(lpos && (lastPos < 0 || (lpos-1 != lastPos+1))) {
@@ -187,7 +187,7 @@ class InputSplitter {
             
 			def rightFlank = c<pattern.size()-1 ? pattern[c+1].replaceAll(/\./,/\\./) : ""
             
-            println "Position $c : left=$leftFlank right=$rightFlank"
+            log.fine "Position $c : left=$leftFlank right=$rightFlank"
             
             // If there is no right hand flank then don't include
 			// any exclusion in the pattern.  If there is one,
@@ -196,7 +196,7 @@ class InputSplitter {
             def wildcard = rightFlank ? ".*?" : ".*"
             def group = "($wildcard)"
             result << leftFlank + group + rightFlank
-			println "chunk for $c:  " + (leftFlank + group + rightFlank)
+			log.fine "chunk for $c:  " + (leftFlank + group + rightFlank)
             lastPos = c
             lastRight = rightFlank
 		}
@@ -205,7 +205,7 @@ class InputSplitter {
             result << pattern.substring(lastRenderedPos, pattern.size())
 		def resultList = [ result.toString() ,  percGroupPos]
         
-	    println "Result is $resultList"
+	    log.fine "Result is $resultList"
         return resultList
 	}
 }

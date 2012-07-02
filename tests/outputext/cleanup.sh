@@ -1,1 +1,1 @@
- rm -rf *.out *.csv *.xml doc
+ rm -rf *.out *.csv *.xml test.*.txt doc

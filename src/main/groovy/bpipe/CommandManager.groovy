@@ -208,6 +208,12 @@ class CommandManager {
     }
     
     public void cleanup(CommandExecutor cmd) {
+        
+        // Ignore these as they do not need cleaning up and are sometimes created
+        // spontaneously if commands are skipped (see PipelineContext#async)
+        if(cmd instanceof ProbeCommandExecutor)
+            return
+        
 		if(!commandIds.containsKey(cmd))
 			throw new IllegalStateException("Attempt to clean up commmand $cmd that was not launched by this command manager / context")
 			
