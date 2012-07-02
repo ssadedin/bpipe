@@ -1,3 +1,16 @@
+=========== Changes for Bpipe Version 0.9.5.1 ============
+
+    --------: Support for output file extensions
+
+    --------: Support for .prefix to trim file extensions from
+	      file names
+
+    Issue 35: About the frequency of polling job status -
+              polling of commands is now configurable 
+
+    --------: Check that the 'bpipe' script is available on the PATH,
+	      otherwise stop the tests execution
+
 =========== Changes for Bpipe Version 0.9.5 ============
 
     Issue 33: Trailing Variable Assignment inside Produce
