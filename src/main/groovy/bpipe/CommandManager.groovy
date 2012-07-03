@@ -24,7 +24,10 @@
  */
 package bpipe
 
-import java.util.logging.Logger;
+import java.util.logging.Logger
+import bpipe.executor.CommandExecutor
+import bpipe.executor.CustomCommandExecutor
+import bpipe.executor.LocalCommandExecutor;
 
 /**
  * Manages execution, persistence and stopping of commands executed
@@ -135,30 +138,46 @@ class CommandManager {
         // or it can map to a class
         CommandExecutor cmdExec = null
         File executorFile = new File(executor)
-        String name1 = "bpipe."+executor.capitalize()
+        String name1 = "bpipe.executor."+executor.capitalize()
         if(executorFile.exists()) {
             cmdExec = new CustomCommandExecutor(executorFile)
         }
-        else
-        try {
-            cmdExec = Class.forName(name1).newInstance()
-        }
-        catch(Exception e) {
-            String name2 = "bpipe."+executor.capitalize() + "CommandExecutor"
+        else {
+            /* find out the command executor class */
+            Class cmdClazz = null
             try {
-                cmdExec = Class.forName(name2).newInstance()
+                cmdClazz = Class.forName(name1)
             }
-            catch(Exception e2) {
-                log.info("Unable to create command executor using class $name2 : $e2")
-                String name3 = executor
+            catch(ClassNotFoundException e) {
+                String name2 = "bpipe.executor."+executor.capitalize() + "CommandExecutor"
                 try {
-                    cmdExec = Class.forName(name3).newInstance()
+                    cmdClazz = Class.forName(name2)
                 }
-                catch(Exception e3) {
-                    throw new PipelineError("Could not resolve specified command executor ${executor} as a valid file path or a class named any of $name1, $name2, $name3")
+                catch(ClassNotFoundException e2) {
+                    log.info("Unable to create command executor using class $name2 : $e2")
+                    String name3 = executor
+                    try {
+                        cmdClazz = Class.forName(name3)
+                    }
+                    catch(ClassNotFoundException e3) {
+                        throw new PipelineError("Could not resolve specified command executor ${executor} as a valid file path or a class named any of $name1, $name2, $name3")
+                    }
                 }
+            }
+
+            /* let's instantiate the found command executor class */
+            try {
+                cmdExec = cmdClazz.newInstance()
+            }
+            catch( PipelineError e ) {
+                // just re-trow
+                throw e
+            }
+            catch( Exception e ) {
+                throw new PipelineError( "Cannot instantiate command executor: ${executor}", e )
             }
         }
+
         
         if(Runner.opts.t) {
             if(cmdExec instanceof LocalCommandExecutor)

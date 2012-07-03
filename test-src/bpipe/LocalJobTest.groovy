@@ -2,7 +2,8 @@ package bpipe;
 
 import static org.junit.Assert.*;
 
-import org.junit.Test;
+import org.junit.Test
+import bpipe.executor.LocalCommandExecutor;
 
 class LocalJobTest {
 

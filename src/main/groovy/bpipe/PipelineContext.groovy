@@ -36,6 +36,8 @@ import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 import static Utils.*
+import bpipe.executor.CommandExecutor
+import bpipe.executor.ProbeCommandExecutor
 
 /**
 * This context defines implicit functions and variables that are

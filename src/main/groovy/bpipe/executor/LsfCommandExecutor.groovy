@@ -22,11 +22,15 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
  * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package bpipe
+package bpipe.executor
 
 import java.util.logging.Logger
 import java.util.regex.Pattern
 import java.util.regex.Matcher
+import bpipe.ForwardHost
+import bpipe.Utils
+import bpipe.PipelineError
+import bpipe.CommandStatus
 
 /**
  * Implements a command executor submitting jobs to a Load Sharing Facility (LSF) cluster
@@ -42,7 +46,7 @@ class LsfCommandExecutor implements CommandExecutor {
     /**
      * Logger for this class to use
      */
-    private static Logger log = Logger.getLogger("bpipe.LsfCommandExecutor");
+    private static Logger log = Logger.getLogger("bpipe.executor.LsfCommandExecutor");
 
     private Map config;
 
@@ -200,7 +204,7 @@ class LsfCommandExecutor implements CommandExecutor {
 	}
 
     /**
-     * @return The current status as defined by {@link CommandStatus}
+     * @return The current status as defined by {@link bpipe.CommandStatus}
      */
     @Override
     String status() {

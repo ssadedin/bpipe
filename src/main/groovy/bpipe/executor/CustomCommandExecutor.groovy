@@ -23,11 +23,14 @@
  * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package bpipe
+package bpipe.executor
 
-import java.io.File;
-import java.util.logging.Logger;
+import bpipe.CommandStatus
+import bpipe.PipelineError
+import bpipe.Utils
+
 import java.util.concurrent.Semaphore
+import java.util.logging.Logger
 
 /**
  * Custom command executors are implemented by a shell script that implements the
@@ -45,7 +48,7 @@ class CustomCommandExecutor implements CommandExecutor {
     /**
      * Logger for this class to use
      */
-    private static Logger log = Logger.getLogger("bpipe.CustomCommandExecutor");
+    private static Logger log = Logger.getLogger("bpipe.executor.CustomCommandExecutor");
    
     /**
      * We don't rely on commands to be 100% reliable, so we allow for retries,

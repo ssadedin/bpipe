@@ -22,9 +22,13 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
  * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package bpipe
+package bpipe.executor
 
 import java.util.logging.Logger
+import bpipe.ForwardHost
+import bpipe.Utils
+import bpipe.PipelineError
+import bpipe.CommandStatus
 
 /**
  * Implements a command executor based on the Sun Grid Engine (SGE) resource manager 
@@ -37,7 +41,7 @@ class SgeCommandExecutor implements CommandExecutor {
     /**
      * Logger for this class to use
      */
-    private static Logger log = Logger.getLogger("bpipe.SgeCommandExecutor");
+    private static Logger log = Logger.getLogger("bpipe.executor.SgeCommandExecutor");
 
     private Map config;
 
@@ -160,7 +164,7 @@ class SgeCommandExecutor implements CommandExecutor {
 	}
 
     /**
-     * @return The current status as defined by {@link CommandStatus}
+     * @return The current status as defined by {@link bpipe.CommandStatus}
      */
     @Override
     String status() {

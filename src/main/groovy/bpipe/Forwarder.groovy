@@ -24,9 +24,7 @@
 */
 package bpipe
 
-import java.util.List;
-import java.util.Timer;
-import java.util.logging.Logger;
+import java.util.logging.Logger
 
 /**
  * Continuously monitors files and forwards (or 'tails') their outputs to 

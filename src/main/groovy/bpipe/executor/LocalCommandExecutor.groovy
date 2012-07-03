@@ -1,6 +1,8 @@
-package bpipe
+package bpipe.executor
 
-import java.util.logging.Logger;
+import java.util.logging.Logger
+import bpipe.Utils
+import bpipe.CommandStatus;
 
 /**
  * Implementation of a command executor that executes 
@@ -17,7 +19,7 @@ class LocalCommandExecutor implements CommandExecutor {
     /**
      * Logger for this class to use
      */
-    private static Logger log = Logger.getLogger("bpipe.LocalCommandExecutor");	
+    private static Logger log = Logger.getLogger("bpipe.executor.LocalCommandExecutor");
     
     /**
      * The exit code returned by the process, only
