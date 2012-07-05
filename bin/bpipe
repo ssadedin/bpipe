@@ -283,8 +283,14 @@ print_jobs() {
 }
 
 # Locate Bpipe's home directory
-# Need something more sophisticated to deal with symbolic links?
-BPIPE_HOME=`dirname $0`/..
+# In case readlink is not there we fall back to basename on its
+# own (will break in case of symbolic link)
+if type readlink > /dev/null 2>&1 ; 
+then
+    BPIPE_HOME=$(dirname $(readlink $0))/..
+else
+    BPIPE_HOME=`dirname $0`/..
+fi
 
 # For Cygwin, we need windows compatible version of path for JVM to use
 JVM_BPIPE_HOME="$BPIPE_HOME"
