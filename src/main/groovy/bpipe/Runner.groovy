@@ -29,7 +29,6 @@ import java.util.logging.ConsoleHandler
 import java.util.logging.FileHandler
 import java.util.logging.Level
 import java.util.logging.Logger
-import groovy.util.logging.Log
 
 /**
  * A small wrapper that parses command line arguments and forwards execution
@@ -304,8 +303,12 @@ diagrameditor""")
  * http://groovy.codehaus.org/Scoping+and+the+Semantics+of+%22def%22
  *
  */
-@Log
 private class ParamsBinding extends Binding {
+    
+    /**
+     * Logger to use with this class
+     */
+    private static Logger log = Logger.getLogger("bpipe.ParamsBinding");
 
     def parameters = []
 

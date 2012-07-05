@@ -24,15 +24,18 @@
  */
 package bpipe
 
-import groovy.util.logging.Log;
-
 import java.util.Map;
+import java.util.logging.Logger;
 
 import static PipelineEvent.*
 
-@Log
 class ReportStatisticsListener implements PipelineEventListener {
 
+    /**
+     * Logger to use with this class
+     */
+    private static Logger log = Logger.getLogger("bpipe.PipelineOutput");
+    
 	@Override
 	public void onEvent(PipelineEvent eventType, String desc, Map<String, Object> details) {
 		

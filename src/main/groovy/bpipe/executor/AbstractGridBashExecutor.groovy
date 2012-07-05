@@ -1,10 +1,10 @@
 package bpipe.executor
 
 import bpipe.CommandStatus
-import groovy.util.logging.Log
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Future
+import java.util.logging.Logger;
 
 /**
  *  An abstract executor for distributed data-grid based
@@ -12,10 +12,13 @@ import java.util.concurrent.Future
  *
  *  @author Paolo Di Tommaso <paolo.ditommaso@gmail.com>
  */
-@Log
 abstract class AbstractGridBashExecutor implements CommandExecutor {
 
-
+    /**
+     * Logger to use with this class
+     */
+    private static Logger log = Logger.getLogger("bpipe.executor.AbstractGridBashExecutor");
+    
     def Map cfg;
 
     def String id;

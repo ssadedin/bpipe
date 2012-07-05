@@ -230,7 +230,7 @@ class CommandManager {
         
         // Ignore these as they do not need cleaning up and are sometimes created
         // spontaneously if commands are skipped (see PipelineContext#async)
-        if(cmd instanceof ProbeCommandExecutor)
+        if(cmd instanceof bpipe.executor.ProbeCommandExecutor)
             return
         
 		if(!commandIds.containsKey(cmd))

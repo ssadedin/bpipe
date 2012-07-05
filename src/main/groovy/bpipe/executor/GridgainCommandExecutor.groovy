@@ -1,7 +1,8 @@
 package bpipe.executor
 
+import java.util.logging.Logger;
+
 import bpipe.PipelineError
-import groovy.util.logging.Log
 
 /**
  *  Execute a B-pipe task on a GridGrain cluster
@@ -11,9 +12,13 @@ import groovy.util.logging.Log
  *
  *  @author Paolo Di Tommaso <paolo.ditommaso@gmail.com>
  */
-
-@Log
 class GridgainCommandExecutor extends AbstractGridBashExecutor {
+    
+    /**
+     * Logger to use with this class
+     */
+    private static Logger log = Logger.getLogger("bpipe.PipelineOutput");
+    
 
     static {
         /*

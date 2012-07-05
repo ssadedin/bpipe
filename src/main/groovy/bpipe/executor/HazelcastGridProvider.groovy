@@ -1,15 +1,16 @@
 package bpipe.executor
 
-import com.hazelcast.core.HazelcastInstance
-
 import java.util.concurrent.ExecutorService
-import com.hazelcast.client.ClientConfig
-import com.hazelcast.client.HazelcastClient
+import java.util.logging.Logger
+
+import bpipe.Config
 import bpipe.EventManager
 import bpipe.PipelineEvent
 import bpipe.PipelineEventListener
-import groovy.util.logging.Log
-import bpipe.Config
+
+import com.hazelcast.client.ClientConfig
+import com.hazelcast.client.HazelcastClient
+import com.hazelcast.core.HazelcastInstance
 
 /**
  *  Instantiate a Hazelcast client connecting to a running grid.
@@ -27,9 +28,13 @@ import bpipe.Config
  *  @author Paolo Di Tommaso <paolo.ditommaso@gmail.com>
  */
 @Singleton
-@Log
 class HazelcastGridProvider implements ExecutorServiceProvider {
 
+    /**
+     * Logger to use with this class
+     */
+    private static Logger log = Logger.getLogger("bpipe.executor.HazelcastGridProvider");
+    
     @Lazy
     HazelcastInstance client = {
 

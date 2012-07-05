@@ -1,6 +1,7 @@
 package bpipe.executor
 
-import groovy.util.logging.Log
+import java.util.logging.Logger;
+
 import bpipe.PipelineError
 
 /**
@@ -8,9 +9,12 @@ import bpipe.PipelineError
  *
  *  @author Paolo Di Tommaso <paolo.ditommaso@gmail.com>
  */
-@Log
 class HazelcastCommandExecutor extends AbstractGridBashExecutor {
 
+    /**
+     * Logger to use with this class
+     */
+    private static Logger log = Logger.getLogger("bpipe.PipelineOutput");
 
     static {
         addHazelcastToRootLoader()

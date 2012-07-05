@@ -1,25 +1,30 @@
 package bpipe.executor
 
-import bpipe.Config
-import bpipe.EventManager
-import bpipe.PipelineEvent
-import bpipe.PipelineEventListener
-import groovy.util.logging.Log
+import java.util.concurrent.ExecutorService
+import java.util.logging.Logger
+
 import org.gridgain.grid.Grid
 import org.gridgain.grid.GridConfigurationAdapter
 import org.gridgain.grid.typedef.G
 
-import java.util.concurrent.ExecutorService
+import bpipe.Config
+import bpipe.EventManager
+import bpipe.PipelineEvent
+import bpipe.PipelineEventListener
 
 /**
  *
  *  @author Paolo Di Tommaso <paolo.ditommaso@gmail.com>
  */
 
-@Log
 @Singleton
 class GridgainProvider implements ExecutorServiceProvider {
 
+    /**
+     * Logger to use with this class
+     */
+    private static Logger log = Logger.getLogger("bpipe.executor.GridgainProvider");
+    
     private boolean started
 
     @Lazy
