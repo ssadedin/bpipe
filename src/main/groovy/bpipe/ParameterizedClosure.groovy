@@ -60,6 +60,10 @@ class ParameterizedClosure extends Closure {
     public Object call(Object arguments) {
         body.call(arguments);
     }
+    
+    public Object doCall(Object arg) {
+        return call([arg]);
+    }
 
     @Override
     public void setDelegate(Object delegate) {
