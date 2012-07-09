@@ -285,7 +285,8 @@ print_jobs() {
 # Locate Bpipe's home directory
 # In case readlink is not there we fall back to basename on its
 # own (will break in case of symbolic link)
-if type readlink > /dev/null 2>&1 ; 
+# Note: the first test below is necessary for Cygwin
+if readlink $0 > /dev/null && type readlink > /dev/null 2>&1 ; 
 then
     BPIPE_HOME=$(dirname $(readlink $0))/..
 else
