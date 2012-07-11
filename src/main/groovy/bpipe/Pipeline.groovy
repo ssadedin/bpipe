@@ -341,10 +341,7 @@ public class Pipeline {
 				
 				EventManager.instance.signal(PipelineEvent.FINISHED, failed?"Failed":"Succeeded")
                 if(!failed) {
-    				def outputFile = Utils.first(stages[-1].context.output)
-    				if(outputFile && !outputFile.startsWith("null") /* hack */ && new File(outputFile.toString()).exists()) {
-    					rootContext.msg "Output is " + outputFile
-    				}
+					summarizeOutputs(stages)
                 }
     		}
 		}
@@ -559,4 +556,19 @@ public class Pipeline {
             this.stages << stage
         }
     }
+	
+	void summarizeOutputs(List stages) {
+		def all = Utils.box(stages[-1].context.output).grep { it && !it.startsWith("null") && new File(it.toString()).exists() }
+		if(all.size() == 1) {
+			rootContext.msg "Output is " + all[0]
+		}
+		else
+		if(all) {
+			if(all.size() < 5) {
+				rootContext.msg "Outputs are: \n\t" +  all.join("\n\t")
+			}
+		}
+		
+		
+	}
 }

@@ -25,13 +25,7 @@
 
 package bpipe
 
-import groovy.lang.Binding;
-import groovy.lang.Closure;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStream;
-import java.util.List;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
@@ -133,10 +127,10 @@ class PipelineContext {
     private List<PipelineStage> pipelineStages
    
     private List<Closure> pipelineJoiners
-	
-	/**
-	 * Manager for commands executed by this context
-	 */
+    
+    /**
+     * Manager for commands executed by this context
+     */
     CommandManager commandManager = new CommandManager()
       
    /**
@@ -230,25 +224,25 @@ class PipelineContext {
            
            // If an input property was referenced, compute the default from that instead
            if(inputWrapper?.resolvedInputs) {
-			   def resolved = Utils.unbox(inputWrapper.resolvedInputs[0])
+               def resolved = Utils.unbox(inputWrapper.resolvedInputs[0])
                log.info("Using non-default output due to input property reference: " + resolved)
                out = resolved +"." + this.stageName
            }
            else
                out = this.getDefaultOutput()
        }
-	   
+       
        trackOutput(Utils.box(out))
        
        return out ? new PipelineOutput(out,this.stageName, Utils.first(this.getDefaultOutput()), Utils.box(this.@output), { allInferredOutputs << it; inferredOutputs << it; }) : null
    }
    
    def getOutputs() {
-	   return Utils.box(getOutput())
+       return Utils.box(getOutput())
    }
    
    def getOutputByIndex(int index) {
-	   def o = getOutput()
+       def o = getOutput()
        return trackOutput(Utils.box(o.output)[index])
    }
    
@@ -287,7 +281,7 @@ class PipelineContext {
    def getOutput9() {
        return getOutputByIndex(8)
    }
-	 
+     
    private trackOutput(def output) {
        referencedOutputs << output
        return output
@@ -366,7 +360,7 @@ class PipelineContext {
    
    def getInputs() {
 //       return Utils.box(this.@input).join(" ")
-	   return new MultiPipelineInput(this.@input, pipelineStages)
+       return new MultiPipelineInput(this.@input, pipelineStages)
    }
    
    /**
@@ -446,36 +440,36 @@ class PipelineContext {
    }
    
    /**
-	* Specifies an output that keeps the same type of file but modifies
-	* it ("filters" it). Convenience wrapper for {@link #produce(Closure, Object, Closure)}
-	* for the case where the same file extension is kept but a transformation
-	* type is added to the name.
-	*/
+    * Specifies an output that keeps the same type of file but modifies
+    * it ("filters" it). Convenience wrapper for {@link #produce(Closure, Object, Closure)}
+    * for the case where the same file extension is kept but a transformation
+    * type is added to the name.
+    */
    Object transform(List<String> exts, Closure body) {
-	   
-	   def pipeline = Pipeline.currentRuntimePipeline.get()
-	   def inp = Utils.first(this.@input)
+       
+       def pipeline = Pipeline.currentRuntimePipeline.get()
+       def inp = Utils.first(this.@input)
        if(!inp) 
            throw new PipelineError("Expected input but no input provided") 
-	   
-	   boolean applyName = pipeline.name && !pipeline.nameApplied
-	   
-	   def files = exts.collect { String extension ->
-		   if(applyName)
-			   return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+'.'+extension)
-		   else
-			   return inp.replaceAll('\\.[^\\.]*$','.'+extension)
-	   }
-	   
-	   log.info "Transform using $exts produces outputs $files"
-	   
-	   if(applyName)
-		   pipeline.nameApplied = true
-		   
-	   produce(files, body)
+       
+       boolean applyName = pipeline.name && !pipeline.nameApplied
+       
+       def files = exts.collect { String extension ->
+           if(applyName)
+               return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+'.'+extension)
+           else
+               return inp.replaceAll('\\.[^\\.]*$','.'+extension)
+       }
+       
+       log.info "Transform using $exts produces outputs $files"
+       
+       if(applyName)
+           pipeline.nameApplied = true
+           
+       produce(files, body)
    }
  
-	
+    
     /**
      * Specifies an output that keeps the same type of file but modifies 
      * it ("filters" it). Convenience wrapper for {@link #produce(Closure, Object, Closure)}
@@ -483,100 +477,100 @@ class PipelineContext {
      * type is added to the name.
      */
     Object filter(List<String> types, Closure body) {
-		
-		def pipeline = Pipeline.currentRuntimePipeline.get()
+        
+        def pipeline = Pipeline.currentRuntimePipeline.get()
         def inp = Utils.first(this.@input)
         if(!inp) 
            throw new PipelineError("Expected input but no input provided") 
-		
-		boolean applyName = pipeline.name && !pipeline.nameApplied
-		
-		def files = types.collect { String type ->
-	        String oldExt = (inp =~ '\\.[^\\.]*$')[0]
-	        if(applyName) 
-				return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+oldExt)
-			else
-				return inp.replaceAll('(\\.[^\\.]*$)','.'+type+oldExt)
-		}
-		
-		log.info "Filtering using $types produces outputs $files"
-		
-		if(applyName)
-			pipeline.nameApplied = true
-			
+        
+        boolean applyName = pipeline.name && !pipeline.nameApplied
+        
+        def files = types.collect { String type ->
+            String oldExt = (inp =~ '\\.[^\\.]*$')[0]
+            if(applyName) 
+                return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+oldExt)
+            else
+                return inp.replaceAll('(\\.[^\\.]*$)','.'+type+oldExt)
+        }
+        
+        log.info "Filtering using $types produces outputs $files"
+        
+        if(applyName)
+            pipeline.nameApplied = true
+            
         produce(files, body)
     }
   
     Object filter(String type, Closure body) {
-		filter([type],body)
-	}
-	
+        filter([type],body)
+    }
+    
     Object filter(String type1, String type2, Closure body) { 
-		filter([type1,type2],body)
+        filter([type1,type2],body)
     }
     
     Object filter(String type1, String type2, String type3, Closure body) { 
-		filter([type1,type2,type3],body)
+        filter([type1,type2,type3],body)
     }
     
     Object filter(String type1, String type2, String type3, String type4, Closure body) { 
-		filter([type1,type2,type3,type4],body)
+        filter([type1,type2,type3,type4],body)
     }
     
     Object filter(String type1, String type2, String type3, String type4, String type5, Closure body) { 
-		filter([type1,type2,type3,type4,type5],body)
+        filter([type1,type2,type3,type4,type5],body)
     }
-	
+    
     Object transform(String ext, Closure body) {
-		transform([ext],body)
-	}
-	
+        transform([ext],body)
+    }
+    
     Object transform(String ext1, String ext2, Closure body) { 
-		transform([ext1,ext2],body)
+        transform([ext1,ext2],body)
     }
     
     Object transform(String ext1, String ext2, String ext3, Closure body) { 
-		transform([ext1,ext2,ext3],body)
+        transform([ext1,ext2,ext3],body)
     }
     
     Object transform(String ext1, String ext2, String ext3, String ext4, Closure body) { 
-		transform([ext1,ext2,ext3,ext4],body)
+        transform([ext1,ext2,ext3,ext4],body)
     }
     
     Object transform(String ext1, String ext2, String ext3, String ext4, String ext5, Closure body) { 
-		transform([ext1,ext2,ext3,ext4,ext5],body)
+        transform([ext1,ext2,ext3,ext4,ext5],body)
     }
-	
+    
     Object produce(String out1, String out2, Closure body) { 
-		produce([out1,out2],body)
+        produce([out1,out2],body)
     }
     
     Object produce(String out1, String out2, String out3, Closure body) { 
-		produce([out1,out2,out3],body)
+        produce([out1,out2,out3],body)
     }
     
     Object produce(String out1, String out2, String out3, String out4, Closure body) { 
-		produce([out1,out2,out3,out4],body)
+        produce([out1,out2,out3,out4],body)
     }
     
     Object produce(String out1, String out2, String out3, String out4, String out5, Closure body) { 
-		produce([out1,out2,out3,out4,out5],body)
+        produce([out1,out2,out3,out4,out5],body)
     }
-	
+    
     Object produce(String out1, String out2, String out3, String out4, String out5, String out6, Closure body) { 
-		produce([out1,out2,out3,out4,out5,out6],body)
+        produce([out1,out2,out3,out4,out5,out6],body)
     }
-	
+    
     Object produce(String out1, String out2, String out3, String out4, String out5, String out6, String out7, Closure body) { 
-		produce([out1,out2,out3,out4,out5,out6,out7],body)
+        produce([out1,out2,out3,out4,out5,out6,out7],body)
     }
-	
+    
     Object produce(String out1, String out2, String out3, String out4, String out5, String out6, String out7, String out8, Closure body) { 
-		produce([out1,out2,out3,out4,out5,out6,out7,out8],body)
+        produce([out1,out2,out3,out4,out5,out6,out7,out8],body)
     }
-	
+    
     Object produce(String out1, String out2, String out3, String out4, String out5, String out6, String out7, String out8, String out9, Closure body) { 
-		produce([out1,out2,out3,out4,out5,out6,out7,out8,out9],body)
+        produce([out1,out2,out3,out4,out5,out6,out7,out8,out9],body)
     }
     
     /**
@@ -597,12 +591,12 @@ class PipelineContext {
         if(Utils.isNewer(out,lastInputs)) {
           // No inputs were newer than outputs, 
           // but were the commands that created the outputs modified?
-	      this.output = out
+          this.output = out
           this.probeMode = true
           this.trackedOutputs = [:]
           try {
             PipelineDelegate.setDelegateOn(this, body)
-	        log.info("Producing from inputs ${this.@input}")
+            log.info("Producing from inputs ${this.@input}")
             body() 
             
             if(!Config.config.enableCommandTracking || !checkForModifiedCommands()) {
@@ -616,21 +610,60 @@ class PipelineContext {
         }
         
         if(doExecute) {
-			if(Utils.box(this.@output)) {
-				this.output = this.@output + out
-			}
-			else
-	            this.output = out
+            if(Utils.box(this.@output)) {
+                this.output = this.@output + out
+            }
+            else
+                this.output = out
             
             // Store the list of output files so that if we are killed 
             // they can be cleaned up
-	        this.uncleanFilePath.text += Utils.box(this.output)?.join("\n") 
+            this.uncleanFilePath.text += Utils.box(this.output)?.join("\n") 
             
             PipelineDelegate.setDelegateOn(this, body)
-	        log.info("Producing from inputs ${this.@input}")
+            log.info("Producing from inputs ${this.@input}")
             body()
         }
         return out
+    }
+    
+    /**
+     * Causes the given closure to execute and for files that appear during the
+     * execution, and which match the pattern, to be considered as 
+     * outputs.  This makes it easy to define a pipeline stage that has an 
+     * unknown number of outputs.  A common example is splitting input files
+     * into size-based or line-based chunks:
+     * <code>split -b 100kb $input</code>
+     * The number of output files is not known, and explicit output file names
+     * are not provided to the command, but should be discovered afterward, 
+     * based on the input pattern.
+     * 
+     * @param pattern
+     */
+    void split(String pattern, Closure c) {
+		
+        try {
+			def files = Utils.glob(pattern)
+			if(files && Utils.isNewer(files, this.@input)) {
+				msg "Skipping execution of split because inputs [" + this.@input + "] are newer than ${files.size()} outputs starting with " + Utils.first(files)
+				log.info "Split body not executed because inputs " + this.@input + " older than files matching split: $files"
+				return
+			}
+            
+            // Execute the body
+            log.info "Executing split body with pattern $pattern in stage $stageName"
+            c()
+        }
+        finally {
+            def result = Utils.glob(pattern)
+            
+            log.info "Found outputs for split by scanning pattern $pattern: [$output]" 
+            
+            if(Utils.box(this.@output)) 
+                this.output = this.@output + out
+            else
+                this.output = result
+        }
     }
     
     /**
@@ -640,7 +673,7 @@ class PipelineContext {
      */
     void exec(String cmd, String config) {
         exec(cmd, true, config)
-	}
+    }
     
     /**
      * @see #exec(String, boolean, String)
@@ -648,21 +681,21 @@ class PipelineContext {
      */
     void exec(String cmd) {
         exec(cmd, true)
-	}
+    }
     
-	/**
-	 * Adds user provided documentation to the pipeline stage
-	 * 
-	 * @param attributes	can be a string or Map of attributes
-	 */
+    /**
+     * Adds user provided documentation to the pipeline stage
+     * 
+     * @param attributes    can be a string or Map of attributes
+     */
     void doc(Object attributes) {
-		if(attributes instanceof Map) {
-	        this.documentation += attributes
-		}
-		else
-		if(attributes instanceof String) {
-			this.documentation["desc"] = attributes
-		}
+        if(attributes instanceof Map) {
+            this.documentation += attributes
+        }
+        else
+        if(attributes instanceof String) {
+            this.documentation["desc"] = attributes
+        }
     }
     
     /**
@@ -690,15 +723,15 @@ class PipelineContext {
         // Output is still spooling from the process.  By waiting a bit we ensure
         // that we don't interleave the exception trace with the output
         Thread.sleep(200)
-		
-		if(!this.probeMode)
-			this.commandManager.cleanup(p)
-			
+        
+        if(!this.probeMode)
+            this.commandManager.cleanup(p)
+            
         throw new PipelineError("Command failed with exit status = $exitResult : \n$cmd")
       }
-	  
-	  if(!this.probeMode)
-		    this.commandManager.cleanup(p)
+      
+      if(!this.probeMode)
+            this.commandManager.cleanup(p)
     }
     
     /**
@@ -719,11 +752,11 @@ class PipelineContext {
            
        boolean oldEchoFlag = this.echoWhenNotFound
        try {
-	        this.echoWhenNotFound = true
+            this.echoWhenNotFound = true
             log.info("Entering echo mode on context " + this.hashCode())
             String scr = c()
-	        exec("""Rscript - <<'!'
-	        $scr
+            exec("""Rscript - <<'!'
+            $scr
 !""",false)
        }
        finally {
@@ -756,18 +789,18 @@ class PipelineContext {
     CommandExecutor async(String cmd, boolean joinNewLines=true, String config = null) {
       def joined = ""
       if(joinNewLines) {
-		  def prev
-	      cmd.eachLine { 
-			  if(!it.trim().isEmpty() || joined.isEmpty()) { 
-				  joined += " " + it
-			  }
-			  else {
-				  if(!joined.trim().endsWith(";"))
-					  joined += ";"
-					  
-				  joined += " "
-			  }
-		  }
+          def prev
+          cmd.eachLine { 
+              if(!it.trim().isEmpty() || joined.isEmpty()) { 
+                  joined += " " + it
+              }
+              else {
+                  if(!joined.trim().endsWith(";"))
+                      joined += ";"
+                      
+                  joined += " "
+              }
+          }
       }
       else
           joined = cmd
@@ -791,13 +824,13 @@ class PipelineContext {
       
       if(!probeMode) {
           CommandLog.log.write(cmd)
-		  
-		  // Check the command for versions of tools it uses
-		  def toolsDiscovered = ToolDatabase.instance.probe(cmd)
-		  
-		  // Add the tools to our documentation
-		  if(toolsDiscovered)
-			  this.doc(["tools" : toolsDiscovered])
+          
+          // Check the command for versions of tools it uses
+          def toolsDiscovered = ToolDatabase.instance.probe(cmd)
+          
+          // Add the tools to our documentation
+          if(toolsDiscovered)
+              this.doc(["tools" : toolsDiscovered])
       
           CommandExecutor cmdExec = commandManager.start(stageName, joined, config, Utils.box(this.input))
           List outputFilter = cmdExec.ignorableOutputs
@@ -843,14 +876,14 @@ class PipelineContext {
        // in the same thread
        def reverseOutputs 
        synchronized(pipelineStages) {
-	       reverseOutputs = pipelineStages.reverse().grep { 
-	              isRelatedContext(it.context) && !it.context.is(this)
-	       }.collect { Utils.box(it.context.output) }
+           reverseOutputs = pipelineStages.reverse().grep { 
+                  isRelatedContext(it.context) && !it.context.is(this)
+           }.collect { Utils.box(it.context.output) }
            
-	       // Add a final stage that represents the original inputs (bit of a hack)
-	       // You can think of it as the initial inputs being the output of some previous stage
-	       // that we know nothing about
-	       reverseOutputs.add(Utils.box(pipelineStages[0].context.@input))
+           // Add a final stage that represents the original inputs (bit of a hack)
+           // You can think of it as the initial inputs being the output of some previous stage
+           // that we know nothing about
+           reverseOutputs.add(Utils.box(pipelineStages[0].context.@input))
        }
        
        // Add an initial stage that represents the current input to this stage.  This way
@@ -879,7 +912,7 @@ class PipelineContext {
            throw new PipelineError("Unable to locate one or more specified resolvedInputs matching spec $orig")
            
        // resolvedInputs = Utils.unbox(resolvedInputs)
-	   resolvedInputs = resolvedInputs.flatten()
+       resolvedInputs = resolvedInputs.flatten()
        
        log.info "Found inputs $resolvedInputs for spec $orig"
        
@@ -896,9 +929,9 @@ class PipelineContext {
    }
    
    public void forward(nextInputOverride) {
-	   this.nextInputs = nextInputOverride
-	   if(this.nextInputs instanceof PipelineInput)
-	   		this.nextInputs = this.nextInputs.@input
+       this.nextInputs = nextInputOverride
+       if(this.nextInputs instanceof PipelineInput)
+               this.nextInputs = this.nextInputs.@input
    }
    
    /**
