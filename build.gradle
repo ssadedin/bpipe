@@ -30,7 +30,7 @@ task stage(dependsOn: jar) << {
 
   ant.copy(todir: "$STAGE/lib") {
     // do not distribute mail.jar due to license
-    ant.fileset(dir: 'local-lib', includes: "*.jar", excludes: "mail.jar")
+    ant.fileset(dir: 'local-lib', includes: "*.jar", excludes: "mail.jar,gridgain-*.jar,hazelcast-*.jar")
     ant.fileset(dir: 'build/libs', includes: "bpipe.jar")
   }
   ant.mkdir(dir: "$STAGE/html")

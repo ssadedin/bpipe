@@ -12,9 +12,6 @@ import bpipe.PipelineError
 class HazelcastCommandExecutor extends AbstractGridBashExecutor {
 
 
-    static {
-        addHazelcastToRootLoader()
-    }
 
     /** The configuration obj */
     def Map cfg
@@ -32,13 +29,16 @@ class HazelcastCommandExecutor extends AbstractGridBashExecutor {
      * Configure the class path
      */
     HazelcastCommandExecutor() {
+        // configure the classpath to be able to support Hazelcast
+        addHazelcastToRootLoader()
 
-        super( HazelcastGridProvider.instance )
+        // configure the provider
+        provider = HazelcastGridProvider.instance
 
     }
 
 
-
+    private static boolean classpathConfigured = false
 
     /*
     * Update the root class loader adding the Hazelcast library hazelcast-all-x.x.x.jar
@@ -46,7 +46,9 @@ class HazelcastCommandExecutor extends AbstractGridBashExecutor {
     * It requires the variable {@code HAZELCAST_HOME} to be defined and pointing to the root
     * Hazelcast distribution folder
     */
-    static def void addHazelcastToRootLoader() {
+    static synchronized def void addHazelcastToRootLoader() {
+
+        if( classpathConfigured ) return
 
         /*
          * Check if Hazelcast is already on the classpath
@@ -85,6 +87,11 @@ class HazelcastCommandExecutor extends AbstractGridBashExecutor {
          * add the Hazelcast to the root class loader
          */
         root.addURL( mainJarFile.toURL() )
+
+        /*
+         * set the flag to TRUE to skip
+         */
+        classpathConfigured = true
     }
 
 
