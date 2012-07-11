@@ -642,8 +642,8 @@ class PipelineContext {
      */
     void split(String pattern, Closure c) {
 		
+		def files = Utils.glob(pattern)
         try {
-			def files = Utils.glob(pattern)
 			if(files && Utils.isNewer(files, this.@input)) {
 				msg "Skipping execution of split because inputs [" + this.@input + "] are newer than ${files.size()} outputs starting with " + Utils.first(files)
 				log.info "Split body not executed because inputs " + this.@input + " older than files matching split: $files"
@@ -655,7 +655,9 @@ class PipelineContext {
             c()
         }
         finally {
-            def result = Utils.glob(pattern)
+			
+			def normalizedInputs = Utils.box(this.@input).collect { new File(it).absolutePath }
+            def result = Utils.glob(pattern).grep {  !normalizedInputs.contains( new File(it).absolutePath) }
             
             log.info "Found outputs for split by scanning pattern $pattern: [$output]" 
             
