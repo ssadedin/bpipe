@@ -25,11 +25,7 @@
  */
 package bpipe
 
-import java.io.File;
-import java.lang.Thread.UncaughtExceptionHandler;
-import java.util.logging.Logger;
-
-import groovy.lang.Closure;
+import java.util.logging.Logger
 
 class StringExtrasCategory {
 	static String getPrefix(String value) {
@@ -112,7 +108,7 @@ class PipelineStage {
 		// Note: although it would appear these are being injected at a per-pipeline level,
 		// in fact they end up as globally shared variables across all parallel threads
 		// (there IS only ONE binding for a closure and only ONE closure instance getting 
-		// executed, even by multiple threads). All per-pipeline state is maintined inside
+		// executed, even by multiple threads). All per-pipeline state is maintained inside
 		// the PipelineContext.
         if(body.properties.containsKey("binding")) {
              this.context.extraBinding.variables.each { k,v ->

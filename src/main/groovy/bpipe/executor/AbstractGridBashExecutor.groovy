@@ -41,10 +41,6 @@ abstract class AbstractGridBashExecutor implements CommandExecutor {
 
     def getResult() { result }
 
-    AbstractGridBashExecutor( ExecutorServiceProvider provider ) {
-        this.provider = provider
-    }
-
 
     @Override
     void start(Map cfg, String id, String name, String cmd) {
@@ -55,7 +51,7 @@ abstract class AbstractGridBashExecutor implements CommandExecutor {
         this.cmd = cmd ?. trim()
 
         /*
-         * submit to the Hazelcast grid for command execution
+         * submit to the grid for command execution
          */
         log.info "Executing command '${cmd}' with ${provider.getName()}"
         executor = provider.getExecutor()
