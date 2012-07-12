@@ -80,7 +80,7 @@ class SgeCommandExecutor implements CommandExecutor {
 	 *   the job exit code. To monitor for job termination will will wait for that file to exist
 	 */
     @Override
-    void start(Map cfg, String id, String name, String cmd) {
+    void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
         this.config = cfg
         this.id = id
         this.name = name;

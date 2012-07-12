@@ -14,7 +14,7 @@ class HazelcastCommandExecutor extends AbstractGridBashExecutor {
     /**
      * Logger to use with this class
      */
-    private static Logger log = Logger.getLogger("bpipe.PipelineOutput");
+    private static Logger log = Logger.getLogger("bpipe.executor.HazelcastCommandExecutor");
 
 
     /** The configuration obj */

@@ -89,7 +89,7 @@ class CommandManager {
      * @param cmd     the command line to run
      * @return the {@link CommandExecutor} that is executing the job.
      */
-    CommandExecutor start(String name, String cmd, String configName, Collection inputs) {
+    CommandExecutor start(String name, String cmd, String configName, Collection inputs, File outputDirectory ) {
         
         // How to run the job?  look in user config
 		if(!configName) 
@@ -190,7 +190,7 @@ class CommandManager {
         String commandId = CommandId.newId()
         log.info "Created bpipe command id " + commandId
         
-        cmdExec.start(cfg, commandId, name, cmd)
+        cmdExec.start(cfg, commandId, name, cmd, outputDirectory)
 		
 		this.commandIds[cmdExec] = commandId
         

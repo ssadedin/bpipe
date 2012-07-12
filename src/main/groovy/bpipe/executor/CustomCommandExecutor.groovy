@@ -126,7 +126,7 @@ class CustomCommandExecutor implements CommandExecutor {
      * launching the specified command.
      */
     @Override
-    public void start(Map cfg, String id, String name, String cmd) {
+    public void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
 		
 		this.config = cfg
         this.name = name

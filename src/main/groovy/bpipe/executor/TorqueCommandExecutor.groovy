@@ -60,7 +60,7 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
      * These appear as files in the local directory.
      */
     @Override
-    public void start(Map cfg, String id, String name, String cmd) {
+    public void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
         
         super.start(cfg, id, name, cmd);
         
