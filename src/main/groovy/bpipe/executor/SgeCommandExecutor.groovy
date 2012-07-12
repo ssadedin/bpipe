@@ -126,12 +126,20 @@ class SgeCommandExecutor implements CommandExecutor {
             startCmd += "-l h_rt=${config.walltime} "
         }
 
-        if( config?.procs ) {
+        if( config?.procs && config.procs.toString().isInteger() ) {
+            startCmd +=  "-l slots=${config.procs} "
+        }
+        else if ( config?.procs ) {
             startCmd += "-pe ${config.procs} "
         }
 
         if( config?.memory ) {
-            startCmd += "-l h_vmem=${config.memory} "
+            /*
+             * Read more about SGE virtual_free vs mem_free at the following links
+             * http://gridengine.org/pipermail/users/2011-December/002215.html
+             * http://www.gridengine.info/tag/virtual_free/
+             */
+            startCmd += "-l virtual_free=${config.memory} "
         }
 
         if( config?.sge_request_options ) {
