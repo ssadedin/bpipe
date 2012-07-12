@@ -121,6 +121,22 @@ class SgeCommandExecutor implements CommandExecutor {
 		if(config?.queue) {
 			startCmd += "-q ${config.queue} "
 		}
+
+        if( config?.walltime )  {
+            startCmd += "-l h_rt=${config.walltime} "
+        }
+
+        if( config?.procs ) {
+            startCmd += "-pe ${config.procs} "
+        }
+
+        if( config?.memory ) {
+            startCmd += "-l h_vmem=${config.memory} "
+        }
+
+        if( config?.sge_request_options ) {
+            startCmd += config.sge_request_options + ' '
+        }
 		
 		// at the end append the command script wrapped file name
 		startCmd += "$jobDir/$CMD_SCRIPT_FILENAME"
@@ -128,7 +144,7 @@ class SgeCommandExecutor implements CommandExecutor {
 		/*
 		 * prepare the command to invoke
 		 */
-		log.info "Starting command: " + startCmd
+		log.info "Starting command: '${startCmd}'"
 		
 		ProcessBuilder pb = new ProcessBuilder("bash", "-c", startCmd)
 		Process p = pb.start()

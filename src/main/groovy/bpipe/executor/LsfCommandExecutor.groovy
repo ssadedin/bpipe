@@ -131,16 +131,22 @@ class LsfCommandExecutor implements CommandExecutor {
 		if(config?.queue) {
 			startCmd += "-q ${config.queue} "
 		}
+
         if(config?.jobname) {
             startCmd += "-J ${config.jobname} "
         }
+
+        if( config?.lsf_request_options ) {
+            startCmd += config.lsf_request_options + ' '
+        }
+
 		// at the end append the command script wrapped file name
 		startCmd += "< $jobDir/$CMD_SCRIPT_FILENAME"
 		
 		/*
 		 * prepare the command to invoke
 		 */
-		log.info "Starting command: " + startCmd
+		log.info "Starting command: ${startCmd}"
 		
 		ProcessBuilder pb = new ProcessBuilder("bash", "-c", startCmd)
 		Process p = pb.start()
