@@ -391,7 +391,7 @@ public class Pipeline {
             return
         }
         
-        def scripts = pipeFolder.listFiles().grep { it.name.endsWith("groovy") }.each { scriptFile ->
+        def scripts = (pipeFolder.listFiles().grep { it.name.endsWith("groovy") } + loadedPaths).each { scriptFile ->
             log.info("Evaluating library file $scriptFile")
             try {
 		        shell.evaluate("import static Bpipe.*; binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true; " + scriptFile.text)
@@ -401,7 +401,7 @@ public class Pipeline {
                 System.err.println("WARN: Error evaluating script $scriptFile: " + ex.getMessage())
             }
 	        PipelineCategory.addStages(externalBinding)
-        }
+        } 
     }
     
     
@@ -427,6 +427,24 @@ public class Pipeline {
             c.binding.variables[stageName] = c
         }
         return c
+    }
+    
+    /**
+     * Paths that have been added to the script using the <code>load</code>
+     * Bpipe command.
+     */
+    static List<File> loadedPaths = []
+    
+    /**
+     * Include pipeline stages from the specified path into the pipeline
+     * @param path
+     */
+    static synchronized void load(String path) {
+        File f = new File(path)
+        if(!f.exists())
+            throw new PipelineError("A file requested to be loaded from path $path but this path could not be accessed.")
+            
+        loadedPaths << f
     }
     
     /**
