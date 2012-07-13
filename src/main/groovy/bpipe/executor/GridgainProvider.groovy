@@ -73,7 +73,7 @@ class GridgainProvider implements ExecutorServiceProvider {
     } ()
 
     @Override
-    def getName() { "GridGain"}
+    def getName() { "GridGain" }
 
     @Override
     ExecutorService getExecutor() {

@@ -17,23 +17,22 @@ class GridgainCommandExecutor extends AbstractGridBashExecutor {
     /**
      * Logger to use with this class
      */
-    private static Logger log = Logger.getLogger("bpipe.PipelineOutput");
+    private static Logger log = Logger.getLogger("bpipe.executor.GridgainCommandExecutor");
     
 
-    static {
-        /*
-         * Configure the classpath adding the gridgain classes if required
-         */
-        configureClasspathIfRequired()
-    }
-
+    private static boolean classpathConfigured
 
     GridgainCommandExecutor() {
-        super( GridgainProvider.instance )
+        // add GridGain dependencies to the classpath on-fly
+        configureClasspathIfRequired()
+        // set the provider instance
+        provider = GridgainProvider.instance
     }
 
 
-    static def configureClasspathIfRequired() {
+    static synchronized def configureClasspathIfRequired() {
+
+        if( classpathConfigured ) return
 
         def root = this.classLoader.rootLoader
         assert root, "Cannot access to the B-pipe RootLoader instance"
@@ -66,7 +65,29 @@ class GridgainCommandExecutor extends AbstractGridBashExecutor {
         // add the libraries to the root classloader
         root.addURL( mainJarFile.toURL() )
         def jars   = libs.listFiles().findAll { it.name.endsWith('.jar') }
-        jars.each { File it -> root.addURL( it.getAbsoluteFile().toURL() ) }
+        jars.each { File it ->
+            if( acceptLib(it.name) ) {
+                root.addURL( it.getAbsoluteFile().toURL() )
+            }
+        }
 
+
+        // set the flag to skip the next time
+        classpathConfigured = true
+
+    }
+
+
+
+    /** the list of GG provided libraries that should be added to the classpath */
+    private static def SKIP_LIBRARIES = ['groovy-','groovypp-','commons-cli-']
+
+
+    static boolean acceptLib( String fileName ) {
+        for( String it : SKIP_LIBRARIES ) {
+            if( fileName.startsWith(it)) return false
+        }
+
+        return true
     }
 }

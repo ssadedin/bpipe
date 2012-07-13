@@ -86,7 +86,7 @@ class LsfCommandExecutor implements CommandExecutor {
 	 *   the job exit code. To monitor for job termination will will wait for that file to exist
 	 */
     @Override
-    void start(Map cfg, String id, String name, String cmd) {
+    void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
         this.config = cfg
         this.id = id
         this.name = name;
@@ -131,16 +131,22 @@ class LsfCommandExecutor implements CommandExecutor {
 		if(config?.queue) {
 			startCmd += "-q ${config.queue} "
 		}
+
         if(config?.jobname) {
             startCmd += "-J ${config.jobname} "
         }
+
+        if( config?.lsf_request_options ) {
+            startCmd += config.lsf_request_options + ' '
+        }
+
 		// at the end append the command script wrapped file name
 		startCmd += "< $jobDir/$CMD_SCRIPT_FILENAME"
 		
 		/*
 		 * prepare the command to invoke
 		 */
-		log.info "Starting command: " + startCmd
+		log.info "Starting command: ${startCmd}"
 		
 		ProcessBuilder pb = new ProcessBuilder("bash", "-c", startCmd)
 		Process p = pb.start()

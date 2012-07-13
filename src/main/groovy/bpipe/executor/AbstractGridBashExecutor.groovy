@@ -1,7 +1,5 @@
 package bpipe.executor
 
-import bpipe.CommandStatus
-
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Future
 import java.util.logging.Logger;
@@ -41,13 +39,9 @@ abstract class AbstractGridBashExecutor implements CommandExecutor {
 
     def getResult() { result }
 
-    AbstractGridBashExecutor( ExecutorServiceProvider provider ) {
-        this.provider = provider
-    }
-
 
     @Override
-    void start(Map cfg, String id, String name, String cmd) {
+    void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
 
         this.cfg = cfg
         this.id = id
@@ -55,11 +49,13 @@ abstract class AbstractGridBashExecutor implements CommandExecutor {
         this.cmd = cmd ?. trim()
 
         /*
-         * submit to the Hazelcast grid for command execution
+         * submit to the grid for command execution
          */
         log.info "Executing command '${cmd}' with ${provider.getName()}"
         executor = provider.getExecutor()
-        task = executor.submit(new BashCallableCommand(cmd) );
+        def bashCmd = new BashCallableCommand(cmd)
+        bashCmd.outputDirectory = outputDirectory
+        task = executor.submit( bashCmd );
     }
 
     @Override

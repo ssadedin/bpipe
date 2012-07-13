@@ -834,7 +834,7 @@ class PipelineContext {
           if(toolsDiscovered)
               this.doc(["tools" : toolsDiscovered])
       
-          CommandExecutor cmdExec = commandManager.start(stageName, joined, config, Utils.box(this.input))
+          CommandExecutor cmdExec = commandManager.start(stageName, joined, config, Utils.box(this.input), new File(outputDirectory))
           List outputFilter = cmdExec.ignorableOutputs
           if(outputFilter) {
               this.outputMask.addAll(outputFilter)

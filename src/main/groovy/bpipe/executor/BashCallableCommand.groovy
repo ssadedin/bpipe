@@ -14,6 +14,8 @@ class BashCallableCommand implements Callable<BashResult>, Serializable {
 
     List<String> command
 
+    File outputDirectory
+
     BashCallableCommand( String command ) {
         this.command = ['sh','-c', command]
     }
@@ -39,7 +41,7 @@ class BashCallableCommand implements Callable<BashResult>, Serializable {
         BashResult result = new BashResult()
 
         try {
-            Process process = new ProcessBuilder(command).start()
+            Process process = new ProcessBuilder(command).directory(outputDirectory).start()
             result.exitCode = process.waitFor()
             result.stdOutput = text(process.getInputStream())
             result.stdError = text(process.getErrorStream())

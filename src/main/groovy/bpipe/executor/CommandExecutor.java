@@ -24,6 +24,7 @@
  */
 package bpipe.executor;
 
+import java.io.File;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +48,7 @@ import java.util.Map;
  */
 public interface CommandExecutor extends Serializable {
     
-    void start(Map cfg, String id, String name, String cmd);
+    void start(Map cfg, String id, String name, String cmd, File outputDirectory);
     
     String status();
     

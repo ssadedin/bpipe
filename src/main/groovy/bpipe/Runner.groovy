@@ -187,21 +187,27 @@ diagrameditor""")
 		String pipelineSrc = loadPipelineSrc(cli, opt.arguments()[0])
 		if(opt.arguments().size() > 1)
 			pipelineArgs = opt.arguments()[1..-1]
-		
-        Config.readUserConfig()
-		
+
+        // read the configuration file, if available
+        try {
+            Config.readUserConfig()
+        }
+        catch( Exception e ) {
+            def cause = e.getCause() ?: e
+            println("Error parsing 'bpipe.config' file. Cause: ${cause.getMessage() ?: cause}")
+            System.exit(1)
+        }
+
 		ToolDatabase.instance.init(Config.userConfig)
 		
 		// Add event listeners that come directly from configuration
 		EventManager.instance.configure(Config.userConfig)
-		
+
 		// If we got this far and are not in test mode, then it's time to 
 		// make the logs stick around
 		if(!opts.t)
 			Config.config.eraseLogsOnExit = false
 
-
-        log.info "Has RootLoader: ${this.classLoader.rootLoader != null}"
 
         def gcl = new GroovyClassLoader()
 

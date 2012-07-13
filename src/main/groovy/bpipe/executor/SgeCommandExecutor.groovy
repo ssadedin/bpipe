@@ -80,7 +80,7 @@ class SgeCommandExecutor implements CommandExecutor {
 	 *   the job exit code. To monitor for job termination will will wait for that file to exist
 	 */
     @Override
-    void start(Map cfg, String id, String name, String cmd) {
+    void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
         this.config = cfg
         this.id = id
         this.name = name;
@@ -121,6 +121,30 @@ class SgeCommandExecutor implements CommandExecutor {
 		if(config?.queue) {
 			startCmd += "-q ${config.queue} "
 		}
+
+        if( config?.walltime )  {
+            startCmd += "-l h_rt=${config.walltime} "
+        }
+
+        if( config?.procs && config.procs.toString().isInteger() ) {
+            startCmd +=  "-l slots=${config.procs} "
+        }
+        else if ( config?.procs ) {
+            startCmd += "-pe ${config.procs} "
+        }
+
+        if( config?.memory ) {
+            /*
+             * Read more about SGE virtual_free vs mem_free at the following links
+             * http://gridengine.org/pipermail/users/2011-December/002215.html
+             * http://www.gridengine.info/tag/virtual_free/
+             */
+            startCmd += "-l virtual_free=${config.memory} "
+        }
+
+        if( config?.sge_request_options ) {
+            startCmd += config.sge_request_options + ' '
+        }
 		
 		// at the end append the command script wrapped file name
 		startCmd += "$jobDir/$CMD_SCRIPT_FILENAME"
@@ -128,7 +152,7 @@ class SgeCommandExecutor implements CommandExecutor {
 		/*
 		 * prepare the command to invoke
 		 */
-		log.info "Starting command: " + startCmd
+		log.info "Starting command: '${startCmd}'"
 		
 		ProcessBuilder pb = new ProcessBuilder("bash", "-c", startCmd)
 		Process p = pb.start()

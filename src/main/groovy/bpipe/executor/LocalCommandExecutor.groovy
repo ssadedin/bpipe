@@ -33,7 +33,7 @@ class LocalCommandExecutor implements CommandExecutor {
      */
     boolean destroyed = false
     
-    void start(Map cfg, String id, String name, String cmd) {
+    void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
       new Thread({
           
           // Special case for Windows / Cygwin

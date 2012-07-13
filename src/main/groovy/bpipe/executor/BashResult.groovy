@@ -2,6 +2,7 @@ package bpipe.executor;
 
 
 /**
+ *  A simple transfer object to handle the result of bash command executed on a remote host
  *
  *  @author Paolo Di Tommaso <paolo.ditommaso@gmail.com>
  */
