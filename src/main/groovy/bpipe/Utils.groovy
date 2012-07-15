@@ -61,9 +61,10 @@ class Utils {
     static boolean isNewer(def outputs, def inputs) {
         
         // Some pipeline stages don't expect any outputs
-        if(outputs == null)
+        // Fixing issue 44 - https://code.google.com/p/bpipe/issues/detail?id=44
+        if(outputs == null || inputs == null)
             return false
-        
+
         // Box into a collection for simplicity
         outputs = box(outputs)
     
@@ -272,7 +273,7 @@ class Utils {
     /**
      * Returns filenames found by expanding the passed pattern which is String or
      * a List of patterns.
-     * NOTE: that this pattern is not a regexp (it’s closer to a shell glob).
+     * NOTE: that this pattern is not a regexp (it's closer to a shell glob).
      * NOTE: that case sensitivity depends on your system.
      *
      * <code>*</code>      Matches any file. Can be restricted by other values in

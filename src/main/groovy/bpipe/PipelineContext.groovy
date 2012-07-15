@@ -708,7 +708,7 @@ class PipelineContext {
      * 
      * @param cmd            the command line to execute, which will be 
      *                       passed to a bash shell for execution
-     * @param joinNewLines   whether to concatentate the command into one long string
+     * @param joinNewLines   whether to concatenate the command into one long string
      * @param config         optional configuration name to use in running the
      *                       command
      * 
