@@ -233,7 +233,7 @@ get_classpath() {
 
   # In case we are running in place in the bpipe project root, we pre-empt any other 
   # bpipe classes with those from the build directory and the eclipse compile path
-  if [ -e $BPIPE_HOME/build/classes/main ];
+  if [ -e $BPIPE_HOME/build/classes/main ] || [ -e $BPIPE_HOME/eclipse-build ];
   then
     CP="$BPIPE_HOME/eclipse-build:$BPIPE_HOME/build/classes/main:$CP"
   fi
@@ -241,7 +241,7 @@ get_classpath() {
   # Support for Cygwin: convert the class path to windows format 
   if uname | grep -iq cygwin;
   then
-     CP=`cygpath -pw "$CP"`
+     CP=`cygpath -pm "$CP"`
   fi
 }
 
@@ -311,7 +311,7 @@ TESTMODE=""
 
 get_classpath
 
-SHOWDEBUG=false
+: ${SHOWDEBUG:=false}
 
 # If the only argument is "retry" then actually just run the previous 
 if [ "$COMMAND" == "retry" ]
@@ -489,9 +489,27 @@ $SHOWDEBUG && {
   echo "JAVA_MEM: $JAVA_MEM"
 }
 
-nohup java -Xmx${MAX_JAVA_MEM} -classpath "$CP" $BPIPEDEBUG -Dbpipe.pid=$$ -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.version=$VERSION -Dbpipe.builddate=$BUILDDATE org.codehaus.groovy.tools.GroovyStarter --classpath "$CP" --main bpipe.Runner $TESTMODE $* > .bpipe/logs/$$.log 2>&1 &
+LAUNCHER_PID=$$
 
-BPIPE_PID="$!"
+BPIPE_ARGS="$*"
+
+# This complicated way of launching Java is about trying to
+# have java launch with its standard output captured to a log
+# file that contains its own PID.  
+nohup echo 'printf $$ > .bpipe.'$LAUNCHER_PID'.run.pid; 
+      exec java -Xmx'${MAX_JAVA_MEM}' -classpath "'"$CP"'" '$BPIPEDEBUG' -Dbpipe.pid='$LAUNCHER_PID' -Dbpipe.home='"$JVM_BPIPE_HOME"' -Dbpipe.version='$VERSION' -Dbpipe.builddate='$BUILDDATE' org.codehaus.groovy.tools.GroovyStarter --classpath "'"$CP"'" --main bpipe.Runner '$TESTMODE' '$BPIPE_ARGS' > .bpipe/logs/$$.log 2>&1' \
+     2>&1 | bash - > /dev/null 2>&1 &
+
+# We rely on 1 second be
+while [ ! -e .bpipe.$LAUNCHER_PID.run.pid ];
+do
+  # this is just to waste time - sleep 1 is too long
+  echo > /dev/null
+done
+
+BPIPE_PID=`cat .bpipe.$LAUNCHER_PID.run.pid`
+
+rm .bpipe.$LAUNCHER_PID.run.pid
 
 $SHOWDEBUG && { 
   echo "DEBUG:  Launched Java with PID $BPIPE_PID"
@@ -519,9 +537,7 @@ ln -s `pwd`/.bpipe/jobs/$BPIPE_PID  $JOBDB_FILE
 trap handle_sigint SIGINT
 
 # Tail the output so that the user sees it
-RUNPID=$$
-
-LOGFILE=.bpipe/logs/$RUNPID.log
+LOGFILE=.bpipe/logs/$BPIPE_PID.log
 
 # Very rarely we can find that nohup takes longer to launch in the background than this process takes to get here
 # so we wait for the file to become available
@@ -541,8 +557,14 @@ done
 # but on Macs we have to emaulate that (grrr)
 if uname | grep -iq cygwin || uname | grep -iq Linux; 
 then
-    #echo "DEBUG:  tailing log using native pid tracking RUNPID=$RUNPID"
-    tail -f --pid=$BPIPE_PID $LOGFILE 
+    # echo "DEBUG:  tailing log $LOGFILE using native pid tracking RUNPID=$BPIPE_PID"
+    if kill -0 $BPIPE_PID  ;
+    then
+      tail -f --pid=$BPIPE_PID $LOGFILE 
+    else
+      tail $LOGFILE 
+      echo "tail $LOGFILE"
+    fi
 else
     #echo "DEBUG:  tailing log using MacOSX pid tracking emulation RUNPID=$RUNPID"
     tail -f $LOGFILE &
