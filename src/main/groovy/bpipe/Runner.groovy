@@ -68,6 +68,9 @@ diagrameditor""")
         
         String pid = resolvePID()
 	        
+		// PID of shell that launched Bpipe
+		String parentPid = System.getProperty("bpipe.pid")
+		
         // Before we do anything else, add a shutdown hook so that termination of the process causes the job to 
         // to be removed from the user's folder
         System.addShutdownHook { 
@@ -82,8 +85,7 @@ diagrameditor""")
             }
 			
 			if(Config.config.eraseLogsOnExit) {
-				String ourPid = System.getProperty("bpipe.pid")
-				new File(".bpipe/logs/${ourPid}.erase.log").text=""
+				new File(".bpipe/logs/${parentPid}.erase.log").text=""
 			}
         }
                 
@@ -260,7 +262,7 @@ diagrameditor""")
 				}
 
 				if(count > 100) {
-					println "ERROR: Bpipe was unable to read its startup PID file from $pidFile"
+					println "ERROR: Bpipe was unable to read its startup PID file from $pidFile.absolutePath"
 					println "ERROR: This may indicate you are in a read-only directory or one to which you do not have full permissions"
 					System.exit(1)
 				}
