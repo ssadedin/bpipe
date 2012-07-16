@@ -386,12 +386,14 @@ public class Pipeline {
             pipeFolder = new File(System.getenv("BPIPE_LIB"))
         }
         
+        List<File> libPaths = []
         if(!pipeFolder.exists()) {
             log.warning("Pipeline folder $pipeFolder could not be found")
-            return
         }
+        else
+            libPaths = pipeFolder.listFiles().grep { it.name.endsWith("groovy") }
         
-        def scripts = (pipeFolder.listFiles().grep { it.name.endsWith("groovy") } + loadedPaths).each { scriptFile ->
+        def scripts = (libPaths + loadedPaths).each { scriptFile ->
             log.info("Evaluating library file $scriptFile")
             try {
 		        shell.evaluate("import static Bpipe.*; binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true; " + scriptFile.text)
