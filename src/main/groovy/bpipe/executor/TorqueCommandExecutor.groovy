@@ -62,7 +62,7 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
     @Override
     public void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
         
-        super.start(cfg, id, name, cmd);
+        super.start(cfg, id, name, cmd, outputDirectory);
         
         // After starting the process, we launch a background thread that waits for the error
         // and output files to appear and then forward those inputs

@@ -26,6 +26,7 @@
 package bpipe.executor
 
 import bpipe.CommandStatus
+import bpipe.Config;
 import bpipe.PipelineError
 import bpipe.Utils
 
