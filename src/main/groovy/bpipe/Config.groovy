@@ -13,7 +13,11 @@ class Config {
     
     private static Logger log = Logger.getLogger("bpipe.Config");
     
-    static config = [
+	/**
+	 * Lower level configuration values.  These are not directly user 
+	 * exposed.
+	 */
+    static Map<String,Object> config = [
         columns: 100,
         
         // Default mode is "run", but "define" will just produce a definition
@@ -43,13 +47,15 @@ class Config {
 		// ignored / cleaned up 
 		eraseLogsOnExit : true, 
 		
-		// Set to comma separated list of 
-		// notification channels to use.  Currently only
-		// XMPP supported
-		notifications : null,
-		
 		// If set to true an HTML report of the run is generated
-		report: false
+		report: false, 
+		
+		// The PID of the Bpipe Java process (set immediately after startup)
+		pid: null,
+		
+		// The path to the file that is capturing the output for this 
+		// Bpipe run 
+		outputLogPath: null
     ]
     
     /**
@@ -62,6 +68,7 @@ class Config {
         ConfigSlurper slurper = new ConfigSlurper()
 		
 		File builtInConfigFile = new File(System.getProperty("bpipe.home") +"/bpipe.config")
+		
 		// Allows running in-situ in project source distro root dir to work
 		if(!builtInConfigFile.exists()) {
 			builtInConfigFile = new File(System.getProperty("bpipe.home") + "/src/main/config", "bpipe.config")

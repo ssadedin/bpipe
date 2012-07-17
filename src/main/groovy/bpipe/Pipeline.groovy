@@ -318,6 +318,7 @@ public class Pipeline {
             cmdlog << "#"*Config.config.columns 
             cmdlog << "# Starting pipeline at " + (new Date())
             cmdlog << "# Input files:  $inputFile"
+            cmdlog << "# Output Log:  " + Config.config.outputLogPath 
     		println("="*Config.config.columns)
     		println("|" + " Starting Pipeline at $startDateTime".center(Config.config.columns-2) + "|")
     		println("="*Config.config.columns)
