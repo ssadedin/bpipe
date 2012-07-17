@@ -781,6 +781,10 @@ class PipelineContext {
       return outputBuffer.toString()
     }
     
+    CommandExecutor async(String cmd, String config) {
+        async(cmd, true, config)
+    }
+    
     /**
      * Asynchronously executes the given command by creating a CommandExecutor
      * and starting the command using it.  The exit code is not checked and
