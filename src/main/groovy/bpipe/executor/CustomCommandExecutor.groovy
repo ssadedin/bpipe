@@ -251,7 +251,12 @@ class CustomCommandExecutor implements CommandExecutor {
 		// To save on excessive polling while avoiding large latency for short jobs
 		// implement an exponential backoff for time between polling for status
 		int minSleep = Config.userConfig.minimumCommandStatusPollInterval?:2000
-		int maxSleep = Config.userConfig.maxCommandStatusPollInterval?:5000
+        
+        // Unfortunately my experience with VLSCI is that even 5 seconds is causing issues
+        // It's very hard to pick a good value here, but I'd rather Bpipe work and use a little
+        // too many resources than just not work properly. Further work on a blocking implementation
+        // for Torque will resolve this.
+		int maxSleep = Config.userConfig.maxCommandStatusPollInterval?:3000 
 		int backoffPeriod = Config.userConfig.commandStatusBackoffPeriod?:180000 // 3 minutes default to reach maximum sleep
 		
 		// Calculate an exponential backoff factor
@@ -259,6 +264,7 @@ class CustomCommandExecutor implements CommandExecutor {
 		
 		long startTimeMillis = System.currentTimeMillis()
 		int currentSleep = minSleep
+        String lastStatus = "NONE" 
         while(true) {
             
             log.info "Polling status of job $commandId with command $cmd with sleep for $currentSleep"
@@ -282,13 +288,17 @@ class CustomCommandExecutor implements CommandExecutor {
                 Thread.sleep(100)
                 continue
             }
-            else 
-                errorCount = 0
             
             String result = out.toString()
-            log.info "Poll returned output: $result"
+            log.fine "Poll returned output: $result"
             def parts = result.split()
             String status = parts[0]
+            
+            if(status != lastStatus)
+                log.info "Poll returned new status for command $commandId: $status"
+                
+            lastStatus = status
+            
             if(status == CommandStatus.COMPLETE.name()) {
 	            if(parts.size() != 2)
 	                throw new PipelineError("Unexpected format in output of job status command [$cmd]:  $result")
@@ -300,6 +310,18 @@ class CustomCommandExecutor implements CommandExecutor {
                 
 	            return Integer.parseInt(parts[1])
             }
+            else 
+            if(status == CommandStatus.UNKNOWN.name()) {
+                if(errorCount > MAX_STATUS_ERROR) {
+                    throw new PipelineError("Job ${commandId} returned UNKNOWN status prior to completion. This may indicate your job queue is configured to time out jobs too quickly.  Please consult your administrator to see if job information can be retained longer.")
+                }
+                else
+                  log.warn "Job status query returned UNKNOWN for job ${commandId}. Will retry."
+
+                ++errorCount
+            }
+            else
+                errorCount = 0
             
             // Job not complete, keep waiting
             Thread.sleep(currentSleep)

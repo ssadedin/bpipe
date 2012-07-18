@@ -70,8 +70,9 @@ class Utils {
     
         outputs.collect { new File(it) }.every { outFile ->
             
-//            println "Check $f"
+//            println "Check $outFile"
             if(!outFile.exists()) {
+//                println "file doesn't exist: $outFile"
                 return false
             }
                 
@@ -86,6 +87,7 @@ class Utils {
             }
             else
             if(isContainer(inputs)) {
+//                println "Checking $outFile against inputs $inputs"
                 return !inputs.collect { new File(it) }.any { inFile ->
 //                    println "Check $inFile : " + inFile.lastModified() + " >  " + "$outFile : " + outFile.lastModified() 
                     inFile.lastModified() > outFile.lastModified() 

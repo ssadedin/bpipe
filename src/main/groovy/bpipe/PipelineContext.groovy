@@ -611,7 +611,7 @@ class PipelineContext {
         
         if(doExecute) {
             if(Utils.box(this.@output)) {
-                this.output = this.@output + out
+                this.output = Utils.box(out) + Utils.box(this.@output)
             }
             else
                 this.output = out
