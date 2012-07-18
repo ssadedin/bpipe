@@ -204,7 +204,7 @@
             <br class='h2hr'>
             <div class='status <%=pipeline.failed?"fail":"success"%>'>
 	            <%if(pipeline.failed) {%>
-	            Failed in stage <%=stages.flatten().reverse().find { list -> list.find {!it.succeeded} }.context.stageName%>
+	            Failed in stage <%=stages.flatten().reverse().find { list -> list.find {!it.succeeded} }?.context?.stageName%>
 	            <%} else {%>
 	            Succeeded
 	            <%}%>
@@ -229,7 +229,8 @@
 				         def total = widths.sum()
 				         widths = widths.collect { it / (total/100.0f)  }
 				         // Make sure the last width is right aligned
-				         widths[-1] += 100.0f - widths.sum() + 1.0f
+				         if(widths)
+				            widths[-1] += 100.0f - widths.sum() + 1.0f
 	        	     	%>
 			            
 			            <%
@@ -239,7 +240,7 @@
 			            	<div <% 
 			            	     def width = widths[count++];
 		            	     	 %>
-		            	     	 class='timeblock <%if(!stage.succeeded){%>failed<%}%> <%=stage==branch[-1]?"right":""%>' 
+		            	     	 class='timeblock '
 		            	     	 style='left: ${left}%;  width: ${width-1}%'>
 		            	     	 <%
 		            	     	   // Just a heuristic here, we roughly assume 1% width per char (for 1024px, 10px char width)
