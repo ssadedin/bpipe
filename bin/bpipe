@@ -379,7 +379,7 @@ then
     # with the PID of the shell script that started it.  Therefore we have to 
     # list files to find the 'most recent' log.
     # TODO: for consistency / sanity should try to change this
-    LOG_ID=`ls -tc .bpipe/logs/*.log | grep -v 'bpipe\.' | head -1 | grep -o '[0-9]*.log$' | sed 's/[^0-9]//g'`
+    LOG_ID=`ls -tc .bpipe/logs/*.log | grep -v 'bpipe\.' | grep '[0-9]' | head -1 | grep -o '[0-9]*.log$' | sed 's/[^0-9]//g'`
     
     if is_running ;
     then
@@ -503,8 +503,14 @@ nohup echo 'printf $$ > .bpipe.'$LAUNCHER_PID'.run.pid;
 # We rely on 1 second be
 while [ ! -e .bpipe.$LAUNCHER_PID.run.pid ];
 do
-  # this is just to waste time - sleep 1 is too long
-  echo > /dev/null
+  if type usleep > /dev/null 2>&1 ;
+  then
+      usleep 100000
+  else
+      # this is just to waste time - sleep 1 is too long
+      # and we have no usleep
+      echo > /dev/null
+  fi
 done
 
 BPIPE_PID=`cat .bpipe.$LAUNCHER_PID.run.pid`
