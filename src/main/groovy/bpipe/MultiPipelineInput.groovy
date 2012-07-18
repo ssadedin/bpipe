@@ -1,5 +1,6 @@
 package bpipe
 
+import java.util.Iterator;
 import java.util.logging.Logger;
 
 /**
@@ -12,7 +13,7 @@ import java.util.logging.Logger;
  * 
  * @author ssadedin
  */
-class MultiPipelineInput extends PipelineInput {
+class MultiPipelineInput extends PipelineInput implements Iterable {
 	
     private static Logger log = Logger.getLogger("bpipe.MultiPipelineInput");
 
@@ -33,4 +34,9 @@ class MultiPipelineInput extends PipelineInput {
 	String toString() {
        return Utils.box(super.@input).join(" ")
     }
+
+	@Override
+	public Iterator iterator() {
+		return Utils.box(super.@input).listIterator()
+	}
 }

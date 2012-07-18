@@ -67,6 +67,9 @@ diagrameditor""")
                 throw new RuntimeException("Bpipe was not able to make its database directory, .bpipe in the local folder.  Is this folder read-only?")
         
         String pid = resolvePID()
+		
+		Config.config.pid = pid
+		Config.config.outputLogPath = ".bpipe/logs/${pid}.log"
 	        
 		// PID of shell that launched Bpipe
 		String parentPid = System.getProperty("bpipe.pid")
@@ -89,24 +92,9 @@ diagrameditor""")
 			}
         }
                 
-        def parentLog = log.getParent()
-        parentLog.getHandlers().each { parentLog.removeHandler(it) }
-        
-        // The current log file
-        FileHandler fh = new FileHandler(".bpipe/bpipe.log")
-        fh.setFormatter(new BpipeLogFormatter())
-        parentLog.addHandler(fh)
-        
-        // Another log file for history
-        new File(".bpipe/logs").mkdirs()
-        FileHandler pidLog = new FileHandler(".bpipe/logs/${pid}.bpipe.log")
-        pidLog.setFormatter(new BpipeLogFormatter())
-        parentLog.addHandler(pidLog)
-        
-        log.info("Starting")
-        
+        def parentLog = initializeLogging(pid)
+		
         def cli 
-        
         String mode = System.getProperty("bpipe.mode")
         if(mode == "diagram")  {
             log.info("Mode is diagram")
@@ -234,6 +222,28 @@ diagrameditor""")
 
     }
 
+	/**
+	 * Set up logging for the Bpipe diagnostic log
+	 */
+	private static Logger initializeLogging(String pid) {
+		def parentLog = log.getParent()
+		parentLog.getHandlers().each { parentLog.removeHandler(it) }
+
+		// The current log file
+		FileHandler fh = new FileHandler(".bpipe/bpipe.log")
+		fh.setFormatter(new BpipeLogFormatter())
+		parentLog.addHandler(fh)
+
+		// Another log file for history
+		new File(".bpipe/logs").mkdirs()
+		FileHandler pidLog = new FileHandler(".bpipe/logs/${pid}.bpipe.log")
+		pidLog.setFormatter(new BpipeLogFormatter())
+		parentLog.addHandler(pidLog)
+
+		log.info("Starting")
+		return parentLog
+	}
+
 
 	
     /**
@@ -241,6 +251,9 @@ diagrameditor""")
      * Because the PID is read from a file that is created after
      * starting of the Java process there is a race condition and thus
      * this call *may* wait some (small) time for the file to appear.
+     * <p>
+     * TODO: it would probably be possible to remove this now and pass the PID
+     *       as a system property
      * 
      * @return    process ID of our process
      */
