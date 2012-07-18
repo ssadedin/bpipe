@@ -240,7 +240,7 @@
 			            	<div <% 
 			            	     def width = widths[count++];
 		            	     	 %>
-		            	     	 class='timeblock '
+		            	     	 class='timeblock <%if(!stage.succeeded){%>failed<%}%> <%=(branch && stage==branch[-1])?"right":""%>' 
 		            	     	 style='left: ${left}%;  width: ${width-1}%'>
 		            	     	 <%
 		            	     	   // Just a heuristic here, we roughly assume 1% width per char (for 1024px, 10px char width)
