@@ -6,6 +6,7 @@ source testsupport.sh
 
 succ=0
 fail=0
+failures=""
 
 for t in $TESTS;
 do
@@ -24,6 +25,7 @@ do
 		echo "FAILED"
 		echo
 		let 'fail=fail+1'
+    failures="$failures\n$t"
 	fi
 done
 
@@ -33,3 +35,8 @@ echo
 echo "Success: $succ"
 echo "Fail:    $fail"
 echo
+if [ $fail -gt 0 ]; 
+then
+  echo "Failed tests:"
+  printf "$failures"
+fi
