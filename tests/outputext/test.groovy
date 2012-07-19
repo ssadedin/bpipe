@@ -3,21 +3,22 @@
  * join them together in a pipeline
  */
 hello = {
-	exec "cp $input $output.csv"
+    exec "cp $input $output.csv"
 }
 
 world = {
-	exec "cp $input $output.txt; cp $input $output.xml"
-
-	exec "cp $input $output.tsv"
+    msg "$input => $output.txt, $output.xml"
+    exec "cp $input $output.txt; cp $input $output.xml"
+    msg "$input => $output.tsv"
+    exec "cp $input $output.tsv"
 }
 
 there = {
     produce("test.foo", "test.bar") {
-	exec "cp $input $output.bar"
+      exec "cp $input $output.bar"
     }
 }
 
-Bpipe.run {
-	hello + world + there
+run {
+    hello + world + there
 }
