@@ -372,8 +372,8 @@ class PipelineContext {
    /**
     * Iterate through the file line by line and pass each line to the given closure.
     * Output lines for which the closure returns true to the output.
-    * If header is true, lines beginning with # will be passed to the
-    * body, otherwise they will be automatically output.
+    * Lines beginning with # will not be passed to the body, 
+    * but will be automatically output.
     */
    void filterLines(Closure c) {
        
