@@ -125,10 +125,10 @@ function clean_job_files() {
     if [ -e .bpipe/logs/$$.erase.log ];
     then
       rm .bpipe/logs/$$.erase.log
-      rm .bpipe/logs/$$.log
 
       if [ ! -z $BPIPE_PID ] ;
       then
+         rm -f .bpipe/logs/$BPIPE_PID.log
          rm -f .bpipe/jobs/$BPIPE_PID
          rm -f ~/.bpipedb/jobs/$BPIPE_PID
       fi
