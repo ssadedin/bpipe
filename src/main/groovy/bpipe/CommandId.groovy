@@ -24,6 +24,8 @@
  */
 package bpipe
 
+import groovy.util.logging.Log;
+
 /**
  * A rather simplistic mechanism to allocate a unique job id for
  * each new 'job' that Bpipe runs.  The primary requirement
@@ -33,6 +35,7 @@ package bpipe
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+@Log
 class CommandId {
     
     private static int lastCommandId = -1 

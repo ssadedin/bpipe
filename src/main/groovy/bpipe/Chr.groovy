@@ -1,5 +1,8 @@
 package bpipe
 
+import groovy.util.logging.Log;
+
+@Log
 class Chr implements Comparable<Chr> {
 	
 	static List<Chr> knownValues = []

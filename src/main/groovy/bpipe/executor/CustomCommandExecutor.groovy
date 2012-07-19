@@ -31,7 +31,7 @@ import bpipe.PipelineError
 import bpipe.Utils
 
 import java.util.concurrent.Semaphore
-import java.util.logging.Logger
+import groovy.util.logging.Log
 
 /**
  * Custom command executors are implemented by a shell script that implements the
@@ -42,15 +42,11 @@ import java.util.logging.Logger
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+@Log
 class CustomCommandExecutor implements CommandExecutor {
     
     public static final long serialVersionUID = 0L
     
-    /**
-     * Logger for this class to use
-     */
-    private static Logger log = Logger.getLogger("bpipe.executor.CustomCommandExecutor");
-   
     /**
      * We don't rely on commands to be 100% reliable, so we allow for retries,
      * however the number of retries is limited to this value.

@@ -1,7 +1,7 @@
 package bpipe
 
 import java.util.Iterator;
-import java.util.logging.Logger;
+import groovy.util.logging.Log;
 
 /**
  * Extends {@link PipelineInput} to handle multiple inputs.
@@ -13,10 +13,9 @@ import java.util.logging.Logger;
  * 
  * @author ssadedin
  */
+@Log
 class MultiPipelineInput extends PipelineInput implements Iterable {
 	
-    private static Logger log = Logger.getLogger("bpipe.MultiPipelineInput");
-
     MultiPipelineInput(def input, List<PipelineStage> stages) {
 		super(input,stages)	
 	}

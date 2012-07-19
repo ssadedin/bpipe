@@ -25,7 +25,7 @@
 package bpipe
 
 import java.lang.reflect.Constructor;
-import java.util.logging.Logger
+import groovy.util.logging.Log
 
 /**
  * Coordinates the distribution of events that occur during the running
@@ -35,9 +35,8 @@ import java.util.logging.Logger
  * @author ssadedin
  */
 @Singleton
+@Log
 class EventManager {
-	
-    private static Logger log = Logger.getLogger("bpipe.EventManager");
 	
 	Map<PipelineEvent,PipelineEventListener> listeners = [:]
 

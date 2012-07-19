@@ -24,7 +24,7 @@
  */
 package bpipe
 
-import java.util.logging.Logger;
+import groovy.util.logging.Log;
 
 /**
  * Represents a "magic" input object that automatically 
@@ -37,12 +37,8 @@ import java.util.logging.Logger;
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+@Log
 class PipelineInput {
-    
-    /**
-     * Logger to use with this class
-     */
-    private static Logger log = Logger.getLogger("bpipe.PipelineInput");
     
     /**
      * Raw inputs

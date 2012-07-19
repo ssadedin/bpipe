@@ -1,6 +1,6 @@
 package bpipe
 
-import java.util.logging.Logger;
+import groovy.util.logging.Log;
 import java.util.regex.Matcher;
 
 /**
@@ -23,13 +23,9 @@ import java.util.regex.Matcher;
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+@Log
 class InputSplitter {
 
-    /**
-     * Logger to use with this class
-     */
-    private static Logger log = Logger.getLogger("bpipe.InputSplitter");
-	
     /**
      * Splits the given inputs up according to the specified pattern 
      * where a splitting point is indicated by a % character and a 

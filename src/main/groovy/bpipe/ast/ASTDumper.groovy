@@ -1,5 +1,7 @@
 package bpipe.ast
 
+import groovy.util.logging.Log;
+
 import org.codehaus.groovy.ast.ASTNode;
 import org.codehaus.groovy.ast.expr.BinaryExpression;
 import org.codehaus.groovy.ast.expr.ClosureExpression;
@@ -7,6 +9,7 @@ import org.codehaus.groovy.ast.expr.PropertyExpression;
 import org.codehaus.groovy.ast.stmt.BlockStatement;
 import org.codehaus.groovy.ast.stmt.ExpressionStatement;
 
+@Log
 class ASTDumper {
 
 	static dumpNode(ASTNode n, int level=0) {

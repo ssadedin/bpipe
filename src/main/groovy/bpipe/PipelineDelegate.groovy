@@ -1,15 +1,14 @@
 package bpipe
 
-import java.util.logging.Logger;
+import groovy.util.logging.Log;
 
 /**
  * Forwards all calls through to a thread specific context.
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+@Log
 class PipelineDelegate {
-    
-    private static Logger log = Logger.getLogger("bpipe.PipelineDelegate");
     
     PipelineDelegate(PipelineContext ctx) {
         if(ctx == null)

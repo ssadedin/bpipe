@@ -1,10 +1,13 @@
 package bpipe
 
+import groovy.util.logging.Log;
+
+@Log
 class CommandLog {
     
     static FileWriter writer = new FileWriter("commandlog.txt", true)
     
-    static CommandLog log = new CommandLog()
+    static CommandLog cmdLog = new CommandLog()
     
     /**
      * Write a line to the command log.

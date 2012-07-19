@@ -35,7 +35,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
-import java.util.logging.Logger;
+import groovy.util.logging.Log;
 import java.util.regex.Pattern;
 
 import org.codehaus.groovy.runtime.StackTraceUtils;
@@ -46,9 +46,8 @@ import static Utils.*
  * A category that adds default Bpipe functions to closures
  * to enable basic operators such as the + operator to work.
  */
+@Log
 class PipelineCategory {
-    
-    private static Logger log = Logger.getLogger("bpipe.PipelineCategory");
     
     static Map closureNames = [:]
     

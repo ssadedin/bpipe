@@ -24,7 +24,7 @@
  */
 package bpipe.executor
 
-import java.util.logging.Logger
+import groovy.util.logging.Log
 import bpipe.ForwardHost
 import bpipe.Utils
 import bpipe.PipelineError
@@ -36,12 +36,8 @@ import bpipe.CommandStatus
  * @author Paolo Di Tommaso <paolo.ditommaso@gmail.com>
  */
 @Mixin(ForwardHost)
+@Log
 class SgeCommandExecutor implements CommandExecutor {
-
-    /**
-     * Logger for this class to use
-     */
-    private static Logger log = Logger.getLogger("bpipe.executor.SgeCommandExecutor");
 
     private Map config;
 

@@ -24,7 +24,7 @@
 */
 package bpipe.executor
 
-import java.util.logging.Logger
+import groovy.util.logging.Log
 import bpipe.ForwardHost;
 
 /**
@@ -39,14 +39,10 @@ import bpipe.ForwardHost;
  * @author simon.sadedin@mcri.edu.au
  */
 @Mixin(ForwardHost)
+@Log
 class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExecutor {
 
     public static final long serialVersionUID = 0L
-
-    /**
-     * Logger for this class to use
-     */
-    private static Logger log = Logger.getLogger("bpipe.executor.TorqueCommandExecutor");
 
     /**
      * Constructor

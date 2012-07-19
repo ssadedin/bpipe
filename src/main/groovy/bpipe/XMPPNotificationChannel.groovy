@@ -25,7 +25,7 @@
 package bpipe
 
 import java.util.Map
-import java.util.logging.Logger;
+import groovy.util.logging.Log;
 import java.util.regex.Pattern.LastNode;
 
 import org.jivesoftware.smack.Chat;
@@ -40,10 +40,9 @@ import org.jivesoftware.smack.packet.Presence;
  * 
  * @author ssadedin
  */
+@Log
 class XMPPNotificationChannel implements NotificationChannel {
 	
-    private static Logger log = Logger.getLogger("bpipe.XMPPNotificationChannel");
-
 	/**
 	 * Configuration
 	 */
@@ -142,6 +141,7 @@ class XMPPNotificationChannel implements NotificationChannel {
  * 
  * @author ssadedin
  */
+@Log
 class GTALKNotificationChannel extends XMPPNotificationChannel {
 	GTALKNotificationChannel(ConfigObject cfg) {
 		connConfig = new ConnectionConfiguration("talk.google.com", 5222, "gmail.com");

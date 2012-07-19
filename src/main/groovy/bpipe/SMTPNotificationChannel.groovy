@@ -24,6 +24,8 @@
  */
 package bpipe
 
+import groovy.util.logging.Log;
+
 import java.util.Map
 
 import javax.mail.Message;
@@ -37,6 +39,7 @@ import javax.mail.internet.MimeMessage
  * 
  * @author ssadedin
  */
+@Log
 class SMTPNotificationChannel implements NotificationChannel {
 	
 	String host
@@ -118,6 +121,7 @@ class SMTPNotificationChannel implements NotificationChannel {
 	}
 }
 
+@Log
 class GMAILNotificationChannel extends SMTPNotificationChannel {
 	GMAILNotificationChannel(ConfigObject cfg) {
 		host = "smtp.gmail.com"

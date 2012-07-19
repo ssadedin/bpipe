@@ -26,7 +26,7 @@
 package bpipe.executor
 
 import java.util.concurrent.ExecutorService
-import java.util.logging.Logger
+import groovy.util.logging.Log
 
 import bpipe.Config
 import bpipe.EventManager
@@ -53,13 +53,9 @@ import com.hazelcast.core.HazelcastInstance
  *  @author Paolo Di Tommaso <paolo.ditommaso@gmail.com>
  */
 @Singleton
+@Log
 class HazelcastGridProvider implements ExecutorServiceProvider {
 
-    /**
-     * Logger to use with this class
-     */
-    private static Logger log = Logger.getLogger("bpipe.executor.HazelcastGridProvider");
-    
     @Lazy
     HazelcastInstance client = {
 

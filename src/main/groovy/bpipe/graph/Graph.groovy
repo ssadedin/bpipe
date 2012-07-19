@@ -31,7 +31,7 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Robot;
 import java.awt.image.BufferedImage;
-import java.util.logging.Logger;
+import groovy.util.logging.Log;
 
 import com.mxgraph.layout.hierarchical.mxHierarchicalLayout;
 import com.mxgraph.swing.mxGraphComponent as MxGraphComponent;
@@ -43,10 +43,9 @@ import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.SwingConstants;
 
+@Log
 class Graph extends JFrame {
 
-    private static Logger log = Logger.getLogger("bpipe.Graph");
-    
 	Node stages
 
 	private List<String> stageNames

@@ -24,10 +24,13 @@
 */
 package bpipe
 
+import groovy.util.logging.Log;
+
 import java.io.OutputStream;
 import java.util.List;
 import java.util.Timer;
 
+@Log
 class ForwardHost {
     
     static Timer forwardingTimer

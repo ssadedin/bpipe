@@ -2,16 +2,15 @@ package bpipe
 
 import groovy.util.ConfigObject;
 
-import java.util.logging.Logger;
+import groovy.util.logging.Log;
 
 /**
  * Global configuration properties for Bpipe.
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+@Log
 class Config {
-    
-    private static Logger log = Logger.getLogger("bpipe.Config");
     
 	/**
 	 * Lower level configuration values.  These are not directly user 

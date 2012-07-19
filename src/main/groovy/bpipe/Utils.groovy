@@ -24,6 +24,8 @@
  */
 package bpipe
 
+import groovy.util.logging.Log;
+
 import java.security.DigestInputStream
 import java.security.MessageDigest
 
@@ -32,6 +34,7 @@ import java.security.MessageDigest
  * 
  * @author ssadedin@mcri.edu.au
  */
+@Log
 class Utils {
     /**
      * Check either a single file passed as a string or a list

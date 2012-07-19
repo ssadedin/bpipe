@@ -25,7 +25,7 @@
  */
 package bpipe
 
-import java.util.logging.Logger
+import groovy.util.logging.Log
 
 class StringExtrasCategory {
 	static String getPrefix(String value) {
@@ -46,9 +46,8 @@ class StringExtrasCategory {
  * 
  * @author ssadedin@mcri.edu.au
  */
+@Log
 class PipelineStage {
-    
-    private static Logger log = Logger.getLogger("bpipe.PipelineStage");
     
     /**
      * When new files are autodetected by the pipeline manager certain files
@@ -134,7 +133,7 @@ class PipelineStage {
                     
                 println ""
                 println " Stage ${stageName} ".center(Config.config.columns,"=")
-                CommandLog.log << "# Stage $stageName"
+                CommandLog.cmdLog << "# Stage $stageName"
                 ++stageCount
                 
                 EventManager.instance.signal(PipelineEvent.STAGE_STARTED, "Starting stage $stageName", [stage:this])

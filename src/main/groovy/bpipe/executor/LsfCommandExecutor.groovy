@@ -24,7 +24,7 @@
  */
 package bpipe.executor
 
-import java.util.logging.Logger
+import groovy.util.logging.Log
 import java.util.regex.Pattern
 import java.util.regex.Matcher
 import bpipe.ForwardHost
@@ -41,12 +41,8 @@ import bpipe.CommandStatus
  * @author Paolo Di Tommaso <paolo.ditommaso@gmail.com>
  */
 @Mixin(ForwardHost)
+@Log
 class LsfCommandExecutor implements CommandExecutor {
-
-    /**
-     * Logger for this class to use
-     */
-    private static Logger log = Logger.getLogger("bpipe.executor.LsfCommandExecutor");
 
     private Map config;
 

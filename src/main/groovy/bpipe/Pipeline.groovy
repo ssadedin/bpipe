@@ -31,7 +31,7 @@ import java.lang.annotation.Retention;
 
 import java.lang.annotation.RetentionPolicy;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Logger;
+import groovy.util.logging.Log;
 import java.util.regex.Pattern;
 
 import bpipe.graph.Graph;
@@ -43,9 +43,8 @@ import static Utils.unbox
  * running by specifying initial inputs and setting up 
  * surrounding category to enable implicit pipeline stage functions.
  */
+@Log
 public class Pipeline {
-    
-    private static Logger log = Logger.getLogger("bpipe.Pipeline");
     
     /**
      * The thread id of the master thread that is running the baseline root
@@ -311,7 +310,7 @@ public class Pipeline {
         // Add all the pipeline variables to the external binding
         this.externalBinding.variables += pipeline.binding.variables
         
-        def cmdlog = CommandLog.log
+        def cmdlog = CommandLog.cmdLog
         if(launch) {
             cmdlog.write("")
             String startDateTime = (new Date()).format("yyyy-MM-dd") + " "

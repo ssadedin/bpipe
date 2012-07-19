@@ -28,9 +28,11 @@ import static bpipe.Utils.*
 
 import groovy.lang.Closure
 
-import java.util.logging.Logger
+import groovy.util.logging.Log
 
 /*
+@Log
+@Log
 class PipelineNode {
     
 	String name
@@ -48,9 +50,8 @@ class PipelineNode {
  * allows us to inspect the chain that is produced by adding 
  * them together without actually executing them.
  */
+@Log
 class DefinePipelineCategory {
-    
-    private static Logger log = Logger.getLogger("bpipe.PipelineCategory");
     
     /**
      * List stages found

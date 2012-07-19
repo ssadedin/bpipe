@@ -26,6 +26,7 @@
 package bpipe
 
 import groovy.lang.Closure
+import groovy.util.logging.Log;
 
 /**
  * Wraps an inner closure but allows a separate 
@@ -34,6 +35,7 @@ import groovy.lang.Closure
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+@Log
 class ParameterizedClosure extends Closure {
     
     public ParameterizedClosure(Map variables, Closure body) {

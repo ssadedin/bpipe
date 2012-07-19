@@ -25,7 +25,7 @@
  */
 package bpipe.executor
 
-import java.util.logging.Logger
+import groovy.util.logging.Log
 import bpipe.Utils
 import bpipe.CommandStatus;
 
@@ -35,16 +35,12 @@ import bpipe.CommandStatus;
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+@Log
 class LocalCommandExecutor implements CommandExecutor {
     
     public static final long serialVersionUID = 0L
     
     transient Process process
-    
-    /**
-     * Logger for this class to use
-     */
-    private static Logger log = Logger.getLogger("bpipe.executor.LocalCommandExecutor");
     
     /**
      * The exit code returned by the process, only

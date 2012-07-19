@@ -25,7 +25,7 @@
  */
 package bpipe.executor
 
-import java.util.logging.Logger;
+import groovy.util.logging.Log;
 
 import bpipe.PipelineError
 
@@ -37,14 +37,9 @@ import bpipe.PipelineError
  *
  *  @author Paolo Di Tommaso <paolo.ditommaso@gmail.com>
  */
+@Log
 class GridgainCommandExecutor extends AbstractGridBashExecutor {
     
-    /**
-     * Logger to use with this class
-     */
-    private static Logger log = Logger.getLogger("bpipe.executor.GridgainCommandExecutor");
-    
-
     private static boolean classpathConfigured
 
     GridgainCommandExecutor() {

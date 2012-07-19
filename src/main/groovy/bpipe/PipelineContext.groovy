@@ -25,8 +25,7 @@
 
 package bpipe
 
-
-import java.util.logging.Logger;
+import groovy.util.logging.Log;
 import java.util.regex.Pattern;
 
 import static Utils.*
@@ -43,17 +42,13 @@ import bpipe.executor.ProbeCommandExecutor
 * PipelineCategory, however I hope to migrate these eventually
 * to all use this context.
 */
+@Log
 class PipelineContext {
     
     /**
      * File where half processed files will be listed on shutdown
      */
     public static File UNCLEAN_FILE_PATH = new File(".bpipe/inprogress")
-   
-    /**
-     * Logger for this class to use
-     */
-    private static Logger log = Logger.getLogger("bpipe.PipelineContext");
    
     /**
      * Create a Pipeline Context with the specified adidtional bound variables and
@@ -770,7 +765,7 @@ class PipelineContext {
       if(probeMode)
           return ""
           
-      CommandLog.log.write(cmd)
+      CommandLog.cmdLog.write(cmd)
       def joined = ""
       cmd.eachLine { joined += " " + it }
       
@@ -829,7 +824,7 @@ class PipelineContext {
       this.inferredOutputs = []
       
       if(!probeMode) {
-          CommandLog.log.write(cmd)
+          CommandLog.cmdLog.write(cmd)
           
           // Check the command for versions of tools it uses
           def toolsDiscovered = ToolDatabase.instance.probe(cmd)
@@ -905,10 +900,10 @@ class PipelineContext {
                ext = "." + ext
            
            for(s in reverseOutputs) {
-               def o = s.grep { it?.endsWith(ext) }
+               def o = s.grep { it?.endsWith(ext) }.collect { it.toString() }
                if(o) {
                    log.info("Checking ${s} vs $ext  Y")
-                   return o 
+                   return o
                }
 //               log.info("Checking outputs ${s} vs $inp N")
            }

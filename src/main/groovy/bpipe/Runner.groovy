@@ -28,7 +28,9 @@ package bpipe
 import java.util.logging.ConsoleHandler
 import java.util.logging.FileHandler
 import java.util.logging.Level
-import java.util.logging.Logger
+import java.util.logging.Logger;
+
+import groovy.util.logging.Log
 
 /**
  * A small wrapper that parses command line arguments and forwards execution
@@ -37,8 +39,8 @@ import java.util.logging.Logger
  * @author simon.sadedin@mcri.edu.au
  */
 class Runner {
-    
-    private static Logger log = Logger.getLogger("bpipe.Runner");
+	
+	private static Logger log = Logger.getLogger("bpipe.Runner")
     
     final static String version = System.getProperty("bpipe.version")
     
@@ -226,6 +228,7 @@ diagrameditor""")
 	 * Set up logging for the Bpipe diagnostic log
 	 */
 	private static Logger initializeLogging(String pid) {
+		
 		def parentLog = log.getParent()
 		parentLog.getHandlers().each { parentLog.removeHandler(it) }
 
@@ -324,13 +327,9 @@ diagrameditor""")
  * http://groovy.codehaus.org/Scoping+and+the+Semantics+of+%22def%22
  *
  */
+@Log
 private class ParamsBinding extends Binding {
     
-    /**
-     * Logger to use with this class
-     */
-    private static Logger log = Logger.getLogger("bpipe.ParamsBinding");
-
     def parameters = []
 
     def void setParam( String name, Object value ) {

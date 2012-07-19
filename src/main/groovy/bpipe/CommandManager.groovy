@@ -24,7 +24,7 @@
  */
 package bpipe
 
-import java.util.logging.Logger
+import groovy.util.logging.Log
 import bpipe.executor.CommandExecutor
 import bpipe.executor.CustomCommandExecutor
 import bpipe.executor.LocalCommandExecutor;
@@ -38,6 +38,7 @@ import bpipe.executor.LocalCommandExecutor;
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+@Log
 class CommandManager {
 
     /**
@@ -49,11 +50,6 @@ class CommandManager {
      * Default path under which completed command info is stored
      */
     public static final String DEFAULT_EXECUTED_DIR = ".bpipe/executed"
-    
-    /**
-     * Logger for this class to use
-     */
-    private static Logger log = Logger.getLogger("bpipe.CommandManager");
     
     /**
      * The location under which running command information will be stored

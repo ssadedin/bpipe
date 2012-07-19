@@ -1,6 +1,6 @@
 package bpipe
 
-import java.util.logging.Logger;
+import groovy.util.logging.Log;
 
 /*
  * Copyright (c) 2011 MCRI, authors
@@ -33,12 +33,8 @@ import java.util.logging.Logger;
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+@Log
 class PipelineOutput {
-    
-    /**
-     * Logger to use with this class
-     */
-    private static Logger log = Logger.getLogger("bpipe.PipelineOutput");
     
     /**
      * Raw inputs

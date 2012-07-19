@@ -24,7 +24,7 @@
 */
 package bpipe
 
-import java.util.logging.Logger
+import groovy.util.logging.Log
 
 /**
  * Continuously monitors files and forwards (or 'tails') their outputs to 
@@ -34,9 +34,8 @@ import java.util.logging.Logger
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+@Log
 class Forwarder extends TimerTask {
-    
-    private static Logger log = Logger.getLogger("bpipe.Forwarder");
     
     /**
      * Global list of all forwarders

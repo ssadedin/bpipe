@@ -24,17 +24,16 @@
  */
 package bpipe
 
-import java.util.logging.Logger;
+import groovy.util.logging.Log;
 
 
 /**
  * Data structure to track information about each tool in the tool database
  * @author ssadedin
  */
+@Log
 class Tool {
 	
-    private static Logger log = Logger.getLogger("bpipe.Tool");
-    
 	Tool(String name, ConfigObject obj) {
 		this.probeCommand = obj.probe
 		this.name = name
@@ -178,15 +177,13 @@ class Tool {
  * @author ssadedin
  */
 @Singleton
+@Log
 class ToolDatabase {
 	
 	ConfigObject config
 	
 	Map<String,Tool> tools = [:]
 
-    private static Logger log = Logger.getLogger("bpipe.ToolDatabase");
-    
-	
 	/**
 	 * Initializes the tool database with the given configuration
 	 * 
