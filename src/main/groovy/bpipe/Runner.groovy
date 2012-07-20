@@ -39,8 +39,8 @@ import groovy.util.logging.Log
  * @author simon.sadedin@mcri.edu.au
  */
 class Runner {
-	
-	private static Logger log = Logger.getLogger("bpipe.Runner")
+    
+    private static Logger log = Logger.getLogger("bpipe.Runner")
     
     final static String version = System.getProperty("bpipe.version")
     
@@ -69,13 +69,13 @@ diagrameditor""")
                 throw new RuntimeException("Bpipe was not able to make its database directory, .bpipe in the local folder.  Is this folder read-only?")
         
         String pid = resolvePID()
-		
-		Config.config.pid = pid
-		Config.config.outputLogPath = ".bpipe/logs/${pid}.log"
-	        
-		// PID of shell that launched Bpipe
-		String parentPid = System.getProperty("bpipe.pid")
-		
+        
+        Config.config.pid = pid
+        Config.config.outputLogPath = ".bpipe/logs/${pid}.log"
+            
+        // PID of shell that launched Bpipe
+        String parentPid = System.getProperty("bpipe.pid")
+        
         // Before we do anything else, add a shutdown hook so that termination of the process causes the job to 
         // to be removed from the user's folder
         System.addShutdownHook { 
@@ -88,14 +88,14 @@ diagrameditor""")
                     println("WARN: Unable to delete job file for job $pid")
                 }
             }
-			
-			if(Config.config.eraseLogsOnExit) {
-				new File(".bpipe/logs/${parentPid}.erase.log").text=""
-			}
+            
+            if(Config.config.eraseLogsOnExit) {
+                new File(".bpipe/logs/${parentPid}.erase.log").text=""
+            }
         }
                 
         def parentLog = initializeLogging(pid)
-		
+        
         def cli 
         String mode = System.getProperty("bpipe.mode")
         if(mode == "diagram")  {
@@ -127,15 +127,15 @@ diagrameditor""")
         } 
         else {
             cli = runCli
-	        cli.with {
-	             h longOpt:'help', 'usage information'
-	             d longOpt:'dir', 'output directory', args:1
-	             t longOpt:'test', 'test mode'
-	             r longOpt:'report', 'generate an HTML report / documentation for pipeline'
-	             n longOpt:'threads', 'maximum threads', args:1
-	             v longOpt:'verbose', 'print internal logging to standard error'
+            cli.with {
+                 h longOpt:'help', 'usage information'
+                 d longOpt:'dir', 'output directory', args:1
+                 t longOpt:'test', 'test mode'
+                 r longOpt:'report', 'generate an HTML report / documentation for pipeline'
+                 n longOpt:'threads', 'maximum threads', args:1
+                 v longOpt:'verbose', 'print internal logging to standard error'
                  p longOpt: 'param', 'defines a pipeline parameter', args: 1, argName: 'param=value', valueSeparator: ',' as char
-	        }
+            }
         }
         
         String versionInfo = "\nBpipe Version $version   Built on ${new Date(Long.parseLong(builddate))}\n"
@@ -150,14 +150,14 @@ diagrameditor""")
             println "\n"
             System.exit(1)
         }
-		
+        
         opts = opt
-		if(opts.v) {
+        if(opts.v) {
             ConsoleHandler console = new ConsoleHandler()
             console.setFormatter(new BpipeLogFormatter())
             console.setLevel(Level.FINE)
             parentLog.addHandler(console)
-		}
+        }
         
         if(opts.d) {
             Config.config.defaultOutputDirectory = opts.d
@@ -167,18 +167,18 @@ diagrameditor""")
             log.info "Maximum threads specified as $opts.n"
             Config.config.maxThreads = Integer.parseInt(opts.n)
         }
-		
-		if(opts.r) {
-			Config.config.report = true
-			def reportStats = new ReportStatisticsListener()
-			EventManager.instance.addListener(PipelineEvent.STAGE_STARTED, reportStats)
-			EventManager.instance.addListener(PipelineEvent.STAGE_COMPLETED, reportStats)
-		}
+        
+        if(opts.r) {
+            Config.config.report = true
+            def reportStats = new ReportStatisticsListener()
+            EventManager.instance.addListener(PipelineEvent.STAGE_STARTED, reportStats)
+            EventManager.instance.addListener(PipelineEvent.STAGE_COMPLETED, reportStats)
+        }
 
         def pipelineArgs = null
-		String pipelineSrc = loadPipelineSrc(cli, opt.arguments()[0])
-		if(opt.arguments().size() > 1)
-			pipelineArgs = opt.arguments()[1..-1]
+        String pipelineSrc = loadPipelineSrc(cli, opt.arguments()[0])
+        if(opt.arguments().size() > 1)
+            pipelineArgs = opt.arguments()[1..-1]
 
         // read the configuration file, if available
         try {
@@ -190,15 +190,15 @@ diagrameditor""")
             System.exit(1)
         }
 
-		ToolDatabase.instance.init(Config.userConfig)
-		
-		// Add event listeners that come directly from configuration
-		EventManager.instance.configure(Config.userConfig)
+        ToolDatabase.instance.init(Config.userConfig)
+        
+        // Add event listeners that come directly from configuration
+        EventManager.instance.configure(Config.userConfig)
 
-		// If we got this far and are not in test mode, then it's time to 
-		// make the logs stick around
-		if(!opts.t)
-			Config.config.eraseLogsOnExit = false
+        // If we got this far and are not in test mode, then it's time to 
+        // make the logs stick around
+        if(!opts.t)
+            Config.config.eraseLogsOnExit = false
 
 
         def gcl = new GroovyClassLoader()
@@ -220,35 +220,57 @@ diagrameditor""")
         script.setProperty("args", pipelineArgs);
 
         // RUN it
-        script.run()
-
+        try {
+            script.run()
+        }
+        catch(MissingPropertyException e)  {
+            if(e.type.name.startsWith("script")) {
+                // Handle this as a user error in defining their script
+                // print a nicer error message than what comes out of groovy by default
+                handleMissingPropertyFromPipelineScript(e)
+            }
+        }
     }
 
-	/**
-	 * Set up logging for the Bpipe diagnostic log
-	 */
-	private static Logger initializeLogging(String pid) {
-		
-		def parentLog = log.getParent()
-		parentLog.getHandlers().each { parentLog.removeHandler(it) }
+    private static handleMissingPropertyFromPipelineScript(MissingPropertyException e) {
+        // A bit of a hack: the parsed script ends up with a class name like script123243242...
+        // so search for that in the stack trace to find the line number
+        int lineNumber = e.stackTrace.find { it.className ==~ /script[0-9]{1,}/ }.lineNumber
 
-		// The current log file
-		FileHandler fh = new FileHandler(".bpipe/bpipe.log")
-		fh.setFormatter(new BpipeLogFormatter())
-		parentLog.addHandler(fh)
+        println """
+                    Pipeline Failed!
 
-		// Another log file for history
-		new File(".bpipe/logs").mkdirs()
-		FileHandler pidLog = new FileHandler(".bpipe/logs/${pid}.bpipe.log")
-		pidLog.setFormatter(new BpipeLogFormatter())
-		parentLog.addHandler(pidLog)
+                    A variable referred to in your script on line ${lineNumber}, '$e.property' was not defined.  
+                    
+                    Please check that all pipeline stages or other variables you have referenced by this name are defined.
+                    """.stripIndent()
+    }
 
-		log.info("Starting")
-		return parentLog
-	}
+    /**
+     * Set up logging for the Bpipe diagnostic log
+     */
+    private static Logger initializeLogging(String pid) {
+        
+        def parentLog = log.getParent()
+        parentLog.getHandlers().each { parentLog.removeHandler(it) }
+
+        // The current log file
+        FileHandler fh = new FileHandler(".bpipe/bpipe.log")
+        fh.setFormatter(new BpipeLogFormatter())
+        parentLog.addHandler(fh)
+
+        // Another log file for history
+        new File(".bpipe/logs").mkdirs()
+        FileHandler pidLog = new FileHandler(".bpipe/logs/${pid}.bpipe.log")
+        pidLog.setFormatter(new BpipeLogFormatter())
+        parentLog.addHandler(pidLog)
+
+        log.info("Starting")
+        return parentLog
+    }
 
 
-	
+    
     /**
      * Try to determine the process id of this Java process.
      * Because the PID is read from a file that is created after
@@ -260,56 +282,56 @@ diagrameditor""")
      * 
      * @return    process ID of our process
      */
-	private static String resolvePID() {
+    private static String resolvePID() {
         // If we weren't given a host pid, assume we are running as a generic
         // command and just put the log files, etc, under this name
-		String pid = "command"
+        String pid = "command"
 
-		// This property is stored as a file by the hosting bash script
-		String ourPid = System.getProperty("bpipe.pid")
-		if(ourPid) {
-			File pidFile = new File(".bpipe/launch/${ourPid}")
-			int count = 0
-			while(true) {
-				if(pidFile.exists()) {
-					pid = pidFile.text.trim()
-					pidFile.delete()
-					break
-				}
+        // This property is stored as a file by the hosting bash script
+        String ourPid = System.getProperty("bpipe.pid")
+        if(ourPid) {
+            File pidFile = new File(".bpipe/launch/${ourPid}")
+            int count = 0
+            while(true) {
+                if(pidFile.exists()) {
+                    pid = pidFile.text.trim()
+                    pidFile.delete()
+                    break
+                }
 
-				if(count > 100) {
-					println "ERROR: Bpipe was unable to read its startup PID file from $pidFile.absolutePath"
-					println "ERROR: This may indicate you are in a read-only directory or one to which you do not have full permissions"
-					System.exit(1)
-				}
+                if(count > 100) {
+                    println "ERROR: Bpipe was unable to read its startup PID file from $pidFile.absolutePath"
+                    println "ERROR: This may indicate you are in a read-only directory or one to which you do not have full permissions"
+                    System.exit(1)
+                }
 
-				// Spin a short time waiting
-				Thread.sleep(20)
-				++count
-			}
-		}
-		return pid
-	}
-					
+                // Spin a short time waiting
+                Thread.sleep(20)
+                ++count
+            }
+        }
+        return pid
+    }
+                    
     static String loadPipelineSrc(def cli, def srcFilePath) {
-		File pipelineFile = new File(srcFilePath)
+        File pipelineFile = new File(srcFilePath)
         if(!pipelineFile.exists()) {
             println "\nCould not understand command $pipelineFile or find it as a file\n"
             cli.usage()
             println "\n"
             System.exit(1)
         }
-		
-		
-		String pipelineSrc = "import static Bpipe.*; " + pipelineFile.text
-		if(pipelineFile.text.indexOf("return null") >= 0) {
-			println """
-					   ================================================================================================================
-					   | WARNING: since 0.9.4 using 'return null' in pipeline stages is incorrect. Please use 'forward input' instead.|
-					   ================================================================================================================
-			""".stripIndent()
-		}
-		return pipelineSrc
+        
+        
+        String pipelineSrc = "import static Bpipe.*; " + pipelineFile.text
+        if(pipelineFile.text.indexOf("return null") >= 0) {
+            println """
+                       ================================================================================================================
+                       | WARNING: since 0.9.4 using 'return null' in pipeline stages is incorrect. Please use 'forward input' instead.|
+                       ================================================================================================================
+            """.stripIndent()
+        }
+        return pipelineSrc
     }
 }
 
