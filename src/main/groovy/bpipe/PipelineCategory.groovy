@@ -64,9 +64,9 @@ class PipelineCategory {
    
     static Closure cfg(Closure c, Map params) {
         def pc = new ParameterizedClosure(params, c)
-		if(closureNames.containsKey(c))
-			closureNames[pc] = closureNames[c]
-		return pc
+        if(closureNames.containsKey(c))
+            closureNames[pc] = closureNames[c]
+        return pc
     }
     
    static Closure using(Closure c, Map params) {
@@ -105,12 +105,12 @@ class PipelineCategory {
      */
     static Object plus(Closure c, Closure other) {
         
-		// What we return is actually a closure to be executed later
-		// when the pipeline is run.  
+        // What we return is actually a closure to be executed later
+        // when the pipeline is run.  
         def result  = {  input1 ->
             
-			Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
-			 
+            Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
+             
             def currentStage = new PipelineStage(pipeline.createContext(), c)
             pipeline.addStage(currentStage)
             currentStage.context.setInput(input1)
@@ -165,77 +165,77 @@ class PipelineCategory {
             Utils.checkFiles(nextInputs)
             
             return mul(nextInputs)
-		}
+        }
         pipeline.joiners << plusImplementation
         return plusImplementation
-	}
+    }
     
-	static Object multiply(Set objs, List segments) {
-		if(!objs) 
-			throw new PipelineError("Multiply syntax requires a non-empty list of files or chromosomes, but no entries were in the supplied set")
-		
+    static Object multiply(Set objs, List segments) {
+        if(!objs) 
+            throw new PipelineError("Multiply syntax requires a non-empty list of files or chromosomes, but no entries were in the supplied set")
+        
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
-		
-		def multiplyImplementation = { input ->
+        
+        def multiplyImplementation = { input ->
             
-			log.info "multiply on input $input on set " + objs
+            log.info "multiply on input $input on set " + objs
             
             def currentStage = new PipelineStage(pipeline.createContext(), {})
             pipeline.addStage(currentStage)
             currentStage.context.setInput(input)
             
             AtomicInteger runningCount = new AtomicInteger()
-			
-			List chrs = []
-			chrs.addAll(objs)
-			chrs.sort()
+            
+            List chrs = []
+            chrs.addAll(objs)
+            chrs.sort()
             
             // Now we have all our samples, make a 
-		    // separate pipeline for each one, and for each parallel stage
+            // separate pipeline for each one, and for each parallel stage
             List<Pipeline> childPipelines = []
             List<Runnable> threads = []
             for(Closure s in segments) {
                 log.info "Processing segment ${s.hashCode()}"
-				chrs.each { chr ->
-	                log.info "Creating pipeline to run on chromosome $chr"
-	                runningCount.incrementAndGet()
-	                Pipeline child = pipeline.fork()
-					currentStage.children << child
+                chrs.each { chr ->
+                    log.info "Creating pipeline to run on chromosome $chr"
+                    runningCount.incrementAndGet()
+                    Pipeline child = pipeline.fork()
+                    currentStage.children << child
                     Closure segmentClosure = s
                     threads << {
                             try {
-        			            // First we make a "dummy" stage that contains the inputs
-        			            // to the next stage as outputs.  This allows later logic
-        			            // to find these "inputs" correctly when it expects to see
-        			            // all "inputs" reflected as some output of an earlier stage
-        			            PipelineContext dummyPriorContext = pipeline.createContext()
-        			            PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
-        			            dummyPriorContext.output = input
+                                // First we make a "dummy" stage that contains the inputs
+                                // to the next stage as outputs.  This allows later logic
+                                // to find these "inputs" correctly when it expects to see
+                                // all "inputs" reflected as some output of an earlier stage
+                                PipelineContext dummyPriorContext = pipeline.createContext()
+                                PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
+                                dummyPriorContext.output = input
                                 
-        			            log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
-        			            pipeline.addStage(dummyPriorStage)
+                                log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
+                                pipeline.addStage(dummyPriorStage)
                                 child.variables += [chr: chr.name]
                                 child.name = chr.name
-        	                    child.runSegment(input, segmentClosure, runningCount)
+                                child.runSegment(input, segmentClosure, runningCount)
                             }
                             catch(Exception e) {
                                 log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
-								StackTraceUtils.sanitize(e).printStackTrace()
+                                StackTraceUtils.sanitize(e).printStackTrace()
                                 child.failed = true
                             }
-	                } as Runnable
+                    } as Runnable
                     childPipelines << child
-				}
+                }
             }
             return runAndWaitFor(currentStage, childPipelines, threads, runningCount)
-		}
+        }
         
         log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
         pipeline.joiners << multiplyImplementation
         
         return multiplyImplementation
-	}
-	
+    }
+    
     /**
      * Implements the syntax that allows an input filter to 
      * break inputs into samples and pass to multiple parallel 
@@ -243,83 +243,85 @@ class PipelineCategory {
      * <p>
      * <code>"sample_%_*.txt" * [stage1 + stage2 + stage3]</code>
      */
-	static Object multiply(String pattern, List segments) {
+    static Object multiply(String pattern, List segments) {
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
         segments = segments.collect { 
             if(it instanceof List) {
                 return multiply("*",it)
-    		}
+            }
             else 
-			    return it
+                return it
         }
-		
-		def multiplyImplementation = { input ->
+        
+        def multiplyImplementation = { input ->
             
-			log.info "multiply on input $input with pattern $pattern"
+            log.info "multiply on input $input with pattern $pattern"
             
             def currentStage = new PipelineStage(pipeline.createContext(), {})
             pipeline.addStage(currentStage)
             currentStage.context.setInput(input)
             
-			// Match the input
+            // Match the input
             InputSplitter splitter = new InputSplitter()
             Map samples = splitter.split(pattern, input)
             
             if(samples.isEmpty()) 
-                throw new PipelineError("The pattern provided '$pattern' did not match any of the files provided as input $input")
-                
+                if(input)
+                    throw new PipelineError("The pattern provided '$pattern' did not match any of the files provided as input $input")
+                else
+                    throw new PatternInputMissingError("An input pattern was specified '$pattern' but no inputs were given when Bpipe was run.")
                 
             AtomicInteger runningCount = new AtomicInteger()
             
             // Now we have all our samples, make a 
-		    // separate pipeline for each one, and for each parallel stage
+            // separate pipeline for each one, and for each parallel stage
             List<Pipeline> childPipelines = []
             List<Runnable> threads = []
             for(Closure s in segments) {
                 log.info "Processing segment ${s.hashCode()}"
-				samples.each { id, files ->
-	                log.info "Creating pipeline to run sample $id with files $files"
-	                runningCount.incrementAndGet()
-					
-	                Pipeline child = pipeline.fork()
-					currentStage.children << child
+                samples.each { id, files ->
+                    log.info "Creating pipeline to run sample $id with files $files"
+                    runningCount.incrementAndGet()
+                    
+                    Pipeline child = pipeline.fork()
+                    currentStage.children << child
                     Closure segmentClosure = s
                     threads << {
                             try {
-        			            // First we make a "dummy" stage that contains the inputs
-        			            // to the next stage as outputs.  This allows later logic
-        			            // to find these "inputs" correctly when it expects to see
-        			            // all "inputs" reflected as some output of an earlier stage
-        			            PipelineContext dummyPriorContext = pipeline.createContext()
-        			            PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
-        			            dummyPriorContext.output = files
-        			            dummyPriorContext.@input = files
+                                // First we make a "dummy" stage that contains the inputs
+                                // to the next stage as outputs.  This allows later logic
+                                // to find these "inputs" correctly when it expects to see
+                                // all "inputs" reflected as some output of an earlier stage
+                                PipelineContext dummyPriorContext = pipeline.createContext()
+                                PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
+                                dummyPriorContext.output = files
+                                dummyPriorContext.@input = files
                                 
-        			            log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
-        			            child.addStage(dummyPriorStage)
-        	                    child.runSegment(files, segmentClosure, runningCount)
+                                log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
+                                child.addStage(dummyPriorStage)
+                                child.runSegment(files, segmentClosure, runningCount)
                             }
                             catch(Exception e) {
                                 log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
-								StackTraceUtils.sanitize(e).printStackTrace()
+                                StackTraceUtils.sanitize(e).printStackTrace()
                                 child.failed = true
                             }
-    	                } as Runnable
+                        } as Runnable
                     childPipelines << child
-				}
+                }
             }
             return runAndWaitFor(currentStage, childPipelines, threads, runningCount)
-		}
+        }
         
         log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
         pipeline.joiners << multiplyImplementation
         
         return multiplyImplementation
-	}
-	
-	static runAndWaitFor(PipelineStage currentStage, List<Pipeline> pipelines, List<Runnable> threads, AtomicInteger runningCount) {
+    }
+    
+    static runAndWaitFor(PipelineStage currentStage, List<Pipeline> pipelines, List<Runnable> threads, AtomicInteger runningCount) {
             // Start all the threads
-		    log.info "Creating thread pool with " + Config.config.maxThreads + " threads to execute parallel pipelines"
+            log.info "Creating thread pool with " + Config.config.maxThreads + " threads to execute parallel pipelines"
             ThreadPoolExecutor pool = Executors.newFixedThreadPool(Config.config.maxThreads, { Runnable r ->
               def t = new Thread(r)  
               t.setDaemon(true)
@@ -330,10 +332,10 @@ class PipelineCategory {
                 threads.each { pool.execute(it) }
                 
                 long lastLogTimeMillis = 0
-    			while(runningCount.get()) {
+                while(runningCount.get()) {
                     
                     if(lastLogTimeMillis < System.currentTimeMillis() - 5000) {
-        				log.info("Waiting for " + runningCount.get() + " parallel stages to complete (pool.active=${pool.activeCount} pool.tasks=${pool.taskCount})" )
+                        log.info("Waiting for " + runningCount.get() + " parallel stages to complete (pool.active=${pool.activeCount} pool.tasks=${pool.taskCount})" )
                         lastLogTimeMillis = System.currentTimeMillis()
                     }
                         
@@ -345,7 +347,7 @@ class PipelineCategory {
                         Thread.sleep(300)
                     // TODO: really here we should check if any of the pipelines that finished 
                     // have failed so that we can abort the other processes if they did
-    			}
+                }
             }
             finally {
                 pool.shutdown()
@@ -361,28 +363,28 @@ class PipelineCategory {
                 def out = c.stages[-1].context.nextInputs
                 log.info "Outputs from child $i :  $out context=${c.stages[-1].context.hashCode()}"
                 if(out)
-					nextInputs += out
-			}
+                    nextInputs += out
+            }
             currentStage.context.output = nextInputs
             
             Utils.checkFiles(currentStage.context.output)
             
             return nextInputs
-	}
+    }
     
     static void addStages(Binding binding) {
         binding.variables.each { 
             if(it.value instanceof Closure) {
-	            log.info("Found closure variable ${it.key}")
+                log.info("Found closure variable ${it.key}")
                 if(!closureNames.containsKey(it.value))
-	                closureNames[it.value] = it.key
+                    closureNames[it.value] = it.key
             }
         }
     }
-	
-	static String getPrefix(String value) {
-		return value.replaceAll('\\.[^\\.]*?$', '')	
-	}
+    
+    static String getPrefix(String value) {
+        return value.replaceAll('\\.[^\\.]*?$', '')    
+    }
     
     /**
      * Add all properties of type Closure belonging to the class of the given 

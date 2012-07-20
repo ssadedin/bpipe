@@ -133,6 +133,8 @@ function clean_job_files() {
          rm -f ~/.bpipedb/jobs/$BPIPE_PID
       fi
     fi
+
+    rm -f .bpipe/ask_run_again.*
 }
 
 #----------------------------------------------------------
@@ -585,6 +587,17 @@ else
     then
         kill $TAIL_PID
     fi
+fi
+
+if [ -e .bpipe/ask_run_again.${BPIPE_PID} ];
+then
+  echo "
+The pipeline failed because inputs were expected to be provided but you didn't provide any.
+
+To run with all files in the local directory as input, use:
+
+    bpipe run $* *
+"
 fi
 
 clean_job_files

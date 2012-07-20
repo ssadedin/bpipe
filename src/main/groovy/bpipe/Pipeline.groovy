@@ -78,12 +78,12 @@ public class Pipeline {
      * A list of "dummy" stages that are actually used to link other stages together
      */
     def joiners = []
-	
-	/**
-	 * If this pipeline was spawned as a child of another pipeline, then
-	 * the parent is set to that pipeline
-	 */
-	Pipeline parent = null
+    
+    /**
+     * If this pipeline was spawned as a child of another pipeline, then
+     * the parent is set to that pipeline
+     */
+    Pipeline parent = null
     
     /**
      * A name for the pipeline that is added to output file names when 
@@ -121,7 +121,7 @@ public class Pipeline {
      * which will synchronize on the variable so that we can guarantee that no two
      * are accessed at the same time.
      */
-	static Pipeline currentUnderConstructionPipeline = null
+    static Pipeline currentUnderConstructionPipeline = null
     
     /**
      * In a situation where multiple parallel exeuction paths are
@@ -130,12 +130,12 @@ public class Pipeline {
      * by this thread local variable
      */
     static ThreadLocal<Pipeline> currentRuntimePipeline = new ThreadLocal()
-	
-	
-	/**
-	 * Documentation about this pipeline
-	 */
-	static Map<String,Object> documentation = [:]
+    
+    
+    /**
+     * Documentation about this pipeline
+     */
+    static Map<String,Object> documentation = [:]
     
     /**
      * Create a pipeline, initialized with all the already discovered
@@ -144,13 +144,13 @@ public class Pipeline {
     Pipeline() {
         this.joiners = segmentJoiners.clone()
     }
-	
-	/**
-	 * Allow user to add arbitrary documentation about their pipeline
-	 */
-	static about(Map<String,Object> docs) {
-		documentation += docs
-	}
+    
+    /**
+     * Allow user to add arbitrary documentation about their pipeline
+     */
+    static about(Map<String,Object> docs) {
+        documentation += docs
+    }
     
     /**
      * Due to certain constraints in how Groovy handles operator 
@@ -165,45 +165,45 @@ public class Pipeline {
      * @param c
      * @return
      */
-	static Pipeline withCurrentUnderConstructionPipeline(Pipeline p, Closure c) {
+    static Pipeline withCurrentUnderConstructionPipeline(Pipeline p, Closure c) {
         synchronized(Pipeline.class) {
             currentUnderConstructionPipeline = p
-    	    c(currentUnderConstructionPipeline)	
+            c(currentUnderConstructionPipeline)    
             currentUnderConstructionPipeline = null
         }
-	}
-	
-	static def chr(Object... objs) {
-		Set<Chr> result = [] as Set
-		for(Object o in objs) {
-			
-			if(o instanceof Closure) 
-				o = o()
-			
-			if(o instanceof Range) {
-				for(r in o) {
-					result << new Chr('chr'+r)
-				}
-			}
-			else 
-			if(o instanceof String || o instanceof Integer) {
-				result << new Chr('chr'+o)
-			}
-		}
-		
-		return result
-	}
+    }
+    
+    static def chr(Object... objs) {
+        Set<Chr> result = [] as Set
+        for(Object o in objs) {
+            
+            if(o instanceof Closure) 
+                o = o()
+            
+            if(o instanceof Range) {
+                for(r in o) {
+                    result << new Chr('chr'+r)
+                }
+            }
+            else 
+            if(o instanceof String || o instanceof Integer) {
+                result << new Chr('chr'+o)
+            }
+        }
+        
+        return result
+    }
     
     /**
      * Define a pipeline segment - allows a pipeline segment to
      * be created and stored in a variable
      */
-	static def segment(Closure pipelineBuilder) {
+    static def segment(Closure pipelineBuilder) {
         
-		Pipeline pipeline = new Pipeline()
+        Pipeline pipeline = new Pipeline()
         PipelineCategory.addStages(pipelineBuilder.binding)
-		if(!pipelineBuilder.binding.variables.containsKey("BPIPE_NO_EXTERNAL_STAGES"))
-	        pipeline.loadExternalStages()
+        if(!pipelineBuilder.binding.variables.containsKey("BPIPE_NO_EXTERNAL_STAGES"))
+            pipeline.loadExternalStages()
 
         Object result = pipeline.execute([], pipelineBuilder.binding, pipelineBuilder, false)
         segmentJoiners.addAll(pipeline.joiners)
@@ -211,24 +211,24 @@ public class Pipeline {
     }
     
     static List<Closure> segmentJoiners = []
-	
+    
     /**
      * Default run method - introspects all the inputs from the binding of the
      * pipeline closure.
      */
-	static def run(Closure pipeline) {
+    static def run(Closure pipeline) {
        run(pipeline.binding.variables.args, pipeline.binding, pipeline) 
     }
     
-	static def run(Object host, Closure pipeline) {
+    static def run(Object host, Closure pipeline) {
        run(pipeline.binding.variables.args, host, pipeline) 
     }
     
-	static def run(def inputFile, Object host, Closure pipelineBuilder) {
+    static def run(def inputFile, Object host, Closure pipelineBuilder) {
         
         log.info("Running with input " + inputFile)
         
-		Pipeline pipeline = new Pipeline()
+        Pipeline pipeline = new Pipeline()
         
         // To make life easier when a single argument is passed in,
         // debox it from the array so that pipeline stages that 
@@ -244,15 +244,15 @@ public class Pipeline {
 
         def mode = Config.config.mode 
         if(mode == "run" || mode == "documentation") // todo: documentation should be its own mode! but can't support that right now
-	        pipeline.execute(inputFile, host, pipelineBuilder)
+            pipeline.execute(inputFile, host, pipelineBuilder)
         else
         if(mode in ["diagram","diagrameditor"])
-	        pipeline.diagram(host, pipelineBuilder, Runner.opts.arguments()[0], mode == "diagrameditor")
+            pipeline.diagram(host, pipelineBuilder, Runner.opts.arguments()[0], mode == "diagrameditor")
         else
         if(mode in ["documentation"])
-	        pipeline.documentation(host, pipelineBuilder, Runner.opts.arguments()[0])
+            pipeline.documentation(host, pipelineBuilder, Runner.opts.arguments()[0])
             
-	}
+    }
     
     /**
      * Runs the specified closure in the context of this pipeline 
@@ -264,7 +264,7 @@ public class Pipeline {
             
             if(currentRuntimePipeline.get() == null) 
                 currentRuntimePipeline.set(this)
-		
+        
             def currentStage = new PipelineStage(rootContext, s)
             log.info "Running segment with inputs $inputs"
             this.addStage(currentStage)
@@ -276,6 +276,8 @@ public class Pipeline {
                 log.info "Pipeline segment failed (2): " + e.message
                 System.err << "Pipeline failed!\n\n"+e.message << "\n\n"
                 failed = true
+                if(e instanceof PatternInputMissingError)
+                    throw e
             }
             catch(PipelineTestAbort e) {
                 log.info "Pipeline segment aborted due to test mode"
@@ -285,16 +287,16 @@ public class Pipeline {
         }
         finally {
             if(counter != null) {
-	            int value = counter.decrementAndGet()
-	            log.info "Finished running segment for inputs $inputs and decremented counter to $value"
-	            synchronized(counter) {
-	                counter.notifyAll()
-	            }
-	        }
+                int value = counter.decrementAndGet()
+                log.info "Finished running segment for inputs $inputs and decremented counter to $value"
+                synchronized(counter) {
+                    counter.notifyAll()
+                }
+            }
         }
     }
 
-	private Closure execute(def inputFile, Object host, Closure pipeline, boolean launch=true) {
+    private Closure execute(def inputFile, Object host, Closure pipeline, boolean launch=true) {
         
         Pipeline.rootThreadId = Thread.currentThread().id
         
@@ -302,7 +304,7 @@ public class Pipeline {
         this.externalBinding.variables.each { 
             log.info "Loaded external reference: $it.key"
             if(!pipeline.binding.variables.containsKey(it.key))
-	            pipeline.binding.variables.put(it.key,it.value) 
+                pipeline.binding.variables.put(it.key,it.value) 
             else
                 log.info "External reference $it.key is overridden by local reference"    
         }
@@ -318,45 +320,51 @@ public class Pipeline {
             cmdlog << "# Starting pipeline at " + (new Date())
             cmdlog << "# Input files:  $inputFile"
             cmdlog << "# Output Log:  " + Config.config.outputLogPath 
-    		println("="*Config.config.columns)
-    		println("|" + " Starting Pipeline at $startDateTime".center(Config.config.columns-2) + "|")
-    		println("="*Config.config.columns)
-			
-			about(startedAt: new Date())
+            println("="*Config.config.columns)
+            println("|" + " Starting Pipeline at $startDateTime".center(Config.config.columns-2) + "|")
+            println("="*Config.config.columns)
+            
+            about(startedAt: new Date())
         }
     
-		def constructedPipeline
-		use(PipelineCategory) {
+        def constructedPipeline
+        use(PipelineCategory) {
             
             // Build the actual pipeline
             Pipeline.withCurrentUnderConstructionPipeline(this) {
-				constructedPipeline = pipeline()
-			}
-			
+                constructedPipeline = pipeline()
+            }
+            
             if(launch) {
-                runSegment(inputFile, constructedPipeline, null)
-    			println("\n"+" Pipeline Finished ".center(Config.config.columns,"="))
-    			rootContext.msg "Finished at " + (new Date())
-				about(finishedAt: new Date())
-				
-				EventManager.instance.signal(PipelineEvent.FINISHED, failed?"Failed":"Succeeded")
-                if(!failed) {
-					summarizeOutputs(stages)
+                try {
+                    runSegment(inputFile, constructedPipeline, null)
                 }
-    		}
-		}
+                catch(PatternInputMissingError e) {
+                    new File(".bpipe/prompt_input_files." + Config.config.pid).text = ''
+                }
+                
+                println("\n"+" Pipeline Finished ".center(Config.config.columns,"="))
+                rootContext.msg "Finished at " + (new Date())
+                about(finishedAt: new Date())
+                
+                EventManager.instance.signal(PipelineEvent.FINISHED, failed?"Failed":"Succeeded")
+                if(!failed) {
+                    summarizeOutputs(stages)
+                }
+            }
+        }
 
-		// Make sure the command log ends with newline
-		// as output is not terminated with one by default
-		cmdlog << ""
+        // Make sure the command log ends with newline
+        // as output is not terminated with one by default
+        cmdlog << ""
         
         if(launch && (Config.config.mode == "documentation" || Config.config.report)) {
             documentation()
         }
         
         return constructedPipeline
-	}
-	
+    }
+    
     PipelineContext createContext() {
        def ctx = new PipelineContext(this.externalBinding, this.stages, this.joiners) 
        ctx.outputDirectory = Config.config.defaultOutputDirectory
@@ -375,7 +383,7 @@ public class Pipeline {
         Pipeline p = new Pipeline()
         p.stages = [] + this.stages
         p.joiners = [] + this.joiners
-		p.parent = this
+        p.parent = this
         return p
     }
     
@@ -396,13 +404,13 @@ public class Pipeline {
         def scripts = (libPaths + loadedPaths).each { scriptFile ->
             log.info("Evaluating library file $scriptFile")
             try {
-		        shell.evaluate("import static Bpipe.*; binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true; " + scriptFile.text)
+                shell.evaluate("import static Bpipe.*; binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true; " + scriptFile.text)
             }
             catch(Exception ex) {
                 log.severe("Failed to evaluate script $scriptFile: "+ ex)
                 System.err.println("WARN: Error evaluating script $scriptFile: " + ex.getMessage())
             }
-	        PipelineCategory.addStages(externalBinding)
+            PipelineCategory.addStages(externalBinding)
         } 
     }
     
@@ -453,30 +461,30 @@ public class Pipeline {
      * This method creates documentation for a pipeline based on the 
      * pipeline stage names and any configured documentation that is added to them
      */
-	def documentation() {
+    def documentation() {
         
         // Now make a graph
         File docDir = new File("doc")
         if(!docDir.exists()) {
             docDir.mkdir()
         }
-		
-		// We build up a list of pipeline stages
-		// so the seed for that is a list with one empty list
-		def docStages = [ [] ]
-		 
-		fillDocStages(docStages)
-		
-		if(!documentation.title)
-			documentation.title = "Pipeline Report"
-	        
+        
+        // We build up a list of pipeline stages
+        // so the seed for that is a list with one empty list
+        def docStages = [ [] ]
+         
+        fillDocStages(docStages)
+        
+        if(!documentation.title)
+            documentation.title = "Pipeline Report"
+            
          Map docBinding = [
             stages: docStages,
-			pipeline: this
+            pipeline: this
         ]
-		 
-		if(docStages.any { it.stageName == null })
-			throw new IllegalStateException("Should NEVER have a null stage name here")
+         
+        if(docStages.any { it.stageName == null })
+            throw new IllegalStateException("Should NEVER have a null stage name here")
         
         // Use HTML templates to generate documentation
         InputStream templateStream
@@ -495,50 +503,50 @@ public class Pipeline {
         
         println "Generated documentation in $docDir"
     }
-	
-	void fillDocStages(List pipelines) {
-		
-		log.fine "Filling stages $stages"
-		
-		for(List docStages in pipelines.clone()) {
-			
-			for(PipelineStage s in stages) {
-					
-				// No documentation for anonymous joiner stages
-				if(s.body in joiners)
-					continue
-					
-				if(!s.children && s?.context?.stageName != null) {
-					log.fine "adding stage $s.context.stageName from pipeline $this"
-					pipelines.each { it << s }
-				}
-					
-				if(s in docStages || (parent != null && s in parent.stages))
-					continue
-					
-				// if it has children, generate them
-				if(s.children) {
-				
-					// Take out the original
-					pipelines.remove(docStages)
-					
-					// Replace it for an entry with each child pipeline
-					pipelines.addAll s.children.collect { Pipeline childPipeline ->
-						List childStages = [ [] ]
-						childPipeline.fillDocStages(childStages)
-						return childStages
-					}.collect { it[0] }
-				}
-			}
-		}
-		
-		log.fine "Result: $pipelines"
-	}
+    
+    void fillDocStages(List pipelines) {
+        
+        log.fine "Filling stages $stages"
+        
+        for(List docStages in pipelines.clone()) {
+            
+            for(PipelineStage s in stages) {
+                    
+                // No documentation for anonymous joiner stages
+                if(s.body in joiners)
+                    continue
+                    
+                if(!s.children && s?.context?.stageName != null) {
+                    log.fine "adding stage $s.context.stageName from pipeline $this"
+                    pipelines.each { it << s }
+                }
+                    
+                if(s in docStages || (parent != null && s in parent.stages))
+                    continue
+                    
+                // if it has children, generate them
+                if(s.children) {
+                
+                    // Take out the original
+                    pipelines.remove(docStages)
+                    
+                    // Replace it for an entry with each child pipeline
+                    pipelines.addAll s.children.collect { Pipeline childPipeline ->
+                        List childStages = [ [] ]
+                        childPipeline.fillDocStages(childStages)
+                        return childStages
+                    }.collect { it[0] }
+                }
+            }
+        }
+        
+        log.fine "Result: $pipelines"
+    }
     
     /**
      * This method creates a diagram of the pipeline instead of running it
      */
-	def diagram(Object host, Closure pipeline, String fileName, boolean editor) {
+    def diagram(Object host, Closure pipeline, String fileName, boolean editor) {
         
         // We have to manually add all the external variables to the outer pipeline stage
         this.externalBinding.variables.each {
@@ -551,7 +559,7 @@ public class Pipeline {
         
         // Figures out what the pipeline stages are 
         if(host)
-			pipeline.setDelegate(host)
+            pipeline.setDelegate(host)
             
         use(DefinePipelineCategory) {
             pipeline()()
@@ -564,9 +572,9 @@ public class Pipeline {
             g.display()
         }
         else {
-	        String outputFileName = fileName+".png"
-	        println "Creating diagram $outputFileName"
-	        g.render(outputFileName)
+            String outputFileName = fileName+".png"
+            println "Creating diagram $outputFileName"
+            g.render(outputFileName)
         }
     }
     
@@ -576,19 +584,17 @@ public class Pipeline {
             this.stages << stage
         }
     }
-	
-	void summarizeOutputs(List stages) {
-		def all = Utils.box(stages[-1].context.output).grep { it && !it.startsWith("null") && new File(it.toString()).exists() }
-		if(all.size() == 1) {
-			rootContext.msg "Output is " + all[0]
-		}
-		else
-		if(all) {
-			if(all.size() < 5) {
-				rootContext.msg "Outputs are: \n\t" +  all.join("\n\t")
-			}
-		}
-		
-		
-	}
+    
+    void summarizeOutputs(List stages) {
+        def all = Utils.box(stages[-1].context.output).grep { it && !it.startsWith("null") && new File(it.toString()).exists() }
+        if(all.size() == 1) {
+            rootContext.msg "Output is " + all[0]
+        }
+        else
+        if(all) {
+            if(all.size() < 5) {
+                rootContext.msg "Outputs are: \n\t" +  all.join("\n\t")
+            }
+        }
+    }
 }
