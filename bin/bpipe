@@ -323,7 +323,12 @@ then
     then
         if [ "$1" == "test" ];
         then
-            sed 's/bpipe run/bpipe test/' .bpipe/lastcmd | bash 
+            if grep -q "bpipe run" .bpipe/lastcmd ;
+            then
+                sed 's/bpipe run/bpipe test/' .bpipe/lastcmd | bash 
+            else
+                sed 's/bpipe /bpipe test /' .bpipe/lastcmd | bash 
+            fi
         else
             bash < .bpipe/lastcmd
         fi
@@ -474,6 +479,8 @@ then
     shift 1
     BPIPEDEBUG="-Xdebug -Xrunjdwp:transport=dt_socket,address=8010,server=y,suspend=y"
     SHOWDEBUG=true
+    COMMAND="run"
+else
     COMMAND="run"
 fi
 
