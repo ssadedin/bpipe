@@ -55,7 +55,16 @@ class CommandId {
             if(!commandIdFile.exists()) {
                 commandIdFile << "0"
             }
-            lastCommandId = Integer.parseInt(commandIdFile.text)
+			try {
+	            lastCommandId = Integer.parseInt(commandIdFile.text)
+			}
+			catch(Exception e) {
+				log.warning("Failed to parse command id text: [" + commandIdFile.text + "]")
+				
+				// Could do better than this: scan directory for old commands? This should
+				// be a very rare condition however.
+                commandIdFile << "0"
+			}
         }
         
         ++lastCommandId

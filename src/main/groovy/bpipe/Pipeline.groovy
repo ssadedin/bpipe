@@ -292,6 +292,7 @@ public class Pipeline {
                 synchronized(counter) {
                     counter.notifyAll()
                 }
+				log.info "Notified parent that segment for inputs $inputs is finished"
             }
         }
     }
@@ -366,7 +367,7 @@ public class Pipeline {
     }
     
     PipelineContext createContext() {
-       def ctx = new PipelineContext(this.externalBinding, this.stages, this.joiners) 
+       def ctx = new PipelineContext(this.externalBinding, this.stages, this.joiners, this.name) 
        ctx.outputDirectory = Config.config.defaultOutputDirectory
        return ctx
     }

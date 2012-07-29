@@ -340,7 +340,7 @@ class PipelineCategory {
                     }
                         
                     synchronized(runningCount) {
-                        runningCount.wait(5)
+                        runningCount.wait(50)
                     }
                     
                     if(runningCount.get())
@@ -350,7 +350,9 @@ class PipelineCategory {
                 }
             }
             finally {
-                pool.shutdown()
+				log.info "Shutting down thread pool (pool.active=${pool.activeCount} pool.tasks=${pool.taskCount})" 
+                pool.shutdownNow()
+				log.info "Thread pool shut down"
             }
             
             if(pipelines.any { it.failed }) {

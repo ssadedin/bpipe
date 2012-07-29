@@ -63,7 +63,7 @@ class PipelineContext {
      *                        an output that matches the specified extension.
      *
      */
-    public PipelineContext(Binding extraBinding, List<PipelineStage> pipelineStages, List<Closure> pipelineJoiners) {
+    public PipelineContext(Binding extraBinding, List<PipelineStage> pipelineStages, List<Closure> pipelineJoiners, String branch) {
         super();
         if(pipelineStages == null)
             throw new IllegalArgumentException("pipelineStages cannot be null")
@@ -73,6 +73,10 @@ class PipelineContext {
         this.pipelineJoiners = pipelineJoiners
         this.initUncleanFilePath()
         this.threadId = Thread.currentThread().getId()
+		this.branch = branch
+        def pipeline = Pipeline.currentRuntimePipeline.get()
+		if(pipeline)
+	        this.applyName = pipeline.name && !pipeline.nameApplied
     }
    
     /**
@@ -161,6 +165,12 @@ class PipelineContext {
    boolean probeMode = false
    
    /**
+    * The name for this segment of the pipeline.  The name is blank by default but 
+    * is non-blank when pipeline branches are created from chromosomes or file name matches.
+    */
+   String branch = ""
+   
+   /**
     * The default output is set prior to the body of the a pipeline stage being run.
     * If the pipeline stage does nothing else but references $output then the default output is
     * the one that is returned.  However the pipeline stage may modify the output
@@ -229,7 +239,21 @@ class PipelineContext {
        
        trackOutput(Utils.box(out))
        
-       return out ? new PipelineOutput(out,this.stageName, Utils.first(this.getDefaultOutput()), Utils.box(this.@output), { allInferredOutputs << it; inferredOutputs << it; }) : null
+	   if(!out)
+	   	   return null
+		   
+       def pipeline = Pipeline.currentRuntimePipeline.get()
+	   String baseOutput = Utils.first(this.getDefaultOutput()) 
+	   String branchName = applyName  ? pipeline.name : null
+	   
+       def po = new PipelineOutput(out,
+   							     this.stageName, 
+							     Utils.first(this.getDefaultOutput()), 
+							     Utils.box(this.@output), 
+								 { allInferredOutputs << it; inferredOutputs << it; if(applyName) { pipeline.nameApplied=true}}) 
+	   
+	   po.branchName = branchName
+	   return po
    }
    
    def getOutputs() {
@@ -434,20 +458,20 @@ class PipelineContext {
        return outFile
    }
    
+   private boolean applyName = false
+   
    /**
-    * Specifies an output that keeps the same type of file but modifies
-    * it ("filters" it). Convenience wrapper for {@link #produce(Closure, Object, Closure)}
-    * for the case where the same file extension is kept but a transformation
-    * type is added to the name.
+    * Specifies an output that converts an input file to a different kind of file,
+    * ("transforms" it). Convenience wrapper for {@link #produce(Closure, Object, Closure)}
+    * for the case where the file extension is replaced with a new one.
     */
    Object transform(List<String> exts, Closure body) {
        
-       def pipeline = Pipeline.currentRuntimePipeline.get()
        def inp = Utils.first(this.@input)
        if(!inp) 
            throw new PipelineError("Expected input but no input provided") 
        
-       boolean applyName = pipeline.name && !pipeline.nameApplied
+       def pipeline = Pipeline.currentRuntimePipeline.get()
        
        def files = exts.collect { String extension ->
            if(applyName)

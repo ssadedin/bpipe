@@ -263,7 +263,7 @@ class CustomCommandExecutor implements CommandExecutor {
         String lastStatus = "NONE" 
         while(true) {
             
-            log.info "Polling status of job $commandId with command $cmd with sleep for $currentSleep"
+            log.fine "Polling status of job $commandId with command $cmd with sleep for $currentSleep"
             
             StringBuilder out = new StringBuilder()
             StringBuilder err = new StringBuilder()

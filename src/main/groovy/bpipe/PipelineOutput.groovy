@@ -54,17 +54,23 @@ class PipelineOutput {
     String defaultOutput
     
     def outputUsed
-	
-	Closure outputChangeListener
+    
+    Closure outputChangeListener
     
     List<String> overrideOutputs
+    
+    /**
+     * If the output should add an extra segment to generated output files then that
+     * is specified here.
+     */
+    String branchName = null
     
     /**
      * Create a pipeline output wrapper
      * 
      * @param output            the output to be returned if this object is directly converted to a string
      * @param stageName         the pipeline stage for which this wrapper is going to create derived output names
-     * @param defaultOutput     the default pre-computed stage name (used to created drived names)
+     * @param defaultOutput     the default pre-computed stage name (used to created derived names)
      * @param overrideOutputs   a set of outputs that, if provided, become a mandatory set from which outputs
      *                          must be selected. If provided, it will be an error to request an output extension
      *                          that is not in this set.
@@ -74,8 +80,8 @@ class PipelineOutput {
      */
     PipelineOutput(def output, String stageName, String defaultOutput, List<String> overrideOutputs, Closure listener) {
         this.output = output
-		this.outputChangeListener = listener
-		this.stageName = stageName
+        this.outputChangeListener = listener
+        this.stageName = stageName
         this.defaultOutput = defaultOutput
         this.overrideOutputs = overrideOutputs
     }
@@ -117,31 +123,35 @@ class PipelineOutput {
     
     def synthesiseFromName(String name) {
         
-        // If the file extension of the output 
+        // If the extension of the output is the same as the extension of the 
+        // input then this is more like a filter; remove the previous output extension from the path
+        // eg: foo.csv.bar => foo.baz.csv
+        String branchSegment = branchName ? "." + branchName : ""
         if(this.output.endsWith(name+"."+stageName)) {
             log.info("Replacing " + name+"\\."+stageName + " with " +  stageName+'.'+name)
-            this.outputUsed = this.defaultOutput.replaceAll(name+"\\."+stageName, stageName+'.'+name)
+            this.outputUsed = this.defaultOutput.replaceAll(name+"\\."+stageName, branchSegment + stageName+'.'+name)
         }
-        else {
-            this.outputUsed = this.defaultOutput.replaceAll('\\.'+stageName+'$', '').replaceAll('\\.[^\\.]*$','.'+stageName + '.'+name)
+        else { // more like a transform: keep the old extension in there (foo.csv.bar => foo.csv.bar.xml)
+            this.outputUsed = this.defaultOutput.replaceAll('\\.'+stageName+'$', '')
+                                                .replaceAll('\\.[^\\.]*$',branchSegment+'.'+stageName + '.'+name)
         }
             
-		if(this.outputChangeListener != null) {
-			this.outputChangeListener(this.outputUsed)
-		}
+        if(this.outputChangeListener != null) {
+            this.outputChangeListener(this.outputUsed)
+        }
         return this.outputUsed
     }
-	
-	def methodMissing(String name, args) {
-		// faux inheritance from String class
-		if(name in String.metaClass.methods*.name)
-			return String.metaClass.invokeMethod(this.toString(), name, args)
-		else {
-			throw new MissingMethodException(name, PipelineOutput, args)
-		}
-	}
     
-   	String getPrefix() {
+    def methodMissing(String name, args) {
+        // faux inheritance from String class
+        if(name in String.metaClass.methods*.name)
+            return String.metaClass.invokeMethod(this.toString(), name, args)
+        else {
+            throw new MissingMethodException(name, PipelineOutput, args)
+        }
+    }
+    
+       String getPrefix() {
         return PipelineCategory.getPrefix(String.valueOf(Utils.first(input)));
-	} 
+    } 
 }
