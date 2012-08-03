@@ -194,6 +194,9 @@ diagrameditor""")
         
         // Add event listeners that come directly from configuration
         EventManager.instance.configure(Config.userConfig)
+		
+		if(!opts.t)
+			NotificationManager.instance.configure(Config.userConfig)
 
         // If we got this far and are not in test mode, then it's time to 
         // make the logs stick around
