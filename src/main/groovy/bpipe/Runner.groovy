@@ -229,6 +229,8 @@ diagrameditor""")
                 // print a nicer error message than what comes out of groovy by default
                 handleMissingPropertyFromPipelineScript(e)
             }
+            else
+                throw e
         }
     }
 

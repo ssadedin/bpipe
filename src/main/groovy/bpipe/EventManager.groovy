@@ -30,7 +30,8 @@ import groovy.util.logging.Log
 /**
  * Coordinates the distribution of events that occur during the running
  * of a pipeline.  Currently responsible for sending out notifications,
- * though later this may be separated out.
+ * though later this should be separated out to be just another 
+ * "listener" for events.
  * 
  * @author ssadedin
  */
@@ -87,6 +88,9 @@ class EventManager {
 	
 	/**
 	 * Notify that an event has occured
+     * <p>
+     * Currently this is a fully synchronous / blocking call, and thus a hang from one 
+     * of the server connections can cause delay to the caller.
 	 * 
 	 * @param evt	Kind of event
 	 * @param desc	brief description (eg: fits in email subject)
