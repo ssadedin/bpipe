@@ -93,17 +93,7 @@ class XMPPNotificationChannel implements NotificationChannel {
 	public void notify(PipelineEvent event, String subject, Map<String, Object> model) {
 		
 		synchronized(XMPPNotificationChannel.class) {
-			// This is a hack until I implement something better: don't send masses of notifications
-			// all at once. Ignore if a notification was sent less than interval seconds ago.
-			if(interval > 0 && lastNotificationTimeMs > 0) {
-				if(System.currentTimeMillis() - lastNotificationTimeMs < interval) {
-					log.info("Ignoring notification $subject for event $event because it occurred too soon after the last notification")
-					return
-				}
-			}
-			
-			lastNotificationTimeMs = System.currentTimeMillis()
-			
+		
 			XMPPConnection connection = new XMPPConnection(connConfig);
 			connection.connect();
 			connection.login(username, password);

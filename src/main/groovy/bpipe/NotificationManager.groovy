@@ -40,6 +40,12 @@ import groovy.util.logging.Log;
 class NotificationManager {
     
     ConfigObject cfg
+	
+	/**
+	 * Time at which a message was last sent for each category of message
+	 * ("category" here being a combination of attributes; see computeMessageCategory)
+	 */
+	Map<String,Long> sendTimestamps = [:]
     
     /**
      * Configure this notification manager with the given configuration object
@@ -71,17 +77,44 @@ class NotificationManager {
             // Wire up required events
             eventFilter.each {
                 EventManager.instance.addListener(it, { evt, desc, detail -> 
-	                try {
-	                    channel.notify(evt, desc, detail)
-	                }
-	                catch(Throwable t) {
-	                    log.warning("Failed to send notification via channel '$name' ("+ channel + ") with configuration " + channelCfg + ": " + t)
-	                    t.printStackTrace()
-	                }
+					sendNotification(channelCfg, channel, evt, desc, detail)
+
 	            } as PipelineEventListener)
             }    
         }
     }
+	
+	/**
+	 * Send the given notification, subject to constraints on sends that are configured for
+	 * the channel
+	 */
+	void sendNotification(ConfigObject cfg, NotificationChannel channel, PipelineEvent evt, String desc, Map detail) {
+		
+		long intervalMs = cfg.interval?:0
+		
+		String category = cfg.type + "." + evt.name()
+		long lastNotificationTimeMs = sendTimestamps[category]?:0
+		
+		// Check timestamp of last send and whether we are within the interval limit for sends
+		// to this channel
+		long nowMs = System.currentTimeMillis()
+		if(intervalMs > 0 && lastNotificationTimeMs > 0) {
+			if(nowMs - lastNotificationTimeMs < intervalMs) {
+				log.info("Ignoring notification $desc for event $evt because it occurred too soon after the last notification")
+				return
+			}
+		}
+		
+		sendTimestamps[category] = System.currentTimeMillis()
+		
+		try {
+			channel.notify(evt, desc, detail)
+		}
+		catch(Throwable t) {
+			log.warning("Failed to send notification via channel '$name' ("+ channel + ") with configuration " + channelCfg + ": " + t)
+			t.printStackTrace()
+		}
+	}
 	
     /**
      * Attempt to create a notification channel based on the given name / config.

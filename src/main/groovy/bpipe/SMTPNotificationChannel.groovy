@@ -116,8 +116,6 @@ class SMTPNotificationChannel implements NotificationChannel {
 		message.setSubject(subjectLine);
 		message.setText("Pipeline finished at " + (new Date()) + "\n\nFull path: " + (new File(".").absolutePath));
 		Transport.send(message);
-
-		System.out.println("Done");
 	}
 }
 
