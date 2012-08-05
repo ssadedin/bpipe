@@ -1,3 +1,64 @@
+=========== Changes for Bpipe Version 0.9.6_beta_1 ============
+
+    --------:  Notification constraints now supported for SMTP as
+               well as XMPP
+
+    --------: Constraints on sending notifications now are per 
+              event type
+
+    --------: Fix: output extension feature not working with
+              'chr' feature
+
+    --------: Fixed bpipe retry test not working if
+              pipeline run without explicit "run" command
+
+
+    Issue 45: Error Displayed when referring to an Unknown
+              Pipeline Stage is Ugly
+
+    --------: better messaging when pipeline fails due to missing
+              input files to match wildcard pattern
+
+    --------: Add Support for Produce annotation + test
+
+    Issue 48: Error Displayed if Run Pipeline with HTML
+              Report but no Stages Execute
+
+    Issue 35: About the frequency of polling job status -
+              removed extraneous logging 
+
+    --------: Fixed minor regression in how outputs are
+              handled when there are multiple produce statements
+              (incorrect value for $output with second "produce"
+              in a pipeline stage)
+
+    Issue 41: Job id missing from commandlog.txt - Added
+              location of output log and PID to the command log to
+              improve traceability, merged job ids
+
+    --------: pipeline context - fixed aynsc not supporting config
+
+    Issue 36: Support "include" statement
+
+    --------: Enhanced SGE exector mem and procs options
+              Adding advanced conf options to SGE and LSF executors
+
+    --------: Added signalp tool version probe (thanks Maciej Kandula!)
+
+    --------: support for splitting by file pattern in the middle of 
+              a pipeline 
+
+    Issue 40: Passing Parameters with 'Using' Broken
+
+    Issue 34: Not Work for Symbolic link to bpipe
+
+    Issue 38: Ability to Pass Command Line Options
+              to Script
+
+=========== Changes for Bpipe Version 0.9.5.3 ============
+    Issue 40: Passing Parameters with 'Using' Broken
+              (backport)
+
 =========== Changes for Bpipe Version 0.9.5.2 ============
 
     --------: Support for output file extensions - fix dependency 
@@ -9,13 +70,13 @@
     --------: Support for output file extensions
 
     --------: Support for .prefix to trim file extensions from
-	      file names
+              file names
 
     Issue 35: About the frequency of polling job status -
               polling of commands is now configurable 
 
     --------: Check that the 'bpipe' script is available on the PATH,
-	      otherwise stop the tests execution
+              otherwise stop the tests execution
 
 =========== Changes for Bpipe Version 0.9.5 ============
 
@@ -23,7 +84,7 @@
               Causes Incorrect Inputs Passed to next Stage
 
     Issue 32: Forward not working inside Transform /
-	      Filter / Produce
+              Filter / Produce
 
 =========== Changes for Bpipe Version 0.9.4 ============
 
@@ -32,7 +93,7 @@
     Issue 31: Running bpipe stop reports stopping many
  
     Issue 29: ConcurrentModificationException when
-    	      Running Parallel Pipeline
+                  Running Parallel Pipeline
 
     Issue 30: Fixed race deadlock condition causing local commands
               to hang
@@ -52,7 +113,7 @@
     Issue 28: Ability to Parameterize Pipeline Stages
 
     Issue 23: Transform and Filter should accept multiple
-	      arguments
+              arguments
 
     Issue 22: Returning an Object from a Pipeline Stage
               Should not be Treated as an Output
