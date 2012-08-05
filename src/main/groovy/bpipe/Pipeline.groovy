@@ -260,11 +260,12 @@ public class Pipeline {
      */
     void runSegment(def inputs, Closure s, AtomicInteger counter) {
         try {
-            this.rootContext = createContext()
             
             if(currentRuntimePipeline.get() == null) 
                 currentRuntimePipeline.set(this)
         
+            this.rootContext = createContext()
+			
             def currentStage = new PipelineStage(rootContext, s)
             log.info "Running segment with inputs $inputs"
             this.addStage(currentStage)

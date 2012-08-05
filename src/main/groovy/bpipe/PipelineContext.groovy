@@ -502,8 +502,6 @@ class PipelineContext {
         if(!inp) 
            throw new PipelineError("Expected input but no input provided") 
         
-        boolean applyName = pipeline.name && !pipeline.nameApplied
-        
         def files = types.collect { String type ->
             String oldExt = (inp =~ '\\.[^\\.]*$')[0]
             if(applyName) 
