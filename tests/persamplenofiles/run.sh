@@ -4,6 +4,6 @@ rm -f *align*
 
 run 
 
-grep -q "The pattern provided .* did not match any of the files" test.out || err "Failed to find expected error message"
+grep -q "An input pattern was specified '.*' but no inputs were given when Bpipe was run" test.out || err "Failed to find expected error message"
 
 true
