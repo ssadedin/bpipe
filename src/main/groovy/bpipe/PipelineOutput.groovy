@@ -135,6 +135,9 @@ class PipelineOutput {
             this.outputUsed = this.defaultOutput.replaceAll('\\.'+stageName+'$', '')
                                                 .replaceAll('\\.[^\\.]*$',branchSegment+'.'+stageName + '.'+name)
         }
+        
+        if(this.outputUsed.startsWith(".")) // occurs when no inputs given to script and output extension used
+            this.outputUsed = this.outputUsed.substring(1) 
             
         if(this.outputChangeListener != null) {
             this.outputChangeListener(this.outputUsed)

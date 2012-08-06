@@ -150,9 +150,12 @@ class PipelineStage {
                             // Setting the applied flag here will stop it from being applied
                             // in the transform / filter constructs 
                         }
-                        else
-                            context.defaultOutput = Utils.first(context.@input) + "." + stageName
+                        else {
+                                context.defaultOutput = Utils.first(context.@input) + "." + stageName
+                        }
                     }
+                    else
+                        context.defaultOutput = stageName
                 }
                 log.info("Stage $stageName : INPUT=${context.@input} OUTPUT=${context.output}")
             }   
