@@ -591,9 +591,28 @@ class PipelineContext {
     }
     
     /**
-     * Specifies that the given output (out) will be produced
+     * Specifies that the given output(s) (out) will be produced
      * by the given closure, and skips execution of the closure
-     * if the output is newer than all the current inputs.  
+     * if the output(s) are newer than all the current inputs.  
+     * <p>
+     * The outputs can contain gob characters to specify filename
+     * patterns rather than concrete file names.  In such cases, 
+     * <code>produce</code> specifies that at <i>least</i> one 
+     * file name matching the glob pattern will be produced by the
+     * body, and execution is skipped only if all files matching
+     * the glob are newer than the inputs to the stage. All files
+     * matching the glob become outputs of the pipeline stage.
+     * Note that no checking is done to really verify that the
+     * files were actually created by commands run by the body; if
+     * the files were really in earlier stages then they will
+     * be recapitulated as outputs again in this stage which
+     * may result in undesirable behavior.
+     * 
+     * @TODO above issue can possibly be mitigated if we do an 
+     * 		 upwards hierachical search to check outputs from prior
+     * 		 stages
+     * @TODO the case where an output directory is set is not yet
+     *       properly handled in the glob matching
      */
     Object produce(Object out, Closure body) { 
         log.info "Producing $out from $this"
@@ -605,10 +624,16 @@ class PipelineContext {
         def lastInputs = this.@input
         boolean doExecute = true
         
-        if(Utils.isNewer(out,lastInputs)) {
+		List fixedOutputs = Utils.box(out).grep { !it.contains("*") }
+		List globOutputs = Utils.box(out).grep { it.contains("*") }
+		
+		// Check for all existing files that match the globs
+		List globExistingFiles = globOutputs.collect { Utils.glob(it) }.flatten()
+			
+        if(Utils.isNewer(fixedOutputs + globExistingFiles,lastInputs)) {
           // No inputs were newer than outputs, 
           // but were the commands that created the outputs modified?
-          this.output = out
+          this.output = fixedOutputs
           this.probeMode = true
           this.trackedOutputs = [:]
           try {
@@ -628,10 +653,10 @@ class PipelineContext {
         
         if(doExecute) {
             if(Utils.box(this.@output)) {
-                this.output = Utils.box(out) + Utils.box(this.@output)
+                this.output = Utils.box(fixedOutputs) + Utils.box(this.@output)
             }
             else
-                this.output = out
+                this.output = fixedOutputs
             
             // Store the list of output files so that if we are killed 
             // they can be cleaned up
@@ -641,6 +666,21 @@ class PipelineContext {
             log.info("Producing from inputs ${this.@input}")
             body()
         }
+		
+		if(globOutputs) {
+			def normalizedInputs = Utils.box(this.@input).collect { new File(it).absolutePath }
+			for(String pattern in globOutputs) {
+				def result = Utils.glob(pattern).grep {  !normalizedInputs.contains( new File(it).absolutePath) }
+				
+				log.info "Found outputs for glob $pattern: [$result]"
+				
+				if(Utils.box(this.@output))
+					this.output = this.@output + result
+				else
+					this.output = result
+			}
+		}
+
         return out
     }
     
@@ -656,6 +696,7 @@ class PipelineContext {
      * based on the input pattern.
      * 
      * @param pattern
+     * @deprecated		This functionality is migrated into {@link #produce(Object, Closure)}
      */
     void split(String pattern, Closure c) {
 		
