@@ -97,7 +97,7 @@ class PipelineCategory {
     static Closure bitwiseNegate(Closure c, Object... args) {
         cfg(c,args)
     }
-    
+	
      /**
      * Joins two closures representing pipeline stages together by
      * creating wrapping closure that executes each one in turn.  This is the 
@@ -361,7 +361,7 @@ class PipelineCategory {
             }
             
             def nextInputs = []
-            pipelines.eachWithIndex { c,i ->
+            pipelines.eachWithIndex { Pipeline c,i ->
                 def out = c.stages[-1].context.nextInputs
                 log.info "Outputs from child $i :  $out context=${c.stages[-1].context.hashCode()}"
                 if(out)

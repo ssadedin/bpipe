@@ -270,7 +270,10 @@ diagrameditor""")
         pidLog.setFormatter(new BpipeLogFormatter())
         parentLog.addHandler(pidLog)
 
+		Properties p = System.properties
         log.info("Starting")
+        log.info("OS: " + p['os.name'] + " (" + p['os.version'] + ") Java: " + p['java.version'] + " Vendor: " + p["java.vendor"] )
+		
         return parentLog
     }
 

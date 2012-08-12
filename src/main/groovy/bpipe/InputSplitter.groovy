@@ -52,7 +52,7 @@ class InputSplitter {
             if(!m)
 			    continue
                 
-            String group = m[0][splitGroup+1]
+            String group = splitGroup >= 0 ? m[0][splitGroup+1] : "all"
             log.fine "The group:  $group"
             if(!unsortedResult.containsKey(group))
                 unsortedResult[group] = []
@@ -159,6 +159,7 @@ class InputSplitter {
         if(percPos < 0) {
 		    sorted = starPos
             sorted.sort()
+			percGroupPos = -1
         }
         
 		log.fine "% is group # " + percGroupPos
