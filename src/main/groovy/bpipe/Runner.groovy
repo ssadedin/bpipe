@@ -48,7 +48,7 @@ class Runner {
     
     
     static CliBuilder runCli = new CliBuilder(usage: 
-   """bpipe [run|test|debug] [-h] [-t] [-d] [-r] [-n <threads>] [-v] <pipeline> <in1> <in2>...
+   """bpipe [run|test|debug|execute] [-h] [-t] [-d] [-r] [-n <threads>] [-v] <pipeline> <in1> <in2>...
 history 
 log
 jobs
@@ -114,7 +114,6 @@ diagrameditor""")
             log.info("Mode is diagram editor")
             cli = diagramCli
             Config.config["mode"] = "diagrameditor"
-            
         }
         else 
         if(mode == "stopcommands") {
@@ -176,10 +175,17 @@ diagrameditor""")
         }
 
         def pipelineArgs = null
-        String pipelineSrc = loadPipelineSrc(cli, opt.arguments()[0])
+        String pipelineSrc
+        if(mode == "execute") {
+            pipelineSrc = 'Bpipe.run { ' + opt.arguments()[0] + '}'
+        }
+        else {
+            pipelineSrc = loadPipelineSrc(cli, opt.arguments()[0])
+        }
+        
         if(opt.arguments().size() > 1)
             pipelineArgs = opt.arguments()[1..-1]
-
+                
         // read the configuration file, if available
         try {
             Config.readUserConfig()

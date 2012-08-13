@@ -309,6 +309,7 @@ mkdir -p .bpipe/launch .bpipe/logs
 
 COMMAND="$1"
 TESTMODE=""
+MODEFLAG=""
 
 get_classpath
 
@@ -474,6 +475,11 @@ then
     shift 1
     TESTMODE="-t"
     COMMAND="run"
+elif [ "$COMMAND" == "execute" ];
+then
+    shift 1
+    MODEFLAG="-Dbpipe.mode=execute"
+    COMMAND="run"
 elif [ "$COMMAND" == "debug" ];
 then
     shift 1
@@ -505,10 +511,9 @@ BPIPE_ARGS="$*"
 # have java launch with its standard output captured to a log
 # file that contains its own PID.  
 nohup echo 'printf $$ > .bpipe.'$LAUNCHER_PID'.run.pid; 
-      exec java -Xmx'${MAX_JAVA_MEM}' -classpath "'"$CP"'" '$BPIPEDEBUG' -Dbpipe.pid='$LAUNCHER_PID' -Dbpipe.home='"$JVM_BPIPE_HOME"' -Dbpipe.version='$VERSION' -Dbpipe.builddate='$BUILDDATE' org.codehaus.groovy.tools.GroovyStarter --classpath "'"$CP"'" --main bpipe.Runner '$TESTMODE' '$BPIPE_ARGS' > .bpipe/logs/$$.log 2>&1' \
+      exec java -Xmx'${MAX_JAVA_MEM}' -classpath "'"$CP"'" '$BPIPEDEBUG' '$MODEFLAG' -Dbpipe.pid='$LAUNCHER_PID' -Dbpipe.home='"$JVM_BPIPE_HOME"' -Dbpipe.version='$VERSION' -Dbpipe.builddate='$BUILDDATE' org.codehaus.groovy.tools.GroovyStarter --classpath "'"$CP"'" --main bpipe.Runner '$TESTMODE' '$BPIPE_ARGS' > .bpipe/logs/$$.log 2>&1' \
      2>&1 | bash - > /dev/null 2>&1 &
 
-# We rely on 1 second be
 while [ ! -e .bpipe.$LAUNCHER_PID.run.pid ];
 do
   if type usleep > /dev/null 2>&1 ;
