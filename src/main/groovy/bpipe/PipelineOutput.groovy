@@ -107,6 +107,9 @@ class PipelineOutput {
      */
     def propertyMissing(String name) {
         
+        // When "produce", "transform" or "filter" is used, they specify
+        // the outputs,  so the output extension acts as a selector from
+        // those rather than a synthesis of a new name
         if(this.overrideOutputs) {
            return selectFromOverrides(name)  
         }
@@ -136,7 +139,7 @@ class PipelineOutput {
                                                 .replaceAll('\\.[^\\.]*$',branchSegment+'.'+stageName + '.'+name)
         }
         
-        if(this.outputUsed.startsWith(".")) // occurs when no inputs given to script and output extension used
+        if(this.outputUsed.startsWith(".") && !this.outputUsed.startsWith("./")) // occurs when no inputs given to script and output extension used
             this.outputUsed = this.outputUsed.substring(1) 
             
         if(this.outputChangeListener != null) {

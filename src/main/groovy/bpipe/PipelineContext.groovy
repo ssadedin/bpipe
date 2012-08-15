@@ -224,6 +224,7 @@ class PipelineContext {
     * String-like object that intercepts property references
     */
    def getOutput() {
+	   String baseOutput = Utils.first(this.getDefaultOutput()) 
        def out = output
        if(out == null) { // Output not set elsewhere
            
@@ -232,6 +233,10 @@ class PipelineContext {
                def resolved = Utils.unbox(inputWrapper.resolvedInputs[0])
                log.info("Using non-default output due to input property reference: " + resolved)
                out = resolved +"." + this.stageName
+               
+               // Since we're resolving based on a different input than the default one,
+               // the pipeline output wrapper should use a different one as a default too
+               baseOutput = out
            }
            else
                out = this.getDefaultOutput()
@@ -243,12 +248,11 @@ class PipelineContext {
 	   	   return null
 		   
        def pipeline = Pipeline.currentRuntimePipeline.get()
-	   String baseOutput = Utils.first(this.getDefaultOutput()) 
 	   String branchName = applyName  ? pipeline.name : null
 	   
        def po = new PipelineOutput(out,
    							     this.stageName, 
-							     Utils.first(this.getDefaultOutput()), 
+							     baseOutput,
 							     Utils.box(this.@output), 
 								 { allInferredOutputs << it; inferredOutputs << it; if(applyName) { pipeline.nameApplied=true}}) 
 	   

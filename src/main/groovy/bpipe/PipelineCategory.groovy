@@ -280,7 +280,7 @@ class PipelineCategory {
             for(Closure s in segments) {
                 log.info "Processing segment ${s.hashCode()}"
                 samples.each { id, files ->
-                    log.info "Creating pipeline to run sample $id with files $files"
+                    log.info "Creating pipeline to run parallel segment $id with files $files"
                     runningCount.incrementAndGet()
                     
                     Pipeline child = pipeline.fork()

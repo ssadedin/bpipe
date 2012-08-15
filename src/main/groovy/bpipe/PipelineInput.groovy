@@ -125,7 +125,7 @@ class PipelineInput {
         def relatedThreads = [Thread.currentThread().id, Pipeline.rootThreadId]
         synchronized(stages) {
             
-	        def reverseOutputs = stages.reverse().grep { it.context.threadId in relatedThreads}.collect { Utils.box(it.context.output) }
+	        def reverseOutputs = stages.reverse().grep { it.context.threadId in relatedThreads}.collect { Utils.box(it.context.@output) }
 	        
 	        // Add a final stage that represents the original inputs (bit of a hack)
 	        // You can think of it as the initial inputs being the output of some previous stage
