@@ -225,7 +225,7 @@ class PipelineContext {
     */
    def getOutput() {
 	   String baseOutput = Utils.first(this.getDefaultOutput()) 
-       def out = output
+       def out = this.@output
        if(out == null) { // Output not set elsewhere
            
            // If an input property was referenced, compute the default from that instead
@@ -414,6 +414,51 @@ class PipelineContext {
                   getOut() << line << "\n"
        }
    }
+   
+   void filterRows(Closure c) {
+       if(probeMode)
+           return
+       
+       if(!input)
+           throw new PipelineError("Attempt to grep on input but no input available")
+           
+       if(Runner.opts.t)
+           throw new PipelineTestAbort("Would execute filterLines on input $input")
+           
+	   String fileName = Utils.first(this.getOutput())
+	   if(Runner.opts.t)
+		   throw new PipelineTestAbort("Would write to output file $fileName")
+		
+	   def outStream = new FileOutputStream(fileName)
+  
+       File f = new File(isContainer(input)?input[0]:input)
+	   boolean first = true
+	   List<String> header = null
+	   f.eachLine {  line ->
+		   if(first) {
+			 first = false
+			 if(line.startsWith('#')) {
+				 header = line.substring(1).split('\t').collect { it.trim() }
+			 }  
+		   }
+		   
+		   List<String> cols
+		   if(!line.startsWith('#')) {
+			   cols = line.split('\t')
+			   if(header) {
+				   header.eachWithIndex { key,i ->
+					   this.localVariables[key] = cols[i]
+				   }
+			   }
+			   this.localVariables["col"] = cols
+		   }
+		   
+           if(line.startsWith("#") || c(cols)) {
+                  outStream << line << "\n"
+           }
+       }	   
+   }
+   
    
    /**
     * Search in the input file for lines matching speficied regex pattern
