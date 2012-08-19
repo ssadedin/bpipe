@@ -946,7 +946,7 @@ class PipelineContext {
        synchronized(pipelineStages) {
            reverseOutputs = pipelineStages.reverse().grep { 
                   isRelatedContext(it.context) && !it.context.is(this)
-           }.collect { Utils.box(it.context.output) }
+           }.collect { Utils.box(it.context.@output) }
            
            // Add a final stage that represents the original inputs (bit of a hack)
            // You can think of it as the initial inputs being the output of some previous stage
