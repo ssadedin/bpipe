@@ -16,7 +16,11 @@ class PipelineDelegate {
         this.context.set(ctx)
     }
     
-    ThreadLocal<PipelineContext> context = new ThreadLocal<PipelineContext>()
+    ThreadLocal<PipelineContext> context = new ThreadLocal<PipelineContext>() {
+		void set(PipelineContext c) {
+			super.set(c)
+		}
+	}
     
     static void setDelegateOn(PipelineContext context, Closure body) {
         synchronized(body) {
@@ -24,8 +28,12 @@ class PipelineDelegate {
                 ParameterizedClosure pc = body
                 context.localVariables = pc.getExtraVariables()
             }
-            
+			
+		
             if(body.getDelegate() == null || !(body.getDelegate() instanceof PipelineDelegate)) {
+				
+				log.fine "Existing delegate has type ${body.delegate.class.name} in thread ${Thread.currentThread().id}"
+		
                 def d = new PipelineDelegate(context)
                 body.setDelegate(d)
             }
@@ -36,7 +44,7 @@ class PipelineDelegate {
     }
     
     def methodMissing(String name, args) {
-//        println "Query for method $name on ${context.get()} via delegate ${this}"
+        log.fine "Query for method $name on ${context.get()} via delegate ${this} in thread ${Thread.currentThread().id}"
         return context.get().invokeMethod(name, args)
     }
     
@@ -45,7 +53,8 @@ class PipelineDelegate {
         // The context can be put into a mode where missing variables should echo themselves back
         // ie.  $foo will produce value $foo.  This is used to preserve $'d values in 
         // R scripts while still allowing interpretation of the ones we want ($input, $output, etc)
-		log.info "Query for $name on ${context.get()} via delegate ${this}"
+		
+		log.fine "Query for $name on ${context.get()} via delegate ${this} in thread ${Thread.currentThread().id}"
         
         PipelineContext ctx = context.get()
         

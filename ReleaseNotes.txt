@@ -1,3 +1,28 @@
+=========== Changes for Bpipe Version 0.9.6.1 ============
+
+    Issue 57: Same stage used with multiple different
+	      parameters in parallel causes errors
+
+    Issue 56: Input variable with extension sometimes
+	      references wrong files in parallel pipeline
+
+    --------: Support for new 'execute' command which runs a pipeline
+	      given directly by command line
+
+    Issue 53: Consecutive parallel segments cause
+              unexpected multiple execution of stages
+
+    --------:  Initial support for using produce with 'glob' style
+	       file names (split use case)
+
+=========== Changes for Bpipe Version 0.9.6 ============
+
+    --------: fixed null pointer exception when output extension
+	      used but no inputs provided (added test)
+
+    --------: fixed regression causing 'chr' not to be incorporated
+	      into pipeline output file names
+
 =========== Changes for Bpipe Version 0.9.6_beta_1 ============
 
     --------:  Notification constraints now supported for SMTP as

@@ -69,7 +69,11 @@ class ParameterizedClosure extends Closure {
 
     @Override
     public void setDelegate(Object delegate) {
-        body.setDelegate(delegate);
+		if(delegate && delegate instanceof PipelineDelegate && body.delegate && body.delegate instanceof PipelineDelegate)
+			body.delegate.context.set(delegate.context.get())
+		else
+	        body.setDelegate(delegate);
+			
         super.setDelegate(delegate);
     }
 }
