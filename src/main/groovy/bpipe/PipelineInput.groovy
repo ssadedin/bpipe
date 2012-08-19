@@ -155,7 +155,7 @@ class PipelineInput {
 	            throw new PipelineError("Unable to locate one or more specified inputs from pipeline with extension(s) $orig")
 	            
 			log.info "Found files with exts $exts : $filesWithExts"
-	        return filesWithExts
+	        return filesWithExts.unique()
         }
     }
 }
