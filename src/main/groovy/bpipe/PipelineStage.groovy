@@ -107,7 +107,7 @@ class PipelineStage {
 		// Note: although it would appear these are being injected at a per-pipeline level,
 		// in fact they end up as globally shared variables across all parallel threads
 		// (there IS only ONE binding for a closure and only ONE closure instance getting 
-		// executed, even by multiple threads). All per-pipeline state is maintained inside
+		// executed, even by multiple threads). All per-thread state is maintained inside
 		// the PipelineContext.
         if(body.properties.containsKey("binding")) {
              this.context.extraBinding.variables.each { k,v ->
@@ -189,6 +189,7 @@ class PipelineStage {
                 this.context.output = nextInputs
 
             context.defaultOutput = null
+            log.info "Setting next inputs $nextInputs on context ${context.hashCode()} in thread ${Thread.currentThread().id}"
             context.nextInputs = nextInputs
         }
         catch(PipelineTestAbort e) {

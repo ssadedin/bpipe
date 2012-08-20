@@ -2,15 +2,14 @@ source ../testsupport.sh
 
 source ./cleanup.sh
 
-run test.txt
-
-grep -q "Stage hello" test.out || err "Failed to find expected stage hello"
-grep -q "Stage world" test.out || err "Failed to find expected stage world"
+# note option -n 1 is important for this test
+bpipe run -n 1 test.groovy s_1.txt > test.out 2>&1
+ 
+grep -q "Stage how_are_you" test.out || err "Failed to find expected stage how_are_you"
+grep -q "Stage take_me_to_your_leader" test.out || err "Failed to find expected stage take_me_to_your_leader"
 grep -q "Stage end" test.out || err "Failed to find expected stage end"
 
-[ ! -f test.txt.hello ] && err "Failed to find expected output test.txt.hello"
-[ ! -f test.txt.hello.world ] && err "Failed to find expected output test.txt.hello.world"
-[ ! -f test.txt.hello.take_me_to_your_leader ] && err "Failed to find expected output test.txt.hello.take_me_to_your_leader"
-[ ! -f test.txt.hello.how_are_you ] && err "Failed to find expected output test.txt.hello.how_are_you"
+grep -q "inputs=.*s_1.txt.how_are_you.a .*s_1.txt.take_me_to_your_leader.a" test.out || err "Failed to find expected stage end"
+
 
 true

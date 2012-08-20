@@ -260,9 +260,7 @@ public class Pipeline {
      */
     void runSegment(def inputs, Closure s, AtomicInteger counter) {
         try {
-            
-            if(currentRuntimePipeline.get() == null) 
-                currentRuntimePipeline.set(this)
+            currentRuntimePipeline.set(this)
         
             this.rootContext = createContext()
 			

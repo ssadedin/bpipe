@@ -1,1 +1,1 @@
-rm test.txt.* s_1.txt.*
+rm -f s_1.txt.*

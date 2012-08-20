@@ -1,15 +1,9 @@
 /*
- * Simplest possible test using inputs and outputs
- * join them together in a pipeline
+ * Parallel segments that use the *same* stage
+ * should work independently even though they are both running
+ * the same stage, using the same thread (in this test,
+ * Bpipe is run using -n 1 to force a single thread).
  */
-hello = {
-	exec "cp $input $output"
-}
-
-world = {
-  msg "world inputs=$inputs"
-  exec "cp $input $output"
-}
 
 how_are_you = {
   msg "how_are inputs=$inputs"
@@ -30,8 +24,7 @@ end = {
 	exec "cat $inputs > $output"
 }
 
-// Stage world should execute in parallel with how_are_you 
 // All the outputs should get forwarded to the 'end' stage
-Bpipe.run {
-	"s_%.txt" * [world + [how_are_you + a, take_me_to_your_leader + a] ] + end
+run {
+	"s_%.txt" * [how_are_you + a, take_me_to_your_leader + a]  + end
 }
