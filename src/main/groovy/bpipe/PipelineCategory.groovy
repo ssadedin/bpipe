@@ -182,8 +182,8 @@ class PipelineCategory {
             
             log.info "multiply on input $input on set " + objs
             
-            def currentStage = new PipelineStage(pipeline.createContext(), {})
-            pipeline.addStage(currentStage)
+            def currentStage = new PipelineStage(Pipeline.currentRuntimePipeline.get().createContext(), {})
+            Pipeline.currentRuntimePipeline.get().addStage(currentStage)
             currentStage.context.setInput(input)
             
             AtomicInteger runningCount = new AtomicInteger()
@@ -201,7 +201,7 @@ class PipelineCategory {
                 chrs.each { chr ->
                     log.info "Creating pipeline to run on chromosome $chr"
                     runningCount.incrementAndGet()
-                    Pipeline child = pipeline.fork()
+                    Pipeline child = Pipeline.currentRuntimePipeline.get().fork()
                     currentStage.children << child
                     Closure segmentClosure = s
                     threads << {

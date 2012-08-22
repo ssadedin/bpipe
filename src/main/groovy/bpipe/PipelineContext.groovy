@@ -1022,7 +1022,7 @@ class PipelineContext {
        }
        
        if(resolvedInputs.any { it == null})
-           throw new PipelineError("Unable to locate one or more specified resolvedInputs matching spec $orig")
+           throw new PipelineError("Unable to locate one or more inputs ending with $orig")
            
        // resolvedInputs = Utils.unbox(resolvedInputs)
        resolvedInputs = resolvedInputs.flatten()
