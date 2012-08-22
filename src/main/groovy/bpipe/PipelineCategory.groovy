@@ -35,6 +35,8 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import groovy.util.logging.Log;
 import java.util.regex.Pattern;
 
@@ -149,8 +151,8 @@ class PipelineCategory {
         Closure mul = multiply("*", segments)
         def plusImplementation =  { input1 ->
             
-            def currentStage = new PipelineStage(pipeline.createContext(), other)
-            pipeline.addStage(currentStage)
+            def currentStage = new PipelineStage(Pipeline.currentRuntimePipeline.get().createContext(), other)
+            Pipeline.currentRuntimePipeline.get().addStage(currentStage)
             currentStage.context.setInput(input1)
             currentStage.run()
             Utils.checkFiles(currentStage.context.output)
@@ -244,7 +246,6 @@ class PipelineCategory {
      * <code>"sample_%_*.txt" * [stage1 + stage2 + stage3]</code>
      */
     static Object multiply(String pattern, List segments) {
-        Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
         segments = segments.collect { 
             if(it instanceof List) {
                 return multiply("*",it)
@@ -253,13 +254,17 @@ class PipelineCategory {
                 return it
         }
         
+        Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
+        
         def multiplyImplementation = { input ->
             
             log.info "multiply on input $input with pattern $pattern"
             
-            def currentStage = new PipelineStage(pipeline.createContext(), {})
-            pipeline.addStage(currentStage)
+            PipelineStage currentStage = new PipelineStage(pipeline.createContext(), {})
+            Pipeline.currentRuntimePipeline.get().addStage(currentStage)
             currentStage.context.setInput(input)
+            
+            log.info "Created pipeline stage ${currentStage.hashCode()} for parallel block"
             
             // Match the input
             InputSplitter splitter = new InputSplitter()
@@ -283,7 +288,7 @@ class PipelineCategory {
                     log.info "Creating pipeline to run parallel segment $id with files $files"
                     runningCount.incrementAndGet()
                     
-                    Pipeline child = pipeline.fork()
+                    Pipeline child = Pipeline.currentRuntimePipeline.get().fork()
                     currentStage.children << child
                     Closure segmentClosure = s
                     threads << {
@@ -362,13 +367,23 @@ class PipelineCategory {
             
             def nextInputs = []
             pipelines.eachWithIndex { Pipeline c,i ->
+                
+                if(log.isLoggable(Level.FINE))
+                    log.fine "Inspecting outputs from segment with stages: ${[c.stages.collect{it.hashCode()},c.stages.collect{it.stageName}].transpose().join(':')}"
+                
                 def out = c.stages[-1].context.nextInputs
-                log.info "Outputs from child $i :  $out context=${c.stages[-1].context.hashCode()}"
+                
+                if(!out)
+                    out = c.stages[-1].context.@output
+                
+                if(log.isLoggable(Level.FINE))
+                    log.info "Next inputs from child $i :  $out stage=${c.stages[-1].hashCode()}, context=${c.stages[-1].context.hashCode()}"
+                
                 if(out)
-                    nextInputs += out
+                    nextInputs += Utils.box(out)
+                    
             }
             currentStage.context.output = nextInputs
-            
             Utils.checkFiles(currentStage.context.output)
             
             return nextInputs

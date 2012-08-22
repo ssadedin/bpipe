@@ -170,8 +170,9 @@ class PipelineStage {
             else { 
 				use(StringExtrasCategory) {
 	                def returnedInputs = body(context.@input)
-					if(joiner)
+					if(joiner) {
 						context.nextInputs = returnedInputs
+					}
 				}
             }
                 
@@ -185,11 +186,13 @@ class PipelineStage {
             def newFiles = findNewFiles(oldFiles, modified)
             def nextInputs = determineForwardedFiles(newFiles)
                 
-            if(!this.context.@output)
-                this.context.output = nextInputs
+            if(!this.context.@output) {
+                // log.info "No explicit output on stage ${this.hashCode()} context ${this.context.hashCode()} so output is nextInputs $nextInputs"
+                this.context.output = nextInputs 
+            }
 
             context.defaultOutput = null
-            log.info "Setting next inputs $nextInputs on context ${context.hashCode()} in thread ${Thread.currentThread().id}"
+            log.info "Setting next inputs $nextInputs on stage ${this.hashCode()}, context ${context.hashCode()} in thread ${Thread.currentThread().id}"
             context.nextInputs = nextInputs
         }
         catch(PipelineTestAbort e) {
