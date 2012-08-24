@@ -263,7 +263,7 @@ public class Pipeline {
             currentRuntimePipeline.set(this)
         
             this.rootContext = createContext()
-			
+            
             def currentStage = new PipelineStage(rootContext, s)
             log.info "Running segment with inputs $inputs"
             this.addStage(currentStage)
@@ -291,7 +291,7 @@ public class Pipeline {
                 synchronized(counter) {
                     counter.notifyAll()
                 }
-				log.info "Notified parent that segment for inputs $inputs is finished"
+                log.info "Notified parent that segment for inputs $inputs is finished"
             }
         }
     }
@@ -333,8 +333,14 @@ public class Pipeline {
             // Build the actual pipeline
             Pipeline.withCurrentUnderConstructionPipeline(this) {
                 constructedPipeline = pipeline()
+                
+				// See bug #60
+                if(constructedPipeline instanceof List) {
+                    constructedPipeline = PipelineCategory.splitOnFiles("*", constructedPipeline, false)
+                }
             }
             
+        
             if(launch) {
                 try {
                     runSegment(inputFile, constructedPipeline, null)

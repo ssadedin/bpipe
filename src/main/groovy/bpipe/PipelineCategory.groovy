@@ -246,6 +246,17 @@ class PipelineCategory {
      * <code>"sample_%_*.txt" * [stage1 + stage2 + stage3]</code>
      */
     static Object multiply(String pattern, List segments) {
+		splitOnFiles(pattern,segments,true)
+	}
+	
+    /**
+     * Implements the syntax that allows an input filter to 
+     * break inputs into samples and pass to multiple parallel 
+     * stages in the form
+     * <p>
+     * <code>"sample_%_*.txt" * [stage1 + stage2 + stage3]</code>
+     */
+    static Object splitOnFiles(String pattern, List segments, boolean requireMatch) {
         segments = segments.collect { 
             if(it instanceof List) {
                 return multiply("*",it)
@@ -270,12 +281,15 @@ class PipelineCategory {
             InputSplitter splitter = new InputSplitter()
             Map samples = splitter.split(pattern, input)
             
+			if(samples.isEmpty() && !requireMatch && pattern == "*")		
+				samples["*"] = input
+			
             if(samples.isEmpty()) 
                 if(input)
                     throw new PipelineError("The pattern provided '$pattern' did not match any of the files provided as input $input")
                 else
                     throw new PatternInputMissingError("An input pattern was specified '$pattern' but no inputs were given when Bpipe was run.")
-                
+					
             AtomicInteger runningCount = new AtomicInteger()
             
             // Now we have all our samples, make a 
