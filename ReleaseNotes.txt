@@ -1,3 +1,22 @@
+=========== Changes for Bpipe Version 0.9.7 ============
+
+    Issue 61: Errors when running Bpipe with JDK7
+
+    Issue 60: Pipeline consisting of ONLY parallel
+	      segment fails
+
+    --------: Fixed issues with multiple nested parallel segments
+	      (3 or more) forwarding incorrect inputs to following
+	      stages
+
+    Issue 59: Parallel segments utilizing the same stage
+	      mix up outputs if run with low thread constraint
+	      removed spurious error printed while running tests
+	      test for bug in parallel pipelines reusing same stage
+
+    --------: Fix same file returned multiple times when resolving
+	      input extension file matches
+
 =========== Changes for Bpipe Version 0.9.6.1 ============
 
     Issue 57: Same stage used with multiple different
