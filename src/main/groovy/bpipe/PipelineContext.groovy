@@ -961,9 +961,12 @@ class PipelineContext {
     /**
      * Write a message to the output of the current stage
      */
-    static void msg(def m) {
+    void msg(def m) {
         def date = (new Date()).format("HH:mm:ss")
-        println "$date MSG:  $m"
+		if(branch)
+	        println "$date MSG [$branch]:  $m"
+		else
+	        println "$date MSG:  $m"
     }
    
    /**

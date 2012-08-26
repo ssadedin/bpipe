@@ -121,6 +121,9 @@ class PipelineStage {
         def oldFiles = new File(context.outputDirectory).listFiles() as List
         oldFiles = oldFiles?:[]
         boolean joiner = (body in this.context.pipelineJoiners)
+		
+		// The name used for displaying this stage
+		String displayName = "Unknown Stage"
         try {
             oldFiles.removeAll { File f -> IGNORE_NEW_FILE_PATTERNS.any { f.name.matches(it) } || f.isDirectory() }
             def modified = oldFiles.inject([:]) { result, f -> result[f] = f.lastModified(); return result }
@@ -130,13 +133,15 @@ class PipelineStage {
                 stageName = 
                     PipelineCategory.closureNames.containsKey(body) ? PipelineCategory.closureNames[body] : "${stageCount}"
 	            context.stageName = stageName
+				
+				displayName = pipeline.name ? "$stageName [$pipeline.name]" : stageName
                     
                 println ""
-                println " Stage ${stageName} ".center(Config.config.columns,"=")
-                CommandLog.cmdLog << "# Stage $stageName"
+                println " Stage ${displayName} ".center(Config.config.columns,"=")
+                CommandLog.cmdLog << "# Stage $displayName"
                 ++stageCount
                 
-                EventManager.instance.signal(PipelineEvent.STAGE_STARTED, "Starting stage $stageName", [stage:this])
+                EventManager.instance.signal(PipelineEvent.STAGE_STARTED, "Starting stage $displayName", [stage:this])
                 
                 if(context.output == null && context.@defaultOutput == null) {
                     if(context.@input) {
@@ -157,7 +162,7 @@ class PipelineStage {
                     else
                         context.defaultOutput = stageName
                 }
-                log.info("Stage $stageName : INPUT=${context.@input} OUTPUT=${context.output}")
+                log.info("Stage $displayName : INPUT=${context.@input} OUTPUT=${context.output}")
             }   
             context.stageName = stageName
             
@@ -178,7 +183,7 @@ class PipelineStage {
                 
             succeeded = true
             if(!joiner) {
-                log.info("Stage $stageName returned $context.nextInputs as default inputs for next stage")
+                log.info("Stage $displayName returned $context.nextInputs as default inputs for next stage")
             }
                 
             context.uncleanFilePath.text = ""
@@ -201,7 +206,7 @@ class PipelineStage {
         catch(Exception e) {
             
             if(!succeeded && !joiner) 
-                EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $context.stageName has Failed")
+                EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")
             
             log.info("Retaining pre-existing files $oldFiles from outputs")
             cleanupOutputs(oldFiles)
@@ -209,7 +214,7 @@ class PipelineStage {
         }
 		finally {
             if(!joiner) 
-	            EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $stageName", [stage:this])
+	            EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", [stage:this])
 		}
         
         Utils.checkFiles(context.output,"output")

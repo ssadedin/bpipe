@@ -315,7 +315,7 @@ public class Pipeline {
         def cmdlog = CommandLog.cmdLog
         if(launch) {
             cmdlog.write("")
-            String startDateTime = (new Date()).format("yyyy-MM-dd") + " "
+            String startDateTime = (new Date()).format("yyyy-MM-dd HH:mm") + " "
             cmdlog << "#"*Config.config.columns 
             cmdlog << "# Starting pipeline at " + (new Date())
             cmdlog << "# Input files:  $inputFile"

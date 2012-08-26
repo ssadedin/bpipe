@@ -318,6 +318,8 @@ class PipelineCategory {
                                 
                                 log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
                                 child.addStage(dummyPriorStage)
+								child.name = id
+								child.nameApplied = true
                                 child.runSegment(files, segmentClosure, runningCount)
                             }
                             catch(Exception e) {
