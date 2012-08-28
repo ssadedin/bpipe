@@ -191,11 +191,15 @@ class PipelineContext {
    def output
    
    void setOutput(o) {
+       setRawOutput(toOutputFolder(o))
+   }
+   
+   void setRawOutput(o) {
        log.info "Setting output $o on context ${this.hashCode()} in thread ${Thread.currentThread().id}"
        if(Thread.currentThread().id != threadId)
            log.warn "Thread output being set to $o from wrong thread ${Thread.currentThread().id} instead of $threadId"
-           
-       this.@output = toOutputFolder(o)
+ 	   
+       this.@output = o
    }
    
    /**
@@ -224,7 +228,7 @@ class PipelineContext {
     * String-like object that intercepts property references
     */
    def getOutput() {
-	   String baseOutput = Utils.first(this.getDefaultOutput()) 
+       String baseOutput = Utils.first(this.getDefaultOutput()) 
        def out = this.@output
        if(out == null) { // Output not set elsewhere
            
@@ -244,20 +248,22 @@ class PipelineContext {
        
        trackOutput(Utils.box(out))
        
-	   if(!out)
-	   	   return null
-		   
+       if(!out)
+              return null
+           
+       out = toOutputFolder(out)
+       
        def pipeline = Pipeline.currentRuntimePipeline.get()
-	   String branchName = applyName  ? pipeline.name : null
-	   
+       String branchName = applyName  ? pipeline.name : null
+       
        def po = new PipelineOutput(out,
-   							     this.stageName, 
-							     baseOutput,
-							     Utils.box(this.@output), 
-								 { allInferredOutputs << it; inferredOutputs << it; if(applyName) { pipeline.nameApplied=true}}) 
-	   
-	   po.branchName = branchName
-	   return po
+                                    this.stageName, 
+                                 baseOutput,
+                                 Utils.box(this.@output), 
+                                 { allInferredOutputs << it; inferredOutputs << it; if(applyName) { pipeline.nameApplied=true}}) 
+       
+       po.branchName = branchName
+       return po
    }
    
    def getOutputs() {
@@ -319,7 +325,8 @@ class PipelineContext {
        if(!outputFolder.exists())
            outputFolder.mkdirs()
            
-       def newOutputs = Utils.box(outputs).collect { this.outputDirectory + "/" + new File(it.toString()).name }
+       String outPrefix = this.outputDirectory == "." ? "" : this.outputDirectory + "/" 
+       def newOutputs = Utils.box(outputs).collect { outPrefix + new File(it.toString()).name }
        return Utils.unbox(newOutputs)
    }
    
