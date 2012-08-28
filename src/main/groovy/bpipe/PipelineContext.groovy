@@ -1022,6 +1022,10 @@ class PipelineContext {
                }
 //               log.info("Checking outputs ${s} vs $inp N")
            }
+           
+           // Not found - if the file exists as a path in its own right use that
+           if(new File(ext).exists())
+               return ext
        }
        
        if(resolvedInputs.any { it == null})
