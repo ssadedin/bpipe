@@ -212,7 +212,10 @@ class PipelineCategory {
                                 // all "inputs" reflected as some output of an earlier stage
                                 PipelineContext dummyPriorContext = pipeline.createContext()
                                 PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
-                                dummyPriorContext.output = input
+                                
+                                // Note: must be raw output because otherwise the original inputs (from other folders)
+                                // can get redirected to the output folder
+                                dummyPriorContext.setRawOutput(input)
                                 
                                 log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
                                 pipeline.addStage(dummyPriorStage)
@@ -246,9 +249,9 @@ class PipelineCategory {
      * <code>"sample_%_*.txt" * [stage1 + stage2 + stage3]</code>
      */
     static Object multiply(String pattern, List segments) {
-		splitOnFiles(pattern,segments,true)
-	}
-	
+        splitOnFiles(pattern,segments,true)
+    }
+    
     /**
      * Implements the syntax that allows an input filter to 
      * break inputs into samples and pass to multiple parallel 
@@ -281,9 +284,9 @@ class PipelineCategory {
             InputSplitter splitter = new InputSplitter()
             Map samples = splitter.split(pattern, input)
             
-			if(samples.isEmpty() && !requireMatch && pattern == "*")		
-				samples["*"] = input
-			
+            if(samples.isEmpty() && !requireMatch && pattern == "*")        
+                samples["*"] = input
+            
             if(samples.isEmpty()) 
                 if(input)
                     throw new PipelineError("The pattern provided '$pattern' did not match any of the files provided as input $input")
@@ -313,13 +316,15 @@ class PipelineCategory {
                                 // all "inputs" reflected as some output of an earlier stage
                                 PipelineContext dummyPriorContext = pipeline.createContext()
                                 PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
-                                dummyPriorContext.output = files
+                                
+                                // Need to set this without redirection to the output folder because otherwise
+                                dummyPriorContext.setRawOutput(files)
                                 dummyPriorContext.@input = files
                                 
                                 log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
                                 child.addStage(dummyPriorStage)
-								child.name = id
-								child.nameApplied = true
+                                child.name = id
+                                child.nameApplied = true
                                 child.runSegment(files, segmentClosure, runningCount)
                             }
                             catch(Exception e) {
