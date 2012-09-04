@@ -452,6 +452,11 @@ public class Pipeline {
     static List<File> loadedPaths = []
     
     /**
+     * Genomes that have been loaded
+     */
+    static Map<String,RegionSet> genomes = [:]
+    
+    /**
      * Include pipeline stages from the specified path into the pipeline
      * @param path
      */
@@ -461,6 +466,16 @@ public class Pipeline {
             throw new PipelineError("A file requested to be loaded from path $path but this path could not be accessed.")
             
         loadedPaths << f
+    }
+    
+    
+    static synchronized void genome(String name) {
+        File genomes = new File(System.getProperty("user.home"), ".bpipedb/genomes")
+        if(!genomes.exists())
+            if(!genomes.mkdirs())
+                throw new IOException("Unable to create directory to store genomes. Please check permissions for $genomes")
+                
+        genomes[name] = RegionSet.load(name)
     }
     
     /**
