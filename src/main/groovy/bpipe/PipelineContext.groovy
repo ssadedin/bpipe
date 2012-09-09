@@ -1055,6 +1055,16 @@ class PipelineContext {
        return this.nextInputs
    }
    
+   // Convenience overloads for #from
+   Object from(String f1, String f2, Closure body) { from([f2,f2],body) }
+   Object from(String f1, String f2, String f3, Closure body) { from([f2,f2,f3],body) }
+   Object from(String f1, String f2, String f3, String f4, Closure body) { from([f2,f2,f3,f4],body) }
+   Object from(String f1, String f2, String f3, String f4, String f5, Closure body) { from([f2,f2,f3,f4,f5],body) }
+   Object from(String f1, String f2, String f3, String f4, String f5, String f6, Closure body) { from([f2,f2,f3,f4,f5,f6],body) }
+   Object from(String f1, String f2, String f3, String f4, String f5, String f6, String f7, Closure body) { from([f2,f2,f3,f4,f5,f6,f7],body) }
+   Object from(String f1, String f2, String f3, String f4, String f5, String f6, String f7, String f8, Closure body) { from([f2,f2,f3,f4,f5,f6,f7,f8],body) }
+   Object from(String f1, String f2, String f3, String f4, String f5, String f6, String f7, String f8, String f9, Closure body) { from([f2,f2,f3,f4,f5,f6,f7,f8,f9],body) }
+  
    public void forward(nextInputOverride) {
        this.nextInputs = nextInputOverride
        if(this.nextInputs instanceof PipelineInput)

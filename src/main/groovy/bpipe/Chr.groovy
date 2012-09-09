@@ -63,4 +63,8 @@ class Chr implements Comparable<Chr> {
 			
 		return knownValues[index-1]
 	}
+    
+    RegionValue getRegion() {
+        return new RegionValue(value:name)
+    }
 }
