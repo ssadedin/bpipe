@@ -104,7 +104,7 @@ class Sequence implements Serializable {
         int middle = (this.range.to - this.range.from) / 2
         
         // The gap between features that we will try to bisect
-        Range gap = range(this.range.from..this.range.to)
+        GenomicRange gap = range(this.range.from..this.range.to)
         
          // Try not to bisect a feature
         Gene lower = this.genes.lowerEntry(middle)?.value
