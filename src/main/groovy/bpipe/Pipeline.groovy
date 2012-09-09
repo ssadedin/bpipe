@@ -309,8 +309,18 @@ public class Pipeline {
                 log.info "External reference $it.key is overridden by local reference"    
         }
         
-        // Add all the pipeline variables to the external binding
+        // We have to manually add all the external variables to the outer pipeline stage
+        Pipeline.genomes.each { 
+            log.info "Loaded genome reference: $it.key"
+            if(!pipeline.binding.variables.containsKey(it.key))
+                pipeline.binding.variables.put(it.key,it.value) 
+            else
+                log.info "Genome $it.key is overridden by local reference"    
+        }
+        
+         // Add all the pipeline variables to the external binding
         this.externalBinding.variables += pipeline.binding.variables
+        
         
         def cmdlog = CommandLog.cmdLog
         if(launch) {
@@ -332,6 +342,7 @@ public class Pipeline {
             
             // Build the actual pipeline
             Pipeline.withCurrentUnderConstructionPipeline(this) {
+                
                 constructedPipeline = pipeline()
                 
 				// See bug #60
@@ -468,14 +479,40 @@ public class Pipeline {
         loadedPaths << f
     }
     
-    
+    /**
+     * Load the specified genome model into memory, possibly downloading it from UCSC
+     * if necessary
+     */
     static synchronized void genome(String name) {
-        File genomes = new File(System.getProperty("user.home"), ".bpipedb/genomes")
-        if(!genomes.exists())
-            if(!genomes.mkdirs())
-                throw new IOException("Unable to create directory to store genomes. Please check permissions for $genomes")
+        File genomesDir = new File(System.getProperty("user.home"), ".bpipedb/genomes")
+        if(!genomesDir.exists())
+            if(!genomesDir.mkdirs())
+                throw new IOException("Unable to create directory to store genomes. Please check permissions for $genomesDir")
                 
-        genomes[name] = RegionSet.load(name)
+        
+        // Construct a UCSC URL based on the given name and then download the genes from there
+        File cachedGenome = new File(genomesDir, "${name}.ser.gz")
+        RegionSet genome
+        if(cachedGenome.exists()) {
+            log.info "Loading cached genome : $cachedGenome"
+            long startTimeMs = System.currentTimeMillis()
+            genome = RegionSet.load(cachedGenome) 
+            println "Finished loading genome $cachedGenome in ${System.currentTimeMillis() - startTimeMs} ms"
+            
+        }
+        else {
+            String url = "http://hgdownload.soe.ucsc.edu/goldenPath/$name/database/ensGene.txt.gz"
+            log.info "Downloading genome from $url"
+            new URL(url).openStream().withStream { stream ->
+                genome = RegionSet.index(stream) 
+                genome.name = name
+                new FileOutputStream(cachedGenome).withStream { outStream ->
+                    new ObjectOutputStream(outStream) << genome
+                }
+            }
+        }
+                
+        Pipeline.genomes[name] = genome
     }
     
     /**

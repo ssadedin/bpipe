@@ -1,14 +1,17 @@
 package bpipe
 
 import groovy.util.logging.Log;
+import static bpipe.GenomicRange.range
 
 /**
  * A simple data structure to hold information about a gene
+ * 
+ * @TODO: rename this to 'Feature' so as to generalise
  * @author ssadedin
  */
 class Gene implements Serializable {
     String name
-    Range<Integer> location
+    GenomicRange location
 }
 
 /**
@@ -21,9 +24,11 @@ class Gene implements Serializable {
 @Log
 class Sequence implements Serializable {
     
+    private static final long serialVersionUID = 1L;
+    
     String name
     
-    Range<Integer> range = 0..0
+    GenomicRange range = new GenomicRange(0..0)
     
     TreeMap<Integer, Gene> genes = new TreeMap()
     
@@ -63,7 +68,7 @@ class Sequence implements Serializable {
         }
             
         if(!gene) {
-            gene = new Gene(name:geneName, location:start..end)
+            gene = new Gene(name:geneName, location:range(start..end))
             genesByName[geneName] = gene
             if(genes[start])
                 throw new IllegalStateException("Gene $geneName already started at $start as gene ${genes[start].name}")
@@ -80,8 +85,11 @@ class Sequence implements Serializable {
         if(start < this.range.from)    
             this.range.from = start
             
-        if(end > this.range.to)
+        if(end > this.range.to) {
+//            println "End is ${end.class.name}"
+//            println "Range to is ${range.to.class.name}"
             this.range.to = end
+        }
             
         return gene
     }
@@ -95,29 +103,39 @@ class Sequence implements Serializable {
         
         int middle = (this.range.to - this.range.from) / 2
         
-        // Try not to bisect a gene
-        Gene lower = this.genes.lowerEntry(middle).value
-        log.fine "Lower gene is $lower.name from $lower.location.from - $lower.location.to middle is $middle"
+        // The gap between features that we will try to bisect
+        Range gap = range(this.range.from..this.range.to)
         
-        if(middle in lower.location)
-            log.fine "Split bisects gene"
+         // Try not to bisect a feature
+        Gene lower = this.genes.lowerEntry(middle)?.value
+        if(lower) {
+            log.fine "Lower feature is $lower.name from $lower.location.from - $lower.location.to middle is $middle"
+            gap.from = lower.location.to
             
-        Gene higher = this.genes.higherEntry(middle).value
-        log.fine "Higher gene is $higher.name from $higher.location.from - $higher.location.to"
+            if(middle in lower.location)
+                log.fine "Split bisects gene"
+         }
         
-        if(higher.is(lower))
-            lower = this.genes.lowerEntry(middle-1).value
-        
-        middle = lower.location.to + (higher.location.from - lower.location.to) / 2
-        if(middle <= lower.location.to)
+        Gene higher = this.genes.higherEntry(middle)?.value
+        if(higher) {
+            gap.to = higher.location.from
+            if(higher.is(lower)) {
+                lower = this.genes.lowerEntry(middle-1)?.value
+                gap.from = lower ? lower.location.to : this.range.from
+            }
+            log.fine "Higher gene is $higher.name from $higher.location.from - $higher.location.to"
+        }
+       
+        middle = gap.to + (gap.from - gap.to) / 2
+        if(lower && middle <= lower.location.to)
             throw new IllegalStateException("Bisecting distance between genes produced a location inside the lower gene. Please report this as a bug.")
         
-        if(higher.location.from - lower.location.to < 10000) 
+        if(higher && lower && higher.location.from - lower.location.to < 10000) 
             log.warning "Bisecting genes $lower.name and $higher.name produced a split < 5kb apart"
         
         return [
-            new Sequence(name: this.name, genes: this.genes.headMap(middle), range: this.range.from..middle),
-            new Sequence(name: this.name, genes: this.genes.tailMap(middle+1), range:middle..this.range.to)
+            new Sequence(name: this.name, genes: this.genes.headMap(middle), range: range(this.range.from..middle)),
+            new Sequence(name: this.name, genes: this.genes.tailMap(middle+1), range: range(middle..this.range.to))
         ]
     }
     

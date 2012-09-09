@@ -219,7 +219,9 @@ class PipelineCategory {
                                 
                                 log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
                                 pipeline.addStage(dummyPriorStage)
-                                child.variables += [chr: chr.name]
+                                def region = chr.region
+                                child.variables += [chr: region]
+                                child.variables += [region: region]
                                 child.name = chr.name
                                 child.runSegment(input, segmentClosure, runningCount)
                             }

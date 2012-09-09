@@ -1,9 +1,15 @@
 package bpipe
 
+import java.util.zip.GZIPInputStream;
+
 import groovy.util.logging.Log;
 
 @Log
-class RegionSet {
+class RegionSet implements Serializable {
+    
+    private static final long serialVersionUID = 1L;
+    
+    String name
 
     /**
      * Set of sequences belonging to this RegionSet.
@@ -18,7 +24,7 @@ class RegionSet {
     }
     
     RegionSet(Sequence seq) {
-        this.chromosomes[seq.name] = seq
+        this.sequences[seq.name] = seq
     }
     
     RegionSet(List<Sequence> seqs) {
@@ -27,14 +33,19 @@ class RegionSet {
         }
     }
 
-    static RegionSet index(File file) {
+    /**
+     * Read a tab separated file in the format provided by UCSC for genes
+     * to infer a genome model as a set of regions.
+     */
+    static RegionSet index(InputStream stream) {
 
         RegionSet g = new RegionSet()
-
-        file.splitEachLine(~/\t/) { cols ->
-
+        int count = 0
+        new GZIPInputStream(stream).eachLine { line ->
+            if(count %1000 == 0)
+                log.info "Processing line $count"
+            List cols = line.split("\t")
             // println  "Gene name = " + cols[12] + " Chr = " + cols[2] + " tx start = " + cols[4] + " tx end = " + cols[5]
-
             String chr = cols[2]
             Sequence s = g.sequences[chr]
             if(!s) {
@@ -42,8 +53,13 @@ class RegionSet {
                 g.sequences[chr] = s
             }
             s.add(cols[12], cols[4] as int, cols[5] as int)
+            ++count
         }
         return g
+    }
+    
+    static RegionSet load(File file) {
+        new FileInputStream(file).withStream { new ObjectInputStream(it).readObject() }
     }
     
     /**
@@ -56,6 +72,14 @@ class RegionSet {
             name = s.name + "." + (++count)       
         }
         this.sequences[name] = s    
+    }
+    
+    
+    /**
+     * A synonym for {@link #group(int)}
+     */
+    Set<RegionSet> split(int parts) {
+        group(parts)
     }
     
     /**
@@ -72,41 +96,78 @@ class RegionSet {
      */
     Set<RegionSet> group(int parts) {
         
+        // A sorted set ordered by size and then object to 
+        SortedSet<RegionSet> results = new TreeSet({ a,b -> b.size().compareTo(a.size())?:a.hashCode().compareTo(b.hashCode())} as Comparator)
+        
         // We start with a new RegionSet for each sequence
-        SortedSet<RegionSet> results = new TreeSet({ a,b -> a.size() < b.size()})
         results.addAll(sequences.collect { new RegionSet(it.value) })
         
+        log.info "Grouping ${results.size()} sequences into $parts groups"
+        
         // While the number of parts is too large we should combine smaller ones together
+        log.info "*** Combining regions to decrease to $parts parts"
         while(results.size() > parts) {
            combineSmallest(results)
         }
         
-        // TODO: While number of parts too small, split apart large sequences
+        // While number of parts too small, split apart large sequences
+        log.info "*** Splitting regions to increase to $parts parts"
         while(results.size() < parts) {
             // Split the largest region set into two
-            splitLargest(results)
+            if(!splitLargest(results))
+                break
         }
         
-        // TODO: While number of parts too uneven, split largest part, invoke
-        // above loop again (refactor!) to reduce down 
+        // While number of parts too uneven, split largest part, invoke
+        // above loop again to reduce down 
+        while(results.first().size() > 2*results.last().size()) {
+            log.info "*** Rebalancing regions due to ${results.first().size()} > 2 x ${results.last().size()}"
+            if(!splitLargest(results))
+                break
+            combineSmallest(results)
+        }
+        results.eachWithIndex { r,i -> r.name = name + "."+i }
+        return results
     }
     
-    void splitLargest(SortedSet results) {
+    boolean splitLargest(SortedSet results) {
         
         RegionSet largest = results.first()
         
-        List result = largest.splitInTwo()
-        results.remove(largest)
+        def (large,small) = largest.splitInTwo()
+        float ratio = (float)large.size() / (float)small.size()
         
-        log.info "Splitting largest region sof size ${largest.size()} into parts of size [${results[0].size()}, ${results[1].size()} to increase parallelism to ${results.size()+1}"
-        
-        results.add(result[0])
-        results.add(result[1])
+        assert ratio > 1.0f
+        if(ratio > 0.1 && ratio < 10) {
+            results.remove(largest)
+            
+            log.info "Splitting largest region sof size ${largest.size()} into parts of size [${large.size()}, ${small.size()} (ratio=$ratio) to increase parallelism to ${results.size()+2}"
+            
+            results.add(large)
+            results.add(small)
+            return true
+        }
+        else 
+            return false
     }
     
     /**
      * Return a RegionSet that is this RegionSet split into two RegionSets 
      * containing approximately the same amount of genomic sequence.
+     * <p>
+     * This works in two passes. First it tries to do the split simply by 
+     * sorting whole sequences into two separate RegionSet objects.  If that 
+     * produces a result where the ranges are within a factor of 2 then it is 
+     * accepted as the result. This implements a strong preference to maintain
+     * whole sequences if possible.
+     * <p>
+     * However if the regions are unbalanced by more than a factor of two
+     * then the algorithm tries to divide one of the sequences into two. It 
+     * selects the largest sequence in the largest region and tries to split it.
+     * If that produces a split of more than 10% it is accepted, but if the split
+     * itself is very unbalanced then the next sequence is tried until it runs out. 
+     * It is possible no split is possible that will return a balanced result 
+     * in which case the algorithm gives up and returns the unbalanced split.
      */
     List splitInTwo() {
         List<Sequence> ordered = ([] + sequences.values()).sort { it.size() }.reverse()
@@ -124,14 +185,40 @@ class RegionSet {
                 result2.addSequence(s)
         }
         
-        if(result1.size() > 2*result2.size()) {
-            // Take the largest sequence from result 1 and split it in two
-            Sequence largest = result1.sequences.max { it.value.size() }.value
-            List split = largest.split()
-            log.info "Sequence $largest split to ${split[0]} and ${split[1]}"
-            result1.removeSequence(largest)
-            result1.addSequence(split[0])
-            result2.addSequence(split[1])
+        List<Sequence> ordered2 = ([] + result1.sequences.values()).sort { it.size() }.reverse()
+        
+        // This loop exits when every sequence from result1 has been tried as a 
+        // split candidate OR when the results are sufficiently balanced
+        while(result1.size() > 2*result2.size()) {
+            // Take the largest sequence left that divides nicely from sequence1 and split it
+            while(ordered2) {
+                Sequence largest = ordered2[0]
+                ordered2.remove(largest)
+                
+                List split = largest.split()
+                if(split[0].size() && split[1].size()) {
+                    float ratio = (float)split[0].size()/(float)split[1].size()
+                    if(ratio > 0.1f && ratio < 10f) {
+                        log.info "Sequence $largest split to ${split[0]} and ${split[1]}"
+                        result1.removeSequence(largest)
+                        
+                        // We keep preferencing result1 as the largest region
+                        if(split[0].size()>split[1].size()) {
+                            result1.addSequence(split[0])
+                            result2.addSequence(split[1])
+                        }
+                        else {
+                            result1.addSequence(split[1])
+                            result2.addSequence(split[0])
+                        }
+                        break
+                    }
+                    else
+                        log.info "Ratio $ratio of split ${split[0]} and ${split[1]} to low/high to justify"
+                }
+            }
+            if(!ordered2)
+                break
         }
         
         return [result1,result2]
@@ -157,10 +244,10 @@ class RegionSet {
 		RegionSet secondSmallest = results.last()
 		results.remove(secondSmallest)
 
-		log.info("Combining regions $smallest and $secondSmallest to reduce parallelism to ${results.size()-1}")
+		log.info("Combining regions $smallest and $secondSmallest to reduce parallelism to ${results.size()+1}")
 
-		// Combine the two smallest and add them back in as a single genome
-		results.add(new RegionSet(smallest.sequences.values() + secondSmallest.values.collection()))
+		// Combine the two smallest and add them back in as a single RegionSet
+		results.add(new RegionSet(smallest.sequences.values() + secondSmallest.sequences.values()))
 	}
     
     long size() {
@@ -168,5 +255,13 @@ class RegionSet {
         long result = 0
         this.sequences.each { result += it.value.size() }
         return result
+    }
+    
+    String toString() {
+        "RegionSet[sequences=${sequences.values()}]"
+    }
+    
+    RegionValue getRegion() {
+        new RegionValue(value:this.sequences.values().collect { Sequence s -> "$s.name:$s.range.from-$s.range.to" }.join(" "))
     }
 }
