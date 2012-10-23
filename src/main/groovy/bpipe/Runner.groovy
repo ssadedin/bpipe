@@ -33,8 +33,11 @@ import java.util.logging.Logger;
 import groovy.util.logging.Log
 
 /**
- * A small wrapper that parses command line arguments and forwards execution
- * to the user's script
+ * The main entry point for Bpipe.
+ * <p>
+ * Handles parsing and validation of command line parameters and flags,
+ * reads the user script and creates a Groovy shell to run the script
+ * with variables initialized correctly.
  * 
  * @author simon.sadedin@mcri.edu.au
  */
@@ -47,14 +50,19 @@ class Runner {
     final static String builddate = System.getProperty("bpipe.builddate")?:System.currentTimeMillis()
     
     
-    static CliBuilder runCli = new CliBuilder(usage: 
-   """bpipe [run|test|debug|execute] [-h] [-t] [-d] [-r] [-n <threads>] [-v] <pipeline> <in1> <in2>...
-history 
-log
-jobs
-diagram
-diagrameditor""")
+    final static String DEFAULT_HELP = """
+        bpipe [run|test|debug|execute] [-h] [-t] [-d] [-r] [-n <threads>] [-v] <pipeline> <in1> <in2>...
+              retry [test]
+              stop
+              history 
+              log
+              jobs
+              diagram <pipeline> <in1> <in2>...
+              diagrameditor <pipeline> <in1> <in2>...
+    """.stripIndent().trim()
     
+    static CliBuilder runCli = new CliBuilder(usage: DEFAULT_HELP)
+          
     static CliBuilder stopCommandsCli = new CliBuilder(usage: "bpipe stopcommands\n")
     
     static CliBuilder diagramCli = new CliBuilder(usage: "bpipe diagram [-e] <pipeline> <input1> <input2> ...\n")
