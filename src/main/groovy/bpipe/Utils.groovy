@@ -65,7 +65,7 @@ class Utils {
         
         // Some pipeline stages don't expect any outputs
         // Fixing issue 44 - https://code.google.com/p/bpipe/issues/detail?id=44
-        if(outputs == null || inputs == null)
+        if( !outputs || !inputs )
             return false
 
         // Box into a collection for simplicity

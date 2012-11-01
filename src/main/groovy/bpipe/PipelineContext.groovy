@@ -674,7 +674,7 @@ class PipelineContext {
         log.info "Producing $out from $this"
         
         // Unwrap any wrapped inputs that may have been passed in the outputs
-        // and cooerce them to the correct output folder
+        // and coerce them to the correct output folder
         out = toOutputFolder(Utils.unwrap(out))
         
         def lastInputs = this.@input
@@ -1119,7 +1119,7 @@ class PipelineContext {
     }
     
     /**
-     * @return true iff one or more of the commands in the current 
+     * @return true if one or more of the commands in the current
      *         {@link #trackedOutputs} is inconsistent with those
      *         stored in the file system
      */
