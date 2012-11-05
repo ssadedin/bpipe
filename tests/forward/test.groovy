@@ -15,7 +15,7 @@ fine = {
 
 world = {
   msg " $input => $output"
-	exec "if [ $input != './test.txt.hello' ]; then exit 1; else cp $input $output; fi;  "
+  exec "if [ $input != 'test.txt.hello' ]; then exit 1; else cp $input $output; fi;  "
 }
 
 run {
