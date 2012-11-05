@@ -49,6 +49,11 @@ class PipelineContext {
      * File where half processed files will be listed on shutdown
      */
     public static File UNCLEAN_FILE_PATH = new File(".bpipe/inprogress")
+    
+    /**
+     * Directory where metadata for pipeline stage outputs will be written
+     */
+    public final static String OUTPUT_METADATA_DIR = ".bpipe/outputs/"
    
     /**
      * Create a Pipeline Context with the specified adidtional bound variables and
@@ -651,7 +656,7 @@ class PipelineContext {
      * by the given closure, and skips execution of the closure
      * if the output(s) are newer than all the current inputs.  
      * <p>
-     * The outputs can contain gob characters to specify filename
+     * The outputs can contain glob characters to specify filename
      * patterns rather than concrete file names.  In such cases, 
      * <code>produce</code> specifies that at <i>least</i> one 
      * file name matching the glob pattern will be produced by the
@@ -850,6 +855,17 @@ class PipelineContext {
             this.commandManager.cleanup(p)
     }
     
+    
+    /**
+     * Due to bugs in R with concurrent R sessions being launched simultaneously
+     * we actually block using this object
+     */
+    static Object rLock = new Object()
+    
+    static long lastRSessionMs = -1L
+    
+    static final long RSESSION_SEPARATION_MS = 2000
+    
     /**
      * Executes the specified script as R code 
      * @param scr
@@ -865,7 +881,16 @@ class PipelineContext {
         
         if(!inputWrapper)
            inputWrapper = new PipelineInput(this.@input, pipelineStages)
-           
+
+       synchronized(rLock) {
+           long now = System.currentTimeMillis()
+           if(now - lastRSessionMs < RSESSION_SEPARATION_MS) {
+               log.info "Waiting $RSESSION_SEPARATION_MS due to prior R session started in conflict with this one"
+               Thread.sleep(RSESSION_SEPARATION_MS)
+           }
+           lastRSessionMs = System.currentTimeMillis()
+       }
+       
        boolean oldEchoFlag = this.echoWhenNotFound
        try {
             this.echoWhenNotFound = true
@@ -1107,11 +1132,10 @@ class PipelineContext {
      * Return a {@link File} that indicates the path where
      * metadata for the specified output & file should be stored.
      * 
-     * @param cmd        The command that produced the output file
      * @param outputFile The name of the output file
      */
     File getOutputMetaData(String outputFile) {
-        File outputsDir = new File(".bpipe/outputs/")
+        File outputsDir = new File(OUTPUT_METADATA_DIR)
         if(!outputsDir.exists()) 
             outputsDir.mkdirs()
         
