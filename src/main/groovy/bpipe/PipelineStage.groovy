@@ -162,7 +162,7 @@ class PipelineStage {
                     else
                         context.defaultOutput = stageName
                 }
-                log.info("Stage $displayName : INPUT=${context.@input} OUTPUT=${context.output}")
+                log.info("Stage $displayName : INPUT=${context.@input} OUTPUT=${context.defaultOutput}")
             }   
             context.stageName = stageName
             
@@ -180,6 +180,12 @@ class PipelineStage {
 					}
 				}
             }
+            
+            // Clear the link to output references from affecting the output
+            // this stops any references we make below from potentially modifying the
+            // outputs
+            if(this.context.output)
+              this.context.output.outputChangeListener = null
                 
             succeeded = true
             if(!joiner) {
@@ -220,8 +226,8 @@ class PipelineStage {
         Utils.checkFiles(context.output,"output")
         
         // Save the database of files created
-        if(Config.config.enableCommandTracking)
-            saveOutputs()
+        // if(Config.config.enableCommandTracking)
+        Dependencies.instance.saveOutputs(context)
         
         return context.nextInputs
     }
@@ -331,34 +337,6 @@ class PipelineStage {
         // Since we operated on local file names only so far, we have to restore the
         // output directory to the name
         return newFiles.collect { context.outputDirectory + "/" + it }
-    }
-    
-    /**
-     * For each output file created in the context, save information
-     * about it such that it can be reliably loaded by this same stage
-     * if the pipeline is re-executed.
-     */
-    void saveOutputs() {
-        context.trackedOutputs.each { String cmd, List<String> outputs ->
-            for(def o in outputs) {
-                o = Utils.first(o)
-                if(!o)
-                    continue
-                    
-                File file = context.getOutputMetaData(o)
-                String hash = Utils.sha1(cmd+"_"+o)
-
-                Properties p = new Properties()
-                p.command = cmd
-                p.outputFile = o
-                p.fingerprint = hash
-                
-                log.info "Saving output file details to file $file for command " + Utils.truncnl(cmd, 20)
-                file.withOutputStream { ofs ->
-                    p.save(ofs, "Bpipe File Creation Meta Data")
-                }
-            }
-        }
     }
     
     /**
