@@ -232,7 +232,7 @@ get_classpath() {
 
   CP="$BPIPE_HOME"/$LIB/bpipe.jar:"$BPIPE_HOME"/$LIB/groovy-all-1.8.6.jar:$BPIPE_HOME/$LIB/commons-cli-1.2.jar:$BPIPE_HOME/$LIB/jgraphx.jar:$BPIPE_HOME/$LIB/smack-3.2.2.jar:$BPIPE_HOME/$LIB/mail.jar
 
-  # In case we are running in place in the bpipe project root, we pre-empt any other 
+  # In case we are running in place in the bpipe project root, we pre-empty any other 
   # bpipe classes with those from the build directory and the eclipse compile path
   if [ -e $BPIPE_HOME/build/classes/main ] || [ -e $BPIPE_HOME/eclipse-build ];
   then
