@@ -227,7 +227,7 @@ class PipelineStage {
         
         // Save the database of files created
         // if(Config.config.enableCommandTracking)
-        Dependencies.instance.saveOutputs(context)
+        //        Dependencies.instance.saveOutputs(context)
         
         return context.nextInputs
     }
