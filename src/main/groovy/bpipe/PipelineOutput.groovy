@@ -87,6 +87,8 @@ class PipelineOutput {
     }
     
     String toString() {
+        if(this.outputChangeListener)
+          this.outputChangeListener(Utils.first(output))
         return String.valueOf(Utils.first(output))
     }
    
@@ -129,7 +131,11 @@ class PipelineOutput {
         // If the extension of the output is the same as the extension of the 
         // input then this is more like a filter; remove the previous output extension from the path
         // eg: foo.csv.bar => foo.baz.csv
-        String branchSegment = branchName ? "." + branchName : ""
+        String branchSegment = branchName ? '.' + branchName : ''
+        if(stageName.equals(this.output)) {
+           this.outputUsed = this.defaultOutput + '.' + name 
+        }
+        else
         if(this.output.endsWith(name+"."+stageName)) {
             log.info("Replacing " + name+"\\."+stageName + " with " +  stageName+'.'+name)
             this.outputUsed = this.defaultOutput.replaceAll(name+"\\."+stageName, branchSegment + stageName+'.'+name)
