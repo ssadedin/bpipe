@@ -59,6 +59,7 @@ class PipelineInput {
     }
     
     String toString() {
+        this.resolvedInputs += Utils.first(input)
         return String.valueOf(Utils.first(input));
     }
 	

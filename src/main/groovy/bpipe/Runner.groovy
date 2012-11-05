@@ -57,6 +57,7 @@ class Runner {
               history 
               log
               jobs
+              cleanup
               diagram <pipeline> <in1> <in2>...
               diagrameditor <pipeline> <in1> <in2>...
     """.stripIndent().trim()
@@ -123,6 +124,12 @@ class Runner {
             cli = diagramCli
             Config.config["mode"] = "diagrameditor"
         }
+        else 
+        if(mode == "cleanup") {
+            log.info("Cleaning up redundant files")
+            Dependencies.instance.cleanup()
+            System.exit(0)
+        }         
         else 
         if(mode == "stopcommands") {
             log.info("Stopping running commands")

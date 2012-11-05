@@ -351,6 +351,11 @@ then
         echo
     fi
     exit
+elif [ "$COMMAND" == "cleanup" ];
+then
+    shift 1
+    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=cleanup bpipe.Runner $* 
+    exit
 elif [ "$COMMAND" == "diagram" ];
 then
     shift 1
