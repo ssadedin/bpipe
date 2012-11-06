@@ -143,6 +143,9 @@ function clean_job_files() {
 # These are usually cleaned up by the Java process
 # itself, however we still do it here to deal with
 # the case where the Java process is hard-killed.
+#
+# NOTE: this is not the implementation of the user-level
+# "cleanup" command!
 #----------------------------------------------------------
 cleanup() {
     # Check for any unclean output files 
@@ -354,8 +357,11 @@ then
 elif [ "$COMMAND" == "cleanup" ];
 then
     shift 1
-    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=cleanup bpipe.Runner $* 
-    exit
+    exec java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=cleanup bpipe.Runner $* 
+elif [ "$COMMAND" == "query" ];
+then
+    shift 1
+    exec java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=query bpipe.Runner $* 
 elif [ "$COMMAND" == "diagram" ];
 then
     shift 1

@@ -25,6 +25,8 @@
  */  
 package bpipe
 
+import javax.swing.text.StyledEditorKit.ForegroundAction;
+
 import groovy.util.logging.Log;
 
 class GraphEntry {
@@ -51,11 +53,46 @@ class GraphEntry {
         findBy { it.outputFile == outputFile }
     }
     
+    /**
+     * Create a copy of the subtree for this GraphEntry and its children (but NOT parents!)
+     */
+    GraphEntry clone() {
+        new GraphEntry(values: values.clone(), parents: parents.clone(), children: children.collect { it.clone() })
+    }
+    
     void depthFirst(Closure c) {
         
         c(this)
         
         this.children*.depthFirst(c)
+    }
+    
+    /**
+     * Filter the graph so that only paths containing the specified output remain
+     */
+    GraphEntry filter(String output) {
+        GraphEntry outputEntry = this.entryFor(output)
+        
+        GraphEntry result = outputEntry.clone()
+        
+        GraphEntry root = null
+        
+        def trimParent 
+        trimParent = { GraphEntry p, GraphEntry c, int index ->
+            // Remove all parents that don't contain the child
+            p = new GraphEntry(values: p.values, parents: p.parents, children: [c]) 
+            c.parents[index] = p
+            
+            // Recurse upwards
+            if(p.parents)
+                p.parents.eachWithIndex { gp, pindex -> trimParent(gp, p, pindex) }
+            else
+                root = p
+        }
+        
+        outputEntry.parents.eachWithIndex { p,index -> trimParent(p, result, index) }
+        
+        return root
     }
    
     String dump(int indent = 0) {
@@ -90,7 +127,10 @@ class Dependencies {
 
                 Properties p = new Properties()
                 p.command = cmd
-                p.inputs = context.@inputWrapper?.resolvedInputs?.join(',')?:''
+                
+                def allInputs = ((context.@inputWrapper?.resolvedInputs?:[]) + context.allResolvedInputs).flatten().unique()
+                
+                p.inputs = allInputs.join(',')?:''
                 p.outputFile = o
                 p.timestamp = String.valueOf(new File(o).lastModified())
                 p.fingerprint = hash
@@ -104,6 +144,10 @@ class Dependencies {
     }
     
     
+    /**
+     * Computes the files that are created as non-final products of the pipeline and 
+     * shows them to the user, offering to delete them.
+     */
     void cleanup() {
         
         List<Properties> outputs = scanOutputFolder()
@@ -112,6 +156,8 @@ class Dependencies {
         
         // Start by scanning the output folder for dependency files
         def graph = computeOutputGraph(outputs)
+        
+        println "\nOutput graph is: \n\n" + graph.dump()
         
         // Identify the leaf nodes
         List leaves = findLeaves(graph)
@@ -128,13 +174,38 @@ class Dependencies {
         }
         else {
             // Print out each leaf
-            println "\nThe following intermediate files will be removed: "
-            println '\t' + internalNodes*.outputFile.join('\t\n')
-            println "To retain files, cancel this command and use 'bpipe preserve' to preserve the files you wish to keep\n"
+            println "\nThe following intermediate files will be removed:\n"
+            println '\t' + internalNodes*.outputFile.join('\n\t')
+            println "\nTo retain files, cancel this command and use 'bpipe preserve' to preserve the files you wish to keep\n"
         }
     }
     
+    void queryOutputs(def args) {
+        // Start by scanning the output folder for dependency files
+        List<Properties> outputs = scanOutputFolder()
+        def graph = computeOutputGraph(outputs)
+        
+        if(args) {
+            for(String arg in args) {
+                println "\n" + " $arg ".center(Config.config.columns, "=")  + "\n"
+                println "\n" + graph.filter(arg).dump()
+            }
+            println("\n" + ("=" * Config.config.columns))
+        }
+        else {
+               println "\nDependency graph is: \n\n" + graph.dump()
+        }
+    }
    
+    /**
+     * Scan the given list of output file properties and reconstruct the 
+     * dependency graph of the input / output structure.
+     * 
+     * @param outputs   a List of properties objects, loaded from the properties files
+     *                  saved by Bpipe as each stage executed (see {@link #saveOutputs(PipelineContext)})
+     *                  
+     * @return          the root node in the graph of outputs
+     */
     GraphEntry computeOutputGraph(List<Properties> outputs, GraphEntry rootTree = null) {
         
         if(!outputs) {

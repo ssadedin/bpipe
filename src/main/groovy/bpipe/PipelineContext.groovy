@@ -228,6 +228,8 @@ class PipelineContext {
     */
    def allInferredOutputs = []
    
+   def allResolvedInputs = []
+   
    /**
     * The default output property reference.  Actually returns a quasi
     * String-like object that intercepts property references
@@ -1074,6 +1076,8 @@ class PipelineContext {
        this.getInput().resolvedInputs << resolvedInputs
        
        this.nextInputs = body()
+       
+       allResolvedInputs += this.getInput().resolvedInputs
        
        this.@input  = oldInputs
        this.@inputWrapper = null

@@ -131,6 +131,12 @@ class Runner {
             System.exit(0)
         }         
         else 
+        if(mode == "query") {
+            log.info("Cleaning up redundant files")
+            Dependencies.instance.queryOutputs(args)
+            System.exit(0)
+        }         
+        else 
         if(mode == "stopcommands") {
             log.info("Stopping running commands")
             cli = stopCommandsCli
