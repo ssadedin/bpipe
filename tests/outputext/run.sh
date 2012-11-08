@@ -9,7 +9,7 @@ grep -q "Stage world" test.out || err "Failed to find expected stage world"
 
 run test.txt
 
-grep -q "Skipping execution" test.out || err "Failed to find stage being skipped on second run"
+grep -q "Skipping command" test.out || err "Failed to find stage being skipped on second run"
 
 
 [ ! -f test.hello.csv ] && err "Failed to find expected output test.hello.csv"

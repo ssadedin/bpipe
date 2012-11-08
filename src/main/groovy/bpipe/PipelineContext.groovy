@@ -247,7 +247,7 @@ class PipelineContext {
                
                // Since we're resolving based on a different input than the default one,
                // the pipeline output wrapper should use a different one as a default too
-               baseOutput = out
+               baseOutput = toOutputFolder(out)
            }
            else
                out = this.getDefaultOutput()
@@ -692,8 +692,7 @@ class PipelineContext {
 		
 		// Check for all existing files that match the globs
 		List globExistingFiles = globOutputs.collect { Utils.glob(it) }.flatten()
-			
-        if(Utils.isNewer(fixedOutputs + globExistingFiles,lastInputs)) {
+        if(Dependencies.instance.checkUpToDate(fixedOutputs + globExistingFiles,lastInputs)) {
           // No inputs were newer than outputs, 
           // but were the commands that created the outputs modified?
           this.output = fixedOutputs
@@ -765,7 +764,7 @@ class PipelineContext {
 		
 		def files = Utils.glob(pattern)
         try {
-			if(files && Utils.isNewer(files, this.@input)) {
+			if(files && !Utils.findOlder(files, this.@input)) {
 				msg "Skipping execution of split because inputs [" + this.@input + "] are newer than ${files.size()} outputs starting with " + Utils.first(files)
 				log.info "Split body not executed because inputs " + this.@input + " older than files matching split: $files"
 				return
@@ -957,8 +956,8 @@ class PipelineContext {
       // $ouput.<ext> form in their commands. These are intercepted at string evaluation time
       // (prior to the async or exec command entry) and set as inferredOutputs until
       // the command is executed, and then we wipe them out
-      if(!probeMode && this.inferredOutputs && Utils.isNewer(this.inferredOutputs,this.@input)) {
-          String message = "Skipping execution of command " + Utils.truncnl(joined, 30) + " due to inferred outputs newer than inputs"
+      if(!probeMode && this.inferredOutputs && Dependencies.instance.checkUpToDate(this.inferredOutputs,this.@input)) {
+          String message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " due to inferred outputs $inferredOutputs newer than inputs ${this.@input}"
           log.info message
           msg message
           

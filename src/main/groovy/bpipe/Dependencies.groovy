@@ -25,8 +25,6 @@
  */  
 package bpipe
 
-import javax.swing.text.StyledEditorKit.ForegroundAction;
-
 import groovy.util.logging.Log;
 
 class GraphEntry {
@@ -94,10 +92,18 @@ class GraphEntry {
         
         return root
     }
+    
+    String dump() {
+        String inputs = this.values*.inputs.flatten().join(',') + ' => \n'
+        inputs + dumpChildren(inputs.size())
+    }
    
-    String dump(int indent = 0) {
+    /**
+     * Render this graph entry as a tree
+     */
+    String dumpChildren(int indent = 0) {
         String me = values*.outputFile.join(",") + (children?" => \n":"")  
-        return (" " * indent) + me + children*.dump(indent+me.size()).join('\n')
+        return (" " * indent) + me + children*.dumpChildren(indent+me.size()).join('\n')
     }
 }
 
@@ -109,6 +115,55 @@ class GraphEntry {
 @Singleton
 @Log
 class Dependencies {
+    
+    GraphEntry outputGraph
+    
+    /**
+     * Return true iff all the outputs and downstream outputs for which
+     * they are dependencies are present and up to date.
+     * 
+     * @param outputs
+     * @param inputs
+     * @return
+     */
+    boolean checkUpToDate(def outputs, def inputs) {
+        
+        inputs = Utils.box(inputs)
+        
+        // If there are no outputs then by definition, they are all up to date
+        if(!outputs)
+            return true
+        
+        // If the outputs are created from nothing (no inputs)
+        // then they are up to date as long as they exist
+        if(!inputs) 
+            return outputs.collect { new File(it) }.every { it.exists() }
+            
+        // The most obvious case: all the outputs exist and are newer than 
+        // the inputs. We can return straight away here
+        List<File> older = Utils.findOlder(outputs,inputs)
+        if(!older)
+            return true
+        else
+            return false
+        
+        synchronized(this) {
+          if(this.outputGraph == null)
+              this.outputGraph = computeOutputGraph(scanOutputFolder())
+        }
+        
+        // TODO:
+        // 1. find all leaf nodes that are children of each older file
+        //    in the above graph
+        // 
+        // 2. if the file exists and is older, return false
+        //
+        // 3. if the file does not exist, find all leaf nodes
+        //    connected to the file.  For each leaf node,
+        //    verify the path to the leaf node is populated with
+        //    either existing files or missing files marked as cleaned
+        //    and having newer timestamps than their inputs
+    }
     
     /**
      * For each output file created in the context, save information
@@ -130,16 +185,37 @@ class Dependencies {
                 
                 def allInputs = ((context.@inputWrapper?.resolvedInputs?:[]) + context.allResolvedInputs).flatten().unique()
                 
+                p.propertyFile = file.name
                 p.inputs = allInputs.join(',')?:''
                 p.outputFile = o
                 p.timestamp = String.valueOf(new File(o).lastModified())
                 p.fingerprint = hash
+                p.cleaned = false
                 
-                log.info "Saving output file details to file $file for command " + Utils.truncnl(cmd, 20)
-                file.withOutputStream { ofs ->
-                    p.save(ofs, "Bpipe File Creation Meta Data")
-                }
+                saveOutputMetaData(p)
             }
+        }
+    }
+    
+    /**
+     * Store the given properties file as an output meta data file
+     */
+    void saveOutputMetaData(Properties p) {
+        
+        p = p.clone()
+        
+        File file = new File(PipelineContext.OUTPUT_METADATA_DIR, p.propertyFile)
+        
+        // Undo possible format conversions so everything is strings
+        if(p.inputs instanceof List)
+            p.inputs = p.inputs.join(",")
+        
+        p.cleaned = String.valueOf(p.cleaned)
+        p.timestamp = String.valueOf(p.timestamp)
+        
+        log.info "Saving output file details to file $file for command " + Utils.truncnl(p.command, 20)
+        file.withOutputStream { ofs ->
+            p.save(ofs, "Bpipe Output File Meta Data")
         }
     }
     
@@ -151,8 +227,6 @@ class Dependencies {
     void cleanup() {
         
         List<Properties> outputs = scanOutputFolder()
-        
-//        println "Found outputs: " + outputs.collect { it.outputFile }.join('\n')
         
         // Start by scanning the output folder for dependency files
         def graph = computeOutputGraph(outputs)
@@ -176,7 +250,23 @@ class Dependencies {
             // Print out each leaf
             println "\nThe following intermediate files will be removed:\n"
             println '\t' + internalNodes*.outputFile.join('\n\t')
-            println "\nTo retain files, cancel this command and use 'bpipe preserve' to preserve the files you wish to keep\n"
+            println "\nTo retain files, cancel this command and use 'bpipe preserve' to preserve the files you wish to keep"
+            print "\nRemove these files? (y/n): "
+            def answer = System.in.withReader { it.readLine() }
+            
+            if(answer == "y") {
+                internalNodes.each { removeOutputFile(it) }
+            }
+        }
+    }
+    
+    void removeOutputFile(Properties outputFileProperties) {
+        outputFileProperties.cleaned = true
+        saveOutputMetaData(outputFileProperties)
+        File outputFile = new File(outputFileProperties.outputFile)
+        if(!outputFile.delete()) {
+            log.warn("Failed to delete output file ${outputFileProperties.absolutePath}")
+            System.err.println "Failed to delete file ${outputFileProperties.absolutePath}"
         }
     }
     
@@ -255,11 +345,21 @@ class Dependencies {
                 def p = new Properties(); 
                 new FileInputStream(it).withStream { p.load(it) } 
                 p.timestamp = Long.parseLong(p.timestamp)
-                p.inputs = p.inputs.split(",")
+                p.inputs = p.inputs.split(",") as List
+                p.cleaned = Boolean.parseBoolean(p.cleaned)
                 return p
         }.sort { it.timestamp }
     }
     
+    /**
+     * Return a list of GraphEntry objects whose outputs
+     * do not appear as inputs for any other entries. These
+     * are effectively the "leaves" or final outputs of the 
+     * dependency tree.
+     * 
+     * @param graph
+     * @return
+     */
     List<GraphEntry> findLeaves(GraphEntry graph) {
         def result = []
         graph.depthFirst {

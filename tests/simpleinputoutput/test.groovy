@@ -10,6 +10,6 @@ world = {
 	exec "cp $input $output"
 }
 
-Bpipe.run {
+run {
 	hello + world 
 }

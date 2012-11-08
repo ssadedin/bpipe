@@ -56,36 +56,39 @@ class Utils {
     }
     
     /**
-     * Return true iff all outputs are newer than all inputs
-     * @param outputs     a single string or collection of strings
+     * Returns a list of output files that appear to be out of date
+     * because they are either missing or older than one of the input
+     * files
+     * 
+     * @param outputs   a single string or collection of strings
      * @param inputs    a single string or collection of strings
      * @return
      */
-    static boolean isNewer(def outputs, def inputs) {
+    static List findOlder(def outputs, def inputs) {
         
         // Some pipeline stages don't expect any outputs
         // Fixing issue 44 - https://code.google.com/p/bpipe/issues/detail?id=44
         if( !outputs || !inputs )
-            return false
+            return []
 
         // Box into a collection for simplicity
         outputs = box(outputs)
     
-        outputs.collect { new File(it) }.every { outFile ->
+        outputs.collect { new File(it) }.grep { outFile ->
             
 //            println "Check $outFile"
             if(!outFile.exists()) {
 //                println "file doesn't exist: $outFile"
-                return false
+                return true
             }
                 
             if(inputs instanceof String || inputs instanceof GString) {
                 if(outFile.name == inputs) {
-                    return true
+                    return false
                 }
                 else {
 //                    println "Check $inputs : " + new File(inputs).lastModified() + " <=  " + outFile + " : " + outFile.lastModified() 
-                    return (new File(inputs).lastModified() <= outFile.lastModified()) 
+                    return (new File(inputs).lastModified() > outFile.lastModified()) 
                 }
             }
             else
@@ -93,13 +96,13 @@ class Utils {
 //                println "Checking $outFile against inputs $inputs"
                 return !inputs.collect { new File(it) }.any { inFile ->
 //                    println "Check $inFile : " + inFile.lastModified() + " >  " + "$outFile : " + outFile.lastModified() 
-                    inFile.lastModified() > outFile.lastModified() 
+                    inFile.lastModified() < outFile.lastModified() 
                 }
             }
             else 
                 throw new PipelineError("Don't know how to interpret $inputs of type " + inputs.class.name)
                 
-            return false    
+            return true    
         }
     }
     

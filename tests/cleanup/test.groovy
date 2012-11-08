@@ -25,5 +25,5 @@ take = {
 }
 
 run {
-	hello + take
+	hello + there + world + take
 }
