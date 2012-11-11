@@ -48,7 +48,7 @@ class GraphEntry {
      * Search the graph for entry with given outputfile
      */
     GraphEntry entryFor(String outputFile) {
-        findBy { it.outputFile == outputFile }
+        findBy { it.outputFile.name == outputFile }
     }
     
     /**
@@ -102,7 +102,7 @@ class GraphEntry {
      * Render this graph entry as a tree
      */
     String dumpChildren(int indent = 0) {
-        String me = values*.outputFile.join(",") + (children?" => \n":"")  
+        String me = values*.outputFile*.name.join(",") + (children?" => \n":"")  
         return (" " * indent) + me + children*.dumpChildren(indent+me.size()).join('\n')
     }
 }
@@ -213,6 +213,9 @@ class Dependencies {
         p.cleaned = String.valueOf(p.cleaned)
         p.timestamp = String.valueOf(p.timestamp)
         
+        if(p.outputFile instanceof File)
+            p.outputFile = p.outputFile.name
+        
         log.info "Saving output file details to file $file for command " + Utils.truncnl(p.command, 20)
         file.withOutputStream { ofs ->
             p.save(ofs, "Bpipe Output File Meta Data")
@@ -249,7 +252,7 @@ class Dependencies {
         else {
             // Print out each leaf
             println "\nThe following intermediate files will be removed:\n"
-            println '\t' + internalNodes*.outputFile.join('\n\t')
+            println '\t' + internalNodes*.outputFile*.name.join('\n\t')
             println "\nTo retain files, cancel this command and use 'bpipe preserve' to preserve the files you wish to keep"
             print "\nRemove these files? (y/n): "
             def answer = System.in.withReader { it.readLine() }
@@ -263,7 +266,7 @@ class Dependencies {
     void removeOutputFile(Properties outputFileProperties) {
         outputFileProperties.cleaned = true
         saveOutputMetaData(outputFileProperties)
-        File outputFile = new File(outputFileProperties.outputFile)
+        File outputFile = outputFileProperties.outputFile
         if(!outputFile.delete()) {
             log.warn("Failed to delete output file ${outputFileProperties.absolutePath}")
             System.err.println "Failed to delete file ${outputFileProperties.absolutePath}"
@@ -304,36 +307,92 @@ class Dependencies {
             return rootTree
         }
         
+        // Here we are using a recursive algorithm. First we find the "edge" outputs -
+        // these are ones that are created inputs that are "external" - ie. not
+        // outputs of anything else in the graph.  We take those and make them into a layer
+        // of the graph, connecting them to the parents that they depend on.  We then remove them
+        // from the list of outputs and recursively do the same for each output we discovered, building
+        // the whole graph from the original inputs through to the final outputs
+        
         List allInputs = outputs*.inputs.flatten().unique()
-        List allOutputs = outputs*.outputFile
+        List allOutputs = outputs*.outputFile*.name
         
         // Find all entries with inputs that are not outputs of any other entry
         def outputsWithExternalInputs = outputs.grep { p -> ! p.inputs.any { allOutputs.contains(it) } }
         
         // If there is no tree to attach to, 
-        if(rootTree == null)
+        def entries = []
+        if(rootTree == null) {
             rootTree = new GraphEntry(values: outputsWithExternalInputs)
+            rootTree.values.each { it.maxTimestamp = it.timestamp }
+            entries << rootTree
+        }
         else {
             
             // Attach each input as a child of the respective input nodes
             // in existing tree
-            outputsWithExternalInputs.each { out ->
+            outputsWithExternalInputs.each { Properties out ->
                 
+               
                 GraphEntry entry = new GraphEntry(values: [out])
+                entries << entry
                 
                 // find all nodes in the tree which this output depends on 
                 out.inputs.each { inp ->
-                    GraphEntry parentEntry = rootTree.findBy { it.outputFile == inp } 
+                    GraphEntry parentEntry = rootTree.findBy { it.outputFile.name == inp } 
                     
                     if(!(entry in parentEntry.children))
                         parentEntry.children << entry
                         
                     entry.parents << parentEntry
+                    
+                    println "Output $out.outputFile has max timestamp = " + (entry.parents*.values*.maxTimestamp.flatten() + out.timestamp).max()
+                    
+                    out.maxTimestamp = (entry.parents*.values*.maxTimestamp.flatten() + out.timestamp).max()
+                 }
+            }
+        }
+        
+        def result =  computeOutputGraph(outputs - outputsWithExternalInputs, rootTree)
+                
+        // After computing the child tree, use child information to mark this output as
+        // "up to date" or "not up to date"
+        // an output is "up to date" if it is 
+        // a) a leaf node and it exists and newer than its inputs
+        // b) a non-leaf node and ALL its children are up to date
+        for(GraphEntry entry in entries) {
+            List inputTimestamps = entry.parents*.values*.maxTimestamp.flatten()
+            
+            for(Properties p in entry.values) {
+                
+                // No entry is up to date if one of its inputs is newer
+                println " $p.outputFile ".center(20,"-")
+                if(inputTimestamps.any { println it; it  >= p.timestamp }) {
+                    p.upToDate = false
+                    println "$p.outputFile is older than at least 1 input"
+                    continue
+                }
+                println "Newer than input files"
+
+                // The entry may still not be up to date if it
+                // does not exist and a downstream target needs to be updated
+                if(p.outputFile.exists()) {
+                    p.upToDate = true
+                    continue
+                }
+                    
+                if(entry.children) {
+                    p.upToDate = entry.children.every { it.values*.upToDate.every() }
+                    println "Output $p.outputFile up to date ? : $p.upToDate"
+                }
+                else {
+                    p.upToDate = false
+                    println "$p.outputFile is a leaf node and does not exist"
                 }
             }
         }
         
-        return computeOutputGraph(outputs - outputsWithExternalInputs, rootTree)
+        return result;
     }
     
     /**
@@ -344,9 +403,17 @@ class Dependencies {
         new File(PipelineContext.OUTPUT_METADATA_DIR).listFiles().collect { 
                 def p = new Properties(); 
                 new FileInputStream(it).withStream { p.load(it) } 
-                p.timestamp = Long.parseLong(p.timestamp)
                 p.inputs = p.inputs.split(",") as List
                 p.cleaned = Boolean.parseBoolean(p.cleaned)
+                p.outputFile == new File(p.outputFile)
+                
+                // If the file exists then we should get the timestamp from there
+                // Otherwise just use the timestamp recorded
+                if(p.outputFile.exists()) 
+                    p.timestamp = p.outputFile.lastModified()
+                else 
+                    p.timestamp = Long.parseLong(p.timestamp)
+                
                 return p
         }.sort { it.timestamp }
     }
