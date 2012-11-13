@@ -217,5 +217,18 @@ class DependenciesTest {
        assert b.upToDate
        assert !c.upToDate
        assert !d.upToDate                
+    }    
+    
+    @Test
+    void testFirstOutputMissing() {
+       a.outputFile.existsOverride = false
+       c.outputFile.existsOverride = false
+       def result = Dependencies.instance.computeOutputGraph([a,b,c,d]) 
+       
+       // now a is missing, but still up to date because all outputs still exist and up to date
+       assert a.upToDate
+       assert b.upToDate
+       assert c.upToDate
+       assert d.upToDate                
     }
 }

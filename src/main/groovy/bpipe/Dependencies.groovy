@@ -51,6 +51,19 @@ class GraphEntry {
         findBy { it.outputFile.name == outputFile }
     }
     
+    Properties propertiesFor(String outputFile) { 
+       def values = entryFor(outputFile)?.values
+       if(!values)
+           return null
+           
+       for(def o in values) {
+           if(o.outputFile.name ==  outputFile) {
+               return o
+           }
+       }
+       return null
+    }
+    
     /**
      * Create a copy of the subtree for this GraphEntry and its children (but NOT parents!)
      */
@@ -136,33 +149,33 @@ class Dependencies {
         
         // If the outputs are created from nothing (no inputs)
         // then they are up to date as long as they exist
-        if(!inputs) 
+        if(!inputs)  {
             return outputs.collect { new File(it) }.every { it.exists() }
+        }
             
         // The most obvious case: all the outputs exist and are newer than 
         // the inputs. We can return straight away here
         List<File> older = Utils.findOlder(outputs,inputs)
         if(!older)
             return true
-        else
-            return false
+        else {
+            log.info "Found these missing / older files: " + older
+        }
         
         synchronized(this) {
           if(this.outputGraph == null)
               this.outputGraph = computeOutputGraph(scanOutputFolder())
         }
         
-        // TODO:
-        // 1. find all leaf nodes that are children of each older file
-        //    in the above graph
-        // 
-        // 2. if the file exists and is older, return false
-        //
-        // 3. if the file does not exist, find all leaf nodes
-        //    connected to the file.  For each leaf node,
-        //    verify the path to the leaf node is populated with
-        //    either existing files or missing files marked as cleaned
-        //    and having newer timestamps than their inputs
+        def outDated = outputs.grep { out -> !this.outputGraph.propertiesFor(out)?.upToDate }
+        if(!outDated) {
+            log.info "All missing files are up to date"
+            return true
+        }
+        else {
+            log.info "Some files are outdated : $outDated"
+            return false
+        }
     }
     
     /**
@@ -178,9 +191,14 @@ class Dependencies {
                     continue
                     
                 File file = context.getOutputMetaData(o)
+                
+                Properties p = new Properties()
+                if(file.exists()) {
+                    p = readOutputPropertyFile(file)
+                }
+                
                 String hash = Utils.sha1(cmd+"_"+o)
 
-                Properties p = new Properties()
                 p.command = cmd
                 
                 def allInputs = ((context.@inputWrapper?.resolvedInputs?:[]) + context.allResolvedInputs).flatten().unique()
@@ -188,7 +206,6 @@ class Dependencies {
                 p.propertyFile = file.name
                 p.inputs = allInputs.join(',')?:''
                 p.outputFile = o
-                p.timestamp = String.valueOf(new File(o).lastModified())
                 p.fingerprint = hash
                 p.cleaned = false
                 
@@ -211,12 +228,27 @@ class Dependencies {
             p.inputs = p.inputs.join(",")
         
         p.cleaned = String.valueOf(p.cleaned)
-        p.timestamp = String.valueOf(p.timestamp)
         
         if(p.outputFile instanceof File)
             p.outputFile = p.outputFile.name
+            
+        File outputFile = new File(p.outputFile)
+        if(outputFile.exists())    
+            p.timestamp = String.valueOf(outputFile.lastModified())
+        else
+        if(!p.timestamp)
+            p.timestamp = "0"
+        else
+            p.timestamp = String.valueOf(p.timestamp)
+            
+        if(p.containsKey('upToDate'))
+            p.remove('upToDate')
+            
+        if(p.containsKey('maxTimestamp'))
+            p.remove('maxTimestamp')
         
         log.info "Saving output file details to file $file for command " + Utils.truncnl(p.command, 20)
+        
         file.withOutputStream { ofs ->
             p.save(ofs, "Bpipe Output File Meta Data")
         }
@@ -234,16 +266,15 @@ class Dependencies {
         // Start by scanning the output folder for dependency files
         def graph = computeOutputGraph(outputs)
         
-        println "\nOutput graph is: \n\n" + graph.dump()
+        log.info "\nOutput graph is: \n\n" + graph.dump()
         
         // Identify the leaf nodes
         List leaves = findLeaves(graph)
         
-        List internalNodes = outputs - leaves*.values.flatten()
-        
+        List internalNodes = (outputs - leaves*.values.flatten()).grep { it.outputFile.exists() }
         if(!internalNodes) {
             println """
-                No files were found as eligible outputs to clean up.
+                No existing files were found as eligible outputs to clean up.
                 
                 You may mark a file as disposable by using @Intermediate annotations
                 in your Bpipe script.
@@ -254,9 +285,9 @@ class Dependencies {
             println "\nThe following intermediate files will be removed:\n"
             println '\t' + internalNodes*.outputFile*.name.join('\n\t')
             println "\nTo retain files, cancel this command and use 'bpipe preserve' to preserve the files you wish to keep"
-            print "\nRemove these files? (y/n): "
-            def answer = System.in.withReader { it.readLine() }
+            print "\n"
             
+            def answer = Config.userConfig.prompts.handler("Remove these files? (y/n): ")
             if(answer == "y") {
                 internalNodes.each { removeOutputFile(it) }
             }
@@ -264,15 +295,20 @@ class Dependencies {
     }
     
     void removeOutputFile(Properties outputFileProperties) {
-        outputFileProperties.cleaned = true
+        outputFileProperties.cleaned = 'true'
         saveOutputMetaData(outputFileProperties)
         File outputFile = outputFileProperties.outputFile
         if(!outputFile.delete()) {
-            log.warn("Failed to delete output file ${outputFileProperties.absolutePath}")
-            System.err.println "Failed to delete file ${outputFileProperties.absolutePath}"
+            log.warning("Failed to delete output file ${outputFile.absolutePath}")
+            System.err.println "Failed to delete file ${outputFile.absolutePath}"
         }
     }
     
+    /**
+     * Display a dump of the dependency graph for the given files
+     * 
+     * @param args  list of file names to display dependencies for
+     */
     void queryOutputs(def args) {
         // Start by scanning the output folder for dependency files
         List<Properties> outputs = scanOutputFolder()
@@ -292,7 +328,23 @@ class Dependencies {
    
     /**
      * Scan the given list of output file properties and reconstruct the 
-     * dependency graph of the input / output structure.
+     * dependency graph of the input / output structure, including flags
+     * indicating which output files are 'up to date' based in input file
+     * timestamps, existence of the file and presence of child outputs that
+     * need the files as dependencies.
+     * <p>
+     * The algorithm below operates recursively: each layer of the tree is figured out
+     * by finding the nodes that have no inputs in the list and removing them, and then 
+     * working out the child tree through a recursive call, and then adding the identified
+     * input nodes as parents to that tree. So this works as a forward scan through
+     * the dependency tree (inputs => final outputs).
+     * <p>
+     * However computing the up-to-date flags works as a backwards scan from the outputs
+     * backwards up to the initial inputs. This is achieved in the same algorithm below
+     * by placing it after the recursive call. So the overalls tructure is
+     * <ol><li>Compute inputs in layer
+     *     <li>Calculate tree below layer (recursive call)
+     *     <li>Compute up-to-date flag for layer
      * 
      * @param outputs   a List of properties objects, loaded from the properties files
      *                  saved by Bpipe as each stage executed (see {@link #saveOutputs(PipelineContext)})
@@ -320,7 +372,7 @@ class Dependencies {
         // Find all entries with inputs that are not outputs of any other entry
         def outputsWithExternalInputs = outputs.grep { p -> ! p.inputs.any { allOutputs.contains(it) } }
         
-        // If there is no tree to attach to, 
+        // If there is no tree to attach to, make one
         def entries = []
         if(rootTree == null) {
             rootTree = new GraphEntry(values: outputsWithExternalInputs)
@@ -346,8 +398,6 @@ class Dependencies {
                         
                     entry.parents << parentEntry
                     
-                    println "Output $out.outputFile has max timestamp = " + (entry.parents*.values*.maxTimestamp.flatten() + out.timestamp).max()
-                    
                     out.maxTimestamp = (entry.parents*.values*.maxTimestamp.flatten() + out.timestamp).max()
                  }
             }
@@ -358,21 +408,25 @@ class Dependencies {
         // After computing the child tree, use child information to mark this output as
         // "up to date" or "not up to date"
         // an output is "up to date" if it is 
-        // a) a leaf node and it exists and newer than its inputs
-        // b) a non-leaf node and ALL its children are up to date
+        // a) it exists and newer than its inputs
+        // or
+        // b) it doesn't exist but is a non-leaf node and all its children are 'up to date'
+        // Here 'leaf node' means a final output as opposed to something that is only used
+        // as an intermediate step in calculating a final output.
         for(GraphEntry entry in entries) {
             List inputTimestamps = entry.parents*.values*.maxTimestamp.flatten()
             
             for(Properties p in entry.values) {
                 
                 // No entry is up to date if one of its inputs is newer
-                println " $p.outputFile ".center(20,"-")
-                if(inputTimestamps.any { println it; it  >= p.timestamp }) {
+                log.info " $p.outputFile ".center(20,"-")
+                def newerInputs = entry.parents*.values.flatten().grep { it.maxTimestamp >= p.timestamp}
+                if(inputTimestamps.any { it  >= p.timestamp }) {
                     p.upToDate = false
-                    println "$p.outputFile is older than at least 1 input"
+                    log.info "$p.outputFile is older than inputs " + (newerInputs.collect { it.outputFile.name + ' / ' + it.timestamp + ' / ' + it.maxTimestamp + ' vs ' + p.timestamp })
                     continue
                 }
-                println "Newer than input files"
+                log.info "Newer than input files"
 
                 // The entry may still not be up to date if it
                 // does not exist and a downstream target needs to be updated
@@ -383,11 +437,11 @@ class Dependencies {
                     
                 if(entry.children) {
                     p.upToDate = entry.children.every { it.values*.upToDate.every() }
-                    println "Output $p.outputFile up to date ? : $p.upToDate"
+                    log.info "Output $p.outputFile up to date ? : $p.upToDate"
                 }
                 else {
                     p.upToDate = false
-                    println "$p.outputFile is a leaf node and does not exist"
+                    log.info "$p.outputFile is a leaf node and does not exist"
                 }
             }
         }
@@ -400,22 +454,28 @@ class Dependencies {
      * @return
      */
     List<Properties> scanOutputFolder() {
-        new File(PipelineContext.OUTPUT_METADATA_DIR).listFiles().collect { 
-                def p = new Properties(); 
-                new FileInputStream(it).withStream { p.load(it) } 
-                p.inputs = p.inputs.split(",") as List
-                p.cleaned = Boolean.parseBoolean(p.cleaned)
-                p.outputFile == new File(p.outputFile)
-                
-                // If the file exists then we should get the timestamp from there
-                // Otherwise just use the timestamp recorded
-                if(p.outputFile.exists()) 
-                    p.timestamp = p.outputFile.lastModified()
-                else 
-                    p.timestamp = Long.parseLong(p.timestamp)
-                
-                return p
-        }.sort { it.timestamp }
+        new File(PipelineContext.OUTPUT_METADATA_DIR).listFiles().collect { readOutputPropertyFile(it) }.sort { it.timestamp }
+    }
+    
+    /**
+     * Read the given file as an output meta data file, parsing
+     * various expected properties to native form from string values.
+     */
+    Properties readOutputPropertyFile(File f) {
+        def p = new Properties();
+        new FileInputStream(f).withStream { p.load(it) }
+        p.inputs = p.inputs?p.inputs.split(",") as List : []
+        p.cleaned = p.containsKey('cleaned')?Boolean.parseBoolean(p.cleaned) : false
+        p.outputFile = new File(p.outputFile)
+
+        // If the file exists then we should get the timestamp from there
+        // Otherwise just use the timestamp recorded
+        if(p.outputFile.exists())
+            p.timestamp = p.outputFile.lastModified()
+        else
+            p.timestamp = Long.parseLong(p.timestamp)
+
+        return p
     }
     
     /**

@@ -65,6 +65,7 @@ class Config {
     public static void readUserConfig() {
 		
         ConfigSlurper slurper = new ConfigSlurper()
+        
 		
 		File builtInConfigFile = new File(System.getProperty("bpipe.home") +"/bpipe.config")
 		
@@ -74,6 +75,12 @@ class Config {
 		}
 		
 		ConfigObject builtInConfig = slurper.parse(builtInConfigFile.toURI().toURL())
+        
+        // The default way to prompt user for information is to ask at the console
+        builtInConfig.prompts.handler = { msg ->
+            print msg
+            return System.in.withReader { it.readLine() }
+        }
 		
 		File homeConfigFile = new File(System.getProperty("user.home"), ".bpipeconfig")
 		ConfigObject homeConfig

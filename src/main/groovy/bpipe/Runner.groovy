@@ -51,7 +51,7 @@ class Runner {
     
     
     final static String DEFAULT_HELP = """
-        bpipe [run|test|debug|execute] [-h] [-t] [-d] [-r] [-n <threads>] [-v] <pipeline> <in1> <in2>...
+        bpipe [run|test|debug|execute] [-h] [-t] [-d] [-r] [-y] [-n <threads>] [-v] <pipeline> <in1> <in2>...
               retry [test]
               stop
               history 
@@ -105,6 +105,16 @@ class Runner {
                 
         def parentLog = initializeLogging(pid)
         
+        // read the configuration file, if available
+        try {
+            Config.readUserConfig()
+        }
+        catch( Exception e ) {
+            def cause = e.getCause() ?: e
+            println("Error parsing 'bpipe.config' file. Cause: ${cause.getMessage() ?: cause}")
+            System.exit(1)
+        }
+        
         def cli 
         String mode = System.getProperty("bpipe.mode")
         if(mode == "diagram")  {
@@ -126,9 +136,7 @@ class Runner {
         }
         else 
         if(mode == "cleanup") {
-            log.info("Cleaning up redundant files")
-            Dependencies.instance.cleanup()
-            System.exit(0)
+            runCleanup(args)
         }         
         else 
         if(mode == "query") {
@@ -154,6 +162,7 @@ class Runner {
                  r longOpt:'report', 'generate an HTML report / documentation for pipeline'
                  n longOpt:'threads', 'maximum threads', args:1
                  v longOpt:'verbose', 'print internal logging to standard error'
+                 y longOpt:'yes', 'answer yes to any prompts or questions'
                  p longOpt: 'param', 'defines a pipeline parameter', args: 1, argName: 'param=value', valueSeparator: ',' as char
             }
         }
@@ -207,15 +216,6 @@ class Runner {
         if(opt.arguments().size() > 1)
             pipelineArgs = opt.arguments()[1..-1]
                 
-        // read the configuration file, if available
-        try {
-            Config.readUserConfig()
-        }
-        catch( Exception e ) {
-            def cause = e.getCause() ?: e
-            println("Error parsing 'bpipe.config' file. Cause: ${cause.getMessage() ?: cause}")
-            System.exit(1)
-        }
 
         ToolDatabase.instance.init(Config.userConfig)
         
@@ -368,6 +368,25 @@ class Runner {
         }
         return pipelineSrc
     }
+    
+    
+    /**
+     * Execute the 'cleanup' command
+     * @param args
+     */
+    static void runCleanup(def args) {
+        def cli = new CliBuilder(usage: "bpipe cleanup [-y]\n")
+        cli.with {
+            y longOpt: 'yes', 'answer yes to any prompts or questions'
+        }
+        def opt = cli.parse(args)
+        if(opt.y) {
+            Config.userConfig.prompts.handler = { msg -> return "y"}
+        }
+            
+        Dependencies.instance.cleanup()
+        System.exit(0)
+    }
 }
 
 /**
@@ -479,5 +498,4 @@ private class ParamsBinding extends Binding {
 
         new MapEntry( key, value )
     }
-
 }

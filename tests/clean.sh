@@ -7,5 +7,5 @@ do
 done
 
 # Run individual cleanup scripts
-for i in `find . -name cleanup.sh`; do cd `dirname $i`; ./cleanup.sh; cd - ; done
+for i in `find . -name cleanup.sh`; do cd `dirname $i`; chmod uga+rx ./cleanup.sh; ./cleanup.sh; cd - > /dev/null 2>&1 ; done
 
