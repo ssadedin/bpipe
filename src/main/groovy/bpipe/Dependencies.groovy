@@ -246,8 +246,6 @@ class Dependencies {
                     
                 File file = context.getOutputMetaData(o)
                 
-                println "meta data for $o is $file"
-                
                 Properties p = new Properties()
                 if(file.exists()) {
                     p = readOutputPropertyFile(file)
@@ -286,7 +284,7 @@ class Dependencies {
         p.cleaned = String.valueOf(p.cleaned)
         
         if(p.outputFile instanceof File)
-            p.outputFile = p.outputFile.name
+            p.outputFile = p.outputFile.path
             
         File outputFile = new File(p.outputFile)
         if(outputFile.exists())    
@@ -423,7 +421,7 @@ class Dependencies {
         // the whole graph from the original inputs through to the final outputs
         
         List allInputs = outputs*.inputs.flatten().unique()
-        List allOutputs = outputs*.outputFile*.name
+        List allOutputs = outputs*.outputFile*.path
         
         // Find all entries with inputs that are not outputs of any other entry
         def outputsWithExternalInputs = outputs.grep { p -> ! p.inputs.any { allOutputs.contains(it) } }
@@ -447,7 +445,7 @@ class Dependencies {
                 
                 // find all nodes in the tree which this output depends on 
                 out.inputs.each { inp ->
-                    GraphEntry parentEntry = rootTree.findBy { it.outputFile.name == inp } 
+                    GraphEntry parentEntry = rootTree.findBy { it.outputFile.path == inp } 
                     
                     if(parentEntry && !(entry in parentEntry.children))
                         parentEntry.children << entry

@@ -253,8 +253,7 @@ class PipelineContext {
                out = this.getDefaultOutput()
        }
        
-       trackOutput(Utils.box(out))
-       
+      
        if(!out)
               return null
            
@@ -267,7 +266,7 @@ class PipelineContext {
                                     this.stageName, 
                                  baseOutput,
                                  Utils.box(this.@output), 
-                                 { allInferredOutputs << it; inferredOutputs << it; if(applyName) { pipeline.nameApplied=true}}) 
+                                 { allInferredOutputs << it; inferredOutputs << it;  if(applyName) { pipeline.nameApplied=true}}) 
        
        po.branchName = branchName
        return po
@@ -869,7 +868,12 @@ class PipelineContext {
      */
     void exec(String cmd, boolean joinNewLines, String config=null) {
         
+      this.referencedOutputs += inferredOutputs
+      
       this.trackedOutputs[cmd] = this.referencedOutputs
+        
+     
+      log.info "Tracking outputs $referencedOutputs for command $cmd" 
       this.referencedOutputs = []
       
       CommandExecutor p = async(cmd, joinNewLines, config)
@@ -984,7 +988,6 @@ class PipelineContext {
       else
           joined = cmd
           
-      
       // Inferred outputs are outputs that are picked up through the user's use of 
       // $ouput.<ext> form in their commands. These are intercepted at string evaluation time
       // (prior to the async or exec command entry) and set as inferredOutputs until
