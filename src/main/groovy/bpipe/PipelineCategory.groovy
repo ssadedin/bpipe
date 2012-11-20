@@ -117,7 +117,7 @@ class PipelineCategory {
             pipeline.addStage(currentStage)
             currentStage.context.setInput(input1)
             currentStage.run()
-            Dependencies.instance.checkFiles(currentStage.context.output)
+            Dependencies.instance.checkFiles(currentStage.context.@output)
                     
             // If the stage did not return any outputs then we assume
             // that the inputs to the next stage are the same as the inputs

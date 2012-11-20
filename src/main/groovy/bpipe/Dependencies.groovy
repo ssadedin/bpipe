@@ -197,8 +197,12 @@ class Dependencies {
      */
     void checkFiles(def fileNames, type="input") {
         
+        log.info "Checking " + fileNames
+        
         GraphEntry graph = this.getOutputGraph()
         List missing = Utils.box(fileNames).collect { new File(it.toString()) }.grep { File f ->
+            
+            log.info " Checking file $f"
             if(f.exists())
                 return false
                 
@@ -241,6 +245,8 @@ class Dependencies {
                 }
                     
                 File file = context.getOutputMetaData(o)
+                
+                println "meta data for $o is $file"
                 
                 Properties p = new Properties()
                 if(file.exists()) {

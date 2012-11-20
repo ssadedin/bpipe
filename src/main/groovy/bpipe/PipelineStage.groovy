@@ -229,7 +229,8 @@ class PipelineStage {
 	            EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", [stage:this])
 		}
         
-        Dependencies.instance.checkFiles(context.output,"output")
+        log.info "Checking files: " + context.@output
+        Dependencies.instance.checkFiles(context.@output,"output")
         
         // Save the database of files created
 //        if(Config.config.enableCommandTracking)

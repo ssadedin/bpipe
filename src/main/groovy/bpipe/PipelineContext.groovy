@@ -690,6 +690,8 @@ class PipelineContext {
     Object produce(Object out, Closure body) { 
         log.info "Producing $out from $this"
         
+		List globOutputs = Utils.box(out).grep { it.contains("*") }
+        
         // Unwrap any wrapped inputs that may have been passed in the outputs
         // and coerce them to the correct output folder
         out = toOutputFolder(Utils.unwrap(out))
@@ -698,11 +700,10 @@ class PipelineContext {
         boolean doExecute = true
         
 		List fixedOutputs = Utils.box(out).grep { !it.contains("*") }
-		List globOutputs = Utils.box(out).grep { it.contains("*") }
 		
 		// Check for all existing files that match the globs
 		List globExistingFiles = globOutputs.collect { Utils.glob(it) }.flatten()
-        if(Dependencies.instance.checkUpToDate(fixedOutputs + globExistingFiles,lastInputs)) {
+        if((!globOutputs || globExistingFiles) && Dependencies.instance.checkUpToDate(fixedOutputs + globExistingFiles,lastInputs)) {
           // No inputs were newer than outputs, 
           // but were the commands that created the outputs modified?
           this.output = fixedOutputs
@@ -746,12 +747,7 @@ class PipelineContext {
                 // the output variable anywhere in the body. In that case, we
                 // don't know which command used the output variable so we add an "anonymous" 
                 // output
-                if(!(o in this.referencedOutputs) && !(o in this.inferredOutputs) && !(o in this.allInferredOutputs)) {
-                   if(!this.trackedOutputs["<produce>"])
-                     this.trackedOutputs["<produce>"] = [o]
-                   else
-                     this.trackedOutputs["<produce>"] << o
-                }
+                trackOutputIfNotAlreadyTracked(o, "<produce>")
             }
         }
 		
@@ -761,6 +757,8 @@ class PipelineContext {
 				def result = Utils.glob(pattern).grep {  !normalizedInputs.contains( new File(it).absolutePath) }
 				
 				log.info "Found outputs for glob $pattern: [$result]"
+                
+                result.each { trackOutputIfNotAlreadyTracked(it, "<produce>") }
 				
 				if(Utils.box(this.@output))
 					this.output = this.@output + result
@@ -770,6 +768,15 @@ class PipelineContext {
 		}
 
         return out
+    }
+    
+    void trackOutputIfNotAlreadyTracked(String o, String command) {
+        if(!(o in this.referencedOutputs) && !(o in this.inferredOutputs) && !(o in this.allInferredOutputs)) {
+           if(!this.trackedOutputs[command])
+             this.trackedOutputs[command] = [o]
+           else
+             this.trackedOutputs[command] << o
+        } 
     }
     
     /**
@@ -1168,7 +1175,7 @@ class PipelineContext {
         if(!outputsDir.exists()) 
             outputsDir.mkdirs()
         
-        return  new File(outputsDir,this.stageName + "." + new File(outputFile).name + ".properties")
+        return  new File(outputsDir,this.stageName + "." + new File(outputFile).path.replaceAll("[/\\\\]", "_") + ".properties")
     }
     
     /**
