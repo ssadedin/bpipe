@@ -117,7 +117,7 @@ class PipelineCategory {
             pipeline.addStage(currentStage)
             currentStage.context.setInput(input1)
             currentStage.run()
-            Utils.checkFiles(currentStage.context.output)
+            Dependencies.instance.checkFiles(currentStage.context.output)
                     
             // If the stage did not return any outputs then we assume
             // that the inputs to the next stage are the same as the inputs
@@ -129,7 +129,7 @@ class PipelineCategory {
             }
                 
             log.info "Checking inputs for next stage:  $nextInputs"
-            Utils.checkFiles(nextInputs)
+            Dependencies.instance.checkFiles(nextInputs)
                 
             currentStage = new PipelineStage(pipeline.createContext(), other)
             currentStage.context.@input = nextInputs
@@ -155,7 +155,7 @@ class PipelineCategory {
             Pipeline.currentRuntimePipeline.get().addStage(currentStage)
             currentStage.context.setInput(input1)
             currentStage.run()
-            Utils.checkFiles(currentStage.context.output)
+            Dependencies.instance.checkFiles(currentStage.context.output)
                     
             // If the stage did not return any outputs then we assume
             // that the inputs to the next stage are the same as the inputs
@@ -164,7 +164,7 @@ class PipelineCategory {
             if(nextInputs == null)
                 nextInputs = currentStage.context.@input
                 
-            Utils.checkFiles(nextInputs)
+            Dependencies.instance.checkFiles(nextInputs)
             
             return mul(nextInputs)
         }
@@ -407,7 +407,7 @@ class PipelineCategory {
                     
             }
             currentStage.context.output = nextInputs
-            Utils.checkFiles(currentStage.context.output)
+            Dependencies.instance.checkFiles(currentStage.context.output)
             
             return nextInputs
     }

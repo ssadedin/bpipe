@@ -319,6 +319,7 @@ class PipelineContext {
    }
      
    private trackOutput(def output) {
+       log.info "Tracking output $output"
        referencedOutputs << output
        return output
    } 
@@ -357,6 +358,7 @@ class PipelineContext {
    String getInputByIndex(int i) {
        if(!Utils.isContainer(input) || input.size()<i)
            throw new PipelineError("Expected $i or more inputs but fewer provided")
+       this.allResolvedInputs << input[i-1]
        return input[i-1]
    }
    
@@ -422,11 +424,19 @@ class PipelineContext {
            
        if(Runner.opts.t)
            throw new PipelineTestAbort("Would execute filterLines on input $input")
-           
-       new File(isContainer(input)?input[0]:input).eachLine {  line ->
+       
+       String usedInput = Utils.first(input)    
+       new File(usedInput).eachLine {  line ->
            if(line.startsWith("#") || c(line))
                   getOut() << line << "\n"
        }
+       
+       this.allResolvedInputs << usedInput
+       
+       if(!this.trackedOutputs["filterLines"])
+         this.trackedOutputs["filterLines"] = []
+         
+       this.trackedOutputs["filterLines"] += this.referencedOutputs
    }
    
    void filterRows(Closure c) {
@@ -437,7 +447,7 @@ class PipelineContext {
            throw new PipelineError("Attempt to grep on input but no input available")
            
        if(Runner.opts.t)
-           throw new PipelineTestAbort("Would execute filterLines on input $input")
+           throw new PipelineTestAbort("Would execute filterRows on input $input")
            
 	   String fileName = Utils.first(this.getOutput())
 	   if(Runner.opts.t)
@@ -512,7 +522,7 @@ class PipelineContext {
    OutputStream getOut() {
        
        if(!outFile) {
-         String fileName = Utils.first(output)
+         String fileName = Utils.first(getOutput())
          if(Runner.opts.t)
              throw new PipelineTestAbort("Would write to output file $fileName")
           
@@ -727,6 +737,22 @@ class PipelineContext {
             PipelineDelegate.setDelegateOn(this, body)
             log.info("Producing from inputs ${this.@input}")
             body()
+        }
+        
+        if(this.@output) {
+            log.info "Adding outputs " + this.@output + " as a result of produce"
+            Utils.box(this.@output).each { o ->
+                // It's possible the user used produce() but did not actually reference
+                // the output variable anywhere in the body. In that case, we
+                // don't know which command used the output variable so we add an "anonymous" 
+                // output
+                if(!(o in this.referencedOutputs) && !(o in this.inferredOutputs) && !(o in this.allInferredOutputs)) {
+                   if(!this.trackedOutputs["<produce>"])
+                     this.trackedOutputs["<produce>"] = [o]
+                   else
+                     this.trackedOutputs["<produce>"] << o
+                }
+            }
         }
 		
 		if(globOutputs) {

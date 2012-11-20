@@ -140,7 +140,7 @@ class Runner {
         }         
         else 
         if(mode == "query") {
-            log.info("Cleaning up redundant files")
+            log.info("Showing dependency graph for " + args)
             Dependencies.instance.queryOutputs(args)
             System.exit(0)
         }         

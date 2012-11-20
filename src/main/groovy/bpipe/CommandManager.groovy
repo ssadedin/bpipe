@@ -206,9 +206,9 @@ class CommandManager {
         commandDir.eachFileMatch(~/[0-9]+/) { File f ->
             log.info "Loading command info from $f.absolutePath"
             CommandExecutor cmd
-            f.withObjectInputStream { cmd = it.readObject() }
             log.info "Stopping command $cmd"
             try {
+                f.withObjectInputStream { cmd = it.readObject() }
                 cmd.stop() 
                 cleanup(f.name)
                 log.info "Successfully stopped command $cmd"
@@ -216,6 +216,9 @@ class CommandManager {
             catch(PipelineError e) {
               System.err.println("Failed to stop command: $cmd.\n\n${Utils.indent(e.message)}\n\nThe job may already be stopped; use 'bpipe cleancommands' to clear old commands.")      
             }
+            catch(Throwable t) {
+              System.err.println("An unexpected error occured while stopping command: $cmd.\n\n${Utils.indent(t.message)}\n\nThe job may already be stopped; use 'bpipe cleancommands' to clear old commands.")      
+            }            
             ++count
         }
         log.info "Successfully stopped $count commands"

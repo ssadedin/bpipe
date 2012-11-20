@@ -19,6 +19,19 @@ class RegionValue {
        } 
     }
     
+    String plus(String arg) {
+        return this.toString() + arg
+    }
+    
+    def methodMissing(String name, args) {
+        // faux inheritance from String class
+        if(name in String.metaClass.methods*.name)
+            return String.metaClass.invokeMethod(this.toString(), name, args)
+        else {
+            throw new MissingMethodException(name, RegionValue, args)
+        }
+    }
+    
     String toString() {
         return value   
     }

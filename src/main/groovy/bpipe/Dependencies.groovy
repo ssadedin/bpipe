@@ -51,6 +51,9 @@ class GraphEntry {
         findBy { it.outputFile.name == outputFile }
     }
     
+    /**
+     * Search the graph for properties for the given output file
+     */
     Properties propertiesFor(String outputFile) { 
        def values = entryFor(outputFile)?.values
        if(!values)
@@ -107,16 +110,18 @@ class GraphEntry {
     }
     
     String dump() {
-        String inputs = this.values*.inputs.flatten().join(',') + ' => \n'
-        inputs + dumpChildren(inputs.size())
+        def inputs = this.values*.inputs.flatten()
+        String inputValue = inputs.join('\n') + ' => \n'
+        inputValue + dumpChildren(inputs.collect {it.size()}.max())
     }
    
     /**
      * Render this graph entry as a tree
      */
     String dumpChildren(int indent = 0) {
-        String me = values*.outputFile*.name.join(",") + (children?" => \n":"")  
-        return (" " * indent) + me + children*.dumpChildren(indent+me.size()).join('\n')
+        def names = values*.outputFile*.name
+        String me = names.collect { " " * indent + it }.join("\n") + (children?" => \n":"")  
+        return me + children*.dumpChildren(indent+names.collect{it.size()}.max()).join('\n')
     }
 }
 
@@ -156,18 +161,22 @@ class Dependencies {
         // The most obvious case: all the outputs exist and are newer than 
         // the inputs. We can return straight away here
         List<File> older = Utils.findOlder(outputs,inputs)
-        if(!older)
+        if(!older) {
             return true
+        }
+        else
+        if(older.any { it.exists() }) { // If any of the older files exist then we have no choice but to rebuild them
+            log.info "Not up to date because these files exist and are older than inputs: " + older.grep { it.exists() }
+            return false
+        }
+  
         else {
             log.info "Found these missing / older files: " + older
         }
         
-        synchronized(this) {
-          if(this.outputGraph == null)
-              this.outputGraph = computeOutputGraph(scanOutputFolder())
-        }
+        def graph = this.getOutputGraph()
         
-        def outDated = outputs.grep { out -> !this.outputGraph.propertiesFor(out)?.upToDate }
+        def outDated = outputs.grep { out -> !graph.propertiesFor(out)?.upToDate }
         if(!outDated) {
             log.info "All missing files are up to date"
             return true
@@ -179,16 +188,57 @@ class Dependencies {
     }
     
     /**
+     * Check either a single file passed as a string or a list
+     * of files passed as a collection.  Throws an exception
+     * if any of them are missing and cannot be accounted for
+     * in an output property file.
+     *
+     * @param f     a String or collection of Strings representing file names
+     */
+    void checkFiles(def fileNames, type="input") {
+        
+        GraphEntry graph = this.getOutputGraph()
+        List missing = Utils.box(fileNames).collect { new File(it.toString()) }.grep { File f ->
+            if(f.exists())
+                return false
+                
+            Properties p = graph.propertiesFor(f.name)
+            if(!p) {
+                log.info "File $f.name [$type] does not exist but has a valid properties file"
+                return true
+            }
+            
+            // TODO: we could check that the "cleaned" flag has been set
+            return false
+        }
+       
+        if(missing)
+            throw new PipelineError("Expected $type file ${missing[0]} could not be found")
+    }
+
+    
+    synchronized GraphEntry getOutputGraph() {
+        if(this.outputGraph == null)
+            this.outputGraph = computeOutputGraph(scanOutputFolder())
+        return this.outputGraph
+    }
+    
+    /**
      * For each output file created in the context, save information
      * about it such that it can be reliably loaded by this same stage
      * if the pipeline is re-executed.
      */
-    void saveOutputs(PipelineContext context) {
+    void saveOutputs(PipelineContext context, List<File> oldFiles, Map<File,Long> timestamps) {
         context.trackedOutputs.each { String cmd, List<String> outputs ->
             for(def o in outputs) {
                 o = Utils.first(o)
                 if(!o)
                     continue
+                    
+                if(timestamps[oldFiles.find { it.name == o }] == new File(o).lastModified()) {
+                    log.info "Ignoring output $o because it was not created or modified by stage ${context.stageName}"
+                    continue
+                }
                     
                 File file = context.getOutputMetaData(o)
                 
@@ -393,15 +443,20 @@ class Dependencies {
                 out.inputs.each { inp ->
                     GraphEntry parentEntry = rootTree.findBy { it.outputFile.name == inp } 
                     
-                    if(!(entry in parentEntry.children))
+                    if(parentEntry && !(entry in parentEntry.children))
                         parentEntry.children << entry
                         
                     entry.parents << parentEntry
                     
                     out.maxTimestamp = (entry.parents*.values*.maxTimestamp.flatten() + out.timestamp).max()
+                    
+                    log.info "Maxtimestamp for $out.outputFile = $out.maxTimestamp"
                  }
             }
         }
+        
+        if(!outputsWithExternalInputs)
+            throw new PipelineError("Unable to identify any outputs with only external inputs in: " + outputs*.outputFile.join('\n') + "\n\nThis may indicate a circular dependency in your pipeline")
         
         def result =  computeOutputGraph(outputs - outputsWithExternalInputs, rootTree)
                 
@@ -420,8 +475,14 @@ class Dependencies {
                 
                 // No entry is up to date if one of its inputs is newer
                 log.info " $p.outputFile ".center(20,"-")
-                def newerInputs = entry.parents*.values.flatten().grep { it.maxTimestamp >= p.timestamp}
-                if(inputTimestamps.any { it  >= p.timestamp }) {
+//                log.info "Parents: " + entry.parents?.size()
+//                
+//                log.info "Values: " + entry.parents*.values
+//                
+                def newerInputs = entry.parents*.values.flatten().grep { 
+                    it?.maxTimestamp >= p.timestamp
+                }
+                if(inputTimestamps.any { it  > p.timestamp }) {
                     p.upToDate = false
                     log.info "$p.outputFile is older than inputs " + (newerInputs.collect { it.outputFile.name + ' / ' + it.timestamp + ' / ' + it.maxTimestamp + ' vs ' + p.timestamp })
                     continue

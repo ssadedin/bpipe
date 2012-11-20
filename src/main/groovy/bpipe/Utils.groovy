@@ -36,24 +36,6 @@ import java.security.MessageDigest
  */
 @Log
 class Utils {
-    /**
-     * Check either a single file passed as a string or a list
-     * of files passed as a collection
-     * @param f
-     * @return
-     */
-    static checkFiles(def f, type="input") {
-        
-        if(f instanceof String)
-            if(!new File(f).exists())
-                throw new PipelineError("Expected $type file $f could not be found")
-        else
-        if(f instanceof Collection)
-            f.each {
-                if(!new File(it).exists())
-                    throw new PipelineError("Expected $type file $it could not be found")
-            }
-    }
     
     /**
      * Returns a list of output files that appear to be out of date

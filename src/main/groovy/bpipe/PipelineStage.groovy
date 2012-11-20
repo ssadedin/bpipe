@@ -31,6 +31,10 @@ class StringExtrasCategory {
 	static String getPrefix(String value) {
 		return value.replaceAll('\\.[^\\.]*?$', '')
 	}
+    
+    static int indexOf(String value, RegionValue other) {
+        value.indexOf(other.toString())
+    }
 }
 
 /**
@@ -102,7 +106,7 @@ class PipelineStage {
      * pipeline stage.
      */
     def run() {
-        Utils.checkFiles(context.@input)
+        Dependencies.instance.checkFiles(context.@input)
         
 		// Note: although it would appear these are being injected at a per-pipeline level,
 		// in fact they end up as globally shared variables across all parallel threads
@@ -118,7 +122,7 @@ class PipelineStage {
         }
         
         succeeded = false
-        def oldFiles = new File(context.outputDirectory).listFiles() as List
+        List<File> oldFiles = new File(context.outputDirectory).listFiles() as List
         oldFiles = oldFiles?:[]
         boolean joiner = (body in this.context.pipelineJoiners)
 		
@@ -184,7 +188,7 @@ class PipelineStage {
             // Clear the link to output references from affecting the output
             // this stops any references we make below from potentially modifying the
             // outputs
-            if(this.context.output)
+            if(this.context.@output)
               this.context.output.outputChangeListener = null
                 
             succeeded = true
@@ -205,6 +209,8 @@ class PipelineStage {
             context.defaultOutput = null
             log.info "Setting next inputs $nextInputs on stage ${this.hashCode()}, context ${context.hashCode()} in thread ${Thread.currentThread().id}"
             context.nextInputs = nextInputs
+            
+            Dependencies.instance.saveOutputs(context, oldFiles, modified)
         }
         catch(PipelineTestAbort e) {
             throw e
@@ -223,11 +229,10 @@ class PipelineStage {
 	            EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", [stage:this])
 		}
         
-        Utils.checkFiles(context.output,"output")
+        Dependencies.instance.checkFiles(context.output,"output")
         
         // Save the database of files created
 //        if(Config.config.enableCommandTracking)
-              Dependencies.instance.saveOutputs(context)
         
         return context.nextInputs
     }
