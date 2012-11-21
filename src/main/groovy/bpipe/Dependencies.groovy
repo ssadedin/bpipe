@@ -206,9 +206,9 @@ class Dependencies {
             if(f.exists())
                 return false
                 
-            Properties p = graph.propertiesFor(f.name)
+            Properties p = graph.propertiesFor(f.path)
             if(!p) {
-                log.info "File $f.name [$type] does not exist but has a valid properties file"
+                log.info "File $f.path [$type] does not exist but has a valid properties file"
                 return true
             }
             

@@ -406,8 +406,8 @@ class PipelineCategory {
                     nextInputs += Utils.box(out)
                     
             }
-            currentStage.context.output = nextInputs
-            Dependencies.instance.checkFiles(currentStage.context.output)
+            currentStage.context.rawOutput = nextInputs
+            Dependencies.instance.checkFiles(currentStage.context.@output)
             
             return nextInputs
     }

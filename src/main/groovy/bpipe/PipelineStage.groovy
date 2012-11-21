@@ -188,8 +188,10 @@ class PipelineStage {
             // Clear the link to output references from affecting the output
             // this stops any references we make below from potentially modifying the
             // outputs
-            if(this.context.@output)
-              this.context.output.outputChangeListener = null
+            // HMMM: this would have no effect because a new output wrapper is created 
+            // each time?!
+//            if(this.context.@output)
+//              this.context.@output.outputChangeListener = null
                 
             succeeded = true
             if(!joiner) {
@@ -203,7 +205,7 @@ class PipelineStage {
                 
             if(!this.context.@output) {
                 // log.info "No explicit output on stage ${this.hashCode()} context ${this.context.hashCode()} so output is nextInputs $nextInputs"
-                this.context.output = nextInputs 
+                this.context.rawOutput = nextInputs 
             }
 
             context.defaultOutput = null
