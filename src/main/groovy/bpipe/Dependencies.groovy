@@ -421,7 +421,7 @@ class Dependencies {
         // the whole graph from the original inputs through to the final outputs
         
         List allInputs = outputs*.inputs.flatten().unique()
-        List allOutputs = outputs*.outputFile*.path
+        List allOutputs = outputs*.outputPath
         
         // Find all entries with inputs that are not outputs of any other entry
         def outputsWithExternalInputs = outputs.grep { p -> ! p.inputs.any { allOutputs.contains(it) } }
@@ -445,7 +445,7 @@ class Dependencies {
                 
                 // find all nodes in the tree which this output depends on 
                 out.inputs.each { inp ->
-                    GraphEntry parentEntry = rootTree.findBy { it.outputFile.path == inp } 
+                    GraphEntry parentEntry = rootTree.findBy { it.outputPath == inp } 
                     
                     if(parentEntry && !(entry in parentEntry.children))
                         parentEntry.children << entry
@@ -532,6 +532,9 @@ class Dependencies {
         p.inputs = p.inputs?p.inputs.split(",") as List : []
         p.cleaned = p.containsKey('cleaned')?Boolean.parseBoolean(p.cleaned) : false
         p.outputFile = new File(p.outputFile)
+        
+        // Normalizing the slashes in the path is necessary for Cygwin compatibility
+        p.outputPath = p.outputFile.path.replaceAll("\\\\","/")
 
         // If the file exists then we should get the timestamp from there
         // Otherwise just use the timestamp recorded
