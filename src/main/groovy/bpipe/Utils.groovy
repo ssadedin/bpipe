@@ -78,7 +78,7 @@ class Utils {
 //                println "Checking $outFile against inputs $inputs"
                 return !inputs.collect { new File(it) }.any { inFile ->
 //                    println "Check $inFile : " + inFile.lastModified() + " >  " + "$outFile : " + outFile.lastModified() 
-                    inFile.lastModified() < outFile.lastModified() 
+                    inFile.lastModified() <= outFile.lastModified() 
                 }
             }
             else 
