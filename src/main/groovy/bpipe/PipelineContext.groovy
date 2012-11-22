@@ -465,7 +465,7 @@ class PipelineContext {
 			 }  
 		   }
 		   
-		   List<String> cols
+		   def cols
 		   if(!line.startsWith('#')) {
 			   cols = line.split('\t')
 			   if(header) {
@@ -477,7 +477,7 @@ class PipelineContext {
 		   }
 		   
            if(line.startsWith("#") || c(cols)) {
-                  outStream << line << "\n"
+               outStream << cols.join("\t") << "\n"
            }
        }	   
    }
