@@ -432,10 +432,6 @@ class PipelineContext {
        
        this.allResolvedInputs << usedInput
        
-       if(!this.trackedOutputs["filterLines"])
-         this.trackedOutputs["filterLines"] = []
-         
-       this.trackedOutputs["filterLines"] += this.referencedOutputs
    }
    
    void filterRows(Closure c) {
@@ -480,6 +476,11 @@ class PipelineContext {
                outStream << cols.join("\t") << "\n"
            }
        }	   
+       
+       if(!this.trackedOutputs["filterRows"])
+         this.trackedOutputs["filterRows"] = []
+         
+       this.trackedOutputs["filterRows"] += fileName 
    }
    
    
@@ -520,13 +521,19 @@ class PipelineContext {
     */
    OutputStream getOut() {
        
+       String fileName = Utils.first(getOutput())
        if(!outFile) {
-         String fileName = Utils.first(getOutput())
          if(Runner.opts.t)
              throw new PipelineTestAbort("Would write to output file $fileName")
           
          outFile = new FileOutputStream(fileName)
        }
+       
+       if(!this.trackedOutputs["<streamed>"])
+         this.trackedOutputs["<streamed>"] = []
+         
+       this.trackedOutputs["<streamed>"] += fileName
+       
        return outFile
    }
    
