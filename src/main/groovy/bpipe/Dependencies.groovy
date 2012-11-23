@@ -263,6 +263,8 @@ class Dependencies {
                 p.fingerprint = hash
                 p.cleaned = false
                 
+                p.preserve = String.valueOf(context.preservedOutputs.contains(o))
+                
                 saveOutputMetaData(p)
             }
         }
@@ -312,8 +314,10 @@ class Dependencies {
     /**
      * Computes the files that are created as non-final products of the pipeline and 
      * shows them to the user, offering to delete them.
+     * 
+     * @param arguments     List of files to clean up. If empty, acts as wildcard
      */
-    void cleanup() {
+    void cleanup(List arguments) {
         
         List<Properties> outputs = scanOutputFolder()
         
@@ -325,10 +329,15 @@ class Dependencies {
         // Identify the leaf nodes
         List leaves = findLeaves(graph)
         
-        List internalNodes = (outputs - leaves*.values.flatten()).grep { it.outputFile.exists() }
+        // Find all the nodes that exist and match the users specs (or, if no specs, treat as wildcard)
+        List internalNodes = (outputs - leaves*.values.flatten()).grep { 
+            it.outputFile.exists() && !it.preserve &&  
+                (arguments.isEmpty() || arguments.contains(it.outputFile.name) || arguments.contains(it.outputPath))  
+        }
+        
         if(!internalNodes) {
             println """
-                No existing files were found as eligible outputs to clean up.
+                No ${arguments?'matching':'existing'} files were found as eligible outputs to clean up.
                 
                 You may mark a file as disposable by using @Intermediate annotations
                 in your Bpipe script.
@@ -543,6 +552,10 @@ class Dependencies {
         else
             p.timestamp = Long.parseLong(p.timestamp)
 
+        if(!p.containsKey('preserve'))
+            p.preserve = 'false'
+            
+        p.preserve = Boolean.parseBoolean(p.preserve)
         return p
     }
     

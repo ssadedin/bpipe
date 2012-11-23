@@ -348,6 +348,15 @@ class Runner {
         return pid
     }
                     
+    /**
+     * Loads a pipeline file from the source path, checks it in some simple ways and 
+     * augments it with some precursor declarations and imports to bring things into
+     * the default scope.
+     * 
+     * @param cli
+     * @param srcFilePath
+     * @return
+     */
     static String loadPipelineSrc(def cli, def srcFilePath) {
         File pipelineFile = new File(srcFilePath)
         if(!pipelineFile.exists()) {
@@ -357,8 +366,10 @@ class Runner {
             System.exit(1)
         }
         
-        
-        String pipelineSrc = "import static Bpipe.*; " + pipelineFile.text
+        // Note that it is important to keep this on a single line because 
+        // we want any errors in parsing the script to report the correct line number
+        // matching what the user sees in their script
+        String pipelineSrc = "import static Bpipe.*; import Preserve as preserve; import Produce as produce; import Transform as transform; import Filter as filter;" + pipelineFile.text
         if(pipelineFile.text.indexOf("return null") >= 0) {
             println """
                        ================================================================================================================
@@ -384,7 +395,7 @@ class Runner {
             Config.userConfig.prompts.handler = { msg -> return "y"}
         }
             
-        Dependencies.instance.cleanup()
+        Dependencies.instance.cleanup(opt.arguments())
         System.exit(0)
     }
 }

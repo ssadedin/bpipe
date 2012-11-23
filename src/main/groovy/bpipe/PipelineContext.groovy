@@ -155,6 +155,13 @@ class PipelineContext {
    List<String> referencedOutputs = []
    
    /**
+    * A list of outputs that are to be marked as preserved.
+    * These will not be deleted automatically by user initiated
+    * cleanup operations (see {@link Dependencies#cleanup(java.util.List)}
+    */
+   List<String> preservedOutputs = []
+   
+   /**
     * Flag that can be enabled to cause missing properties to resolve to 
     * outputting the name of the property ie. a reference to $x will produce $x.
     * This allows for a crude pass-through of variables from Bpipe to Bash 
@@ -783,6 +790,22 @@ class PipelineContext {
            else
              this.trackedOutputs[command] << o
         } 
+    }
+    
+    /**
+     * Cause output files created by the given closure, and which also match the 
+     * given pattern to be preserved.
+     * @param pattern
+     */
+    void preserve(String pattern, Closure c) {
+        def oldFiles = trackedOutputs.values().flatten().unique()
+        c()
+        List<String> matchingOutputs = Utils.glob(pattern) - oldFiles
+        for(def entry in trackedOutputs) {
+            def preserved = entry.value.grep { matchingOutputs.contains(it) }
+            log.info "Outputs $preserved marked as preserved from stage $stageName by pattern $pattern"
+            this.preservedOutputs += preserved
+        }
     }
     
     /**
