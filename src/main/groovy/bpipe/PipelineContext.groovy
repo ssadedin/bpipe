@@ -285,7 +285,13 @@ class PipelineContext {
    
    def getOutputByIndex(int index) {
        def o = getOutput()
-       return trackOutput(Utils.box(o.output)[index])
+       def result =Utils.box(o.output)[index]
+       if(result == null) {
+           result = Utils.box(o.output)[0].replaceAll("\\.([^.]*)\$",".${index+1}.\$1")
+       }
+       result = trackOutput(result)
+       
+       return result
    }
    
    def getOutput1() {
