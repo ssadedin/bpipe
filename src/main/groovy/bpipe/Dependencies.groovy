@@ -111,6 +111,8 @@ class GraphEntry {
     
     String dump() {
         def inputs = this.values*.inputs.flatten()
+        if(!inputs)
+            inputs = ["<no inputs>"]
         String inputValue = inputs.join('\n') + ' => \n'
         inputValue + dumpChildren(inputs.collect {it.size()}.max())
     }
@@ -121,7 +123,7 @@ class GraphEntry {
     String dumpChildren(int indent = 0) {
         def names = values*.outputFile*.name
         String me = names.collect { " " * indent + it }.join("\n") + (children?" => \n":"")  
-        return me + children*.dumpChildren(indent+names.collect{it.size()}.max()).join('\n')
+        return me + children*.dumpChildren(indent+(names.collect{it.size()}.max()?:0)).join('\n')
     }
 }
 
