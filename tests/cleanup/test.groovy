@@ -5,25 +5,25 @@
  * So we should be able to update the csv,xls files without actually requiring a 
  * rebuild of the last stage.
  */
-@Transform("html")
+@transform("html")
 hello = {
 	exec "cp $input $output"
         Thread.sleep(1100)
 }
 
-@Transform("csv")
+@transform("csv")
 there = {
 	exec "cp $input $output"
         Thread.sleep(1100)
 }
 
-@Transform("xml")
+@transform("xml")
 world = {
 	exec "cp $input $output"
         Thread.sleep(1100)
 }
 
-@Transform("xls")
+@transform("xls")
 take = {
   from("html") {
     exec "cp $input $output"
@@ -31,6 +31,11 @@ take = {
   }
 }
 
+@preserve
+me = {
+  exec "echo me > $output"
+}
+
 run {
-	hello + there + world + take
+	hello + there + world + take + me
 }

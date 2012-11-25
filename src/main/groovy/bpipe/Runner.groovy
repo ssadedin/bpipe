@@ -58,6 +58,8 @@ class Runner {
               log
               jobs
               cleanup
+              query
+              preserve
               diagram <pipeline> <in1> <in2>...
               diagrameditor <pipeline> <in1> <in2>...
     """.stripIndent().trim()
@@ -144,6 +146,12 @@ class Runner {
             Dependencies.instance.queryOutputs(args)
             System.exit(0)
         }         
+        else
+        if(mode == "preserve") {
+            log.info("Preserving " + args)
+            this.runPreserve(args)
+            System.exit(0)
+        } 
         else 
         if(mode == "stopcommands") {
             log.info("Stopping running commands")
@@ -398,6 +406,23 @@ class Runner {
         Dependencies.instance.cleanup(opt.arguments())
         System.exit(0)
     }
+    
+    /**
+     * Execute the 'preserve' command
+     * @param args
+     */
+    static void runPreserve(def args) {
+        def cli = new CliBuilder(usage: "bpipe preserve <file1> [<file2>] ...")
+        def opt = cli.parse(args)
+        if(!opt.arguments()) {
+            println ""
+            cli.usage()
+            System.exit(1)
+        }
+        Dependencies.instance.preserve(opt.arguments())
+        System.exit(0)
+    }
+    
 }
 
 /**

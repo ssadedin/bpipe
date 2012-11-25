@@ -104,7 +104,10 @@ class GraphEntry {
                 root = p
         }
         
-        outputEntry.parents.eachWithIndex { p,index -> trimParent(p, result, index) }
+        if(outputEntry.parents)
+            outputEntry.parents.eachWithIndex { p,index -> trimParent(p, result, index) }
+        else
+            root = outputEntry
         
         return root
     }
@@ -299,12 +302,16 @@ class Dependencies {
         else
             p.timestamp = String.valueOf(p.timestamp)
             
+        p.preserve = String.valueOf(p.preserve)
+        
+        // upToDate and maxTimestamp are "virtual" properties, computed at load time
+        // they should not be stored
         if(p.containsKey('upToDate'))
             p.remove('upToDate')
             
         if(p.containsKey('maxTimestamp'))
             p.remove('maxTimestamp')
-        
+            
         log.info "Saving output file details to file $file for command " + Utils.truncnl(p.command, 20)
         
         file.withOutputStream { ofs ->
@@ -381,14 +388,49 @@ class Dependencies {
         
         if(args) {
             for(String arg in args) {
+                GraphEntry filtered = graph.filter(arg)
+                if(!filtered) {
+                    System.err.println "\nError: cannot locate output $arg in output dependency graph"
+                    continue
+                }
                 println "\n" + " $arg ".center(Config.config.columns, "=")  + "\n"
-                println "\n" + graph.filter(arg).dump()
-            }
+                println "\n" + filtered.dump()
+                
+               Properties p = graph.propertiesFor(arg)
+               println """
+                   Created:     ${new Date(p.timestamp)}
+                   Inputs used: ${p.inputs.join(',')}
+                   Command:     ${Utils.truncnl(p.command,40)}
+                   Preserved:   ${p.preserved?'yes':'no'}
+               """.stripIndent()
+           }
             println("\n" + ("=" * Config.config.columns))
         }
         else {
                println "\nDependency graph is: \n\n" + graph.dump()
         }
+    }
+    
+    void preserve(def args) {
+        List<Properties> outputs = scanOutputFolder()
+        int count = 0
+        for(def arg in args) {
+            Properties output = outputs.find { it.outputPath == arg }
+            if(!output) {
+                System.err.println "\nERROR: Cannot locate file $arg as a tracked output"
+                continue
+            }
+            
+            if(!output.preserve) {
+                output.preserve = true
+                this.saveOutputMetaData(output)
+                ++count
+            }
+            else {
+                println "\nOutput $output.outputPath is already preserved"
+            }
+        }
+        println "\n$count files were preserved"
     }
    
     /**
@@ -441,6 +483,11 @@ class Dependencies {
         def entries = []
         if(rootTree == null) {
             rootTree = new GraphEntry(values: outputsWithExternalInputs)
+            // We may have left some outputs that are not produced by any inputs at all
+            // For these, we should add top level entries
+//            for(Properties p in outputs.grep { owei -> !owei.inputs }) {
+//                rootTree.values << p     
+//            }            
             rootTree.values.each { it.maxTimestamp = it.timestamp }
             entries << rootTree
         }
@@ -463,7 +510,7 @@ class Dependencies {
                         
                     entry.parents << parentEntry
                     
-                    out.maxTimestamp = (entry.parents*.values*.maxTimestamp.flatten() + out.timestamp).max()
+                    out.maxTimestamp = (entry.parents*.values.grep { out.inputs.contains(it.outputPath) }*.maxTimestamp.flatten() + out.timestamp).max()
                     
                     log.info "Maxtimestamp for $out.outputFile = $out.maxTimestamp"
                  }
@@ -484,7 +531,8 @@ class Dependencies {
         // Here 'leaf node' means a final output as opposed to something that is only used
         // as an intermediate step in calculating a final output.
         for(GraphEntry entry in entries) {
-            List inputTimestamps = entry.parents*.values*.maxTimestamp.flatten()
+            
+            List inputValues = entry.parents*.values.flatten()
             
             for(Properties p in entry.values) {
                 
@@ -494,10 +542,11 @@ class Dependencies {
 //                
 //                log.info "Values: " + entry.parents*.values
 //                
-                def newerInputs = entry.parents*.values.flatten().grep { 
-                    it?.maxTimestamp >= p.timestamp
+                def newerInputs = inputValues.grep { 
+                    log.info "Input $it.outputPath? " + p.inputs.contains(it.outputPath)
+                    p.inputs.contains(it.outputPath) && it?.maxTimestamp >= p.timestamp
                 }
-                if(inputTimestamps.any { it  > p.timestamp }) {
+                if(newerInputs) {
                     p.upToDate = false
                     log.info "$p.outputFile is older than inputs " + (newerInputs.collect { it.outputFile.name + ' / ' + it.timestamp + ' / ' + it.maxTimestamp + ' vs ' + p.timestamp })
                     continue
@@ -513,7 +562,10 @@ class Dependencies {
                     
                 if(entry.children) {
                     p.upToDate = entry.children.every { it.values*.upToDate.every() }
-                    log.info "Output $p.outputFile up to date ? : $p.upToDate"
+                    if(!p.upToDate)
+                        log.info "Output $p.outputFile is not up to date because one or more children are not up to date"
+                    else
+                        log.info "Output $p.outputFile is up to date because all its children are"
                 }
                 else {
                     p.upToDate = false
@@ -538,10 +590,14 @@ class Dependencies {
      * various expected properties to native form from string values.
      */
     Properties readOutputPropertyFile(File f) {
+        log.info "Reading property file $f"
         def p = new Properties();
         new FileInputStream(f).withStream { p.load(it) }
         p.inputs = p.inputs?p.inputs.split(",") as List : []
         p.cleaned = p.containsKey('cleaned')?Boolean.parseBoolean(p.cleaned) : false
+        if(!p.outputFile)
+            throw new IllegalStateException("Error: output meta data property file $f is missing essential information.")
+            
         p.outputFile = new File(p.outputFile)
         
         // Normalizing the slashes in the path is necessary for Cygwin compatibility
