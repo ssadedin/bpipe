@@ -55,10 +55,12 @@ class Utils {
 
         // Box into a collection for simplicity
         outputs = box(outputs)
+        
+        def inputFiles = inputs.collect { new File(it) }
     
         outputs.collect { new File(it) }.grep { outFile ->
             
-//            println "Check $outFile"
+//            println "===== Check $outFile ====="
             if(!outFile.exists()) {
 //                println "file doesn't exist: $outFile"
                 return true
@@ -76,9 +78,9 @@ class Utils {
             else
             if(isContainer(inputs)) {
 //                println "Checking $outFile against inputs $inputs"
-                return !inputs.collect { new File(it) }.any { inFile ->
+                return inputFiles.any { inFile ->
 //                    println "Check $inFile : " + inFile.lastModified() + " >  " + "$outFile : " + outFile.lastModified() 
-                    inFile.lastModified() <= outFile.lastModified() 
+                    inFile.lastModified() > outFile.lastModified() 
                 }
             }
             else 
