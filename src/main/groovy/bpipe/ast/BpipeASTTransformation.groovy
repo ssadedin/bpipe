@@ -67,13 +67,9 @@ class BpipeASTTransformation implements ASTTransformation {
             
         AnnotationNode ann = nodes[0]
         
-        if(!ann.members.value)
-            throw new IllegalArgumentException("Transform annotation requires a value")
+        String closureUpper = closureName.substring(0,1).toUpperCase() + closureName[1..-1]
         
-        if(!(ann.members.value instanceof ConstantExpression)) 
-            throw new IllegalArgumentException("Transform annotation requires constant value")
-        
-        String transformExtension = ann.members.value.value
+        String transformExtension = getAnnotationValue(closureUpper, ann)
         
         BlockStatement block = sourceUnit.getAST()?.getStatementBlock()
         if(!block) {
@@ -83,19 +79,19 @@ class BpipeASTTransformation implements ASTTransformation {
         
         ASTNode parent = searchExpression(null, block, nodes[1])
         if(!parent) {
-            println "ERROR: Could not locate variable defined for Transform"
+            println "ERROR: Could not locate variable defined for $closureUpper"
             return
         }
         
         // Find the Closure
         if(parent.class != ExpressionStatement) {
-            println "ERROR: Transform annotates expression of unexpected type"
+            println "ERROR: $closureUpper annotates expression of unexpected type"
             return
         }
         
         Expression expr = parent.expression
         if(expr.class != DeclarationExpression) {
-            println "ERROR: Transform annotates expression that is not a declaration"
+            println "ERROR: $closureUpper annotates expression that is not a declaration"
             return
         }
         
@@ -103,7 +99,7 @@ class BpipeASTTransformation implements ASTTransformation {
         String stageName = ve.name
         
         if(expr.rightExpression?.class != ClosureExpression) {
-            println "ERROR: Transform annotates expression that is not assigned to a closure"
+            println "ERROR: $closureUpper annotates expression that is not assigned to a closure"
             return
         } 
         
@@ -111,7 +107,8 @@ class BpipeASTTransformation implements ASTTransformation {
         
         ClosureExpression cls = expr.rightExpression
         if(cls.code?.class != BlockStatement)  {
-            println "ERROR: Transform annotates closure without block (?!)"
+            println "ERROR: $closureUpper annotates closure without block (?!)"
+            
             return
         } 
         
@@ -143,6 +140,17 @@ class BpipeASTTransformation implements ASTTransformation {
 
         expr.rightExpression = createStageDeclaration(stageName, expr.rightExpression)
     }
+
+	protected String getAnnotationValue(String closureUpper, AnnotationNode ann) {
+		if(!ann.members.value)
+			throw new IllegalArgumentException("$closureUpper annotation requires a value")
+
+		if(!(ann.members.value instanceof ConstantExpression))
+			throw new IllegalArgumentException("$closureUpper annotation requires constant value")
+
+		String transformExtension = ann.members.value.value
+		return transformExtension
+	}
     
     /**
      * Creates a call to bpipe.Bpipe.declarePipelineStage that wraps 
@@ -208,6 +216,10 @@ class BpipeASTTransformation implements ASTTransformation {
      * Not actually used but a nice example of a generic static method invocation
      */
     public Statement createTransformDeclaration(String name, String ext) {
+        
+        
+        
+        
         return new ExpressionStatement(
             new MethodCallExpression(
 	            new ClassExpression(new ClassNode("bpipe.Bpipe", 1, new ClassNode("bpipe.Pipeline",1, ClassHelper.OBJECT_TYPE))), 

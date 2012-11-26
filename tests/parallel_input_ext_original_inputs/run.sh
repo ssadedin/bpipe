@@ -1,6 +1,6 @@
 source ../testsupport.sh
 
-source cleanup.sh
+source ./cleanup.sh
 
 run *.chr*.*vcf *.chr*bam
 

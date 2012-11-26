@@ -58,6 +58,8 @@ class Runner {
               log
               jobs
               cleanup
+              query
+              preserve
               diagram <pipeline> <in1> <in2>...
               diagrameditor <pipeline> <in1> <in2>...
     """.stripIndent().trim()
@@ -144,6 +146,12 @@ class Runner {
             Dependencies.instance.queryOutputs(args)
             System.exit(0)
         }         
+        else
+        if(mode == "preserve") {
+            log.info("Preserving " + args)
+            this.runPreserve(args)
+            System.exit(0)
+        } 
         else 
         if(mode == "stopcommands") {
             log.info("Stopping running commands")
@@ -348,6 +356,15 @@ class Runner {
         return pid
     }
                     
+    /**
+     * Loads a pipeline file from the source path, checks it in some simple ways and 
+     * augments it with some precursor declarations and imports to bring things into
+     * the default scope.
+     * 
+     * @param cli
+     * @param srcFilePath
+     * @return
+     */
     static String loadPipelineSrc(def cli, def srcFilePath) {
         File pipelineFile = new File(srcFilePath)
         if(!pipelineFile.exists()) {
@@ -357,8 +374,10 @@ class Runner {
             System.exit(1)
         }
         
-        
-        String pipelineSrc = "import static Bpipe.*; " + pipelineFile.text
+        // Note that it is important to keep this on a single line because 
+        // we want any errors in parsing the script to report the correct line number
+        // matching what the user sees in their script
+        String pipelineSrc = "import static Bpipe.*; import Preserve as preserve; import Produce as produce; import Transform as transform; import Filter as filter;" + pipelineFile.text
         if(pipelineFile.text.indexOf("return null") >= 0) {
             println """
                        ================================================================================================================
@@ -384,9 +403,26 @@ class Runner {
             Config.userConfig.prompts.handler = { msg -> return "y"}
         }
             
-        Dependencies.instance.cleanup()
+        Dependencies.instance.cleanup(opt.arguments())
         System.exit(0)
     }
+    
+    /**
+     * Execute the 'preserve' command
+     * @param args
+     */
+    static void runPreserve(def args) {
+        def cli = new CliBuilder(usage: "bpipe preserve <file1> [<file2>] ...")
+        def opt = cli.parse(args)
+        if(!opt.arguments()) {
+            println ""
+            cli.usage()
+            System.exit(1)
+        }
+        Dependencies.instance.preserve(opt.arguments())
+        System.exit(0)
+    }
+    
 }
 
 /**

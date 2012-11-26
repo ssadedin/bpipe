@@ -78,7 +78,7 @@ class Utils {
 //                println "Checking $outFile against inputs $inputs"
                 return !inputs.collect { new File(it) }.any { inFile ->
 //                    println "Check $inFile : " + inFile.lastModified() + " >  " + "$outFile : " + outFile.lastModified() 
-                    inFile.lastModified() < outFile.lastModified() 
+                    inFile.lastModified() <= outFile.lastModified() 
                 }
             }
             else 
@@ -293,7 +293,7 @@ class Utils {
      * @see http://www.faqs.org/docs/abs/HTML/globbingref.html
      * @author Karol Bucek
      */
-    static glob(pattern) {
+    static List<String> glob(pattern) {
         if ( pattern == null ) throw new IllegalArgumentException('null pattern')
         if ( pattern instanceof Collection
             || pattern instanceof Object[] ) {
