@@ -448,7 +448,7 @@ then
     fi
 
     # Now stop any remaining commands
-    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.mode=stopcommands bpipe.Runner
+    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=stopcommands bpipe.Runner
     exit
 elif [ "$COMMAND" == "cleancommands" ];
 then
@@ -503,8 +503,13 @@ fi
 
 ################# Default Command => Run ################
 
-echo "$0 $COMMAND $*" > .bpipe/lastcmd
-echo "$0 $COMMAND $*" >> .bpipe/history
+
+# Don't keep history if no arguments provided
+if [ ! -z "$*" ];
+then
+    echo "$0 $COMMAND $*" > .bpipe/lastcmd
+    echo "$0 $COMMAND $*" >> .bpipe/history
+fi
 
 # Run in the background with nohup so that jobs do not abort on logout
 # We pass the pid of this shell as a property.  This allows the bpipe runtime
