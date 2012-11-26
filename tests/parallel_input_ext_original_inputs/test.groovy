@@ -6,7 +6,7 @@
 
 annotate_test = {
     produce("hello.txt") {
-        //exec "touch $output1"
+        exec "touch $output1"
     }
 }
 
