@@ -733,7 +733,7 @@ class PipelineContext {
             body() 
             
             if(!Config.config.enableCommandTracking || !checkForModifiedCommands()) {
-                msg("Skipping steps to create $out because newer than $lastInputs ")
+                msg("Skipping steps to create ${Utils.box(out).unique()} because newer than $lastInputs ")
                 doExecute = false
             }
           }

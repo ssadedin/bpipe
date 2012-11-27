@@ -167,6 +167,7 @@ class Dependencies {
         // the inputs. We can return straight away here
         List<File> older = Utils.findOlder(outputs,inputs)
         if(!older) {
+            log.info "No missing / older files from inputs: $outputs are up to date"
             return true
         }
         else
@@ -181,7 +182,7 @@ class Dependencies {
         
         def graph = this.getOutputGraph()
         
-        def outDated = outputs.grep { out -> !graph.propertiesFor(out)?.upToDate }
+        def outDated = outputs.grep { out -> def p = graph.propertiesFor(out); if(p && !p.cleaned) return true else return p?.upToDate; }
         if(!outDated) {
             log.info "All missing files are up to date"
             return true
@@ -479,6 +480,8 @@ class Dependencies {
         // Find all entries with inputs that are not outputs of any other entry
         def outputsWithExternalInputs = outputs.grep { p -> ! p.inputs.any { allOutputs.contains(it) } }
         
+        log.info "External inputs: " + outputsWithExternalInputs*.inputs + " for outputs " + outputsWithExternalInputs*.outputPath
+        
         // If there is no tree to attach to, make one
         def entries = []
         if(rootTree == null) {
@@ -490,30 +493,35 @@ class Dependencies {
 //            }            
             rootTree.values.each { it.maxTimestamp = it.timestamp }
             entries << rootTree
+            log.info "Max timestamp for root entries: " + rootTree*.values*.maxTimestamp
         }
         else {
             
-            // Attach each input as a child of the respective input nodes
+            // Attach each output as a child of the respective input nodes
             // in existing tree
             outputsWithExternalInputs.each { Properties out ->
                 
-               
                 GraphEntry entry = new GraphEntry(values: [out])
                 entries << entry
                 
                 // find all nodes in the tree which this output depends on 
                 out.inputs.each { inp ->
                     GraphEntry parentEntry = rootTree.findBy { it.outputPath == inp } 
-                    
-                    if(parentEntry && !(entry in parentEntry.children))
-                        parentEntry.children << entry
+                    if(parentEntry) {
+                        if(!(entry in parentEntry.children))
+                          parentEntry.children << entry
+                          
+                        entry.parents << parentEntry
                         
-                    entry.parents << parentEntry
+                    }
+                    else
+                        log.info "Dependency $inp for $out.outputPath is external root input"
+                }
+               
+                out.maxTimestamp = (entry.parents*.values.flatten().grep { out.inputs.contains(it.outputPath) }*.maxTimestamp.flatten() + out.timestamp).max()
                     
-                    out.maxTimestamp = (entry.parents*.values.grep { out.inputs.contains(it.outputPath) }*.maxTimestamp.flatten() + out.timestamp).max()
-                    
-                    log.info "Maxtimestamp for $out.outputFile = $out.maxTimestamp"
-                 }
+                log.info "Maxtimestamp for $out.outputFile = $out.maxTimestamp"
+                
             }
         }
         
@@ -559,7 +567,16 @@ class Dependencies {
                     p.upToDate = true
                     continue
                 }
+                log.info "$p.outputFile does not exist"
+                
+                // If the file is missing but wasn't removed by us? Consider it not up to date
+                if(!p.cleaned) {
+                    log.info "$p.outputFile removed but not by bpipe"
+                    p.upToDate = false
+                    continue
+                }
                     
+                log.info "$p.outputFile was cleaned"
                 if(entry.children) {
                     p.upToDate = entry.children.every { it.values*.upToDate.every() }
                     if(!p.upToDate)
