@@ -215,7 +215,7 @@ class PipelineCategory {
                                 
                                 // If the filterInputs option is set, match input files on the region name
                                 def childInputs = input
-                                if(objs?.config?.filterInputs) {
+                                if(chr.config?.filterInputs) {
                                     log.info "Filtering child pipeline inputs on name $chr.name"
                                     childInputs  = Utils.box(input).grep { i -> i.indexOf('.' + chr.name + '.')>0 }
                                     
