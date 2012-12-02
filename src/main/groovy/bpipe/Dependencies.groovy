@@ -245,12 +245,13 @@ class Dependencies {
                 if(!o)
                     continue
                     
-                if(timestamps[oldFiles.find { it.name == o }] == new File(o).lastModified()) {
+                File file = context.getOutputMetaData(o)
+                
+                if(timestamps[oldFiles.find { it.name == o }] == new File(o).lastModified() && file.exists()) {
                     log.info "Ignoring output $o because it was not created or modified by stage ${context.stageName}"
                     continue
                 }
                     
-                File file = context.getOutputMetaData(o)
                 
                 Properties p = new Properties()
                 if(file.exists()) {
