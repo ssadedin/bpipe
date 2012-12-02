@@ -173,7 +173,32 @@ public class Pipeline {
         }
     }
     
-    static def chr(Object... objs) {
+    /**
+     * Creates a set of Chr objects based on regions supplied by the arguments
+     * which can be string values ('X','Y'), integers (1,3,4) or ranges (1..3),
+     * or optionally a Map which is treated as a configuration object and passed
+     * through to the created Chr objects. Map values can be passed as individual
+     * map entries (groovy named arguments), or the whole map can be passed as a literal
+     * object, in which case it must be the first argument.
+     * <p>
+     * In practice this is used for parallezing pipelines based on chromosome.
+     * See {@link PipelineCategory#multiply(java.util.Set, java.util.List)}
+     */
+    static Set<Chr> chr(Object... objs) {
+        
+        // Default configuration
+        def cfg = [ filterInputs: false ]
+        
+        // If a configuration is passed then override the default config with that
+        // Note: the Map will always be first because Groovy enforces that
+        if(objs && objs[0] instanceof Map) {
+            cfg += objs[0]
+            objs = objs[1..-1]
+        }
+        
+        if(!objs) 
+            throw new PipelineError("Attempt to parallelize by chromosome is missing required argument for which chromosomes to parallelize over")
+        
         Set<Chr> result = [] as Set
         for(Object o in objs) {
             
@@ -182,12 +207,12 @@ public class Pipeline {
             
             if(o instanceof Range) {
                 for(r in o) {
-                    result << new Chr('chr'+r)
+                    result << new Chr('chr'+r, cfg)
                 }
             }
             else 
             if(o instanceof String || o instanceof Integer) {
-                result << new Chr('chr'+o)
+                result << new Chr('chr'+o, cfg)
             }
         }
         

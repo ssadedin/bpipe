@@ -192,8 +192,8 @@ class PipelineCategory {
             chrs.addAll(objs)
             chrs.sort()
             
-            // Now we have all our samples, make a 
-            // separate pipeline for each one, and for each parallel stage
+            // Now we have all our inputs, make a 
+            // separate pipeline for each one, and execute each parallel segment
             List<Pipeline> childPipelines = []
             List<Runnable> threads = []
             for(Closure s in segments) {
@@ -213,6 +213,23 @@ class PipelineCategory {
                                 PipelineContext dummyPriorContext = pipeline.createContext()
                                 PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
                                 
+                                // If the filterInputs option is set, match input files on the region name
+                                def childInputs = input
+                                if(objs?.config?.filterInputs) {
+                                    log.info "Filtering child pipeline inputs on name $chr.name"
+                                    childInputs  = Utils.box(input).grep { i -> i.indexOf('.' + chr.name + '.')>0 }
+                                    
+                                    // Since the name of the region is already in the file path, it does not need
+                                    // to be applied again to output files
+                                    child.nameApplied = true
+                                    
+                                    if(!childInputs) {
+                                        println "MSG: Skipping region ${chr.name} because no matching inputs were found"
+                                        runningCount.decrementAndGet()
+                                        return
+                                    }
+                                }
+                                
                                 // Note: must be raw output because otherwise the original inputs (from other folders)
                                 // can get redirected to the output folder
                                 dummyPriorContext.setRawOutput(input)
@@ -223,7 +240,7 @@ class PipelineCategory {
                                 child.variables += [chr: region]
                                 child.variables += [region: region]
                                 child.name = chr.name
-                                child.runSegment(input, segmentClosure, runningCount)
+                                child.runSegment(childInputs, segmentClosure, runningCount)
                             }
                             catch(Exception e) {
                                 log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)

@@ -6,9 +6,12 @@ import groovy.util.logging.Log;
 class Chr implements Comparable<Chr> {
 	
 	static List<Chr> knownValues = []
+    
+    Map config
 	
-	Chr(String name) {
+	Chr(String name, Map config) {
 		this.name = name
+        this.config = config;
 		String postfix = name.replaceAll("^chr", "")
 		if(postfix.matches(/^[0-9]*/)) {
 			this.ordinal = Integer.parseInt(postfix)

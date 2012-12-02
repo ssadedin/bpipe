@@ -9,6 +9,16 @@ class RegionSet implements Serializable {
     
     private static final long serialVersionUID = 1L;
     
+    /**
+     * Optional configuration object - this is not used in RegionSet, however
+     * it's used in Chr and for uniformity it's added here too. Later on
+     * support for it can be extended to RegionSet objects too.
+     */
+    Map config
+    
+    /**
+     * Name of this region set
+     */
     String name
 
     /**
