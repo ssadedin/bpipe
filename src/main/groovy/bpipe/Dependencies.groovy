@@ -182,7 +182,14 @@ class Dependencies {
         
         def graph = this.getOutputGraph()
         
-        def outDated = outputs.grep { out -> def p = graph.propertiesFor(out); if(!p || !p.cleaned) return true else return p.upToDate; }
+        def outDated = outputs.grep { out ->
+             def p = graph.propertiesFor(out); 
+             if(!p || !p.cleaned) 
+                 return true 
+             else 
+                 return !p.upToDate
+        }
+        
         if(!outDated) {
             log.info "All missing files are up to date"
             return true
@@ -268,7 +275,9 @@ class Dependencies {
                 p.inputs = allInputs.join(',')?:''
                 p.outputFile = o
                 p.fingerprint = hash
-                p.cleaned = false
+                
+                if(!p.containsKey("cleaned"))
+                    p.cleaned = false
                 
                 p.preserve = String.valueOf(context.preservedOutputs.contains(o))
                 

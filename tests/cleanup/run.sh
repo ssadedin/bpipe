@@ -38,9 +38,9 @@ touch test.csv
 run test.txt
 [ `grep -c "Skipping " test.out ` == 4 ] || err "Failed to find 4 counts of phrase Skipping steps after touching test.csv"
 
-grep -q 'Skipping steps to create test.csv' test.out || err 'Failed to skip creating touched file test.csv even though not necessary'
-grep -q 'Skipping steps to create test.html' test.out || err 'Failed to skip creating touched file test.html even though not necessary'
-grep -q 'Skipping .*to create test.xml'  test.out && err 'Incorrectly skipped creating file test.xml, even though an input was updated'
+grep -q 'Skipping steps to create .*test.csv' test.out || err 'Failed to skip creating touched file test.csv even though not necessary'
+grep -q 'Skipping steps to create .*test.html' test.out || err 'Failed to skip creating touched file test.html even though not necessary'
+grep -q 'Skipping .*to create .*test.xml'  test.out && err 'Incorrectly skipped creating file test.xml, even though an input was updated'
 grep -q 'Skipping .* test.xls' test.out || err 'Failed to skip creating file test.xls even though the input that was updated is not one it depends on'
 grep -q 'Skipping .* test.xls.me' test.out || err 'Failed to skip creating file test.xls.me even though it uses no inputs and exists'
 
