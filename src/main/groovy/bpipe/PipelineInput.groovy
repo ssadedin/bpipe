@@ -46,6 +46,13 @@ class PipelineInput {
     def input
     
     /**
+     * In some cases an input spawns and returns a new input.
+     * In that case, the child needs to be able to reflect
+     * resolved inputs up to the parent
+     */
+    PipelineInput parent
+    
+    /**
      * List of inputs actually resolved by interception of $input.x 
      * style property references
      */
@@ -59,8 +66,14 @@ class PipelineInput {
     }
     
     String toString() {
-        this.resolvedInputs += Utils.first(input)
+        this.resolvedInputs += [Utils.first(input)]
         return String.valueOf(Utils.first(input));
+    }
+    
+    void addResolvedInputs(List objs) {
+        this.resolvedInputs.add(objs)
+        if(parent)
+            parent.addResolvedInputs(objs)
     }
 	
 	String getPrefix() {
@@ -75,7 +88,7 @@ class PipelineInput {
         def inputs = Utils.box(this.input)
         if(inputs.size() <= i)
             throw new PipelineError("Insufficient inputs:  at least ${i+1} inputs are expected but only ${inputs.size()} are available")
-        this.resolvedInputs << inputs[i]
+        this.addResolvedInputs([inputs[i]])
         return inputs[i]
     }
     
@@ -99,7 +112,7 @@ class PipelineInput {
 	 */
 	String mapToCommandValue(def values) {
         def result = String.valueOf(Utils.first(values))
-        this.resolvedInputs << result
+        this.addResolvedInputs([result])
         return result
 	}
     

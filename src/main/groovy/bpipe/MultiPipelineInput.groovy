@@ -35,6 +35,16 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
        this.resolvedInputs += boxed
        return boxed.join(" ")
     }
+    
+    def propertyMissing(String name) {
+        def result = super.propertyMissing(name)
+        if(result) {
+            def mp = new MultiPipelineInput(this.resolvedInputs, stages)
+            mp.parent = this
+            return mp
+        }
+     }
+    
 
 	@Override
 	public Iterator iterator() {

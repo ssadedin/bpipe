@@ -122,7 +122,7 @@ class PipelineOutput {
     def selectFromOverrides(String name) {
         String result = this.overrideOutputs.find { it.endsWith('.' + name) }
         if(!result)
-            throw new PipelineError("An output of type ." + name + " was referenced, however such an output was not specified to occur by an outer transform / filter / produce statement")
+            throw new PipelineError("An output of type ." + name + " was referenced, however such an output was not specified to occur by an outer transform / filter / produce statement.\n\n" + "Valid outputs are: ${overrideOutputs.join('\n')}")
         return result
     }
     

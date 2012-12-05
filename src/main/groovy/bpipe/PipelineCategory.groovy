@@ -303,8 +303,21 @@ class PipelineCategory {
             InputSplitter splitter = new InputSplitter()
             Map samples = splitter.split(pattern, input)
             
+           
             if(samples.isEmpty() && !requireMatch && pattern == "*")        
                 samples["*"] = input
+                
+            if(samples.isEmpty()) {
+                def allInputs = Pipeline.currentRuntimePipeline.get().stages*.context.collect { it.@input}
+                for(def inps in allInputs.reverse()) {
+                    log.info "Checking input split match on $inps"
+                    samples = splitter.split(pattern, inps)
+                    if(!samples.isEmpty()) {
+                        log.info "Found input split match for pattern $pattern on $inps"
+                        break
+                    }
+                }
+            }
             
             if(samples.isEmpty()) 
                 if(input)

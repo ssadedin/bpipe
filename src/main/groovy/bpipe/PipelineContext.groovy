@@ -558,13 +558,22 @@ class PipelineContext {
     */
    Object transform(List<String> exts, Closure body) {
        
-       def inp = Utils.first(this.@input)
-       if(!inp) 
+       def extensionCounts = [:]
+       for(def e in exts) {
+           extensionCounts[e] = 0
+       }
+       
+//       def inp = Utils.first(this.@input)
+       if(!Utils.first(this.@input)) 
            throw new PipelineError("Expected input but no input provided") 
        
        def pipeline = Pipeline.currentRuntimePipeline.get()
        
+       def boxed = Utils.box(this.@input)
+       
        def files = exts.collect { String extension ->
+           def inp = boxed[extensionCounts[extension] % boxed.size()]
+           extensionCounts[extension]++
            if(applyName)
                return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+'.'+extension)
            else
