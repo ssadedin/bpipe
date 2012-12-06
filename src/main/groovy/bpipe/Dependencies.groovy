@@ -261,12 +261,12 @@ class Dependencies {
                 File file = context.getOutputMetaData(o)
                 
                 // Check if the output file existed before the stage ran. If so, we should not save meta data, as it will already be there
-                if(timestamps[oldFiles.find { it.name == o }] == new File(o).lastModified() && file.exists()) { 
+                if(timestamps[oldFiles.find { it.name == o }] == new File(o).lastModified()) { 
                     // An exception to the rule: if the met data file didn't exist at all then
                     // we DO create the meta data because it's probably missing (as in, user copied their files
                     // to new directory, upgraded Bpipe, something similar).
 //                    if(file.exists() || this.outputFilesGenerated.contains(o)) {
-                    if(true) {
+                    if(file.exists() || this.outputFilesGenerated.contains(o)) {
                         log.info "Ignoring output $o because it was not created or modified by stage ${context.stageName}"
                         continue
                     }
