@@ -171,7 +171,7 @@ class Utils {
      * @param inputs    a single object or array or collection of objects
      */
     static unwrap(inputs) {
-        def result = unbox(box(inputs).collect { it instanceof PipelineInput?it.input:it })
+        def result = unbox(box(inputs).collect { it instanceof PipelineInput?it.input:it }).flatten()
         return result
     }
     

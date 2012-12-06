@@ -273,7 +273,7 @@ class PipelineContext {
                                     this.stageName, 
                                  baseOutput,
                                  Utils.box(this.@output), 
-                                 { allInferredOutputs << it; inferredOutputs << it;  if(applyName) { pipeline.nameApplied=true}}) 
+                                 { if(!allInferredOutputs.contains(it)) allInferredOutputs << it; if(!inferredOutputs.contains(it)) inferredOutputs << it;  if(applyName) { pipeline.nameApplied=true}}) 
        
        po.branchName = branchName
        return po

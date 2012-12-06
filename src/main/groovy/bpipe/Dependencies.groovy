@@ -142,6 +142,11 @@ class Dependencies {
     GraphEntry outputGraph
     
     /**
+     * List of output files created in *this run*
+     */
+    List<String> outputFilesGenerated = []
+    
+    /**
      * Return true iff all the outputs and downstream outputs for which
      * they are dependencies are present and up to date.
      * 
@@ -246,6 +251,7 @@ class Dependencies {
      * if the pipeline is re-executed.
      */
     void saveOutputs(PipelineContext context, List<File> oldFiles, Map<File,Long> timestamps) {
+        GraphEntry root = getOutputGraph()
         context.trackedOutputs.each { String cmd, List<String> outputs ->
             for(def o in outputs) {
                 o = Utils.first(o)
@@ -254,10 +260,19 @@ class Dependencies {
                     
                 File file = context.getOutputMetaData(o)
                 
-                if(timestamps[oldFiles.find { it.name == o }] == new File(o).lastModified() && file.exists()) {
-                    log.info "Ignoring output $o because it was not created or modified by stage ${context.stageName}"
-                    continue
+                // Check if the output file existed before the stage ran. If so, we should not save meta data, as it will already be there
+                if(timestamps[oldFiles.find { it.name == o }] == new File(o).lastModified() && file.exists()) { 
+                    // An exception to the rule: if the met data file didn't exist at all then
+                    // we DO create the meta data because it's probably missing (as in, user copied their files
+                    // to new directory, upgraded Bpipe, something similar).
+//                    if(file.exists() || this.outputFilesGenerated.contains(o)) {
+                    if(true) {
+                        log.info "Ignoring output $o because it was not created or modified by stage ${context.stageName}"
+                        continue
+                    }
                 }
+                
+                this.outputFilesGenerated << o
                     
                 
                 Properties p = new Properties()
