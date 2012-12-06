@@ -32,3 +32,23 @@ function run() {
 function runtest() {
 	bpipe test test.groovy $* > test.out 2>&1
 }
+
+function exists() {
+  for i in $*;
+  do
+    [ -e "$i" ] || err "Failed to find expected file $i"
+  done
+}
+
+function notexists() {
+  for i in $*;
+  do
+    [ -e "$i" ] && err "Found unexpected file $i"
+  done
+}
+
+if [ -e ./cleanup.sh ];
+then
+	source ./cleanup.sh
+fi
+
