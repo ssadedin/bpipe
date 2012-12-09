@@ -186,8 +186,6 @@ class PipelineCategory {
             Pipeline.currentRuntimePipeline.get().addStage(currentStage)
             currentStage.context.setInput(input)
             
-            AtomicInteger runningCount = new AtomicInteger()
-            
             List chrs = []
             chrs.addAll(objs)
             chrs.sort()
@@ -200,58 +198,57 @@ class PipelineCategory {
                 log.info "Processing segment ${s.hashCode()}"
                 chrs.each { chr ->
                     log.info "Creating pipeline to run on chromosome $chr"
-                    runningCount.incrementAndGet()
                     Pipeline child = Pipeline.currentRuntimePipeline.get().fork()
                     currentStage.children << child
                     Closure segmentClosure = s
                     threads << {
-                            try {
-                                // First we make a "dummy" stage that contains the inputs
-                                // to the next stage as outputs.  This allows later logic
-                                // to find these "inputs" correctly when it expects to see
-                                // all "inputs" reflected as some output of an earlier stage
-                                PipelineContext dummyPriorContext = pipeline.createContext()
-                                PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
+            
+                        try {
+                            // First we make a "dummy" stage that contains the inputs
+                            // to the next stage as outputs.  This allows later logic
+                            // to find these "inputs" correctly when it expects to see
+                            // all "inputs" reflected as some output of an earlier stage
+                            PipelineContext dummyPriorContext = pipeline.createContext()
+                            PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
                                 
-                                // If the filterInputs option is set, match input files on the region name
-                                def childInputs = input
-                                if(chr.config?.filterInputs) {
-                                    log.info "Filtering child pipeline inputs on name $chr.name"
-                                    childInputs  = Utils.box(input).grep { i -> i.indexOf('.' + chr.name + '.')>0 }
+                            // If the filterInputs option is set, match input files on the region name
+                            def childInputs = input
+                            if(chr.config?.filterInputs) {
+                                log.info "Filtering child pipeline inputs on name $chr.name"
+                                childInputs  = Utils.box(input).grep { i -> i.indexOf('.' + chr.name + '.')>0 }
                                     
-                                    // Since the name of the region is already in the file path, it does not need
-                                    // to be applied again to output files
-                                    child.nameApplied = true
+                                // Since the name of the region is already in the file path, it does not need
+                                // to be applied again to output files
+                                child.nameApplied = true
                                     
-                                    if(!childInputs) {
-                                        println "MSG: Skipping region ${chr.name} because no matching inputs were found"
-                                        runningCount.decrementAndGet()
-                                        return
-                                    }
+                                if(!childInputs) {
+                                    println "MSG: Skipping region ${chr.name} because no matching inputs were found"
+                                    return
                                 }
-                                
-                                // Note: must be raw output because otherwise the original inputs (from other folders)
-                                // can get redirected to the output folder
-                                dummyPriorContext.setRawOutput(input)
-                                
-                                log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
-                                pipeline.addStage(dummyPriorStage)
-                                def region = chr.region
-                                child.variables += [chr: region]
-                                child.variables += [region: region]
-                                child.name = chr.name
-                                child.runSegment(childInputs, segmentClosure, runningCount)
                             }
-                            catch(Exception e) {
-                                log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
-                                StackTraceUtils.sanitize(e).printStackTrace()
-                                child.failed = true
-                            }
+                                
+                            // Note: must be raw output because otherwise the original inputs (from other folders)
+                            // can get redirected to the output folder
+                            dummyPriorContext.setRawOutput(input)
+                                
+                            log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
+                            pipeline.addStage(dummyPriorStage)
+                            def region = chr.region
+                            child.variables += [chr: region]
+                            child.variables += [region: region]
+                            child.name = chr.name
+                            child.runSegment(childInputs, segmentClosure)
+                        }
+                        catch(Exception e) {
+                            log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
+                            StackTraceUtils.sanitize(e).printStackTrace()
+                            child.failed = true
+                        }
                     } as Runnable
                     childPipelines << child
                 }
             }
-            return runAndWaitFor(currentStage, childPipelines, threads, runningCount)
+            return runAndWaitFor(currentStage, childPipelines, threads)
         }
         
         log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
@@ -325,8 +322,6 @@ class PipelineCategory {
                 else
                     throw new PatternInputMissingError("An input pattern was specified '$pattern' but no inputs were given when Bpipe was run.")
 					
-            AtomicInteger runningCount = new AtomicInteger()
-            
             // Now we have all our samples, make a 
             // separate pipeline for each one, and for each parallel stage
             List<Pipeline> childPipelines = []
@@ -334,41 +329,41 @@ class PipelineCategory {
             for(Closure s in segments) {
                 log.info "Processing segment ${s.hashCode()}"
                 samples.each { id, files ->
-                    log.info "Creating pipeline to run parallel segment $id with files $files"
-                    runningCount.incrementAndGet()
                     
+                    log.info "Creating pipeline to run parallel segment $id with files $files"
+                   
                     Pipeline child = Pipeline.currentRuntimePipeline.get().fork()
                     currentStage.children << child
                     Closure segmentClosure = s
                     threads << {
-                            try {
-                                // First we make a "dummy" stage that contains the inputs
-                                // to the next stage as outputs.  This allows later logic
-                                // to find these "inputs" correctly when it expects to see
-                                // all "inputs" reflected as some output of an earlier stage
-                                PipelineContext dummyPriorContext = pipeline.createContext()
-                                PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
+                        try {
+                            // First we make a "dummy" stage that contains the inputs
+                            // to the next stage as outputs.  This allows later logic
+                            // to find these "inputs" correctly when it expects to see
+                            // all "inputs" reflected as some output of an earlier stage
+                            PipelineContext dummyPriorContext = pipeline.createContext()
+                            PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
                                 
-                                // Need to set this without redirection to the output folder because otherwise
-                                dummyPriorContext.setRawOutput(files)
-                                dummyPriorContext.@input = files
+                            // Need to set this without redirection to the output folder because otherwise
+                            dummyPriorContext.setRawOutput(files)
+                            dummyPriorContext.@input = files
                                 
-                                log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
-                                child.addStage(dummyPriorStage)
-                                child.name = id
-                                child.nameApplied = true
-                                child.runSegment(files, segmentClosure, runningCount)
-                            }
-                            catch(Exception e) {
-                                log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
-                                StackTraceUtils.sanitize(e).printStackTrace()
-                                child.failed = true
-                            }
-                        } as Runnable
+                            log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
+                            child.addStage(dummyPriorStage)
+                            child.name = id
+                            child.nameApplied = true
+                            child.runSegment(files, segmentClosure)
+                        }
+                        catch(Exception e) {
+                            log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
+                            StackTraceUtils.sanitize(e).printStackTrace()
+                            child.failed = true
+                        }
+                    } as Runnable
                     childPipelines << child
                 }
             }
-            return runAndWaitFor(currentStage, childPipelines, threads, runningCount)
+            return runAndWaitFor(currentStage, childPipelines, threads)
         }
         
         log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
@@ -377,41 +372,9 @@ class PipelineCategory {
         return multiplyImplementation
     }
     
-    static runAndWaitFor(PipelineStage currentStage, List<Pipeline> pipelines, List<Runnable> threads, AtomicInteger runningCount) {
+    static runAndWaitFor(PipelineStage currentStage, List<Pipeline> pipelines, List<Runnable> threads) {
             // Start all the threads
-            log.info "Creating thread pool with " + Config.config.maxThreads + " threads to execute parallel pipelines"
-            ThreadPoolExecutor pool = Executors.newFixedThreadPool(Config.config.maxThreads, { Runnable r ->
-              def t = new Thread(r)  
-              t.setDaemon(true)
-              return t
-            } as ThreadFactory)
-            
-            try {
-                threads.each { pool.execute(it) }
-                
-                long lastLogTimeMillis = 0
-                while(runningCount.get()) {
-                    
-                    if(lastLogTimeMillis < System.currentTimeMillis() - 5000) {
-                        log.info("Waiting for " + runningCount.get() + " parallel stages to complete (pool.active=${pool.activeCount} pool.tasks=${pool.taskCount})" )
-                        lastLogTimeMillis = System.currentTimeMillis()
-                    }
-                        
-                    synchronized(runningCount) {
-                        runningCount.wait(50)
-                    }
-                    
-                    if(runningCount.get())
-                        Thread.sleep(300)
-                    // TODO: really here we should check if any of the pipelines that finished 
-                    // have failed so that we can abort the other processes if they did
-                }
-            }
-            finally {
-				log.info "Shutting down thread pool (pool.active=${pool.activeCount} pool.tasks=${pool.taskCount})" 
-                pool.shutdownNow()
-				log.info "Thread pool shut down"
-            }
+            Concurrency.instance.execute(threads)
             
             if(pipelines.any { it.failed }) {
                 // TODO: make a much better error message!
@@ -434,7 +397,6 @@ class PipelineCategory {
                 
                 if(out)
                     nextInputs += Utils.box(out)
-                    
             }
             currentStage.context.rawOutput = nextInputs
             Dependencies.instance.checkFiles(currentStage.context.@output)

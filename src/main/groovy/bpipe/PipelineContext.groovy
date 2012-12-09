@@ -112,6 +112,11 @@ class PipelineContext {
      * The id of the thread that created this context
      */
     Long threadId
+    
+    /**
+     * The concurrency used by commands that run in this stage
+     */
+    int commandConcurrency = 1
    
     /**
      * File patterns that will be excluded as inferred output files because they may be created 
@@ -823,6 +828,36 @@ class PipelineContext {
     }
     
     /**
+     * Executes the enclosed block with <i>threadCount</i> concurrency
+     * reserved from the global concurrency semaphore. This allows
+     * you to declare that a particular block uses more resources and 
+     * should have more than n=1 weight in reserving concurrency from the 
+     * system.
+     * 
+     * @param threadCount
+     * @param block
+     */
+    void concurrency(int threadCount, Closure block) {
+        
+        if(threadCount > Config.config.maxThreads)
+            throw new PipelineError("Concurrency required to execute stage $stageName is $threadCount, which is greater than the maximum configured for this pipeline ($Config.config.maxThreads). Use the -n flag to allow higher concurrency.")
+            
+        if(this.commandConcurrency != 1)
+            throw new PipelineError("Stage $stageName contains a nested concurrency declaration (prior request = $commandConcurrency, new request = $threadCount).\n\nNesting concurency requests is not currently supported.")
+        
+        int oldConcurrency = this.commandConcurrency
+        
+        this.commandConcurrency = threadCount
+        
+        if(threadCount<1) 
+            throw new PipelineError("Concurrency < 1 declared in stage $stageName")
+        
+        block()
+        
+        this.commandConcurrency = oldConcurrency
+    }
+    
+    /**
      * Causes the given closure to execute and for files that appear during the
      * execution, and which match the pattern, to be considered as 
      * outputs.  This makes it easy to define a pipeline stage that has an 
@@ -1058,7 +1093,7 @@ class PipelineContext {
           if(toolsDiscovered)
               this.doc(["tools" : toolsDiscovered])
       
-          CommandExecutor cmdExec = commandManager.start(stageName, joined, config, Utils.box(this.input), new File(outputDirectory))
+          CommandExecutor cmdExec = commandManager.start(stageName, joined, config, Utils.box(this.input), new File(outputDirectory), this.commandConcurrency)
           List outputFilter = cmdExec.ignorableOutputs
           if(outputFilter) {
               this.outputMask.addAll(outputFilter)

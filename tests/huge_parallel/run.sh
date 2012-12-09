@@ -1,7 +1,5 @@
 source ../testsupport.sh
 
-./cleanup.sh
-
 run input*.txt
 
 #grep -q "Stage hello" test.out || err "Failed to find expected stage hello"

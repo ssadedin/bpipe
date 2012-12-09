@@ -283,7 +283,7 @@ public class Pipeline {
      * Runs the specified closure in the context of this pipeline 
      * and both decrements and notifies the given counter when finished.
      */
-    void runSegment(def inputs, Closure s, AtomicInteger counter) {
+    void runSegment(def inputs, Closure s) {
         try {
             currentRuntimePipeline.set(this)
         
@@ -310,14 +310,7 @@ public class Pipeline {
             }
         }
         finally {
-            if(counter != null) {
-                int value = counter.decrementAndGet()
-                log.info "Finished running segment for inputs $inputs and decremented counter to $value"
-                synchronized(counter) {
-                    counter.notifyAll()
-                }
-                log.info "Notified parent that segment for inputs $inputs is finished"
-            }
+            log.info "Finished running segment for inputs $inputs"
         }
     }
 
@@ -345,7 +338,6 @@ public class Pipeline {
         
          // Add all the pipeline variables to the external binding
         this.externalBinding.variables += pipeline.binding.variables
-        
         
         def cmdlog = CommandLog.cmdLog
         if(launch) {
@@ -379,7 +371,7 @@ public class Pipeline {
         
             if(launch) {
                 try {
-                    runSegment(inputFile, constructedPipeline, null)
+                    runSegment(inputFile, constructedPipeline)
                 }
                 catch(PatternInputMissingError e) {
                     new File(".bpipe/prompt_input_files." + Config.config.pid).text = ''

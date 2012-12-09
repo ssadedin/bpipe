@@ -28,6 +28,7 @@ import groovy.util.logging.Log
 import bpipe.executor.CommandExecutor
 import bpipe.executor.CustomCommandExecutor
 import bpipe.executor.LocalCommandExecutor;
+import bpipe.executor.ThrottledDelegatingCommandExecutor;
 
 /**
  * Manages execution, persistence and stopping of commands executed
@@ -85,8 +86,8 @@ class CommandManager {
      * @param cmd     the command line to run
      * @return the {@link CommandExecutor} that is executing the job.
      */
-    CommandExecutor start(String name, String cmd, String configName, Collection inputs, File outputDirectory ) {
-        
+    CommandExecutor start(String name, String cmd, String configName, Collection inputs, File outputDirectory, int concurrency) {
+         
         // How to run the job?  look in user config
 		if(!configName) 
             configName = cmd.trim().split(/\s/)[0].trim()
@@ -186,13 +187,15 @@ class CommandManager {
         String commandId = CommandId.newId()
         log.info "Created bpipe command id " + commandId
         
-        cmdExec.start(cfg, commandId, name, cmd, outputDirectory)
-		
-		this.commandIds[cmdExec] = commandId
+        CommandExecutor wrapped = new ThrottledDelegatingCommandExecutor(cmdExec, concurrency)
         
+        wrapped.start(cfg, commandId, name, cmd, outputDirectory)
+    		
+		this.commandIds[cmdExec] = commandId
+            
         new File(commandDir, commandId).withObjectOutputStream { it << cmdExec }
         
-        return cmdExec
+        return wrapped
     }
     
     /**
@@ -231,6 +234,9 @@ class CommandManager {
         // spontaneously if commands are skipped (see PipelineContext#async)
         if(cmd instanceof bpipe.executor.ProbeCommandExecutor)
             return
+            
+        if(cmd instanceof ThrottledDelegatingCommandExecutor)
+            cmd = cmd.commandExecutor
         
 		if(!commandIds.containsKey(cmd))
 			throw new IllegalStateException("Attempt to clean up commmand $cmd that was not launched by this command manager / context")

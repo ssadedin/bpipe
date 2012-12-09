@@ -1,2 +1,1 @@
-rm *.hello
-rm *.hello.*
+rm -f *.hello *.hello.*
