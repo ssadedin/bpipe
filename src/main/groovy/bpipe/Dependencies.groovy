@@ -250,7 +250,7 @@ class Dependencies {
      * about it such that it can be reliably loaded by this same stage
      * if the pipeline is re-executed.
      */
-    void saveOutputs(PipelineContext context, List<File> oldFiles, Map<File,Long> timestamps) {
+    synchronized void saveOutputs(PipelineContext context, List<File> oldFiles, Map<File,Long> timestamps) {
         GraphEntry root = getOutputGraph()
         context.trackedOutputs.each { String cmd, List<String> outputs ->
             for(def o in outputs) {

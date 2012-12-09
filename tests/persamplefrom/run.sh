@@ -1,7 +1,5 @@
 source ../testsupport.sh
 
-rm -f *align* *foo*
-
 run s_*.txt
 
 grep -q "Stage dedupe" test.out || err "Failed to find expected stage dedupe"
