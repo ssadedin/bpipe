@@ -25,6 +25,7 @@
 package bpipe
 
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -86,9 +87,10 @@ class Concurrency {
                           return t
                         } as ThreadFactory
         
-        this.pool = new ThreadPoolExecutor(Config.config.maxThreads, Config.config.maxThreads,
+        this.pool = new ThreadPoolExecutor(Config.config.maxThreads, Integer.MAX_VALUE,
                                       0L, TimeUnit.MILLISECONDS,
-                                      new LinkedBlockingQueue<Runnable>(), 
+//                                      new LinkedBlockingQueue<Runnable>(), 
+                                      new SynchronousQueue<Runnable>(), 
                                       threadFactory) {
               @Override
               void afterExecute(Runnable r, Throwable t) {
