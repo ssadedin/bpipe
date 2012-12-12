@@ -212,7 +212,7 @@ class PipelineStage {
             log.info "Setting next inputs $nextInputs on stage ${this.hashCode()}, context ${context.hashCode()} in thread ${Thread.currentThread().id}"
             context.nextInputs = nextInputs
             
-            Dependencies.instance.saveOutputs(context, oldFiles, modified)
+            Dependencies.instance.saveOutputs(context, oldFiles, modified, Utils.box(this.context.@input))
         }
         catch(PipelineTestAbort e) {
             throw e

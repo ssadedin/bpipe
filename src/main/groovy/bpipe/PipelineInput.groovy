@@ -116,10 +116,15 @@ class PipelineInput {
         return result
 	}
     
+    /**
+     * Here we implement pseudo inheritance from the String class.
+     * The idea is that people can use this object more or less like
+     * a String object.
+     */
     def methodMissing(String name, args) {
         // faux inheritance from String class
         if(name in String.metaClass.methods*.name)
-            return String.metaClass.invokeMethod(this.toString(), name, args)
+            return String.metaClass.invokeMethod(this.toString(), name, args?:[])
         else {
             throw new MissingMethodException(name, PipelineInput, args)
         }

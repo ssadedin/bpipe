@@ -27,6 +27,7 @@ package bpipe
 
 import java.util.logging.ConsoleHandler
 import java.util.logging.FileHandler
+import java.util.logging.Handler;
 import java.util.logging.Level
 import java.util.logging.Logger;
 
@@ -289,7 +290,7 @@ class Runner {
     /**
      * Set up logging for the Bpipe diagnostic log
      */
-    private static Logger initializeLogging(String pid) {
+    public static Logger initializeLogging(String pid) {
         
         def parentLog = log.getParent()
         parentLog.getHandlers().each { parentLog.removeHandler(it) }
@@ -301,7 +302,7 @@ class Runner {
 
         // Another log file for history
         new File(".bpipe/logs").mkdirs()
-        FileHandler pidLog = new FileHandler(".bpipe/logs/${pid}.bpipe.log")
+        Handler pidLog = pid == "tests" ? new ConsoleHandler() : new FileHandler(".bpipe/logs/${pid}.bpipe.log")
         pidLog.setFormatter(new BpipeLogFormatter())
         parentLog.addHandler(pidLog)
 
@@ -377,7 +378,7 @@ class Runner {
         // Note that it is important to keep this on a single line because 
         // we want any errors in parsing the script to report the correct line number
         // matching what the user sees in their script
-        String pipelineSrc = "import static Bpipe.*; import Preserve as preserve; import Produce as produce; import Transform as transform; import Filter as filter;" + pipelineFile.text
+        String pipelineSrc = Pipeline.PIPELINE_IMPORTS + pipelineFile.text
         if(pipelineFile.text.indexOf("return null") >= 0) {
             println """
                        ================================================================================================================

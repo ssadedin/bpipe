@@ -47,6 +47,11 @@ import static Utils.unbox
 public class Pipeline {
     
     /**
+     * Default imports added to the top of all files executed by Bpipe
+     */
+    static final String PIPELINE_IMPORTS = "import static Bpipe.*; import Preserve as preserve; import Produce as produce; import Transform as transform; import Filter as filter;"
+    
+    /**
      * The thread id of the master thread that is running the baseline root
      * pipeline
      */
@@ -438,7 +443,7 @@ public class Pipeline {
         def scripts = (libPaths + loadedPaths).each { scriptFile ->
             log.info("Evaluating library file $scriptFile")
             try {
-                shell.evaluate("import static Bpipe.*; binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true; " + scriptFile.text)
+                shell.evaluate(PIPELINE_IMPORTS+" binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true; " + scriptFile.text)
             }
             catch(Exception ex) {
                 log.severe("Failed to evaluate script $scriptFile: "+ ex)
@@ -661,14 +666,19 @@ public class Pipeline {
     }
     
     void summarizeOutputs(List stages) {
-        def all = Utils.box(stages[-1].context.output).grep { it && !it.startsWith("null") && new File(it.toString()).exists() }
+        
+        Dependencies.instance.reset()
+        List all = Dependencies.instance.findLeaves(Dependencies.instance.outputGraph)*.values.flatten()*.outputPath
+        
+        
+//        def all = Utils.box(stages[-1].context.output).grep { it && !it.startsWith("null") && new File(it.toString()).exists() }
         if(all.size() == 1) {
             rootContext.msg "Output is " + all[0]
         }
         else
         if(all) {
             if(all.size() < 5) {
-                rootContext.msg "Outputs are: \n\t" +  all.join("\n\t")
+                rootContext.msg "Outputs are: \n\t\t" +  all.join("\n\t\t")
             }
         }
     }

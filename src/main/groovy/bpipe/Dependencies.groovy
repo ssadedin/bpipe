@@ -94,8 +94,12 @@ class GraphEntry {
         def trimParent 
         trimParent = { GraphEntry p, GraphEntry c, int index ->
             // Remove all parents that don't contain the child
+            
             p = new GraphEntry(values: p.values, parents: p.parents, children: [c]) 
             c.parents[index] = p
+            
+            if(p in p.parents)
+                throw new RuntimeException("Internal error: an output appears to be a dependency of itself")
             
             // Recurse upwards
             if(p.parents)
@@ -112,21 +116,71 @@ class GraphEntry {
         return root
     }
     
+    /**
+     * Divide the outputs into groups depending on their 
+     * inputs.
+     * @return
+     */
+    def groupOutputs(List<Properties> outputs = null) {
+        def outputGroups = [:]
+        if(outputs == null)
+            outputs = this.values
+            
+        for(def o in outputs) {
+            def key = o.inputs.sort().join(',')
+            if(!outputGroups.containsKey(key)) {
+              outputGroups[key] = [o]
+            }
+            else {
+                outputGroups[key] << o
+            }
+        }
+        return outputGroups
+    }
+    
     String dump() {
-        def inputs = this.values*.inputs.flatten()
+        
+        def inputs = children*.values*.inputs.flatten()
         if(!inputs)
             inputs = ["<no inputs>"]
+                  
         String inputValue = inputs.join('\n') + ' => \n'
-        inputValue + dumpChildren(inputs.collect {it.size()}.max())
+        return inputValue + dumpChildren(inputs.collect {it.size()}.max())
+        
+//        return dumpChildren(0)
     }
    
     /**
      * Render this graph entry as a tree
      */
-    String dumpChildren(int indent = 0) {
+    String dumpChildren(int indent = 0, List<Properties> filter = null) {
+        
+       
+        def valuesToDump = filter != null ? filter : values
+        
         def names = values*.outputFile*.name
-        String me = names.collect { " " * indent + it }.join("\n") + (children?" => \n":"")  
-        return me + children*.dumpChildren(indent+(names.collect{it.size()}.max()?:0)).join('\n')
+        
+        String me = names?names.collect { " " * indent + it }.join("\n") + (children?" => \n":"") :""
+        
+        StringBuilder result = new StringBuilder()
+        def filteredChildren = children
+        if(filter) {
+          def filterOutputs = filter*.outputFile*.name.flatten()
+          
+          filteredChildren = children.grep { child ->
+              // Only output children who have one of the output files in the filter
+              // as an input
+              child.values*.inputs.flatten().find { childInput ->  
+//                  if(filterOutputs.contains(childInput))
+//                    println "Compare $filterOutputs with $childInput YES"
+//                  else
+//                    println "Compare $filterOutputs with $childInput NO"
+//                    
+                  return filterOutputs.contains(childInput)  
+              }
+          }
+        }
+        return me + filteredChildren*.dumpChildren(indent+(names.collect{it.size()}.max()?:0)).join('\n')
     }
 }
 
@@ -245,12 +299,16 @@ class Dependencies {
         return this.outputGraph
     }
     
+    void reset() {
+        this.outputGraph = null
+    }
+    
     /**
      * For each output file created in the context, save information
      * about it such that it can be reliably loaded by this same stage
      * if the pipeline is re-executed.
      */
-    synchronized void saveOutputs(PipelineContext context, List<File> oldFiles, Map<File,Long> timestamps) {
+    synchronized void saveOutputs(PipelineContext context, List<File> oldFiles, Map<File,Long> timestamps, List<String> inputs) {
         GraphEntry root = getOutputGraph()
         context.trackedOutputs.each { String cmd, List<String> outputs ->
             for(def o in outputs) {
@@ -262,11 +320,17 @@ class Dependencies {
                 
                 // Check if the output file existed before the stage ran. If so, we should not save meta data, as it will already be there
                 if(timestamps[oldFiles.find { it.name == o }] == new File(o).lastModified()) { 
+                    // There are a couple of reasons the file might have the same time stamp
+                    // It might be that the outputs were up to date, so didn't need to be modified
+                    // Or it could be that they weren't really produced at all - the user lied to us
+                    // with a 'produce' statement. Even if they did, we don't want to save the 
+                    // meta data file because it will cause a cyclic dependency.
+                    
                     // An exception to the rule: if the met data file didn't exist at all then
                     // we DO create the meta data because it's probably missing (as in, user copied their files
                     // to new directory, upgraded Bpipe, something similar).
 //                    if(file.exists() || this.outputFilesGenerated.contains(o)) {
-                    if(file.exists() || this.outputFilesGenerated.contains(o)) {
+                    if(file.exists() || this.outputFilesGenerated.contains(o) || Utils.box(context.@input).contains(o)) {
                         log.info "Ignoring output $o because it was not created or modified by stage ${context.stageName}"
                         continue
                     }
@@ -284,7 +348,10 @@ class Dependencies {
 
                 p.command = cmd
                 
+                
                 def allInputs = ((context.@inputWrapper?.resolvedInputs?:[]) + context.allResolvedInputs).flatten().unique()
+                
+                log.info "Context " + context.hashCode() + " for stage " + context.stageName + " has resolved inputs " + allInputs
                 
                 p.propertyFile = file.name
                 p.inputs = allInputs.join(',')?:''
@@ -354,10 +421,24 @@ class Dependencies {
      */
     void cleanup(List arguments) {
         
-        List<Properties> outputs = scanOutputFolder()
+        List<Properties> outputs = scanOutputFolder() 
         
         // Start by scanning the output folder for dependency files
-        def graph = computeOutputGraph(outputs)
+        def graph
+        Thread t = new Thread({
+          graph = computeOutputGraph(outputs)
+        })
+        t.start()
+        
+        long startTimeMs = System.currentTimeMillis()
+        while(graph == null) {
+            Thread.sleep(500)
+            if(System.currentTimeMillis() - startTimeMs > 5000) {
+                println "Please wait ... computing dependences ..."
+                break
+            }
+        }
+        t.join()
         
         log.info "\nOutput graph is: \n\n" + graph.dump()
         
@@ -385,21 +466,40 @@ class Dependencies {
             println "\nTo retain files, cancel this command and use 'bpipe preserve' to preserve the files you wish to keep"
             print "\n"
             
-            def answer = Config.userConfig.prompts.handler("Remove these files? (y/n): ")
+            def answer = Config.userConfig.prompts.handler("Remove/trash these files? (y/t/n): ")
+            int removedCount = 0
+            long removedSize = 0
             if(answer == "y") {
-                internalNodes.each { removeOutputFile(it) }
+                internalNodes.each { ++removedCount; removedSize += removeOutputFile(it) }
+                println "Deleted $removedCount files, saving " + ((float)removedSize)/1024.0/1024.0 + " MB of space"
+                
+            }
+            else
+            if(answer == "t") {
+                internalNodes.each { ++removedCount; removedSize +=removeOutputFile(it,true) }
+                println "Moved $removedCount files consuming " + ((float)removedSize)/1024.0/1024.0 + " MB of space"
             }
         }
     }
     
-    void removeOutputFile(Properties outputFileProperties) {
+    long removeOutputFile(Properties outputFileProperties, boolean trash=false) {
         outputFileProperties.cleaned = 'true'
         saveOutputMetaData(outputFileProperties)
         File outputFile = outputFileProperties.outputFile
+        long outputSize = outputFile.size()
+        if(trash) {
+            if(!outputFile.renameTo(new File(".bpipe/trash", outputFile.name))) {
+              log.warning("Failed to move output file ${outputFile.absolutePath} to trash folder")
+              System.err.println "Failed to move file ${outputFile.absolutePath} to trash folder"
+            }
+                
+        }
+        else
         if(!outputFile.delete()) {
             log.warning("Failed to delete output file ${outputFile.absolutePath}")
             System.err.println "Failed to delete file ${outputFile.absolutePath}"
         }
+        return outputSize
     }
     
     /**
@@ -484,8 +584,9 @@ class Dependencies {
      *                  
      * @return          the root node in the graph of outputs
      */
-    GraphEntry computeOutputGraph(List<Properties> outputs, GraphEntry rootTree = null) {
+    GraphEntry computeOutputGraph(List<Properties> outputs, GraphEntry rootTree = null, GraphEntry topRoot=null, List handledOutputs=[]) {
         
+        // Special case: no outputs at all
         if(!outputs) {
             if(!rootTree)
                 rootTree = new GraphEntry(values:[])
@@ -507,53 +608,76 @@ class Dependencies {
         
         log.info "External inputs: " + outputsWithExternalInputs*.inputs + " for outputs " + outputsWithExternalInputs*.outputPath
         
+        handledOutputs.addAll(outputsWithExternalInputs)
+        
+        // find groups of outputs (ie. ones that belong in the same branch of the tree)
         // If there is no tree to attach to, make one
         def entries = []
+        def outputGroups = [:]
+        def createdEntries = [:]
         if(rootTree == null) {
-            rootTree = new GraphEntry(values: outputsWithExternalInputs)
-            // We may have left some outputs that are not produced by any inputs at all
-            // For these, we should add top level entries
-//            for(Properties p in outputs.grep { owei -> !owei.inputs }) {
-//                rootTree.values << p     
-//            }            
-            rootTree.values.each { it.maxTimestamp = it.timestamp }
+            
+            rootTree = new GraphEntry()
+            outputGroups = rootTree.groupOutputs(outputsWithExternalInputs)
+            outputGroups.each { key,outputGroup ->
+                GraphEntry childEntry = new GraphEntry(values: outputGroup)
+                
+                
+                childEntry.values.each { it.maxTimestamp = it.timestamp }
+                createdEntries[key] = childEntry 
+                childEntry.parents << rootTree
+                rootTree.children << childEntry
+                entries << childEntry
+            }
+            
             entries << rootTree
-            log.info "Max timestamp for root entries: " + rootTree*.values*.maxTimestamp
         }
         else {
-            
+               
             // Attach each output as a child of the respective input nodes
             // in existing tree
             outputsWithExternalInputs.each { Properties out ->
                 
                 GraphEntry entry = new GraphEntry(values: [out])
+                log.info "New entry for ${out.outputPath}"
                 entries << entry
+                createdEntries[out.outputPath] = entry
+                outputGroups[out.outputPath] = entry.values
                 
                 // find all nodes in the tree which this output depends on 
                 out.inputs.each { inp ->
-                    GraphEntry parentEntry = rootTree.findBy { it.outputPath == inp } 
+                    GraphEntry parentEntry = topRoot.findBy { it.outputPath == inp } 
                     if(parentEntry) {
                         if(!(entry in parentEntry.children))
                           parentEntry.children << entry
-                          
                         entry.parents << parentEntry
-                        
                     }
                     else
                         log.info "Dependency $inp for $out.outputPath is external root input"
                 }
                
-                out.maxTimestamp = (entry.parents*.values.flatten().grep { out.inputs.contains(it.outputPath) }*.maxTimestamp.flatten() + out.timestamp).max()
+                def dependenciesOnParents = entry.parents*.values.flatten().grep { out.inputs.contains(it.outputPath) }
+                out.maxTimestamp = (dependenciesOnParents*.maxTimestamp.flatten() + out.timestamp).max()
                     
                 log.info "Maxtimestamp for $out.outputFile = $out.maxTimestamp"
                 
             }
         }
         
+        if(topRoot == null)
+            topRoot = rootTree
+        
         if(!outputsWithExternalInputs)
             throw new PipelineError("Unable to identify any outputs with only external inputs in: " + outputs*.outputFile.join('\n') + "\n\nThis may indicate a circular dependency in your pipeline")
         
-        def result =  computeOutputGraph(outputs - outputsWithExternalInputs, rootTree)
+        log.info "There are ${outputGroups.size()} output groups: ${outputGroups.values()*.outputPath}"
+        def remainingOutputs = outputs - outputsWithExternalInputs
+        outputGroups.each { key, outputGroup ->
+          log.info "Remaining outputs: " + remainingOutputs*.outputPath
+          computeOutputGraph(remainingOutputs, createdEntries[key], topRoot, handledOutputs)
+          log.info "Handled outputs: " + handledOutputs*.outputPath + " Hashcode  " + handledOutputs.hashCode()
+          remainingOutputs -= handledOutputs
+        }
                 
         // After computing the child tree, use child information to mark this output as
         // "up to date" or "not up to date"
@@ -565,12 +689,12 @@ class Dependencies {
         // as an intermediate step in calculating a final output.
         for(GraphEntry entry in entries) {
             
-            List inputValues = entry.parents*.values.flatten()
+            List inputValues = entry.parents*.values.flatten().grep { it != null }
             
             for(Properties p in entry.values) {
                 
                 // No entry is up to date if one of its inputs is newer
-                log.info " $p.outputFile ".center(20,"-")
+                log.info " $p.outputFile / entry ${entry.hashCode()} ".center(40,"-")
 //                log.info "Parents: " + entry.parents?.size()
 //                
 //                log.info "Values: " + entry.parents*.values
@@ -584,7 +708,7 @@ class Dependencies {
                     log.info "$p.outputFile is older than inputs " + (newerInputs.collect { it.outputFile.name + ' / ' + it.timestamp + ' / ' + it.maxTimestamp + ' vs ' + p.timestamp })
                     continue
                 }
-                log.info "Newer than input files"
+                log.info "$p.outputPath is newer than input files"
 
                 // The entry may still not be up to date if it
                 // does not exist and a downstream target needs to be updated
@@ -602,6 +726,7 @@ class Dependencies {
                 }
                     
                 log.info "$p.outputFile was cleaned"
+                log.info "Checking  " + entry.children*.values*.outputPath + " from " + entry.children.size() + " children"
                 if(entry.children) {
                     p.upToDate = entry.children.every { it.values*.upToDate.every() }
                     if(!p.upToDate)
@@ -611,12 +736,14 @@ class Dependencies {
                 }
                 else {
                     p.upToDate = false
-                    log.info "$p.outputFile is a leaf node and does not exist"
+                    log.info "$p.outputFile is not up to date because it is a leaf node and does not exist"
                 }
             }
         }
         
-        return result;
+        log.info "Finished Output Graph".center(30,"=")
+        
+        return rootTree
     }
     
     /**
@@ -670,9 +797,16 @@ class Dependencies {
      */
     List<GraphEntry> findLeaves(GraphEntry graph) {
         def result = []
+        def outputs = [] as Set
         graph.depthFirst {
-            if(it.children.isEmpty())
+            
+//            if(it.values*.outputFile.grep { o -> o.name.indexOf("qc.xls")>=0 })
+//                println "Children of ${it.values*.outputFile} are " + it.children
+//            
+            if(it.children.isEmpty() && it.values*.outputPath.every { !outputs.contains(it) } ) {
               result << it
+              outputs += it.values*.outputPath
+            }
         }
         return result
     }

@@ -161,6 +161,7 @@ class Concurrency {
      * the thread before it can start work. (ie. this method may block).
      */
     void acquire(int concurrency=1) {
+        log.info "Thread " + Thread.currentThread().getName() + " requesting for $concurrency concurrency permit(s) with " + this.commandConcurrency.availablePermits() + " available"
         long startTimeMs = System.currentTimeMillis()
         this.commandConcurrency.acquire(concurrency)
         long durationMs = startTimeMs - System.currentTimeMillis()

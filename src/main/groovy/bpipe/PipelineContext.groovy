@@ -442,6 +442,11 @@ class PipelineContext {
            throw new PipelineTestAbort("Would execute filterLines on input $input")
        
        String usedInput = Utils.first(input)    
+       
+       // Do this just to create the file - otherwise it doesn't get created at all for
+       // an empty input file
+       getOut()
+       
        new File(usedInput).eachLine {  line ->
            if(line.startsWith("#") || c(line))
                   getOut() << line << "\n"
@@ -449,6 +454,7 @@ class PipelineContext {
        
        this.allResolvedInputs << usedInput
        
+       log.info "Filter lines in context " + this.hashCode() + " resulted in resolved inputs " + this.allResolvedInputs
    }
    
    void filterRows(Closure c) {
@@ -775,10 +781,20 @@ class PipelineContext {
         if(this.@output) {
             log.info "Adding outputs " + this.@output + " as a result of produce"
             Utils.box(this.@output).each { o ->
+                
+                // If no inputs were resolved, we assume generically that all the inputs
+                // to the stage were used. This is necessary to deal with
+                // filterLines which doesn't trigger inferred inputs because
+                // it does not execute at all
+                if(!allResolvedInputs && !this.inputWrapper?.resolvedInputs) {
+                    allResolvedInputs.addAll(Utils.box(this.@input))
+                }
+  
                 // It's possible the user used produce() but did not actually reference
                 // the output variable anywhere in the body. In that case, we
                 // don't know which command used the output variable so we add an "anonymous" 
                 // output
+               
                 trackOutputIfNotAlreadyTracked(o, "<produce>")
             }
         }
