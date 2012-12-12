@@ -7,6 +7,10 @@ class DependenciesTest {
     
     Properties a,b,c,d
     
+    static {
+        Runner.initializeLogging("tests")
+    }
+    
     @Before
     void setUp() {
         
@@ -48,6 +52,8 @@ class DependenciesTest {
                 println " Test output name = $name : time= $a.timestamp"
             }
         }
+        if(!a.timestamp)
+            a.timestamp = 0
         return a
     }
     
@@ -56,7 +62,7 @@ class DependenciesTest {
     void testComputeOutputGraph() {
         
        
-       def result = Dependencies.instance.computeOutputGraph([a,b,c,d]) 
+       def result = Dependencies.instance.computeOutputGraph([a,b,c,d]).children[0]
        
        println result.dump()
        
@@ -92,6 +98,31 @@ class DependenciesTest {
     }
     
     @Test
+    void testOutputWithNoInputs() {
+        
+        def e = testFile('e.txt', [])
+        def result = Dependencies.instance.computeOutputGraph([a,b,c,d,e])
+        println "Graph:"
+        println result.dump()
+        
+        def eEntry = result.entryFor('e.txt')
+        def aEntry = result.entryFor('a.txt')
+        def dEntry = result.entryFor('d.txt')
+        def bEntry = result.entryFor('b.txt')
+        def cEntry = result.entryFor('c.txt')
+        
+        assert !eEntry.parents.contains(aEntry)
+        assert !eEntry.parents.contains(dEntry)
+        assert !eEntry.parents.contains(bEntry)
+        assert !eEntry.parents.contains(cEntry)
+        
+        assert !eEntry.children.contains(aEntry)
+        assert !eEntry.children.contains(dEntry)
+        assert !eEntry.children.contains(bEntry)
+        assert !eEntry.children.contains(cEntry) 
+    }
+    
+    @Test
     void testEmptyGraph() {
        def result = Dependencies.instance.computeOutputGraph([]) 
        assert result.values.isEmpty()
@@ -100,7 +131,7 @@ class DependenciesTest {
     
     @Test
     void testSingleNode() {
-       def result = Dependencies.instance.computeOutputGraph([a]) 
+       def result = Dependencies.instance.computeOutputGraph([a]).children[0]
        assert result.values == [a]
        assert result.children.isEmpty()
     }
@@ -115,6 +146,10 @@ class DependenciesTest {
     @Test
     void testClone() {
        def result = Dependencies.instance.computeOutputGraph([a,b,c,d]) 
+       
+       println "Unfiltered:\n" + result.dump()
+       
+        
        GraphEntry cEntry = result.entryFor("c.txt")
        GraphEntry filtered = result.filter("c.txt") 
        GraphEntry cloned = filtered.entryFor("c.txt")
@@ -131,12 +166,12 @@ class DependenciesTest {
     @Test 
     void testUpToDate() {
        def result 
-//       result = Dependencies.instance.computeOutputGraph([a,b,c,d]) 
-//       assert a.upToDate
-//       assert b.upToDate
-//       assert c.upToDate
-//       assert d.upToDate
-//       
+       result = Dependencies.instance.computeOutputGraph([a,b,c,d]) 
+       assert a.upToDate
+       assert b.upToDate
+       assert c.upToDate
+       assert d.upToDate
+       
        // Let's make a be newer than the other files
        def oldts = a.timestamp
        a.timestamp = 100
