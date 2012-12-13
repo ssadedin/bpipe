@@ -670,13 +670,17 @@ class Dependencies {
         if(!outputsWithExternalInputs)
             throw new PipelineError("Unable to identify any outputs with only external inputs in: " + outputs*.outputFile.join('\n') + "\n\nThis may indicate a circular dependency in your pipeline")
         
-        log.info "There are ${outputGroups.size()} output groups: ${outputGroups.values()*.outputPath}"
-        def remainingOutputs = outputs - outputsWithExternalInputs
+//        log.info "There are ${outputGroups.size()} output groups: ${outputGroups.values()*.outputPath}"
+        log.info "There are ${outputGroups.size()} output groups"
+        log.info "Subtracting ${outputsWithExternalInputs.size()} remaining outputs from ${outputs.size()} total outputs"
+        List remainingOutputs = outputs.clone()
+        remainingOutputs.removeAll(outputsWithExternalInputs)
         outputGroups.each { key, outputGroup ->
-          log.info "Remaining outputs: " + remainingOutputs*.outputPath
-          computeOutputGraph(remainingOutputs, createdEntries[key], topRoot, handledOutputs)
-          log.info "Handled outputs: " + handledOutputs*.outputPath + " Hashcode  " + handledOutputs.hashCode()
-          remainingOutputs -= handledOutputs
+//          log.info "Remaining outputs: " + remainingOutputs*.outputPath
+            computeOutputGraph(remainingOutputs, createdEntries[key], topRoot, handledOutputs)
+//          log.info "Handled outputs: " + handledOutputs*.outputPath + " Hashcode  " + handledOutputs.hashCode()
+            remainingOutputs.removeAll(handledOutputs)
+            log.info "There are ${remainingOutputs.size()} remaining outputs"
         }
                 
         // After computing the child tree, use child information to mark this output as
