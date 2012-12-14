@@ -536,6 +536,14 @@ class PipelineContext {
        }
    }
    
+   List<String> glob(String... patterns) {
+       def result = []
+       for(def p in patterns) {
+           result.addAll(Utils.glob(p))
+       }
+       return result
+   }
+   
    /**
     * Returns an output stream to which the current pipeline stage can write
     * directly to create output.
@@ -1175,13 +1183,12 @@ class PipelineContext {
        
        def resolvedInputs = Utils.box(exts).collect { String ext ->
            
-           if(!ext.startsWith("."))
-               ext = "." + ext
+           String normExt = ext.startsWith(".") ? ext : "." + ext
            
            for(s in reverseOutputs) {
-               def o = s.grep { it?.endsWith(ext) }.collect { it.toString() }
+               def o = s.grep { it?.endsWith(normExt) }.collect { it.toString() }
                if(o) {
-                   log.info("Checking ${s} vs $ext  Y")
+                   log.info("Checking ${s} vs $normExt  Y")
                    return o
                }
 //               log.info("Checking outputs ${s} vs $inp N")
@@ -1203,11 +1210,11 @@ class PipelineContext {
        def oldInputs = this.@input
        this.@input  = resolvedInputs
        
-       this.getInput().resolvedInputs << resolvedInputs
+       this.getInput().resolvedInputs.addAll(resolvedInputs)
        
        this.nextInputs = body()
        
-       allResolvedInputs += this.getInput().resolvedInputs
+       allResolvedInputs.addAll(this.getInput().resolvedInputs)
        
        this.@input  = oldInputs
        this.@inputWrapper = null
