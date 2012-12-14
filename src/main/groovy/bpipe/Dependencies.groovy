@@ -27,6 +27,13 @@ package bpipe
 
 import groovy.util.logging.Log;
 
+/**
+ * A node in the dependency graph representing a set of outputs
+ * sharing a common set of child nodes (who depend on the outputs) and
+ * inputs (parents nodes) upon which the children depend.  
+ * 
+ * @author ssadedin
+ */
 class GraphEntry {
     
     List<Properties> values
@@ -86,6 +93,9 @@ class GraphEntry {
      */
     GraphEntry filter(String output) {
         GraphEntry outputEntry = this.entryFor(output)
+        
+        if(!outputEntry)
+            return null
         
         GraphEntry result = outputEntry.clone()
         
@@ -803,10 +813,6 @@ class Dependencies {
         def result = []
         def outputs = [] as Set
         graph.depthFirst {
-            
-//            if(it.values*.outputFile.grep { o -> o.name.indexOf("qc.xls")>=0 })
-//                println "Children of ${it.values*.outputFile} are " + it.children
-//            
             if(it.children.isEmpty() && it.values*.outputPath.every { !outputs.contains(it) } ) {
               result << it
               outputs += it.values*.outputPath
