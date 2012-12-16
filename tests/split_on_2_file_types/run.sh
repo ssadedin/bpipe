@@ -2,6 +2,6 @@ source ../testsupport.sh
 
 run *.bed *.peak
 
-exists s1_ccat_sort.ccat.intersect.peak s2_ccat_sort.ccat.intersect.peak
+exists s2_macs_sort.macs.intersect.bed s1_macs_sort.macs.intersect.bed
 
 true
