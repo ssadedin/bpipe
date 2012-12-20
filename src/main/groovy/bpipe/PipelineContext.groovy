@@ -479,7 +479,7 @@ class PipelineContext {
 	   f.eachLine {  line ->
 		   if(first) {
 			 first = false
-			 if(line.startsWith('#')) {
+			 if(line.startsWith('#') && !line.startsWith('##')) {
 				 header = line.substring(1).split('\t').collect { it.trim() }
 			 }  
 		   }
@@ -495,7 +495,10 @@ class PipelineContext {
 			   this.localVariables["col"] = cols
 		   }
 		   
-           if(line.startsWith("#") || c(cols)) {
+           if(line.startsWith("#"))
+               outStream << line
+           else 
+           if(c(cols)) {
                outStream << cols.join("\t") << "\n"
            }
        }	   
@@ -757,12 +760,17 @@ class PipelineContext {
           this.trackedOutputs = [:]
           try {
             PipelineDelegate.setDelegateOn(this, body)
-            log.info("Producing from inputs ${this.@input}")
+            log.info("Probing command using inputs ${this.@input}")
             body() 
+            log.info "Finished probe"
             
             if(!Config.config.enableCommandTracking || !checkForModifiedCommands()) {
                 msg("Skipping steps to create ${Utils.box(out).unique()} because newer than $lastInputs ")
+                log.info "Skipping produce body"
                 doExecute = false
+            }
+            else {
+                log.info "Not skipping because of modified command"
             }
           }
           finally {
@@ -1200,7 +1208,7 @@ class PipelineContext {
        }
        
        if(resolvedInputs.any { it == null})
-           throw new PipelineError("Unable to locate one or more inputs ending with $orig")
+           throw new PipelineError("Unable to locate one or more inputs specified by 'from' ending with $orig")
            
        // resolvedInputs = Utils.unbox(resolvedInputs)
        resolvedInputs = resolvedInputs.flatten()

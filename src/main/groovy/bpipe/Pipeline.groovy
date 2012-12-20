@@ -112,6 +112,17 @@ public class Pipeline {
     boolean failed = false
     
     /**
+     * If a pipeline failed with an exception, it sets the exception(s) here
+     */
+    List<Throwable> failExceptions = []
+    
+    /**
+     * If a pipeline fails but not with an exception, the reason, if known
+     * is set here
+     */
+    String failReason = "Unknown"
+    
+    /**
      * The base context from which all others are generated
      */
     PipelineContext rootContext
@@ -303,14 +314,16 @@ public class Pipeline {
             }
             catch(PipelineError e) {
                 log.info "Pipeline segment failed (2): " + e.message
-                System.err << "Pipeline failed!\n\n"+e.message << "\n\n"
+                System.err << "Pipeline failed! (2) \n\n"+e.message << "\n\n"
                 failed = true
                 if(e instanceof PatternInputMissingError)
                     throw e
+                failExceptions << e
             }
             catch(PipelineTestAbort e) {
                 log.info "Pipeline segment aborted due to test mode"
                 println "\n\nAbort due to Test Mode!\n\n" + Utils.indent(e.message) + "\n"
+                failReason = "Pipeline was run in test mode and was stopped before performing an action. See earlier messages for details."
                 failed = true
             }
         }
