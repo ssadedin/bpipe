@@ -86,7 +86,7 @@ class CommandManager {
      * @param cmd     the command line to run
      * @return the {@link CommandExecutor} that is executing the job.
      */
-    CommandExecutor start(String name, String cmd, String configName, Collection inputs, File outputDirectory, int concurrency) {
+    CommandExecutor start(String name, String cmd, String configName, Collection inputs, File outputDirectory, Map resources) {
          
         // How to run the job?  look in user config
 		if(!configName) 
@@ -187,7 +187,7 @@ class CommandManager {
         String commandId = CommandId.newId()
         log.info "Created bpipe command id " + commandId
         
-        CommandExecutor wrapped = new ThrottledDelegatingCommandExecutor(cmdExec, concurrency)
+        CommandExecutor wrapped = new ThrottledDelegatingCommandExecutor(cmdExec, resources)
         
         wrapped.start(cfg, commandId, name, cmd, outputDirectory)
     		

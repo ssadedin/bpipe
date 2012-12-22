@@ -27,13 +27,29 @@ package bpipe
 
 import groovy.util.logging.Log
 
-class StringExtrasCategory {
+class PipelineBodyCategory {
 	static String getPrefix(String value) {
 		return value.replaceAll('\\.[^\\.]*?$', '')
 	}
     
     static int indexOf(String value, RegionValue other) {
         value.indexOf(other.toString())
+    }
+    
+    static Object getProperty(Integer n, String name) {
+        if(name == "threads") {
+            return new ResourceUnit(amount:n as Integer, key: "threads")
+        }
+        else
+        if(name == "GB") {
+            return new ResourceUnit(amount: n * 1024 as Integer)
+        }
+        else
+        if(name == "MB") {
+            return new ResourceUnit(amount: n as Integer)
+        }
+        else
+            return null
     }
 }
 
@@ -177,7 +193,7 @@ class PipelineStage {
                 PipelineCategory.wrappers[stageName](body, context.@input)
             }
             else { 
-				use(StringExtrasCategory) {
+				use(PipelineBodyCategory) {
 	                def returnedInputs = body(context.@input)
 					if(joiner) {
 						context.nextInputs = returnedInputs

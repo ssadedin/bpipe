@@ -269,6 +269,19 @@ public class Pipeline {
         
         log.info("Running with input " + inputFile)
         
+        Integer.metaClass.getProperty = { String name -> 
+            Integer n = delegate
+            if(name == "GB") {
+                return new ResourceUnit(amount: n * 1024 as Integer, key: "memory")
+            }
+            else
+            if(name == "MB") {
+                return new ResourceUnit(amount: n as Integer, key: "memory")
+            }
+            else
+                return new ResourceUnit(amount:n as Integer, key: name)
+        }
+        
         Pipeline pipeline = new Pipeline()
         
         // To make life easier when a single argument is passed in,

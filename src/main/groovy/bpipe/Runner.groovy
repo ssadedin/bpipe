@@ -52,7 +52,7 @@ class Runner {
     
     
     final static String DEFAULT_HELP = """
-        bpipe [run|test|debug|execute] [-h] [-t] [-d] [-r] [-y] [-n <threads>] [-v] <pipeline> <in1> <in2>...
+        bpipe [run|test|debug|execute] [-h] [-t] [-d] [-r] [-y] [-n <threads>] [-m <memory MB>] [-l <resource>=<limit>] [-v] <pipeline> <in1> <in2>...
               retry [test]
               stop
               history 
@@ -170,6 +170,8 @@ class Runner {
                  t longOpt:'test', 'test mode'
                  r longOpt:'report', 'generate an HTML report / documentation for pipeline'
                  n longOpt:'threads', 'maximum threads', args:1
+                 m longOpt:'memory', 'maximum memory', args:1
+                 l longOpt:'resource', 'place limit on named resource', args:1
                  v longOpt:'verbose', 'print internal logging to standard error'
                  y longOpt:'yes', 'answer yes to any prompts or questions'
                  p longOpt: 'param', 'defines a pipeline parameter', args: 1, argName: 'param=value', valueSeparator: ',' as char
@@ -204,6 +206,22 @@ class Runner {
         if(opts.n) {
             log.info "Maximum threads specified as $opts.n"
             Config.config.maxThreads = Integer.parseInt(opts.n)
+        }
+        
+        if(opts.m) {
+            log.info "Maximum memory specified as $opts.m MB"
+            Config.config.maxMemoryMB = Integer.parseInt(opts.m)
+        }
+        
+        if(opts.l) {
+            log.info "Resource limit specified as $opts.l"
+            def limit = opts.l.split("=")
+            if(limit.size()!=2) {
+                System.err.println "\nBad format for limit $opts.l - expect format <name>=<value>\n"
+                cli.usage()
+                System.exit(1)
+            }
+            Concurrency.instance.setLimit(limit[0],limit[1] as Integer)
         }
         
         if(opts.r) {

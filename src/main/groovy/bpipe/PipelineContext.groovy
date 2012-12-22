@@ -114,9 +114,9 @@ class PipelineContext {
     Long threadId
     
     /**
-     * The concurrency used by commands that run in this stage
+     * The resources used by commands that run in this stage
      */
-    int commandConcurrency = 1
+    Map<String,ResourceUnit> usedResources = [ "threads":new ResourceUnit(key: "threads", amount:1)] 
    
     /**
      * File patterns that will be excluded as inferred output files because they may be created 
@@ -859,6 +859,18 @@ class PipelineContext {
         }
     }
     
+    void uses(ResourceUnit newResources, Closure block) {
+        resources([newResources], block)
+    }
+    
+    void uses(ResourceUnit r1, ResourceUnit r2, Closure block) {
+        resources([r1,r2], block)
+    }
+    
+    void uses(ResourceUnit r1, ResourceUnit r2, ResourceUnit r3, Closure block) {
+        resources([r1,r2], block)
+    }
+    
     /**
      * Executes the enclosed block with <i>threadCount</i> concurrency
      * reserved from the global concurrency semaphore. This allows
@@ -869,24 +881,33 @@ class PipelineContext {
      * @param threadCount
      * @param block
      */
-    void concurrency(int threadCount, Closure block) {
+    void resources(List<ResourceUnit> newResources, Closure block) {
         
-        if(threadCount > Config.config.maxThreads)
-            throw new PipelineError("Concurrency required to execute stage $stageName is $threadCount, which is greater than the maximum configured for this pipeline ($Config.config.maxThreads). Use the -n flag to allow higher concurrency.")
+        def oldResources = this.usedResources
+        
+        try {
+            this.usedResources = oldResources.clone()
             
-        if(this.commandConcurrency != 1)
-            throw new PipelineError("Stage $stageName contains a nested concurrency declaration (prior request = $commandConcurrency, new request = $threadCount).\n\nNesting concurency requests is not currently supported.")
-        
-        int oldConcurrency = this.commandConcurrency
-        
-        this.commandConcurrency = threadCount
-        
-        if(threadCount<1) 
-            throw new PipelineError("Concurrency < 1 declared in stage $stageName")
-        
-        block()
-        
-        this.commandConcurrency = oldConcurrency
+            newResources.each { r ->
+                def key = r.key
+                if(r.amount<1) 
+                    throw new PipelineError("Resource amount $r.amount of type $key < 1 declared in stage $stageName")
+                    
+                // TODO: extend tyhese checks to memory / other resources
+                if(key == "threads" && r.amount > Config.config.maxThreads)
+                    throw new PipelineError("Concurrency required to execute stage $stageName is $r.amount, which is greater than the maximum configured for this pipeline ($Config.config.maxThreads). Use the -n flag to allow higher concurrency.")
+                    
+                if(key == "threads" && this.usedResources.threads.amount != 1)
+                    throw new PipelineError("Stage $stageName contains a nested concurrency declaration (prior request = $usedResources.threads.amount, new request = $r.amount).\n\nNesting concurrency requests is not currently supported.")
+                    
+               this.usedResources.put(key,r) 
+            }
+                
+            block()
+        }
+        finally {
+            this.usedResources = oldResources
+        }
     }
     
     /**
@@ -1125,7 +1146,7 @@ class PipelineContext {
           if(toolsDiscovered)
               this.doc(["tools" : toolsDiscovered])
       
-          CommandExecutor cmdExec = commandManager.start(stageName, joined, config, Utils.box(this.input), new File(outputDirectory), this.commandConcurrency)
+          CommandExecutor cmdExec = commandManager.start(stageName, joined, config, Utils.box(this.input), new File(outputDirectory), this.usedResources)
           List outputFilter = cmdExec.ignorableOutputs
           if(outputFilter) {
               this.outputMask.addAll(outputFilter)

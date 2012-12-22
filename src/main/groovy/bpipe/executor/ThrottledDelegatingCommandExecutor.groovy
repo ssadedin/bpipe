@@ -2,6 +2,7 @@ package bpipe.executor
 
 import groovy.util.logging.Log;
 import bpipe.Concurrency;
+import bpipe.ResourceUnit;
 
 /**
  * Wraps another CommandExecutor and adds concurrency control to it
@@ -16,12 +17,16 @@ class ThrottledDelegatingCommandExecutor {
     /**
      * The level of concurrency that will be reserved for executing the command
      */
-    int concurrency 
+    List<ResourceUnit> resources
     
     @Delegate CommandExecutor commandExecutor
     
-    ThrottledDelegatingCommandExecutor(CommandExecutor delegateTo, int concurrency) {
-        this.concurrency = concurrency
+    ThrottledDelegatingCommandExecutor(CommandExecutor delegateTo, Map resources) {
+        
+        // Note that the sort here is vital to avoid deadlocks - it ensures 
+        // that resources are always allocated in the same order
+        this.resources = resources.values().sort { it.key }
+        
         this.commandExecutor = delegateTo
     }
     
@@ -31,7 +36,7 @@ class ThrottledDelegatingCommandExecutor {
      */
     @Override
     void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
-        Concurrency.instance.acquire(concurrency)
+        resources.each { Concurrency.instance.acquire(it) }
         commandExecutor.start(cfg, id, name, cmd, outputDirectory)
     }
     
@@ -46,11 +51,17 @@ class ThrottledDelegatingCommandExecutor {
             return result
         }
         finally {
+            releaseAll()
+        }
+    }
+    
+    void releaseAll() {
+        resources.reverse().each { resource ->
             try {
-                Concurrency.instance.release(concurrency)
+                Concurrency.instance.release(resource)
             }
             catch(Throwable t) {
-                log.warning("Error reported while releasing $concurrency concurrency permits : " + t.toString())
+                log.warning("Error reported while releasing $resource.amount $resource.key : " + t.toString())
             }
         }
     }
@@ -58,12 +69,12 @@ class ThrottledDelegatingCommandExecutor {
     @Override
     void stop() {
         try {
-            Concurrency.instance.release(concurrency)
+            releaseAll()
         }
         catch(Throwable t) {
             // Stop can be called from outside the Bpipe instance that is actually running the
             // pipeline, so that will probably generate this error
-            log.warning("Error reported while releasing $concurrency concurrency permits : " + t.toString())
+            log.warning("Error reported while releasing resources $resources : " + t.toString())
         }
         this.commandExecutor.stop()
     }

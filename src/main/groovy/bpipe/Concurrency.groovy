@@ -32,8 +32,26 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import groovy.util.logging.Log;
+
+
+/**
+ * A resource that can be managed by Bpipe.
+ * The key is the name of the resource (eg: "memory") 
+ * and the amount is the amount that is being used by  particular
+ * operation.
+ * 
+ * @author ssadedin
+ */
+@Log
+class ResourceUnit {
+    
+    int amount = 0;
+    
+    String key
+}
 
 @Singleton
 @Log
@@ -71,7 +89,14 @@ class Concurrency {
      * ensuring that no more than the maximum parallel paths can execute
      * across the whole pipeline
      */
-    Semaphore commandConcurrency 
+    
+//    Semaphore commandConcurrency 
+    
+    /**
+     * Each resource allocation allocates resources for its resource type against
+     * these resource allocations.
+     */
+    Map<String,Semaphore> resourceAllocations = [ threads: new Semaphore(Config.config.maxThreads)]
     
     /**
      * Counts of threads running
@@ -79,6 +104,7 @@ class Concurrency {
     Map<Runnable,AtomicInteger> counts = [:]
     
     Concurrency() {
+        
         log.info "Creating thread pool with " + Config.config.maxThreads + " threads to execute parallel pipelines"
         
         ThreadFactory threadFactory = { Runnable r ->
@@ -110,7 +136,14 @@ class Concurrency {
                   }
               }
         }
-        this.commandConcurrency = new Semaphore(Config.config.maxThreads)
+        
+//        if(Config.userConfig.maxMemoryMB) {
+//            resourceAllocations["memory"] = new Semaphore(Integer.parseInt(Config.userConfig.maxMemoryMB))
+//        }               
+//        
+//        if(Config.config.maxMemoryMB) {
+//            resourceAllocations["memory"] = new Semaphore(Config.config.maxMemoryMB)
+//        }               
     }
     
     /**
@@ -156,25 +189,51 @@ class Concurrency {
         }
     }
 
-    /**
-     * Called by parallel paths before they begin execution: enforces overall concurrency by blocking
-     * the thread before it can start work. (ie. this method may block).
-     */
-    void acquire(int concurrency=1) {
-        log.info "Thread " + Thread.currentThread().getName() + " requesting for $concurrency concurrency permit(s) with " + this.commandConcurrency.availablePermits() + " available"
-        long startTimeMs = System.currentTimeMillis()
-        this.commandConcurrency.acquire(concurrency)
-        long durationMs = startTimeMs - System.currentTimeMillis()
-        if(durationMs > 1000) {
-            log.info "Thread " + Thread.currentThread().getName() + " blocked for $durationMs ms waiting for $concurrency concurrency permit(s)"
+   /**
+    * Called by parallel paths before they begin execution: enforces overall concurrency by blocking
+    * the thread before it can start work. (ie. this method may block).
+    */
+   void acquire(ResourceUnit resourceUnit) {
+        Semaphore resource
+        synchronized(resourceAllocations) {
+            resource = resourceAllocations.get(resourceUnit.key)
         }
-        else
-            log.info "Thread " + Thread.currentThread().getName() + " acquired $concurrency concurrency permit(s)"
-    }
-    
-    void release(int concurrency=1) {
-        this.commandConcurrency.release(concurrency)
-        log.info "Thread " + Thread.currentThread().getName() + " releasing $concurrency concurrency permit(s)"
-    }
+        
+        if(resource == null) {
+            log.info "Unknown resource type $resourceUnit.key specified: treating as infinite resource"
+            return
+        }
+        
+       int amount = resourceUnit.amount
+        
+       log.info "Thread " + Thread.currentThread().getName() + " requesting for $amount concurrency permit(s) type $resourceUnit.key with " + resource.availablePermits() + " available"
+       long startTimeMs = System.currentTimeMillis()
+       resource.acquire(amount)
+       long durationMs = startTimeMs - System.currentTimeMillis()
+       if(durationMs > 1000) {
+           log.info "Thread " + Thread.currentThread().getName() + " blocked for $durationMs ms waiting for resource $resourceUnit.key amount(s) $amount"
+       }
+       else
+           log.info "Thread " + Thread.currentThread().getName() + " acquired resource $resourceUnit.key in amount $amount"
+   }
+   
+   void release(ResourceUnit resourceUnit) {
+        Semaphore resource
+        synchronized(resourceAllocations) {
+            resource = resourceAllocations.get(resourceUnit.key)
+        }
+        
+        if(resource == null) {
+            log.info "Unknown resource type $resourceUnit.key specified: treating as infinite resource"
+            return
+        }
+        
+       resource.release(resourceUnit.amount)
+       log.info "Thread " + Thread.currentThread().getName() + " releasing $resourceUnit.amount $resourceUnit.key"
+   }
+   
+   void setLimit(String resourceName, int amount) {
+       this.resourceAllocations.put(resourceName, new Semaphore(amount))
+   }
     
 }
