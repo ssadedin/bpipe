@@ -1,326 +1,38 @@
-=========== Changes for Bpipe Version 0.9.7 ============
+=========== Changes for Bpipe Version 0.9.8_beta_1 ============
+
+-   More flexible model for concurrency management, enabling
+    management of any kind of resource. Introduction of
+    new keyword "uses" to declare resource usage for a block
+    and command line options (-m, -l, -n) to control different
+    aspects of concurrency
+
+-   Complete re-implementation of dependency analysis so that
+    Bpipe understands the depedency graph and can perform
+    transitive dependency analysis to allow rerunning piplines
+    without rebuilding unnecessary intermediate dependencies.
+    (See Issue #2, http://code.google.com/p/bpipe/issues/detail?id=2)
+    Includes support for new command line commands, 
+    "bpipe query", "bpipe cleanup", and "bpipe preserve" to 
+    display and manage dependencies, as well as annotations,
+    "@preserved" to declare dependencies that should not be
+    deleted in a "cleanup". 
+
+-   support for new 'glob' function available within
+    pipeline stages to facilitate pipelines that need to
+    use wild card matches on input files.
+
+-   Annotations can be used with lower case now. Upper case 
+    still works, but some people feel @transform, @filter,
+    etc. looks nicer.
+
+-   Support for parallelizing by chromosome on existing
+    files already split by chromosome. If your input files
+    are split and named by chromosome, you can use 
+    filterInputs parameter to make the existing
+    files be used for inputs to the parallelization 
+    eg. chr(1..2, filterInputs:true) 
+
+-   Many various bug fixes and improvements to messaging,
+    behaviour and output.
 
-    Issue 61: Errors when running Bpipe with JDK7
-
-    Issue 60: Pipeline consisting of ONLY parallel
-	      segment fails
-
-    --------: Fixed issues with multiple nested parallel segments
-	      (3 or more) forwarding incorrect inputs to following
-	      stages
-
-    Issue 59: Parallel segments utilizing the same stage
-	      mix up outputs if run with low thread constraint
-	      removed spurious error printed while running tests
-	      test for bug in parallel pipelines reusing same stage
-
-    --------: Fix same file returned multiple times when resolving
-	      input extension file matches
-
-=========== Changes for Bpipe Version 0.9.6.1 ============
-
-    Issue 57: Same stage used with multiple different
-	      parameters in parallel causes errors
-
-    Issue 56: Input variable with extension sometimes
-	      references wrong files in parallel pipeline
-
-    --------: Support for new 'execute' command which runs a pipeline
-	      given directly by command line
-
-    Issue 53: Consecutive parallel segments cause
-              unexpected multiple execution of stages
-
-    --------:  Initial support for using produce with 'glob' style
-	       file names (split use case)
-
-=========== Changes for Bpipe Version 0.9.6 ============
-
-    --------: fixed null pointer exception when output extension
-	      used but no inputs provided (added test)
-
-    --------: fixed regression causing 'chr' not to be incorporated
-	      into pipeline output file names
-
-=========== Changes for Bpipe Version 0.9.6_beta_1 ============
-
-    --------:  Notification constraints now supported for SMTP as
-               well as XMPP
-
-    --------: Constraints on sending notifications now are per 
-              event type
-
-    --------: Fix: output extension feature not working with
-              'chr' feature
-
-    --------: Fixed bpipe retry test not working if
-              pipeline run without explicit "run" command
-
-
-    Issue 45: Error Displayed when referring to an Unknown
-              Pipeline Stage is Ugly
-
-    --------: better messaging when pipeline fails due to missing
-              input files to match wildcard pattern
-
-    --------: Add Support for Produce annotation + test
-
-    Issue 48: Error Displayed if Run Pipeline with HTML
-              Report but no Stages Execute
-
-    Issue 35: About the frequency of polling job status -
-              removed extraneous logging 
-
-    --------: Fixed minor regression in how outputs are
-              handled when there are multiple produce statements
-              (incorrect value for $output with second "produce"
-              in a pipeline stage)
-
-    Issue 41: Job id missing from commandlog.txt - Added
-              location of output log and PID to the command log to
-              improve traceability, merged job ids
-
-    --------: pipeline context - fixed aynsc not supporting config
-
-    Issue 36: Support "include" statement
-
-    --------: Enhanced SGE exector mem and procs options
-              Adding advanced conf options to SGE and LSF executors
-
-    --------: Added signalp tool version probe (thanks Maciej Kandula!)
-
-    --------: support for splitting by file pattern in the middle of 
-              a pipeline 
-
-    Issue 40: Passing Parameters with 'Using' Broken
-
-    Issue 34: Not Work for Symbolic link to bpipe
-
-    Issue 38: Ability to Pass Command Line Options
-              to Script
-
-=========== Changes for Bpipe Version 0.9.5.3 ============
-    Issue 40: Passing Parameters with 'Using' Broken
-              (backport)
-
-=========== Changes for Bpipe Version 0.9.5.2 ============
-
-    --------: Support for output file extensions - fix dependency 
-              tracking not working in conjunction with this feature
-
-
-=========== Changes for Bpipe Version 0.9.5.1 ============
-
-    --------: Support for output file extensions
-
-    --------: Support for .prefix to trim file extensions from
-              file names
-
-    Issue 35: About the frequency of polling job status -
-              polling of commands is now configurable 
-
-    --------: Check that the 'bpipe' script is available on the PATH,
-              otherwise stop the tests execution
-
-=========== Changes for Bpipe Version 0.9.5 ============
-
-    Issue 33: Trailing Variable Assignment inside Produce
-              Causes Incorrect Inputs Passed to next Stage
-
-    Issue 32: Forward not working inside Transform /
-              Filter / Produce
-
-=========== Changes for Bpipe Version 0.9.4 ============
-
-    Issue 25: Support for Report of Run in HTML Form
- 
-    Issue 31: Running bpipe stop reports stopping many
- 
-    Issue 29: ConcurrentModificationException when
-                  Running Parallel Pipeline
-
-    Issue 30: Fixed race deadlock condition causing local commands
-              to hang
-
-    --------: Support for arbitrary listeners to pipeline events
-
-
-    Issue 25: Support for Report of Run in HTML Form
-
-    --------: Fixed build date displayed by bpipe 
-              help info incorrect
-
-    Issue 26: Bpipe configuration defaults
-
-    Issue 27: Ability to Detect and Record the Versions of Tools that Run
-
-    Issue 28: Ability to Parameterize Pipeline Stages
-
-    Issue 23: Transform and Filter should accept multiple
-              arguments
-
-    Issue 22: Returning an Object from a Pipeline Stage
-              Should not be Treated as an Output
-
-    --------: Support for LSF executor
-
-    --------: Added Sun Grid Engine implementation for resource
-              manager, courtesy of Paolo Di Tommaso
-
-    --------: fixed consecutive blank lines and other situations
-              causing consecutive semicolons and breaking commands
-
-=========== Changes for Bpipe Version 0.9.3 ============
-
-    --------: fix occasional error about symbolic links already
-              existing when running Bpipe
-
-    --------: support for STAGE_FAILED event type in notifications
-
-    --------: support for limiting notification rate with interval
-              configuration (documentation TODO)
-
-    Issue 20: Errors printed out when Bpipe run in Directory 
-              for First Time
-
-    --------: fixed notifications being sent when pipeline only run
-              in test mode
-
-    --------: fixed serialization error when trying to stop jobs
-              after upgrading
-
-========== Changes for Bpipe Version 0.9.2 ============
-
-    --------: added default max memory to java proc for bpipe itself
-              to stop it using huge amounts on systems with very
-              high resources
-
-    Issue 19: Support for Email and other Notifications
-              about Pipeline Progress
-
-    Issue 18: Support for an easy way to parallelize based
-              on (DNA) region (chromsome name)
-
-    Issue 12: Deadlock and Corrupted Command Log when
-              Command log sometimes corrupted (regression)
-
-=========== Changes for Bpipe Version 0.9.1 ============
-
-    --------: Updated to groovy 1.8.6
-
-    Issue 17: Composable Pipelines - Ability to Define
-              Reusable Pipeline Segments
-
-    Issue 9:  Pipeline file can't have same name as
-              pipeline stage
-
-    -------:  Added printout of job directory when running 'bpipe
-              jobs'
-
-    -------:  added check to ensure that no existing pipeline is
-              running in a directory when starting a new one
-
-    Issue 15: Output from commands like 'bpipe test'
-              or printing help should not become the most recent log
-
-    Issue 16: Ability to resolve multiple files using
-              input variable with extensions
-
-    Issue 11: 'bpipe log' shows output from runs
-              even when Bpipe didn't successfully start - fixed
-              regression, bpipe log incorrectly showing job as
-              finished
-
-    --------: made output from 'bpipe log' adjust number of lines
-              displayed according to terminal height
-
-    Issue 4:  Bpipe log command hangs requiring Ctrl-C
-              when Job is Finished
-
-    --------: fixed spurious semilcolon prepended to command when
-              leading blank lines inlcuded
-
-    --------: changed various thread pools to create daemon threads to
-              prevent java process living on after bpipe exits
-
-    --------: numerous measures to use less file handles and avoid
-              leaking / holding open file handles to prevent issues
-              running where file handles are constrained
-
-    Issue 14: Support for Detecting when Commands have
-              Changed in Rerunning Pipeline (disabled by default, to
-              enable set flag in bpipe.config).
-
-    Issue 13: Bpipe should offer some way to control how
-              many threads it will create
-
-    Issue 12: Deadlock and Corrupted Command Log when
-              running huge number of Parallel Stages (>100)
-
-=========== Changes for Bpipe Version 0.2 ============
-    fixed exit code not displaying when command fails
-
-    fixed / finished support for explicit config as part
-    of exec command
-
-    added test cases for more features in withconfig test
-
-    added normal build directory to class path when running
-    in situ in build direcory instead of eclipse build path
-
-    show more info when in debug mode
-
-    removed garbled test
-
-    fixed test breaking due to bad file name
-
-    added display of classpath when debug mode enabled
-
-    fixed many tests failing because missing variable
-    echoing enabled even for lazy resolved properties -
-    missing variables now only echoed when would not
-    otherwise resolve.
-
-    fixed nested parallel pipelines throwing errors /
-    not working
-
-    fixed Cygwin displaying errors from ps / kill when
-    terminating with Ctrl+C
-
-    added regression test for nested parallel pipelines
-
-    Fixed failures on Cygwin for commands with spaces and
-    also containing double quotes inside exec calls
-
-    Experimental:  variables inside pipeline stages
-    now always output their name when not defined.
-    This allows passthrough inside "exec" calls so that
-    statements like 'for i in 1 2 3; do echo $i ; done'
-    will work rather than throwing the mystifying error
-    that i is not defined.
-
-    support for forwarding stdout and stderr in real time
-    from torque jobs
-
-    support for bpipe.config entries to use top level
-    entries as defaults, lower entries only override top
-    level ones
-
-    support for walltime to be specified as executable
-    closure that returns integer
-
-    minor improvements to formatting and messaging
-
-    added missing file for running withconfig test
-
-    added support for individual cleanup scripts for tests
-    Removed unwanted log file
-
-    added test for custom command executors
-
-    fixes for custom command executors under Cygwin
-    (explicitly invoking bash)
-
-    More work towards getting abstracted command executors
-    working
 
