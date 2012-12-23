@@ -1,6 +1,5 @@
 /*
- * Simplest possible test - just execute a couple of commands and 
- * join them together in a pipeline
+ * Make sure using 'prefix' works on input and output variables
  */
 hello = {
   produce("test.txt.hello","test.txt.csv") {
