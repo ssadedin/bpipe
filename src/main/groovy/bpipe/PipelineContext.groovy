@@ -1110,7 +1110,7 @@ class PipelineContext {
                   joined += " " + it
               }
               else {
-                  if(!joined.trim().endsWith(";"))
+                  if(!joined.trim().endsWith(";") && !joined.trim().endsWith("&"))
                       joined += ";"
                       
                   joined += " "
