@@ -357,6 +357,7 @@ class PipelineCategory {
                         catch(Exception e) {
                             log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
                             StackTraceUtils.sanitize(e).printStackTrace()
+                            child.failExceptions << e
                             child.failed = true
                         }
                     } as Runnable
@@ -377,8 +378,15 @@ class PipelineCategory {
             Concurrency.instance.execute(threads)
             
             if(pipelines.any { it.failed }) {
-                // TODO: make a much better error message!
-                throw new PipelineError("One or more parallel stages aborted")
+                def messages = summarizeErrors(pipelines)
+                
+                Pipeline current = Pipeline.currentRuntimePipeline.get()
+                for(Pipeline p in pipelines.grep { it.failed }) {
+                    current.failExceptions.addAll(p.failExceptions)
+                }
+                current.failReason = messages
+                
+                throw new PipelineError("One or more parallel stages aborted. The following messages were reported: \n\n" + messages)
             }
             
             def nextInputs = []
@@ -402,6 +410,18 @@ class PipelineCategory {
             Dependencies.instance.checkFiles(currentStage.context.@output)
             
             return nextInputs
+    }
+    
+    static String summarizeErrors(List<Pipeline> pipelines) {
+        pipelines.collect { 
+                    if(it.failReason && it.failReason!="Unknown") 
+                        return it.failReason
+                    else
+                    if(it.failExceptions)
+                        return it.failExceptions*.message.join('\n')
+                    else
+                    return null
+        }.grep { it }.flatten().unique().join('\n') 
     }
     
     static void addStages(Binding binding) {

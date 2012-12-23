@@ -49,7 +49,8 @@ class PipelineDelegate {
         if(name == "multi") {
             context.get().invokeMethod("multiExec", [args as List] as Object[])
         }
-        return context.get().invokeMethod(name, args)
+        else
+          return context.get().invokeMethod(name, args)
     }
     
     def propertyMissing(String name) {
