@@ -163,7 +163,7 @@ class PipelineOutput {
         }
     }
     
-       String getPrefix() {
-        return PipelineCategory.getPrefix(String.valueOf(Utils.first(input)));
+    String getPrefix() {
+        return PipelineCategory.getPrefix(String.valueOf(Utils.first(output)));
     } 
 }
