@@ -1094,6 +1094,35 @@ class PipelineContext {
         async(cmd, true, config)
     }
     
+//    void multi(String cmd1, String cmd2) {
+//        multi([cmd1,cmd2])
+//    }
+//    
+//    void multi(String cmd1, String cmd2, String cmd3) {
+//        multi([cmd1,cmd2,cmd3])
+//    }
+//    
+//    void multi(String cmd1, String cmd2, String cmd3, String cmd4) {
+//        multi([cmd1,cmd2,cmd3,cmd4])
+//    }
+//    
+//    void multi(String cmd1, String cmd2, String cmd3, String cmd4, String cmd5) {
+//        multi([cmd1,cmd2,cmd3,cmd4,cmd5])
+//    }
+//    
+//    void multi(String cmd1, String cmd2, String cmd3, String cmd4, String cmd5, String cmd6) {
+//        multi([cmd1,cmd2,cmd3,cmd4,cmd5,cmd6])
+//    }
+//    
+    void multiExec(List cmds) {
+        List<CommandExecutor> execs = cmds.collect { async(it,true) }
+        List<Integer> exitValues = execs*.waitFor()
+        List<String> failed = [cmds,exitValues].transpose().grep { it[1] }
+        if(failed) {
+            throw new PipelineError("Command(s) failed: \n\n" + failed.collect { "\t" + it[0] + "\n\t(Exit status = ${it[1]})\n"}.join("\n"))
+        }
+    }
+     
     /**
      * Asynchronously executes the given command by creating a CommandExecutor
      * and starting the command using it.  The exit code is not checked and

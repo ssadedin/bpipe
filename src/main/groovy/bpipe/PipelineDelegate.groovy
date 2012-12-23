@@ -45,6 +45,10 @@ class PipelineDelegate {
     
     def methodMissing(String name, args) {
         log.fine "Query for method $name on ${context.get()} via delegate ${this} in thread ${Thread.currentThread().id}"
+        
+        if(name == "multi") {
+            context.get().invokeMethod("multiExec", [args as List] as Object[])
+        }
         return context.get().invokeMethod(name, args)
     }
     
