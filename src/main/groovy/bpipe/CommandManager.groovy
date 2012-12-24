@@ -82,11 +82,13 @@ class CommandManager {
      * for the command, or the default command executor if no executor is
      * configured.
      * 
-     * @param name    a human readable name for the command
-     * @param cmd     the command line to run
+     * @param name      a human readable name for the command
+     * @param cmd       the command line to run
+     * @param deferred  if true, the command will be started only when "waitFor" is called
+     *                  on the resulting command executor
      * @return the {@link CommandExecutor} that is executing the job.
      */
-    CommandExecutor start(String name, String cmd, String configName, Collection inputs, File outputDirectory, Map resources) {
+    CommandExecutor start(String name, String cmd, String configName, Collection inputs, File outputDirectory, Map resources, boolean deferred) {
          
         // How to run the job?  look in user config
 		if(!configName) 
@@ -187,7 +189,9 @@ class CommandManager {
         String commandId = CommandId.newId()
         log.info "Created bpipe command id " + commandId
         
-        CommandExecutor wrapped = new ThrottledDelegatingCommandExecutor(cmdExec, resources)
+        ThrottledDelegatingCommandExecutor wrapped = new ThrottledDelegatingCommandExecutor(cmdExec, resources)
+        if(deferred)
+            wrapped.deferred = true
         
         wrapped.start(cfg, commandId, name, cmd, outputDirectory)
     		

@@ -2,6 +2,7 @@ package bpipe.executor
 
 import groovy.util.logging.Log;
 import bpipe.Concurrency;
+import bpipe.PipelineContext;
 import bpipe.ResourceUnit;
 
 /**
@@ -19,14 +20,29 @@ class ThrottledDelegatingCommandExecutor {
      */
     List<ResourceUnit> resources
     
+    /**
+     * If true, command is only actually executed when "waitFor()" is called
+     * This is necessary to avoid deadlocks when multiple commands are run
+     * simultaneously inside a single resource usage block 
+     * (see {@link PipelineContext#multiExec(java.util.List)}
+     */
+    boolean deferred = false
+    
     @Delegate CommandExecutor commandExecutor
+    
+    // Stored parameters that are cached from the original "start" command
+    // and used when "waitFor" is called
+    Map cfg
+    String id
+    String name
+    String cmd
+    File outputDirectory
     
     ThrottledDelegatingCommandExecutor(CommandExecutor delegateTo, Map resources) {
         
         // Note that the sort here is vital to avoid deadlocks - it ensures 
         // that resources are always allocated in the same order
         this.resources = resources.values().sort { it.key }
-        
         this.commandExecutor = delegateTo
     }
     
@@ -36,8 +52,17 @@ class ThrottledDelegatingCommandExecutor {
      */
     @Override
     void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
-        resources.each { Concurrency.instance.acquire(it) }
-        commandExecutor.start(cfg, id, name, cmd, outputDirectory)
+        if(deferred) {
+          this.cfg = cfg
+          this.id = id
+          this.name = name
+          this.cmd = cmd
+          this.outputDirectory = outputDirectory
+        }
+        else {
+          resources.each { Concurrency.instance.acquire(it) }
+          commandExecutor.start(cfg, id, name, cmd, outputDirectory)
+        }
     }
     
     /**
@@ -46,12 +71,20 @@ class ThrottledDelegatingCommandExecutor {
      */
     @Override
     int waitFor() {
+        if(deferred) {
+          resources.each { Concurrency.instance.acquire(it) }
+          commandExecutor.start(cfg, id, name, cmd, outputDirectory)
+        }
+        
         try {
+            log.info "Waiting for command to complete before releasing ${resources.size()} resources"
             int result = commandExecutor.waitFor()
             return result
         }
         finally {
+            log.info "Releasing ${resources.size()} resources"
             releaseAll()
+            log.info "Released ${resources.size()} resources"
         }
     }
     

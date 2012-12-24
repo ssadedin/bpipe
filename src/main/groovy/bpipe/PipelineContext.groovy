@@ -1094,28 +1094,19 @@ class PipelineContext {
         async(cmd, true, config)
     }
     
-//    void multi(String cmd1, String cmd2) {
-//        multi([cmd1,cmd2])
-//    }
-//    
-//    void multi(String cmd1, String cmd2, String cmd3) {
-//        multi([cmd1,cmd2,cmd3])
-//    }
-//    
-//    void multi(String cmd1, String cmd2, String cmd3, String cmd4) {
-//        multi([cmd1,cmd2,cmd3,cmd4])
-//    }
-//    
-//    void multi(String cmd1, String cmd2, String cmd3, String cmd4, String cmd5) {
-//        multi([cmd1,cmd2,cmd3,cmd4,cmd5])
-//    }
-//    
-//    void multi(String cmd1, String cmd2, String cmd3, String cmd4, String cmd5, String cmd6) {
-//        multi([cmd1,cmd2,cmd3,cmd4,cmd5,cmd6])
-//    }
-//    
+    /**
+     * Execute the given list of commands simultaneously and wait for the result, 
+     * producing a sensible consolidated error message for any of the commands that
+     * fail.
+     * <p>
+     * <i>Note: this command implements the <code>multi</code> command that can
+     * be called from inside pipeline stages. See {@link PipelineDelegate#methodMissing(String, Object)}
+     * for how that is translated to a call to this function.</i>
+     * 
+     * @param cmds  List of commands (strings) to execute
+     */
     void multiExec(List cmds) {
-        List<CommandExecutor> execs = cmds.collect { async(it,true) }
+        List<CommandExecutor> execs = cmds.collect { async(it,true,null,true) }
         List<Integer> exitValues = execs*.waitFor()
         List<String> failed = [cmds,exitValues].transpose().grep { it[1] }
         if(failed) {
@@ -1130,7 +1121,7 @@ class PipelineContext {
      * is returned.  Callers can use the
      * {@link CommandExecutor#waitFor()} to wait for the Job to finish.
      */
-    CommandExecutor async(String cmd, boolean joinNewLines=true, String config = null) {
+    CommandExecutor async(String cmd, boolean joinNewLines=true, String config = null, boolean deferred=false) {
       def joined = ""
       if(joinNewLines) {
           def prev
@@ -1175,7 +1166,7 @@ class PipelineContext {
           if(toolsDiscovered)
               this.doc(["tools" : toolsDiscovered])
       
-          CommandExecutor cmdExec = commandManager.start(stageName, joined, config, Utils.box(this.input), new File(outputDirectory), this.usedResources)
+          CommandExecutor cmdExec = commandManager.start(stageName, joined, config, Utils.box(this.input), new File(outputDirectory), this.usedResources, deferred)
           List outputFilter = cmdExec.ignorableOutputs
           if(outputFilter) {
               this.outputMask.addAll(outputFilter)
