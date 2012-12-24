@@ -137,13 +137,13 @@ class Concurrency {
               }
         }
         
-//        if(Config.userConfig.maxMemoryMB) {
-//            resourceAllocations["memory"] = new Semaphore(Integer.parseInt(Config.userConfig.maxMemoryMB))
-//        }               
-//        
-//        if(Config.config.maxMemoryMB) {
-//            resourceAllocations["memory"] = new Semaphore(Config.config.maxMemoryMB)
-//        }               
+        if(Config.userConfig.maxMemoryMB) {
+            resourceAllocations["memory"] = new Semaphore(Integer.parseInt(Config.userConfig.maxMemoryMB))
+        }               
+        
+        if(Config.config.maxMemoryMB) {
+            resourceAllocations["memory"] = new Semaphore(Config.config.maxMemoryMB)
+        }               
     }
     
     /**
