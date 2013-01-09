@@ -47,10 +47,12 @@ class PipelineDelegate {
         log.fine "Query for method $name on ${context.get()} via delegate ${this} in thread ${Thread.currentThread().id}"
         
         if(name == "from") {
-            if(args.size()<2) {
+            if(args.size()<2) 
                 throw new IllegalArgumentException("from requires 2 arguments")
-            }
-            context.get().invokeMethod("fromImpl", [args[0..-2] as List, args[-1]] as Object[])
+            def actualArgs = args[0..-2] as List
+            if(actualArgs[0] instanceof List && actualArgs.size()==1)
+                actualArgs = actualArgs[0]
+            context.get().invokeMethod("fromImpl", [actualArgs, args[-1]] as Object[])
         }
         else
         if(name == "multi") {

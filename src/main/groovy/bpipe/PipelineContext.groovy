@@ -1097,6 +1097,14 @@ class PipelineContext {
         async(cmd, true, config)
     }
     
+    class CommandThread extends Thread {
+        int exitStatus = -1
+        CommandExecutor toWaitFor
+        void run() {
+            exitStatus = toWaitFor.waitFor()
+        }
+    }
+    
     /**
      * Execute the given list of commands simultaneously and wait for the result, 
      * producing a sensible consolidated error message for any of the commands that
@@ -1109,11 +1117,43 @@ class PipelineContext {
      * @param cmds  List of commands (strings) to execute
      */
     void multiExec(List cmds) {
-        List<CommandExecutor> execs = cmds.collect { async(it,true,null,true) }
-        List<Integer> exitValues = execs*.waitFor()
-        List<String> failed = [cmds,exitValues].transpose().grep { it[1] }
-        if(failed) {
-            throw new PipelineError("Command(s) failed: \n\n" + failed.collect { "\t" + it[0] + "\n\t(Exit status = ${it[1]})\n"}.join("\n"))
+        
+        // Each command will be assumed to use the full value of the currently
+        // specified resource usage. This is unintuitive, so we scale them to achieve
+        // the expected effect: the total used by all the commands will be equal 
+        // to the amount specified
+        def oldResources = this.usedResources
+        this.usedResources = [:]
+        for(def entry in oldResources) {
+            this.usedResources[entry.key] = 
+                new ResourceUnit(key: entry.value.key, amount:Math.max(Math.floor(entry.value.amount/cmds.size()),1))
+        }
+        log.info "Scaled resource use to ${usedResources.values()} to execute in multi block"
+        
+        try {
+          List<CommandExecutor> execs = cmds.collect { async(it,true,null,true) }
+          List<Integer> exitValues = []
+          List<CommandThread> threads = execs.collect { new CommandThread(toWaitFor:it) }
+          
+          threads*.start()
+          
+          while(true) {
+              int stillRunning = threads.count { it.exitStatus == -1 }
+              if(stillRunning) {
+                  log.info "Waiting for $stillRunning commands in multi block"
+              }
+              else
+                break
+              Thread.sleep(2000)
+          }
+         
+          List<String> failed = [cmds,exitValues].transpose().grep { it[1] }
+          if(failed) {
+              throw new PipelineError("Command(s) failed: \n\n" + failed.collect { "\t" + it[0] + "\n\t(Exit status = ${it[1]})\n"}.join("\n"))
+          }
+        }
+        finally {
+          this.usedResources = oldResources
         }
     }
      
@@ -1169,7 +1209,10 @@ class PipelineContext {
           if(toolsDiscovered)
               this.doc(["tools" : toolsDiscovered])
       
-          CommandExecutor cmdExec = commandManager.start(stageName, joined, config, Utils.box(this.input), new File(outputDirectory), this.usedResources, deferred)
+          CommandExecutor cmdExec = 
+              commandManager.start(stageName, joined, config, Utils.box(this.input), 
+                                   new File(outputDirectory), this.usedResources, deferred)
+              
           List outputFilter = cmdExec.ignorableOutputs
           if(outputFilter) {
               this.outputMask.addAll(outputFilter)

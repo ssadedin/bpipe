@@ -51,6 +51,10 @@ class ResourceUnit {
     int amount = 0;
     
     String key
+    
+    String toString() {
+        "$amount $key"
+    }
 }
 
 @Singleton
