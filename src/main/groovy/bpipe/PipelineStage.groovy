@@ -243,8 +243,12 @@ class PipelineStage {
             throw e
         }
 		finally {
-            if(!joiner) 
+            if(!joiner) {
+                if(!context.uncleanFilePath.delete())
+                    log.warning("Unable to delete in-progress command file $context.uncleanFilePath")
+                    
 	            EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", [stage:this])
+            }
 		}
         
         log.info "Checking files: " + context.@output

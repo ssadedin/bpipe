@@ -214,7 +214,7 @@ class PipelineContext {
    void setRawOutput(o) {
        log.info "Setting output $o on context ${this.hashCode()} in thread ${Thread.currentThread().id}"
        if(Thread.currentThread().id != threadId)
-           log.warn "Thread output being set to $o from wrong thread ${Thread.currentThread().id} instead of $threadId"
+           log.warning "Thread output being set to $o from wrong thread ${Thread.currentThread().id} instead of $threadId"
  	   
        this.@output = o
    }
@@ -278,10 +278,27 @@ class PipelineContext {
                                     this.stageName, 
                                  baseOutput,
                                  Utils.box(this.@output), 
-                                 { if(!allInferredOutputs.contains(it)) allInferredOutputs << it; if(!inferredOutputs.contains(it)) inferredOutputs << it;  if(applyName) { pipeline.nameApplied=true}}) 
+                                 { o -> onNewOutputReferenced(pipeline, o)}) 
        
        po.branchName = branchName
        return po
+   }
+   
+   /**
+    * Called by the embedded {@link PipelineOutput} object
+    * that wraps the $output variable whenever a new output
+    * is referenced in a pipeline.
+    * 
+    * @param pipeline
+    */
+   void onNewOutputReferenced(Pipeline pipeline, Object o) {
+       if(!allInferredOutputs.contains(o)) 
+           allInferredOutputs << o; 
+       if(!inferredOutputs.contains(o)) 
+           inferredOutputs << o;  
+       if(applyName) { 
+           pipeline.nameApplied=true
+        } 
    }
    
    def getOutputs() {
@@ -289,6 +306,7 @@ class PipelineContext {
    }
    
    def getOutputByIndex(int index) {
+       log.info "Query for output $index"
        def o = getOutput()
        def result =Utils.box(o.output)[index]
        if(result == null) {
@@ -630,7 +648,7 @@ class PipelineContext {
         def files = types.collect { String type ->
             String oldExt = (inp =~ '\\.[^\\.]*$')[0]
             if(applyName) 
-                return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+oldExt)
+                return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+'.'+type+oldExt)
             else
                 return inp.replaceAll('(\\.[^\\.]*$)','.'+type+oldExt)
         }
@@ -1003,12 +1021,13 @@ class PipelineContext {
      */
     void exec(String cmd, boolean joinNewLines, String config=null) {
         
+      log.info "Tracking outputs referenced=[$referencedOutputs] inferred=[$inferredOutputs] for command $cmd" 
+      
       this.referencedOutputs += inferredOutputs
       
       this.trackedOutputs[cmd] = this.referencedOutputs
         
      
-      log.info "Tracking outputs $referencedOutputs for command $cmd" 
       this.referencedOutputs = []
       
       CommandExecutor p = async(cmd, joinNewLines, config)
@@ -1163,6 +1182,8 @@ class PipelineContext {
      * the command may still be running on return.  The Job instance 
      * is returned.  Callers can use the
      * {@link CommandExecutor#waitFor()} to wait for the Job to finish.
+     * @param deferred      If true, the command will not actually be started until
+     *                      the waitFor() method is called
      */
     CommandExecutor async(String cmd, boolean joinNewLines=true, String config = null, boolean deferred=false) {
       def joined = ""
