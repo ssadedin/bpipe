@@ -638,17 +638,26 @@ class PipelineContext {
     Object filter(List<String> types, Closure body) {
         
         def pipeline = Pipeline.currentRuntimePipeline.get()
-        def inp = Utils.first(this.@input)
-        
-        log.info "Filtering based on input $inp"
-        
-        if(!inp) 
-           throw new PipelineError("Expected input but no input provided") 
-        
+        def boxed = Utils.box(this.@input)
+        def typeCounts = [:]
+        for(def e in types) 
+            typeCounts[e] = 0
+
+      
         def files = types.collect { String type ->
+            def inp = boxed[typeCounts[type] % boxed.size()]
+            if(!inp) 
+               throw new PipelineError("Expected input but no input provided") 
+            log.info "Filtering based on input $inp"
+            
+             typeCounts[type]++
             String oldExt = (inp =~ '\\.[^\\.]*$')[0]
-            if(applyName) 
-                return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+'.'+type+oldExt)
+            if(applyName) {
+                // Arguably, we should add the filter type to the name here as well.
+                // However we're already adding the chromosome, so the filename is already
+                // unique at this point, and we'd like to keep it short
+                return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+'.'+ /*type+*/oldExt)
+            }
             else
                 return inp.replaceAll('(\\.[^\\.]*$)','.'+type+oldExt)
         }
