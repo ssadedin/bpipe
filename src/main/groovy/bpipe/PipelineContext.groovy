@@ -1175,7 +1175,7 @@ class PipelineContext {
               Thread.sleep(2000)
           }
          
-          List<String> failed = [cmds,exitValues].transpose().grep { it[1] }
+          List<String> failed = [cmds,threads*.exitStatus].transpose().grep { it[1] }
           if(failed) {
               throw new PipelineError("Command(s) failed: \n\n" + failed.collect { "\t" + it[0] + "\n\t(Exit status = ${it[1]})\n"}.join("\n"))
           }
