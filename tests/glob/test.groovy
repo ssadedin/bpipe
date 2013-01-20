@@ -8,8 +8,8 @@ hello = {
 
 world = {
   from(glob("*.xls","*.csv")) {
-    exec "cat $inputs.xls > $output.xls"
-    exec "cat $inputs.csv > $output.csv"
+    exec "cat $inputs.xls > $output.xml"
+    exec "cat $inputs.csv > $output.tsv"
   }
 }
 
