@@ -656,7 +656,7 @@ class PipelineContext {
                 // Arguably, we should add the filter type to the name here as well.
                 // However we're already adding the chromosome, so the filename is already
                 // unique at this point, and we'd like to keep it short
-                return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+'.'+ /*type+*/oldExt)
+                return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+/*'.'+ type+*/oldExt)
             }
             else
                 return inp.replaceAll('(\\.[^\\.]*$)','.'+type+oldExt)
