@@ -1,5 +1,5 @@
 hello = {
-    from(["txt", "csv"]) {
+    from(["txt", "txt", "csv"]) {
         msg "inputs:  $input1 $input2 $input3"
     }
 }

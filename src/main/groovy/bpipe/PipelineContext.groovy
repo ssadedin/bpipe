@@ -656,7 +656,7 @@ class PipelineContext {
                 // Arguably, we should add the filter type to the name here as well.
                 // However we're already adding the chromosome, so the filename is already
                 // unique at this point, and we'd like to keep it short
-                return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+'.'+ /*type+*/oldExt)
+                return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+/*'.'+ type+*/oldExt)
             }
             else
                 return inp.replaceAll('(\\.[^\\.]*$)','.'+type+oldExt)
@@ -1306,31 +1306,41 @@ class PipelineContext {
        
        log.info "Input list to check:  $reverseOutputs"
        
-       def resolvedInputs = Utils.box(exts).collect { String ext ->
+       exts = Utils.box(exts)
+       
+       // Counts of how many times each extension has been referenced
+       Map<String,Integer> counts = exts.inject([:]) { r,ext -> r[ext]=0; r }
+       def resolvedInputs = exts.collect { String ext ->
            
            String normExt = ext.startsWith(".") ? ext : "." + ext
-           
+           int previousReferences = counts[ext]
+           counts[ext]++
+           int count = 0
            for(s in reverseOutputs) {
                def o = s.grep { it?.endsWith(normExt) }.collect { it.toString() }
                if(o) {
-                   log.info("Checking ${s} vs $normExt  Y")
-                   return o
+                   if(previousReferences - count < o.size()) {
+                     log.info("Checking ${s} vs $normExt Y")
+                     return o[previousReferences - count]
+                   }
+                   else
+                       count+=o.size()
                }
 //               log.info("Checking outputs ${s} vs $inp N")
            }
-           
+          
            // Not found - if the file exists as a path in its own right use that
            if(new File(ext).exists())
                return ext
        }
        
+       log.info "Found inputs $resolvedInputs for spec $orig"
+       
        if(resolvedInputs.any { it == null})
            throw new PipelineError("Unable to locate one or more inputs specified by 'from' ending with $orig")
            
        // resolvedInputs = Utils.unbox(resolvedInputs)
-       resolvedInputs = resolvedInputs.flatten()
-       
-       log.info "Found inputs $resolvedInputs for spec $orig"
+       resolvedInputs = resolvedInputs.flatten().unique()
        
        def oldInputs = this.@input
        this.@input  = resolvedInputs

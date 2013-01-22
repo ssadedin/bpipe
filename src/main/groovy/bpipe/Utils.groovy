@@ -398,6 +398,6 @@ class Utils {
                 addMatchingFiles(matchedDirs[i], path[-1])
             }
         }
-        return fnames
+        return fnames.sort()
     }
 }
