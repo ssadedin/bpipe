@@ -46,6 +46,13 @@ class PipelineInput {
     def input
     
     /**
+     * The default value is returned when toString() is called.
+     * The default default-value is the first input ("input1"),
+     * but that is overridden in certain cases (eg: "input2.txt")
+     */
+    int defaultValueIndex = 0
+    
+    /**
      * In some cases an input spawns and returns a new input.
      * In that case, the child needs to be able to reflect
      * resolved inputs up to the parent
@@ -66,8 +73,13 @@ class PipelineInput {
     }
     
     String toString() {
-        this.resolvedInputs += [Utils.first(input)]
-        return String.valueOf(Utils.first(input));
+        List boxed = Utils.box(input)
+        if(defaultValueIndex>=boxed.size())
+           throw new PipelineError("Expected ${defaultValueIndex+1} or more inputs but fewer provided")
+            
+        String resolvedValue = boxed[defaultValueIndex]
+        this.resolvedInputs.add(resolvedValue)
+        return String.valueOf(resolvedValue);
     }
     
     void addResolvedInputs(List objs) {
@@ -100,7 +112,9 @@ class PipelineInput {
 		log.info "Searching for missing property: $name"
         def exts = [name]
         def resolved = resolveInputsWithExtensions(exts)
-		return mapToCommandValue(resolved[0])
+        if(resolved.size() <= defaultValueIndex)
+            throw new PipelineError("Insufficient inputs: at least ${defaultValueIndex+1} inputs are expected with extension .${name} but only ${resolved.size()} are available")
+		return mapToCommandValue(resolved[defaultValueIndex])
      }
 	
 	/**
@@ -175,7 +189,7 @@ class PipelineInput {
 	            throw new PipelineError("Unable to locate one or more specified inputs from pipeline with extension(s) $orig")
 	            
 			log.info "Found files with exts $exts : $filesWithExts"
-	        return filesWithExts.unique()
+	        return filesWithExts.flatten().unique()
         }
     }
 }

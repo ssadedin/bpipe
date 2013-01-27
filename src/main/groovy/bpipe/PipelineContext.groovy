@@ -390,23 +390,33 @@ class PipelineContext {
      */
    def nextInputs
    
-   String getInputByIndex(int i) {
+   PipelineInput getInputByIndex(int i) {
        if(!Utils.isContainer(input) || input.size()<i)
            throw new PipelineError("Expected $i or more inputs but fewer provided")
        this.allResolvedInputs << input[i-1]
-       return input[i-1]
+       
+       if(!inputWrapper) 
+          this.inputWrapper =  new PipelineInput(this.@input, pipelineStages)
+          
+       inputWrapper.defaultValueIndex = i-1
+           
+       return inputWrapper
    }
    
-   String getInput1() { return Utils.first(input) }
-   String getInput2() { return getInputByIndex(2) }
-   String getInput3() { return getInputByIndex(3) }
-   String getInput4() { return getInputByIndex(4) }
-   String getInput5() { return getInputByIndex(5) }
-   String getInput6() { return getInputByIndex(6) }
-   String getInput7() { return getInputByIndex(7) }
-   String getInput8() { return getInputByIndex(8) }
-   String getInput9() { return getInputByIndex(9) }
-   String getInput10() { return getInputByIndex(10) }
+   PipelineInput getInput1() { 
+       getInputByIndex(1) 
+   }
+   PipelineInput getInput2() {  
+       getInputByIndex(2) 
+   }
+   PipelineInput getInput3() {  getInputByIndex(3) }
+   PipelineInput getInput4() {  getInputByIndex(4) }
+   PipelineInput getInput5() {  getInputByIndex(5) }
+   PipelineInput getInput6() {  getInputByIndex(6) }
+   PipelineInput getInput7() {  getInputByIndex(7) }
+   PipelineInput getInput8() {  getInputByIndex(8) }
+   PipelineInput getInput9() {  getInputByIndex(9) }
+   PipelineInput getInput10() {  getInputByIndex(10) }
    
     /**
     * Check if there is an input, if so, return it.  If not,
