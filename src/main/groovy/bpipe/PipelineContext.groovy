@@ -395,12 +395,13 @@ class PipelineContext {
            throw new PipelineError("Expected $i or more inputs but fewer provided")
        this.allResolvedInputs << input[i-1]
        
+       PipelineInput wrapper = new PipelineInput(this.@input, pipelineStages)
+       wrapper.defaultValueIndex = i-1
+       
        if(!inputWrapper) 
-          this.inputWrapper =  new PipelineInput(this.@input, pipelineStages)
-          
-       inputWrapper.defaultValueIndex = i-1
+         this.inputWrapper = wrapper
            
-       return inputWrapper
+       return wrapper
    }
    
    PipelineInput getInput1() { 
@@ -409,7 +410,9 @@ class PipelineContext {
    PipelineInput getInput2() {  
        getInputByIndex(2) 
    }
-   PipelineInput getInput3() {  getInputByIndex(3) }
+   PipelineInput getInput3() {  
+       getInputByIndex(3) 
+   }
    PipelineInput getInput4() {  getInputByIndex(4) }
    PipelineInput getInput5() {  getInputByIndex(5) }
    PipelineInput getInput6() {  getInputByIndex(6) }
