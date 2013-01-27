@@ -114,7 +114,7 @@ class PipelineInput {
         def resolved = resolveInputsWithExtensions(exts)
         if(resolved.size() <= defaultValueIndex)
             throw new PipelineError("Insufficient inputs: at least ${defaultValueIndex+1} inputs are expected with extension .${name} but only ${resolved.size()} are available")
-		return mapToCommandValue(resolved[defaultValueIndex])
+		return mapToCommandValue(resolved)
      }
 	
 	/**
@@ -125,7 +125,7 @@ class PipelineInput {
 	 * given values.  See also {@link MultiPipelineInput#mapToCommandValue(Object)}
 	 */
 	String mapToCommandValue(def values) {
-        def result = String.valueOf(Utils.first(values))
+        def result = String.valueOf(Utils.box(values)[defaultValueIndex])
         this.addResolvedInputs([result])
         return result
 	}
