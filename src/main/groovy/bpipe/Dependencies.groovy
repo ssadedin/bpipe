@@ -251,7 +251,7 @@ class Dependencies {
         
         def graph = this.getOutputGraph()
         
-        def outDated = outputs.grep { out ->
+        def outDated = older.collect { it.name }.grep { out ->
              def p = graph.propertiesFor(out); 
              if(!p || !p.cleaned) 
                  return true 

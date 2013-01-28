@@ -1276,8 +1276,9 @@ class PipelineContext {
       // $ouput.<ext> form in their commands. These are intercepted at string evaluation time
       // (prior to the async or exec command entry) and set as inferredOutputs until
       // the command is executed, and then we wipe them out
-      if(!probeMode && this.inferredOutputs && Dependencies.instance.checkUpToDate(this.inferredOutputs,this.@input)) {
-          String message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " due to inferred outputs $inferredOutputs newer than inputs ${this.@input}"
+      def checkOutputs = this.inferredOutputs + referencedOutputs
+      if(!probeMode && checkOutputs && Dependencies.instance.checkUpToDate(checkOutputs,this.@input)) {
+          String message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " due to inferred outputs $allInferredOutputs newer than inputs ${this.@input}"
           log.info message
           msg message
           
