@@ -459,7 +459,7 @@ class Runner {
  *
  */
 @Log
-private class ParamsBinding extends Binding {
+class ParamsBinding extends Binding {
     
     def parameters = []
 

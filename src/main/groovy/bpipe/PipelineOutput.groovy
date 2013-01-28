@@ -172,6 +172,9 @@ class PipelineOutput {
     }
     
     String getPrefix() {
-        return PipelineCategory.getPrefix(String.valueOf(Utils.first(output)));
+        this.outputUsed = String.valueOf(Utils.first(output))
+        if(this.outputChangeListener != null) 
+            this.outputChangeListener(this.outputUsed)
+        return PipelineCategory.getPrefix(this.outputUsed);
     } 
 }
