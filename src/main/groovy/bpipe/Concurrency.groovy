@@ -42,6 +42,10 @@ import groovy.util.logging.Log;
  * The key is the name of the resource (eg: "memory") 
  * and the amount is the amount that is being used by  particular
  * operation.
+ * <p>
+ * Note: see {@link PipelineBodyCategory} for the magic that makes
+ * these become referencable within pipline stages as "GB", 'threads',
+ * and so on.
  * 
  * @author ssadedin
  */
@@ -87,14 +91,6 @@ class Concurrency {
      * The thread pool to use for executing tasks.
      */
     ThreadPoolExecutor pool 
-    
-    /**
-     * Each separate parallel path acquires a permit from this semaphore,
-     * ensuring that no more than the maximum parallel paths can execute
-     * across the whole pipeline
-     */
-    
-//    Semaphore commandConcurrency 
     
     /**
      * Each resource allocation allocates resources for its resource type against

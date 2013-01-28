@@ -206,6 +206,7 @@ class Runner {
         if(opts.n) {
             log.info "Maximum threads specified as $opts.n"
             Config.config.maxThreads = Integer.parseInt(opts.n)
+            Config.config.customThreads = true
         }
         
         if(opts.m) {

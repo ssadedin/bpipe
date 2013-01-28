@@ -33,6 +33,9 @@ class Config {
         // when running jobs
         maxThreads : 32,
         
+        // Whether the user set the threads or not by command line / config
+        customThreads : false,
+        
         // Whether to enable detection of changes to commands so
         // that outputs produced by them can be invalidated
         // This feature is still experimental, so off by 

@@ -54,6 +54,18 @@ class PipelineContext {
      * Directory where metadata for pipeline stage outputs will be written
      */
     public final static String OUTPUT_METADATA_DIR = ".bpipe/outputs/"
+    
+    /**
+     * This value is returned when a $thread variable is evaluated in a GString
+     * (eg. a command from the user).  The reason for this is that Groovy eagerly
+     * evaluates GStrings prior to passing them to a function. That means we can't
+     * allow the function itself to set the value - as we wish to do for threads
+     * when the user executes a command and we want to  pass the number of threads
+     * evaluated "just in time". So this special value is set, and then 
+     * it is replaced just before the command executes with an appropriate number
+     * of threads for the command to use.
+     */
+    public final static String THREAD_LAZY_VALUE = '__bpipe_lazy_resource_threads__'
    
     /**
      * Create a Pipeline Context with the specified adidtional bound variables and
@@ -116,7 +128,12 @@ class PipelineContext {
     /**
      * The resources used by commands that run in this stage
      */
-    Map<String,ResourceUnit> usedResources = [ "threads":new ResourceUnit(key: "threads", amount:1)] 
+    Map<String,ResourceUnit> usedResources = [ "threads":new ResourceUnit(key: "threads", amount: 1)] 
+    
+    /**
+     * Whether or not the user has invoked a 'uses { ... }' command on this context
+     */
+    boolean customThreadResources = false
    
     /**
      * File patterns that will be excluded as inferred output files because they may be created 
@@ -307,10 +324,13 @@ class PipelineContext {
    
    def getOutputByIndex(int index) {
        log.info "Query for output $index"
-       def o = getOutput()
-       def result =Utils.box(o.output)[index]
+       def o = Utils.box(getOutput().output)
+       def result = o[index]
        if(result == null) {
-           result = Utils.box(o.output)[0].replaceAll("\\.([^.]*)\$",".${index+1}.\$1")
+           if(o[0].indexOf('.')>=0) 
+               result = o[0].replaceAll("\\.([^.]*)\$",".${index+1}.\$1")
+           else
+               result = o[0] + (index+1)
        }
        result = trackOutput(result)
        
@@ -404,15 +424,9 @@ class PipelineContext {
        return wrapper
    }
    
-   PipelineInput getInput1() { 
-       getInputByIndex(1) 
-   }
-   PipelineInput getInput2() {  
-       getInputByIndex(2) 
-   }
-   PipelineInput getInput3() {  
-       getInputByIndex(3) 
-   }
+   PipelineInput getInput1() { getInputByIndex(1) }
+   PipelineInput getInput2() {  getInputByIndex(2) }
+   PipelineInput getInput3() {  getInputByIndex(3) }
    PipelineInput getInput4() {  getInputByIndex(4) }
    PipelineInput getInput5() {  getInputByIndex(5) }
    PipelineInput getInput6() {  getInputByIndex(6) }
@@ -914,6 +928,30 @@ class PipelineContext {
         resources([r1,r2], block)
     }
     
+    void uses(Map resourceSpec, Closure block) {
+        List<ResourceUnit> res = resourceSpec.collect { e ->
+            String name = e.key
+            int n
+            try {
+                if(e.value instanceof String)
+                    n = Integer.parseInt(e.value)
+                else
+                    n = e.value
+            }
+            catch(NumberFormatException f) {
+                throw new PipelineError("The value for resource $e.key ($e.value) couldn't be parsed as a number")
+            }
+            
+            if(name == "GB") {
+                return new ResourceUnit(amount: (n as Integer) * 1024)
+            }
+            else {
+                return new ResourceUnit(amount: n as Integer)
+            }
+        }
+        resources(res, block)
+    }
+    
     /**
      * Executes the enclosed block with <i>threadCount</i> concurrency
      * reserved from the global concurrency semaphore. This allows
@@ -944,12 +982,17 @@ class PipelineContext {
                     throw new PipelineError("Stage $stageName contains a nested concurrency declaration (prior request = $usedResources.threads.amount, new request = $r.amount).\n\nNesting concurrency requests is not currently supported.")
                     
                this.usedResources.put(key,r) 
+               
+               if(key == "threads") {
+                   this.customThreadResources = true
+               }
             }
-                
+               
             block()
         }
         finally {
             this.usedResources = oldResources
+            this.customThreadResources = false
         }
     }
     
@@ -1175,7 +1218,6 @@ class PipelineContext {
           List<CommandExecutor> execs = cmds.collect { async(it,true,null,true) }
           List<Integer> exitValues = []
           List<CommandThread> threads = execs.collect { new CommandThread(toWaitFor:it) }
-          
           threads*.start()
           
           while(true) {
@@ -1208,6 +1250,10 @@ class PipelineContext {
      *                      the waitFor() method is called
      */
     CommandExecutor async(String cmd, boolean joinNewLines=true, String config = null, boolean deferred=false) {
+        
+      // Replacement of magic $thread variable with real value 
+      cmd = cmd.replaceAll(THREAD_LAZY_VALUE, this.usedResources['threads'].amount as String)
+      
       def joined = ""
       if(joinNewLines) {
           def prev
@@ -1419,6 +1465,41 @@ class PipelineContext {
             outputsDir.mkdirs()
         
         return  new File(outputsDir,this.stageName + "." + new File(outputFile).path.replaceAll("[/\\\\]", "_") + ".properties")
+    }
+    
+    /**
+     * A convenience to allow the user to reference the number of threads for a command
+     * simply by typing "$threads" in their command. 
+     * @return
+     */
+    String getThreads() {
+        
+        Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
+        
+        // When the user has specified custom resources
+        if(!this.customThreadResources) {
+            
+            int childCount = pipeline.parent?.childCount?:1
+            
+            // When the user said how many threads to use, just go with it
+            // But otherwise, resolve it to the number of cores that the computer has
+            int maxThreads = Config.config.customThreads?(int)Config.config.maxThreads : Runtime.getRuntime().availableProcessors()
+            try {
+                this.usedResources['threads'].amount = Math.max((int)1, (int)maxThreads / childCount)
+            }
+            catch(Exception e) {
+                e.printStackTrace()
+            }
+        }
+        return THREAD_LAZY_VALUE
+    }
+    
+    /**
+     * 
+     * @return
+     */
+    String getAuto() {
+        '__bpipe_auto_value__'
     }
     
     /**
