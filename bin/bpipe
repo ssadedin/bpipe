@@ -130,8 +130,14 @@ function clean_job_files() {
       then
          rm -f .bpipe/logs/$BPIPE_PID.log
          rm -f .bpipe/jobs/$BPIPE_PID
-         rm -f ~/.bpipedb/jobs/$BPIPE_PID
       fi
+    fi
+
+    # Always clean up the job from the global job
+    # table
+    if [ ! -z $BPIPE_PID ] ;
+    then
+      rm -f ~/.bpipedb/jobs/$BPIPE_PID
     fi
     rm -f .bpipe/prompt_input_files.*
 }
@@ -633,4 +639,3 @@ To run with all files in the local directory as input, use:
 fi
 
 clean_job_files
-
