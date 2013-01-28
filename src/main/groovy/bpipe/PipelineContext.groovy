@@ -1278,7 +1278,7 @@ class PipelineContext {
       // the command is executed, and then we wipe them out
       def checkOutputs = this.inferredOutputs + referencedOutputs
       if(!probeMode && checkOutputs && Dependencies.instance.checkUpToDate(checkOutputs,this.@input)) {
-          String message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " due to inferred outputs $allInferredOutputs newer than inputs ${this.@input}"
+          String message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " due to inferred outputs $checkOutputs newer than inputs ${this.@input}"
           log.info message
           msg message
           
