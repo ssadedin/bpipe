@@ -91,6 +91,11 @@ public class Pipeline {
     Pipeline parent = null
     
     /**
+     * The number of children that have been forked from this parent
+     */
+    int childCount = 0
+    
+    /**
      * A name for the pipeline that is added to output file names when 
      * the pipeline is run as a child pipeline.  This is null and not used
      * in the default, root pipeline
@@ -449,6 +454,7 @@ public class Pipeline {
         p.stages = [] + this.stages
         p.joiners = [] + this.joiners
         p.parent = this
+        ++this.childCount
         return p
     }
     

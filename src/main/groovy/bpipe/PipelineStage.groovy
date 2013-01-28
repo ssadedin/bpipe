@@ -36,6 +36,7 @@ class PipelineBodyCategory {
         value.indexOf(other.toString())
     }
     
+    /*
     static Object getProperty(Integer n, String name) {
         if(name == "threads") {
             return new ResourceUnit(amount:n as Integer, key: "threads")
@@ -51,6 +52,7 @@ class PipelineBodyCategory {
         else
             return null
     }
+    */
 }
 
 /**
