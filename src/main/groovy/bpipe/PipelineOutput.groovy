@@ -37,6 +37,13 @@ import groovy.util.logging.Log;
 class PipelineOutput {
     
     /**
+     * Support implicit cast to String when creating File objects
+     */
+    static {
+        File.metaClass.constructor << {  PipelineOutput o -> new File(o.toString()) }
+    }
+    
+    /**
      * Raw inputs
      */
     def output
@@ -177,4 +184,5 @@ class PipelineOutput {
             this.outputChangeListener(this.outputUsed)
         return PipelineCategory.getPrefix(this.outputUsed);
     } 
+    
 }

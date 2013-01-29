@@ -323,18 +323,29 @@ class PipelineContext {
    }
    
    def getOutputByIndex(int index) {
-       log.info "Query for output $index"
-       def o = Utils.box(getOutput().output)
-       def result = o[index]
-       if(result == null) {
-           if(o[0].indexOf('.')>=0) 
-               result = o[0].replaceAll("\\.([^.]*)\$",".${index+1}.\$1")
-           else
-               result = o[0] + (index+1)
+       try {
+           log.info "Query for output $index"
+           PipelineOutput origOutput = getOutput()
+           def o = Utils.box(origOutput.output)
+           def result = o[index]
+           if(result == null) {
+               if(o[0].indexOf('.')>=0) 
+                   result = o[0].replaceAll("\\.([^.]*)\$",".${index+1}.\$1")
+               else
+                   result = o[0] + (index+1)
+           }
+           // result = trackOutput(result)
+           
+           Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
+           
+           return new PipelineOutput(result, 
+                                     origOutput.stageName, 
+                                     origOutput.defaultOutput, 
+                                     origOutput.overrideOutputs, { op -> onNewOutputReferenced(pipeline, op)}) 
        }
-       result = trackOutput(result)
-       
-       return result
+       catch(Exception e) {
+           e.printStackTrace()
+       }
    }
    
    def getOutput1() {
@@ -1278,7 +1289,7 @@ class PipelineContext {
       // the command is executed, and then we wipe them out
       def checkOutputs = this.inferredOutputs + referencedOutputs
       if(!probeMode && checkOutputs && Dependencies.instance.checkUpToDate(checkOutputs,this.@input)) {
-          String message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " due to inferred outputs $allInferredOutputs newer than inputs ${this.@input}"
+          String message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " due to inferred outputs $checkOutputs newer than inputs ${this.@input}"
           log.info message
           msg message
           

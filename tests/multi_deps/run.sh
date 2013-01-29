@@ -22,8 +22,8 @@ rm *.bam test1.sai
 
 run test1.gz test2.gz
 
-# nothing should get skipped. Technically the one we didn't remove should not need to 
 # get created, but this is a limitation of Bpipe 
-grep -q 'Skipping' test.out && err "Incorrectly skipped some commands when targets from every multi or exec in block were out of date"
+grep -q 'Skipping command gunzip -c test2.gz' test.out || err "Failed to skip creation of output test2.gz that was already up to date"
+grep -q 'Skipping command gunzip -c test1.gz' test.out && err "Incorrectly skipped creation of test1.gz even though it was removed"
 
 true

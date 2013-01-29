@@ -41,6 +41,13 @@ import groovy.util.logging.Log;
 class PipelineInput {
     
     /**
+     * Support implicit cast to String when creating File objects
+     */
+    static {
+        File.metaClass.constructor << {  PipelineInput i -> new File(i.toString()) }
+    }
+    
+    /**
      * Raw inputs
      */
     def input
