@@ -1372,12 +1372,28 @@ class PipelineContext {
        Map<String,Integer> counts = exts.inject([:]) { r,ext -> r[ext]=0; r }
        def resolvedInputs = exts.collect { String ext ->
            
-           String normExt = ext.startsWith(".") ? ext : "." + ext
+           String normExt = ext
+           def matcher
+           if(normExt.indexOf('*')<0) {
+             ext.startsWith(".") ? ext : "." + ext
+             matcher = { it?.endsWith(normExt) }
+           }
+           else {
+             final Pattern m = FastUtils.globToRegex(normExt)
+             log.info "Converted glob pattern $normExt to regex ${m.pattern()}"
+             matcher = { fileName ->
+//                 log.info "Match $fileName to ${m.pattern()}"
+                 fileName ? m.matcher(fileName).matches() : false
+             }
+           }
+           
            int previousReferences = counts[ext]
            counts[ext]++
            int count = 0
            for(s in reverseOutputs) {
-               def o = s.grep { it?.endsWith(normExt) }.collect { it.toString() }
+               def o = s.grep { matcher(it)
+               }.collect { it.toString() }
+               
                if(o) {
                    if(previousReferences - count < o.size()) {
                      log.info("Checking ${s} vs $normExt Y")
