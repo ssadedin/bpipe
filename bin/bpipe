@@ -239,7 +239,7 @@ get_classpath() {
     LIB="local-lib"
   fi
 
-  CP="$BPIPE_HOME"/$LIB/bpipe.jar:"$BPIPE_HOME"/$LIB/groovy-all-2.1.0.jar::$BPIPE_HOME/$LIB/jgraphx.jar:$BPIPE_HOME/$LIB/smack-3.2.2.jar:$BPIPE_HOME/$LIB/mail.jar
+  CP="$BPIPE_HOME"/$LIB/bpipe.jar:"$BPIPE_HOME"/$LIB/groovy-all-2.1.0.jar:$BPIPE_HOME/$LIB/commons-cli-1.2.jar:$BPIPE_HOME/$LIB/jgraphx.jar:$BPIPE_HOME/$LIB/smack-3.2.2.jar:$BPIPE_HOME/$LIB/mail.jar
   echo "CP=$CP"
 
   # In case we are running in place in the bpipe project root, we pre-empty any other 
