@@ -246,8 +246,7 @@ get_classpath() {
   # bpipe classes with those from the build directory and the eclipse compile path
   if [ -e $BPIPE_HOME/build/classes/main ] || [ -e $BPIPE_HOME/eclipse-build ];
   then
-    #CP="$BPIPE_HOME/eclipse-build:$BPIPE_HOME/build/classes/main:$CP"
-    CP="$BPIPE_HOME/build/classes/main:$CP"
+    CP="$BPIPE_HOME/eclipse-build:$BPIPE_HOME/build/classes/main:$CP"
   fi
 
   # Support for Cygwin: convert the class path to windows format 
