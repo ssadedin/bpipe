@@ -31,6 +31,7 @@ import java.util.logging.Handler;
 import java.util.logging.Level
 import java.util.logging.Logger;
 
+import groovy.transform.CompileStatic;
 import groovy.util.logging.Log
 
 /**
@@ -460,7 +461,7 @@ class Runner {
  *
  */
 @Log
-private class ParamsBinding extends Binding {
+class ParamsBinding extends Binding {
     
     def parameters = []
 
