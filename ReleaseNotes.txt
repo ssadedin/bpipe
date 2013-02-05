@@ -1,3 +1,41 @@
+=========== Changes for Bpipe Version 0.9.8_beta_3 ============
+
+-   Updated underlying groovy implementation to Groovy 2.1
+
+-   Add "pre-existing" label to display of outputs that 
+    weren't genereated by the current run
+
+-   fix error when creating File objects from input /
+    output
+
+-   support for using numbered outputs with file extensions
+    (eg: $output2.txt)
+
+-   fixed outputs sometimes being recreated unnecessarily
+    when multiple commands inside transform/filter
+
+-   support for implicit 'thread' variable for auto
+    allocating threads based on known concurrency
+
+-   fixed duplicate output files for $output1,
+    $output2,... if pipeline has no input files
+
+-   fix jobs not always cleaned up from global job table
+
+-   support for referencing a particular input with a
+    particular extension using "$input<n>.<ext>"
+
+-   fixed double period appearing in some file names when
+    using filter
+
+-   fixed order of output from "glob" depending on the
+    vagaries of the file system or java internals by
+    sorting it
+
+-   made 'from' conform to the convention of multiple
+    inputs of same time bumping to next actual input
+    instead of returning the same over and over
+
 =========== Changes for Bpipe Version 0.9.8_beta_2 ============
 
 -   fixed multi not failing pipeline when an asynchronous

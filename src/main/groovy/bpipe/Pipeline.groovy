@@ -702,8 +702,10 @@ public class Pipeline {
         Dependencies.instance.reset()
         List all = Dependencies.instance.findLeaves(Dependencies.instance.outputGraph)*.values.flatten()*.outputPath
         
+        def runFiles = Dependencies.instance.outputFilesGenerated
         
-//        def all = Utils.box(stages[-1].context.output).grep { it && !it.startsWith("null") && new File(it.toString()).exists() }
+        all = all.collect { runFiles.contains(it) ? it : it + ' (pre-existing)' }
+        
         if(all.size() == 1) {
             rootContext.msg "Output is " + all[0]
         }
