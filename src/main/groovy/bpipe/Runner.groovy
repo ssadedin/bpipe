@@ -66,11 +66,11 @@ class Runner {
               diagrameditor <pipeline> <in1> <in2>...
     """.stripIndent().trim()
     
-    static CliBuilder runCli = new CliBuilder(usage: DEFAULT_HELP)
+    static CliBuilder runCli = new CliBuilder(usage: DEFAULT_HELP, posix: true)
           
-    static CliBuilder stopCommandsCli = new CliBuilder(usage: "bpipe stopcommands\n")
+    static CliBuilder stopCommandsCli = new CliBuilder(usage: "bpipe stopcommands\n", posix: true)
     
-    static CliBuilder diagramCli = new CliBuilder(usage: "bpipe diagram [-e] <pipeline> <input1> <input2> ...\n")
+    static CliBuilder diagramCli = new CliBuilder(usage: "bpipe diagram [-e] <pipeline> <input1> <input2> ...\n", posix: true)
     
     public static OptionAccessor opts = runCli.parse([])
     
@@ -415,7 +415,7 @@ class Runner {
      * @param args
      */
     static void runCleanup(def args) {
-        def cli = new CliBuilder(usage: "bpipe cleanup [-y]\n")
+        def cli = new CliBuilder(usage: "bpipe cleanup [-y]\n", posix: true)
         cli.with {
             y longOpt: 'yes', 'answer yes to any prompts or questions'
         }
