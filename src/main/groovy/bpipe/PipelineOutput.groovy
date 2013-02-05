@@ -102,7 +102,7 @@ class PipelineOutput {
     String toString() {
         if(this.outputChangeListener)
           this.outputChangeListener(Utils.first(output),null)
-        return String.valueOf(Utils.first(output))
+        return String.valueOf(Utils.first(output)) 
     }
    
     /**
