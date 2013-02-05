@@ -67,6 +67,12 @@ class PipelineOutput {
     List<String> overrideOutputs
     
     /**
+     * If a filter is executing, a list of the file extensions that were available
+     * to the filter 
+     */
+    List<String> currentFilter = []
+    
+    /**
      * If the output should add an extra segment to generated output files then that
      * is specified here.
      */
@@ -95,8 +101,8 @@ class PipelineOutput {
     
     String toString() {
         if(this.outputChangeListener)
-          this.outputChangeListener(Utils.first(output))
-        return String.valueOf(Utils.first(output))
+          this.outputChangeListener(Utils.first(output),null)
+        return String.valueOf(Utils.first(output)) 
     }
    
     /**
@@ -128,14 +134,23 @@ class PipelineOutput {
     
     def selectFromOverrides(String name) {
         String result = this.overrideOutputs.find { it.toString().endsWith('.' + name) }
+        def replaced = null
+        if(!result) {
+            if(name in currentFilter) {
+                log.info "Allowing reference to output not produced by filter because it was available from a filtering of an alternative input"
+                replaced = this.overrideOutputs[0]
+                result = this.overrideOutputs[0].replaceAll('\\.[^.]*$',"." + name)
+            }
+        }
+        
         if(!result)
-            throw new PipelineError("An output of type ." + name + " was referenced, however such an output was not specified to occur by an outer transform / filter / produce statement.\n\n" + "Valid outputs are: ${overrideOutputs.join('\n')}")
+            throw new PipelineError("An output of type ." + name + " was referenced, however such an output was not in the outputs specified by an outer transform / filter / produce statement.\n\n" + "Valid outputs are: ${overrideOutputs.join('\n')}")
           else
             log.info "Selected output $result with extension $name from expected outputs $overrideOutputs"
           
         this.outputUsed = result
         if(this.outputChangeListener != null) {
-            this.outputChangeListener(result)
+            this.outputChangeListener(result,replaced)
         }
         
         return result
@@ -164,7 +179,7 @@ class PipelineOutput {
             this.outputUsed = this.outputUsed.substring(1) 
             
         if(this.outputChangeListener != null) {
-            this.outputChangeListener(this.outputUsed)
+            this.outputChangeListener(this.outputUsed,null)
         }
         return this.outputUsed
     }

@@ -295,9 +295,10 @@ class PipelineContext {
                                     this.stageName, 
                                  baseOutput,
                                  Utils.box(this.@output), 
-                                 { o -> onNewOutputReferenced(pipeline, o)}) 
+                                 { o,replaced -> onNewOutputReferenced(pipeline, o, replaced)}) 
        
        po.branchName = branchName
+       po.currentFilter = currentFilter
        return po
    }
    
@@ -308,7 +309,7 @@ class PipelineContext {
     * 
     * @param pipeline
     */
-   void onNewOutputReferenced(Pipeline pipeline, Object o) {
+   void onNewOutputReferenced(Pipeline pipeline, Object o, String replaced = null) {
        if(!allInferredOutputs.contains(o)) 
            allInferredOutputs << o; 
        if(!inferredOutputs.contains(o)) 
@@ -316,6 +317,8 @@ class PipelineContext {
        if(applyName) { 
            pipeline.nameApplied=true
         } 
+       if(replaced) 
+           this.@output = Utils.box(this.@output).collect { (it == replaced) ? o : it }
    }
    
    def getOutputs() {
@@ -341,7 +344,7 @@ class PipelineContext {
            return new PipelineOutput(result, 
                                      origOutput.stageName, 
                                      origOutput.defaultOutput, 
-                                     origOutput.overrideOutputs, { op -> onNewOutputReferenced(pipeline, op)}) 
+                                     origOutput.overrideOutputs, { op,replaced -> onNewOutputReferenced(pipeline, op, replaced)}) 
        }
        catch(Exception e) {
            e.printStackTrace()
@@ -666,6 +669,7 @@ class PipelineContext {
        produce(files, body)
    }
  
+   List<String> currentFilter = []
     
     /**
      * Specifies an output that keeps the same type of file but modifies 
@@ -680,12 +684,12 @@ class PipelineContext {
         def typeCounts = [:]
         for(def e in types) 
             typeCounts[e] = 0
-
       
         def files = types.collect { String type ->
             def inp = boxed[typeCounts[type] % boxed.size()]
             if(!inp) 
                throw new PipelineError("Expected input but no input provided") 
+               
             log.info "Filtering based on input $inp"
             
              typeCounts[type]++
@@ -705,7 +709,11 @@ class PipelineContext {
         if(applyName)
             pipeline.nameApplied = true
             
+        this.currentFilter = boxed.grep { it.indexOf('.')>0 }.collect { it.substring(it.lastIndexOf('.')+1) }
+        
         produce(files, body)
+        
+        this.currentFilter = []
     }
   
     Object filter(String type, Closure body) {
@@ -1577,4 +1585,3 @@ class PipelineContext {
         return modified
     }
 }
-
