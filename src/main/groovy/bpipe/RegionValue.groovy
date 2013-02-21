@@ -11,8 +11,12 @@ class RegionValue {
     
     def propertyMissing(String name) {
        if(name == "bed") {
-           def fn = new File(".bpipe",Utils.sha1(value))
+           def fn = new File(".bpipe",Utils.sha1(value)+".bed")
            if(!fn.exists()) {
+               
+               def regions = value.split(" ").collect {
+               }
+               
                fn.text = value.replaceAll("-","\t").replaceAll(":","\t").split(" ").join("\n")
            }
            return fn.absolutePath

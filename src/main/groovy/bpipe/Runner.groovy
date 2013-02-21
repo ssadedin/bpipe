@@ -53,7 +53,7 @@ class Runner {
     
     
     final static String DEFAULT_HELP = """
-        bpipe [run|test|debug|execute] [-h] [-t] [-d] [-r] [-y] [-n <threads>] [-m <memory MB>] [-l <resource>=<limit>] [-v] <pipeline> <in1> <in2>...
+        bpipe [run|test|debug|execute] [options] <pipeline> <in1> <in2>...
               retry [test]
               stop
               history 
@@ -172,10 +172,11 @@ class Runner {
                  r longOpt:'report', 'generate an HTML report / documentation for pipeline'
                  n longOpt:'threads', 'maximum threads', args:1
                  m longOpt:'memory', 'maximum memory', args:1
-                 l longOpt:'resource', 'place limit on named resource', args:1
+                 l longOpt:'resource', 'place limit on named resource', args:1, argName: 'resource=value'
                  v longOpt:'verbose', 'print internal logging to standard error'
                  y longOpt:'yes', 'answer yes to any prompts or questions'
                  p longOpt: 'param', 'defines a pipeline parameter', args: 1, argName: 'param=value', valueSeparator: ',' as char
+                 'L' longOpt: 'interval', 'the default genomic interval to execute pipeline for (samtools format)',args: 1
             }
         }
         
@@ -266,11 +267,15 @@ class Runner {
         ParamsBinding binding = new ParamsBinding()
         if( opts.params ) {  // <-- note: ending with the 's' character the 'param' option, will force to return it as list of string
             log.info "Adding CLI parameters: ${opts.params}"
+               
             binding.addParams( opts.params )
         }
         else {
             log.info "No CLI parameters specified"
         }
+        
+        if(opts.L) 
+            binding.setParam("region", new RegionValue(value: opts.L))
 
         // create the pipeline script instance and set the binding obj
         Script script = gcl.parseClass(pipelineSrc).newInstance()
@@ -501,7 +506,11 @@ class ParamsBinding extends Binding {
                 log.warning("The specified value is a valid parameter: '${pair}'. It must be in format 'key=value'")
             }
             else {
-                setParam(entry.key, entry.value)
+                if(entry.key == "region") {
+                    setParam(entry.key, new RegionValue(value:entry.value))
+                }
+                else
+                  setParam(entry.key, entry.value)
             }
         }
     }

@@ -10,6 +10,7 @@ import static bpipe.GenomicRange.range
  * @author ssadedin
  */
 class Gene implements Serializable {
+    private static final long serialVersionUID = 1L;
     String name
     GenomicRange location
 }

@@ -90,10 +90,10 @@ class PipelineContext {
         this.pipelineJoiners = pipelineJoiners
         this.initUncleanFilePath()
         this.threadId = Thread.currentThread().getId()
-		this.branch = branch
+        this.branch = branch
         def pipeline = Pipeline.currentRuntimePipeline.get()
-		if(pipeline)
-	        this.applyName = pipeline.name && !pipeline.nameApplied
+        if(pipeline)
+            this.applyName = pipeline.name && !pipeline.nameApplied
     }
    
     /**
@@ -232,7 +232,7 @@ class PipelineContext {
        log.info "Setting output $o on context ${this.hashCode()} in thread ${Thread.currentThread().id}"
        if(Thread.currentThread().id != threadId)
            log.warning "Thread output being set to $o from wrong thread ${Thread.currentThread().id} instead of $threadId"
- 	   
+       
        this.@output = o
    }
    
@@ -526,41 +526,41 @@ class PipelineContext {
        if(Runner.opts.t)
            throw new PipelineTestAbort("Would execute filterRows on input $input")
            
-	   String fileName = Utils.first(this.getOutput())
-	   if(Runner.opts.t)
-		   throw new PipelineTestAbort("Would write to output file $fileName")
-		
-	   def outStream = new FileOutputStream(fileName)
+       String fileName = Utils.first(this.getOutput())
+       if(Runner.opts.t)
+           throw new PipelineTestAbort("Would write to output file $fileName")
+        
+       def outStream = new FileOutputStream(fileName)
   
        File f = new File(isContainer(input)?input[0]:input)
-	   boolean first = true
-	   List<String> header = null
-	   f.eachLine {  line ->
-		   if(first) {
-			 first = false
-			 if(line.startsWith('#') && !line.startsWith('##')) {
-				 header = line.substring(1).split('\t').collect { it.trim() }
-			 }  
-		   }
-		   
-		   def cols
-		   if(!line.startsWith('#')) {
-			   cols = line.split('\t')
-			   if(header) {
-				   header.eachWithIndex { key,i ->
-					   this.localVariables[key] = cols[i]
-				   }
-			   }
-			   this.localVariables["col"] = cols
-		   }
-		   
+       boolean first = true
+       List<String> header = null
+       f.eachLine {  line ->
+           if(first) {
+             first = false
+             if(line.startsWith('#') && !line.startsWith('##')) {
+                 header = line.substring(1).split('\t').collect { it.trim() }
+             }  
+           }
+           
+           def cols
+           if(!line.startsWith('#')) {
+               cols = line.split('\t')
+               if(header) {
+                   header.eachWithIndex { key,i ->
+                       this.localVariables[key] = cols[i]
+                   }
+               }
+               this.localVariables["col"] = cols
+           }
+           
            if(line.startsWith("#"))
                outStream << line
            else 
            if(c(cols)) {
                outStream << cols.join("\t") << "\n"
            }
-       }	   
+       }       
        
        if(!this.trackedOutputs["filterRows"])
          this.trackedOutputs["filterRows"] = []
@@ -807,15 +807,15 @@ class PipelineContext {
      * may result in undesirable behavior.
      * 
      * @TODO above issue can possibly be mitigated if we do an 
-     * 		 upwards hierachical search to check outputs from prior
-     * 		 stages
+     *       upwards hierachical search to check outputs from prior
+     *       stages
      * @TODO the case where an output directory is set is not yet
      *       properly handled in the glob matching
      */
     Object produce(Object out, Closure body) { 
         log.info "Producing $out from $this"
         
-		List globOutputs = Utils.box(out).grep { it.contains("*") }
+        List globOutputs = Utils.box(out).grep { it.contains("*") }
         
         // Unwrap any wrapped inputs that may have been passed in the outputs
         // and coerce them to the correct output folder
@@ -824,10 +824,10 @@ class PipelineContext {
         def lastInputs = this.@input
         boolean doExecute = true
         
-		List fixedOutputs = Utils.box(out).grep { !it.contains("*") }
-		
-		// Check for all existing files that match the globs
-		List globExistingFiles = globOutputs.collect { Utils.glob(it) }.flatten()
+        List fixedOutputs = Utils.box(out).grep { !it.contains("*") }
+        
+        // Check for all existing files that match the globs
+        List globExistingFiles = globOutputs.collect { Utils.glob(it) }.flatten()
         if((!globOutputs || globExistingFiles) && Dependencies.instance.checkUpToDate(fixedOutputs + globExistingFiles,lastInputs)) {
           // No inputs were newer than outputs, 
           // but were the commands that created the outputs modified?
@@ -890,22 +890,22 @@ class PipelineContext {
                 trackOutputIfNotAlreadyTracked(o, "<produce>")
             }
         }
-		
-		if(globOutputs) {
-			def normalizedInputs = Utils.box(this.@input).collect { new File(it).absolutePath }
-			for(String pattern in globOutputs) {
-				def result = Utils.glob(pattern).grep {  !normalizedInputs.contains( new File(it).absolutePath) }
-				
-				log.info "Found outputs for glob $pattern: [$result]"
+        
+        if(globOutputs) {
+            def normalizedInputs = Utils.box(this.@input).collect { new File(it).absolutePath }
+            for(String pattern in globOutputs) {
+                def result = Utils.glob(pattern).grep {  !normalizedInputs.contains( new File(it).absolutePath) }
+                
+                log.info "Found outputs for glob $pattern: [$result]"
                 
                 result.each { trackOutputIfNotAlreadyTracked(it, "<produce>") }
-				
-				if(Utils.box(this.@output))
-					this.output = this.@output + result
-				else
-					this.output = result
-			}
-		}
+                
+                if(Utils.box(this.@output))
+                    this.output = this.@output + result
+                else
+                    this.output = result
+            }
+        }
 
         return out
     }
@@ -1027,25 +1027,25 @@ class PipelineContext {
      * based on the input pattern.
      * 
      * @param pattern
-     * @deprecated		This functionality is migrated into {@link #produce(Object, Closure)}
+     * @deprecated      This functionality is migrated into {@link #produce(Object, Closure)}
      */
     void split(String pattern, Closure c) {
-		
-		def files = Utils.glob(pattern)
+        
+        def files = Utils.glob(pattern)
         try {
-			if(files && !Utils.findOlder(files, this.@input)) {
-				msg "Skipping execution of split because inputs [" + this.@input + "] are newer than ${files.size()} outputs starting with " + Utils.first(files)
-				log.info "Split body not executed because inputs " + this.@input + " older than files matching split: $files"
-				return
-			}
+            if(files && !Utils.findOlder(files, this.@input)) {
+                msg "Skipping execution of split because inputs [" + this.@input + "] are newer than ${files.size()} outputs starting with " + Utils.first(files)
+                log.info "Split body not executed because inputs " + this.@input + " older than files matching split: $files"
+                return
+            }
             
             // Execute the body
             log.info "Executing split body with pattern $pattern in stage $stageName"
             c()
         }
         finally {
-			
-			def normalizedInputs = Utils.box(this.@input).collect { new File(it).absolutePath }
+            
+            def normalizedInputs = Utils.box(this.@input).collect { new File(it).absolutePath }
             def result = Utils.glob(pattern).grep {  !normalizedInputs.contains( new File(it).absolutePath) }
             
             log.info "Found outputs for split by scanning pattern $pattern: [$output]" 
@@ -1339,10 +1339,10 @@ class PipelineContext {
      */
     void msg(def m) {
         def date = (new Date()).format("HH:mm:ss")
-		if(branch)
-	        println "$date MSG [$branch]:  $m"
-		else
-	        println "$date MSG:  $m"
+        if(branch)
+            println "$date MSG [$branch]:  $m"
+        else
+            println "$date MSG:  $m"
     }
    
    /**
@@ -1387,15 +1387,18 @@ class PipelineContext {
        
        exts = Utils.box(exts)
        
+       Map extTotals = exts.countBy { it }
+       
        // Counts of how many times each extension has been referenced
        Map<String,Integer> counts = exts.inject([:]) { r,ext -> r[ext]=0; r }
        def resolvedInputs = exts.collect { String ext ->
            
            String normExt = ext
            def matcher
-           if(normExt.indexOf('*')<0) {
+           boolean globMatch = normExt.indexOf('*')>=0
+           if(!globMatch) {
              ext.startsWith(".") ? ext : "." + ext
-             matcher = { it?.endsWith(normExt) }
+             matcher = { log.info("Check $it ends with $normExt");  it?.endsWith(normExt) }
            }
            else {
              final Pattern m = FastUtils.globToRegex(normExt)
@@ -1408,18 +1411,31 @@ class PipelineContext {
            
            int previousReferences = counts[ext]
            counts[ext]++
+           
+           // Count of how many of this kind of extension have been consumed
            int count = 0
            for(s in reverseOutputs) {
-               def o = s.grep { matcher(it)
-               }.collect { it.toString() }
+               def outputsFound = s.grep { matcher(it) }.collect { it.toString() }
                
-               if(o) {
-                   if(previousReferences - count < o.size()) {
-                     log.info("Checking ${s} vs $normExt Y")
-                     return o[previousReferences - count]
+               log.info "Matched : $outputsFound"
+               
+               if(outputsFound) {
+                   
+                   if(globMatch) {
+                       return outputsFound
                    }
                    else
-                       count+=o.size()
+                   if(previousReferences - count < outputsFound.size()) {
+                     log.info("Checking ${s} vs $normExt Y")
+//                     int start = previousReferences - count
+//                     int end =   outputsFound.size() - (previousReferences - count)
+//                     if(previousReferences >= extTotals[ext]-1)
+//                       return outputsFound[start..end]
+//                     else
+                       return outputsFound[previousReferences - count]
+                   }
+                   else
+                       count+=outputsFound.size()
                }
 //               log.info("Checking outputs ${s} vs $inp N")
            }
@@ -1520,6 +1536,11 @@ class PipelineContext {
             // When the user said how many threads to use, just go with it
             // But otherwise, resolve it to the number of cores that the computer has
             int maxThreads = Config.config.customThreads?(int)Config.config.maxThreads : Runtime.getRuntime().availableProcessors()
+            if(maxThreads > Config.config.maxThreads) {
+                log.info "Using only $Config.config.maxThreads instead of configured $maxThreads because the configured value exceeds the number of available cores"
+                maxThreads = Config.config.maxThreads
+            }
+            
             try {
                 this.usedResources['threads'].amount = Math.max((int)1, (int)maxThreads / childCount)
             }

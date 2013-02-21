@@ -60,9 +60,9 @@ class Utils {
     
         outputs.collect { new File(it) }.grep { outFile ->
             
-//            println "===== Check $outFile ====="
+            log.info "===== Check $outFile ====="
             if(!outFile.exists()) {
-//                println "file doesn't exist: $outFile"
+                log.info "file doesn't exist: $outFile"
                 return true
             }
                 
@@ -71,15 +71,15 @@ class Utils {
                     return false
                 }
                 else {
-//                    println "Check $inputs : " + new File(inputs).lastModified() + " <=  " + outFile + " : " + outFile.lastModified() 
+                    log.info "Check $inputs : " + new File(inputs).lastModified() + " <=  " + outFile + " : " + outFile.lastModified() 
                     return (new File(inputs).lastModified() > outFile.lastModified()) 
                 }
             }
             else
             if(isContainer(inputs)) {
-//                println "Checking $outFile against inputs $inputs"
+                log.info "Checking $outFile against inputs $inputs"
                 return inputFiles.any { inFile ->
-//                    println "Check $inFile : " + inFile.lastModified() + " >  " + "$outFile : " + outFile.lastModified() 
+                    log.info "Check $inFile : " + inFile.lastModified() + " >  " + "$outFile : " + outFile.lastModified() 
                     inFile.lastModified() > outFile.lastModified() 
                 }
             }
