@@ -45,7 +45,6 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
         }
      }
     
-
 	@Override
 	public Iterator iterator() {
 		return Utils.box(super.@input).listIterator()

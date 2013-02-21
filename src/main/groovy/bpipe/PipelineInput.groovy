@@ -154,6 +154,15 @@ class PipelineInput {
     def plus(String str) {
         return this.toString() + str 
     }
+    
+    /**
+     * There seems to be an implementation of split() in defaultGroovyMethods,
+     * but it does NOT do the right thing like a String would.
+     * @return
+     */
+    def split() {
+        toString().split()
+    }
         
     /**
      * Search backwards through the inputs to the current stage and the outputs of
