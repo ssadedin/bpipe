@@ -1,3 +1,31 @@
+=========== Changes for Bpipe Version 0.9.8_beta_2 ============
+
+-   fixed multi not failing pipeline when an asynchronous
+    command fails
+
+-   making filter() conform to the same behavior as
+    transform(): when a filter type is repeated, it moves
+    to the next input (see google group discussion -
+    https://groups.google.com/forum/?fromgroups=#!topic/bpipe-discuss/G58ExlG2Vgo
+
+-   fixed error when reporting notification failures
+    to user
+
+-   fixed output extensions not working correctly with
+    filter when multiple filters supplied
+
+-   fix multi not actually parallelizing properly in
+    some cases
+
+-   fix regression in 'from' not accepting list (added
+    test)
+
+-   fixed from with multiple arguments ignoring first
+    argument
+
+-   fixed deadlock condition in using "multi" in certain
+    cases
+
 =========== Changes for Bpipe Version 0.9.8_beta_1 ============
 
 -   More flexible model for concurrency management, enabling
