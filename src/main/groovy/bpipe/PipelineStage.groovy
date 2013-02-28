@@ -115,6 +115,8 @@ class PipelineStage {
 	 */
 	boolean succeeded = true
     
+    def originalInputs
+    
     /**
      * Executes the pipeline stage body, wrapping it with logic and instrumentation
      * to manage the pipeline. 
@@ -124,6 +126,11 @@ class PipelineStage {
      * pipeline stage.
      */
     def run() {
+        
+        // Cache the original inputs for reference when searching back up through 
+        // the pipeline for inputs matching a pattern
+        this.originalInputs = this.context.@input
+        
         Dependencies.instance.checkFiles(context.@input)
         
 		// Note: although it would appear these are being injected at a per-pipeline level,

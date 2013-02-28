@@ -308,6 +308,11 @@ class PipelineContext {
     * is referenced in a pipeline.
     * 
     * @param pipeline
+    * @param replaced   if the output replaces a previously inferred output, 
+    *                   the output that should be replaced. This happens when
+    *                   an output is inferred first using $output but then that
+    *                   becomes replaced by in input extension reference using
+    *                   $output.bam
     */
    void onNewOutputReferenced(Pipeline pipeline, Object o, String replaced = null) {
        if(!allInferredOutputs.contains(o)) 
@@ -709,7 +714,8 @@ class PipelineContext {
         if(applyName)
             pipeline.nameApplied = true
             
-        this.currentFilter = boxed.grep { it.indexOf('.')>0 }.collect { it.substring(it.lastIndexOf('.')+1) }
+//        this.currentFilter = boxed.grep { it.indexOf('.')>0 }.collect { it.substring(it.lastIndexOf('.')+1) }
+        this.currentFilter = (boxed + Utils.box(this.pipelineStages[-1].originalInputs)).grep { it.indexOf('.')>0 }.collect { it.substring(it.lastIndexOf('.')+1) }
         
         produce(files, body)
         

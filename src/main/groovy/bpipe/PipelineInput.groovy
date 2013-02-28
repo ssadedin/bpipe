@@ -185,6 +185,10 @@ class PipelineInput {
 	        // You can think of it as the initial inputs being the output of some previous stage
 	        // that we know nothing about
 	        reverseOutputs.add(Utils.box(stages[0].context.@input))
+            
+            // Consider not just the actual inputs to the stage, but also the *original* unmodified inputs
+            if(stages[0].originalInputs)
+    	        reverseOutputs.add(Utils.box(stages[0].originalInputs))
 	        
 	        // Add an initial stage that represents the current input to this stage.  This way
 	        // if the from() spec is used and matches the actual inputs then it will go with those
