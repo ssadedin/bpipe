@@ -4,7 +4,7 @@
 hello = {
   produce("test.txt.hello","test.txt.csv") {
     exec "echo hello > $output"
-    exec "echo hello > ${output.prefix}.csv"
+    exec "echo hello > ${output2.prefix}.csv"
   }
 }
 
