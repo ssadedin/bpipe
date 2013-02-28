@@ -196,7 +196,7 @@ class PipelineOutput {
     String getPrefix() {
         this.outputUsed = String.valueOf(Utils.first(output))
         if(this.outputChangeListener != null) 
-            this.outputChangeListener(this.outputUsed)
+            this.outputChangeListener(this.outputUsed,null)
         return PipelineCategory.getPrefix(this.outputUsed);
     } 
     
