@@ -210,6 +210,7 @@ class PipelineCategory {
                             // all "inputs" reflected as some output of an earlier stage
                             PipelineContext dummyPriorContext = pipeline.createContext()
                             PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
+                            dummyPriorContext.stageName = dummyPriorStage.stageName = "Nested pipeline segment: $chr"
                                 
                             // If the filterInputs option is set, match input files on the region name
                             def childInputs = input
@@ -229,10 +230,10 @@ class PipelineCategory {
                                 
                             // Note: must be raw output because otherwise the original inputs (from other folders)
                             // can get redirected to the output folder
-                            dummyPriorContext.setRawOutput(input)
+                            dummyPriorContext.setRawOutput(childInputs)
                                 
                             log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
-                            pipeline.addStage(dummyPriorStage)
+                            child.addStage(dummyPriorStage)
                             def region = chr.region
                             child.variables += [chr: region]
                             child.variables += [region: region]
