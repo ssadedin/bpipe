@@ -205,6 +205,11 @@ class PipelineContext {
    String branch = ""
    
    /**
+    * A list of executable closures to be executed when the next produce statement completes
+    */
+   List<Closure> fromCleanups = []
+   
+   /**
     * The default output is set prior to the body of the a pipeline stage being run.
     * If the pipeline stage does nothing else but references $output then the default output is
     * the one that is returned.  However the pipeline stage may modify the output
@@ -913,6 +918,9 @@ class PipelineContext {
             }
         }
 
+        this.fromCleanups.each { it() }
+        this.fromCleanups = []
+        
         return out
     }
     
@@ -1464,13 +1472,21 @@ class PipelineContext {
        
        this.getInput().resolvedInputs.addAll(resolvedInputs)
        
-       this.nextInputs = body()
+       def fromCleanup = {
+           allResolvedInputs.addAll(this.getInput().resolvedInputs)
+           this.@input  = oldInputs
+           this.@inputWrapper = null 
+       }
        
-       allResolvedInputs.addAll(this.getInput().resolvedInputs)
-       
-       this.@input  = oldInputs
-       this.@inputWrapper = null
-       return this.nextInputs
+       if(body != null) {
+         this.nextInputs = body()
+         fromCleanup()
+         return this.nextInputs
+       }
+       else {
+         this.fromCleanups << fromCleanup
+         return this 
+       }
    }
  
    public void forward(nextInputOverride) {

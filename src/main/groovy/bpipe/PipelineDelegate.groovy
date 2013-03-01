@@ -47,12 +47,22 @@ class PipelineDelegate {
         log.fine "Query for method $name on ${context.get()} via delegate ${this} in thread ${Thread.currentThread().id}"
         
         if(name == "from") {
-            if(args.size()<2) 
-                throw new IllegalArgumentException("from requires 2 arguments")
-            def actualArgs = args[0..-2] as List
+            if(args.size()<1) 
+                throw new IllegalArgumentException("from requires an argument: please supply a pattern or file extension that from should match on")
+                
+            def actualArgs 
+            Closure body = null
+            if(args[-1] instanceof Closure) {
+                actualArgs = args[0..-2] as List
+                body = args[-1]
+            }
+            else
+                actualArgs = args[0..-1]
+                
             if(actualArgs[0] instanceof List && actualArgs.size()==1)
                 actualArgs = actualArgs[0]
-            context.get().invokeMethod("fromImpl", [actualArgs, args[-1]] as Object[])
+                
+            context.get().invokeMethod("fromImpl", [actualArgs, body] as Object[])
         }
         else
         if(name == "multi") {
