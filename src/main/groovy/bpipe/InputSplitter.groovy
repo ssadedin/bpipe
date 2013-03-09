@@ -42,9 +42,9 @@ class InputSplitter {
 	Map split(String pattern, input) {
 		// Replace the two special characters (*) and (%) with 
 		// regex groups
-        List groups = this.convertPattern(pattern)
-        String regex = groups[0]
-        int splitGroup = groups[1]
+        Map splitMap = this.convertPattern(pattern)
+        String regex = splitMap.pattern
+        List<Integer> splitGroups = splitMap.splits
         
         def unsortedResult = [:]
         for(String inp in Utils.box(input)) {
@@ -52,7 +52,10 @@ class InputSplitter {
             if(!m)
 			    continue
                 
-            String group = splitGroup >= 0 ? m[0][splitGroup+1] : "all"
+            String group = "all"
+            if(splitGroups) {
+                 group = splitGroups.collect { m[0][it+1] }.join(".")
+            }
             log.fine "The group:  $group"
             if(!unsortedResult.containsKey(group))
                 unsortedResult[group] = []
@@ -64,7 +67,7 @@ class InputSplitter {
 		// however we want to also sort them 
         Map sortedResult = [:]
         unsortedResult.each {  k,v ->
-            sortedResult[k] = this.sortNumericThenLexically(regex, splitGroup, v)
+            sortedResult[k] = this.sortNumericThenLexically(regex, splitGroups, v)
 		}
 	}
     
@@ -80,7 +83,7 @@ class InputSplitter {
      * @param v
      * @return    a reordered version of the input list
      */
-    List sortNumericThenLexically(String regex, int skipGroup, List v) {
+    List sortNumericThenLexically(String regex, List<Integer> skipGroups, List v) {
 		return v.sort { String i1, String i2 ->
             // Match 
 			Matcher m1 = (i1 =~ regex)
@@ -91,13 +94,14 @@ class InputSplitter {
             int count = 0
             for(m in m1[0]) {
                 log.fine "==>  $m"
-                if(count++ == skipGroup)
+                if(count++ in skipGroups)
                     continue
+                    
 			    g1 << m
             }
             count = 0
             for(m in m2[0]) {
-                if(count++ == skipGroup)
+                if(count++ in skipGroups)
                     continue
 			    g2 << m
             }
@@ -131,38 +135,39 @@ class InputSplitter {
      * split format to a normal regular expression
      * format.
      * 
-     * @return     a list containing two elements: the pattern generated 
-     *             and an integer indicating the index of the capture group
-     *             representing the split point.
+     * @return     a Map containing two elements:
+     * 
+     *                  - the regex pattern generated to split and match groups 
+     *                    within the inputs 
+     *                  - a list of integers indicating the indexes of the
+     *                    groups within the regex that are split patterns
+     *                    as opposed to grouping patterns
      */
-	List convertPattern(String pattern) {
+	Map convertPattern(String pattern) {
         
 		// Find the characters flanking the % and * and use those as
 		// pattern delimiters
-        int percPos = pattern.indexOf('%')
+        List<Integer> percs = pattern.findIndexValues { it == "%" }.collect { it as Integer }
+        
+        // int percPos = pattern.indexOf('%')
 //        if(percPos == -1)
 //		    throw new PipelineError("A sample split pattern must contain a % character to indicate the splitting point")
 		
-		def starMatch = (pattern =~ /\*/)
-		List starPos = []
-        for(s in starMatch) {
-		    starPos << starMatch.start()   
-		}
+		List<Integer> starPos = pattern.findIndexValues { it == "*" }.collect { it as Integer }
         
-		log.fine "Found * pattern at $starPos and % at $percPos"
+		log.info "Found * pattern at $starPos and % at $percs"
         
-        List sorted = (starPos + percPos).sort()
+        List sorted = (starPos + percs).sort()
 		
-        log.fine "Sorted: $sorted"
+        log.info "Sorted: $sorted"
         
-		int percGroupPos = sorted.indexOf(percPos)
-        if(percPos < 0) {
+		List<Integer> percGroups = sorted.findIndexValues { it in percs }.collect { it as Integer }
+        if(!percGroups) {
 		    sorted = starPos
             sorted.sort()
-			percGroupPos = -1
         }
         
-		log.fine "% is group # " + percGroupPos
+		log.info "% groups are at " + percGroups
         
 		// Figure out flanking characters.  Rather than making the user 
 		// specify which characters delimit their expression we just use the 
@@ -200,9 +205,12 @@ class InputSplitter {
         int lastRenderedPos = lastPos+1+(lastRight.size()?1:0)
         if(lastRenderedPos < pattern.size()-1)
             result << pattern.substring(lastRenderedPos, pattern.size())
-		def resultList = [ result.toString() ,  percGroupPos]
         
-	    log.fine "Result is $resultList"
-        return resultList
+        Map resultMap = [ 
+            pattern: result.toString(),
+            splits: percGroups
+        ]
+	    log.info "Result is $resultMap"
+        return resultMap
 	}
 }
