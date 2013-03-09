@@ -852,7 +852,7 @@ class PipelineContext {
             log.info "Finished probe"
             
             if(!Config.config.enableCommandTracking || !checkForModifiedCommands()) {
-                msg("Skipping steps to create ${Utils.box(out).unique()} because newer than $lastInputs ")
+                msg("Skipping steps to create ${Utils.box(out).unique()} because " + (lastInputs?"newer than $lastInputs" : " file already exists"))
                 log.info "Skipping produce body"
                 doExecute = false
             }
@@ -1221,6 +1221,15 @@ class PipelineContext {
             exitStatus = toWaitFor.waitFor()
         }
     }
+    
+    /**
+     * Replaces the default config within the body to the one specified
+     */
+    void config(String config, Closure c) { 
+        this.defaultConfig = config
+    }
+    
+    String defaultConfig = null
     
     /**
      * Execute the given list of commands simultaneously and wait for the result, 
@@ -1628,3 +1637,4 @@ class PipelineContext {
         return modified
     }
 }
+

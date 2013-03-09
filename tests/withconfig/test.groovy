@@ -5,7 +5,7 @@ init = {
 }
 
 hello = {
-  exec """for i in 1 2 3;  do echo "Hello World $i"; sleep 5; done """
+  exec """for i in 1 2 3;  do echo "Hello World $i"; sleep 2; done """
 
   if(!new File("dummy1.log.txt").exists())
     throw new Exception("Failed to create expected log dummy1.log.txt")
@@ -25,11 +25,25 @@ there = {
     throw new Exception("Failed to create expected log dummy3.log.txt")
 }
 
+body = {
+    config("other_config") {
+
+      def dummy2 = new File("dummy2.log.txt")
+
+      dummy2.delete()
+
+      exec """echo "run with dummy2" """
+
+      if(!dummy2.exists())
+        throw new Exception("Failed to create expected log dummy2.log.txt")
+    }
+}
+
 // Make sure we fail if the executor returns fail exit code from status
 fail = {
   exec "false"
 }
 
-Bpipe.run {
-  init + hello + there + world + fail
+run {
+  init + hello + there + world + body + fail
 }

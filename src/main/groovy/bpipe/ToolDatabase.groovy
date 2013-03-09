@@ -93,14 +93,17 @@ class Tool {
 		
 		Process process = Runtime.getRuntime().exec((String[])(['bash','-c',"$realizedCommand"].toArray()))
 		StringWriter output = new StringWriter()
-		process.consumeProcessOutput(output, System.err)
+        StringWriter errorOutput = new StringWriter()
+		process.consumeProcessOutput(output, errorOutput)
 		int exitCode = process.waitFor()
 		if(exitCode == 0) {
 			version = output.toString()
 			probeSucceeded = true
 		}
-		else 
+		else {
 			version = "Unable to determine version (error occured, see log)" 
+            log.info "Probe command $realizedCommand failed with error output: " + errorOutput.toString()
+		}
 	}
 	
 	static String NON_PATH_TOKEN = " \t;"
