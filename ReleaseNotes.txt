@@ -1,3 +1,46 @@
+=========== Changes for Bpipe Version 0.9.8_beta_4 ============
+
+-   support for multiple split characters in input matching patterns
+
+-   support for config closure to enable config across multiple commands or
+    when using "multi"
+
+-   slightly better messaging when skipping command due to existence, not
+    based on time stamp
+
+-   fix display of output to stderr when version probe command fails
+    - send to log instead
+
+-   experimental chaining of from and filter / transform
+
+-   fix "from" causing original inputs not to be queried for files in some
+    situations
+
+-   fix "filter" nested in "from" failing to infer correct output when output 
+    based on input other than input in "from" clause
+
+-   fix possible exception when using $output.prefix
+
+-   fixed second and later stages in nested parallel segments not always
+    resolving correct inputs
+
+-   fix attempts to use "split" in input variables failing (regression)
+
+-   added support for use of "region" variable without genome or chr splitting
+    to allow generic pipeline stages that can work with or without regions 
+    specified
+    
+-   added command line option ("-L") to specify default value of region variable
+    
+-   fixed "from" to match multiple inputs if used in form from("*.txt") etc.
+
+-   Added example for how to run paired end reads
+
+-   fix output extension causing wrong / confusing behavior when incombination
+    with a filter and unexpected input order
+
+-   fix bpipe command leaving out eclipse folder from classpath
+
 =========== Changes for Bpipe Version 0.9.8_beta_3 ============
 
 -   Updated underlying groovy implementation to Groovy 2.1
