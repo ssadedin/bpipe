@@ -275,7 +275,20 @@ class PipelineContext {
            
            // If an input property was referenced, compute the default from that instead
            if(inputWrapper?.resolvedInputs) {
-               def resolved = Utils.unbox(inputWrapper.resolvedInputs[0])
+               
+               // By default, if multiple inputs were resolved by the input wrapper,
+               // we take the first UNLESS one of the inputs corresponds to a branching
+               // file (a file responsible for splitting the pipeline into multiple parallel
+               // paths). In the case of a branching file we use that in preference because 
+               // otherwise multiple parallel paths will resolve to the same output.
+               int defaultValueIndex = -1;
+               if(branchInputs)
+                   defaultValueIndex = inputWrapper.resolvedInputs.findIndexOf { it in branchInputs }
+               if(defaultValueIndex<0)
+                   defaultValueIndex = 0
+                   
+               def resolved = Utils.unbox(inputWrapper.resolvedInputs[defaultValueIndex])
+               
                log.info("Using non-default output due to input property reference: " + resolved)
                out = resolved +"." + this.stageName
                
@@ -286,7 +299,6 @@ class PipelineContext {
            else
                out = this.getDefaultOutput()
        }
-       
       
        if(!out)
               return null
@@ -423,9 +435,17 @@ class PipelineContext {
    def input
    
    /**
-    * Wrapper that intercepts calls to resolve input properties
+    * Wrapper that intercepts calls to resolve input properties. This is what
+    * is returned to a pipeline stage, not the raw input!
     */
    PipelineInput inputWrapper
+   
+   /**
+    * If this context is spawning a new branch in the pipeline, the inputs that
+    * are responsible for the branch are set here. This is used in certain cases
+    * to set a different default output
+    */
+   def branchInputs
    
     /**
      * The inputs to be passed to the next stage of the pipeline.

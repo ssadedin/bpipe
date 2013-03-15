@@ -327,6 +327,7 @@ public class Pipeline {
             log.info "Running segment with inputs $inputs"
             this.addStage(currentStage)
             currentStage.context.@input = inputs
+            currentStage.context.branchInputs = inputs
             try {
                 currentStage.run()
             }

@@ -90,7 +90,7 @@ class PipelineInput {
     }
     
     void addResolvedInputs(List objs) {
-        this.resolvedInputs.add(objs)
+        this.resolvedInputs.addAll(objs)
         if(parent)
             parent.addResolvedInputs(objs)
     }
