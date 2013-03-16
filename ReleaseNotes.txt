@@ -1,3 +1,11 @@
+=========== Changes for Bpipe Version 0.9.8_beta_5 ============
+
+-   more fixes to make config{} work properly
+    fixed 'config' not working / failing to execute
+    commands
+-   fix parallel branches created from file pattern split
+    not using split files as basis for outputs sometimes
+
 =========== Changes for Bpipe Version 0.9.8_beta_4 ============
 
 -   support for multiple split characters in input matching patterns
