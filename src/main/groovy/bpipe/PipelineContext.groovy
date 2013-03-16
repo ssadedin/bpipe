@@ -1280,7 +1280,7 @@ class PipelineContext {
         log.info "Scaled resource use to ${usedResources.values()} to execute in multi block"
         
         try {
-          List<CommandExecutor> execs = cmds.collect { async(it,true,this.defaultConfig,true) }
+          List<CommandExecutor> execs = cmds.collect { async(it,true,null,true) }
           List<Integer> exitValues = []
           List<CommandThread> threads = execs.collect { new CommandThread(toWaitFor:it) }
           threads*.start()
@@ -1319,6 +1319,9 @@ class PipelineContext {
       // Replacement of magic $thread variable with real value 
       cmd = cmd.replaceAll(THREAD_LAZY_VALUE, this.usedResources['threads'].amount as String)
       
+      if(config == null)
+          config = this.defaultConfig
+          
       def joined = ""
       if(joinNewLines) {
           def prev
