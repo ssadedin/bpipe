@@ -1246,7 +1246,10 @@ class PipelineContext {
      * Replaces the default config within the body to the one specified
      */
     void config(String config, Closure c) { 
+        String oldConfig = this.defaultConfig
         this.defaultConfig = config
+        c()
+        this.defaultConfig = oldConfig
     }
     
     String defaultConfig = null
@@ -1277,7 +1280,7 @@ class PipelineContext {
         log.info "Scaled resource use to ${usedResources.values()} to execute in multi block"
         
         try {
-          List<CommandExecutor> execs = cmds.collect { async(it,true,null,true) }
+          List<CommandExecutor> execs = cmds.collect { async(it,true,this.defaultConfig,true) }
           List<Integer> exitValues = []
           List<CommandThread> threads = execs.collect { new CommandThread(toWaitFor:it) }
           threads*.start()
