@@ -497,7 +497,7 @@ class PipelineContext {
        if(this.@input == null || Utils.isContainer(this.@input) && this.@input.size() == 0) {
            throw new PipelineError("Input expected but not provided")
        }
-       if(!inputWrapper) {
+       if(!inputWrapper || inputWrapper instanceof MultiPipelineInput) {
            inputWrapper = new PipelineInput(this.@input, pipelineStages)
        }
            
@@ -509,7 +509,7 @@ class PipelineContext {
    }
    
    def getInputs() {
-       if(!inputWrapper) {
+       if(!inputWrapper || !(inputWrapper instanceof MultiPipelineInput)) {
            this.inputWrapper = new MultiPipelineInput(this.@input, pipelineStages)
        }
        return this.inputWrapper;
