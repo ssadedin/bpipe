@@ -10,7 +10,8 @@ hello = {
 
 	msg "input[0]:  cat ${input[0]} > $output"
 	msg "inputs[0]:  cat ${inputs[0]} > $output"
-	// exec "cat $inputs > $output"
+
+  exec "cat ${inputs[0]} > $output"
 }
 
 Bpipe.run {
