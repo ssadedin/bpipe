@@ -15,7 +15,7 @@ import groovy.util.logging.Log;
  */
 @Log
 class MultiPipelineInput extends PipelineInput implements Iterable {
-	
+    
     MultiPipelineInput(def input, List<PipelineStage> stages) {
 		super(input,stages)	
 	}
@@ -31,15 +31,19 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
 	}
 
 	String toString() {
-       List boxed = Utils.box(super.@input)
+       List boxed = Utils.box(super.@input).unique()
        this.resolvedInputs += boxed
        return boxed.join(" ")
     }
     
     def propertyMissing(String name) {
+        
+        if(this.resolvedInputs)
+            this.resolvedInputs.clear()
+            
         def result = super.propertyMissing(name)
         if(result) {
-            def mp = new MultiPipelineInput(this.resolvedInputs, stages)
+            def mp = new MultiPipelineInput(this.resolvedInputs.clone(), stages)
             mp.parent = this
             mp.resolvedInputs = this.resolvedInputs
             log.info("My resolved inputs: " + this.resolvedInputs.hashCode() + " child resolved inputs " + mp.resolvedInputs.hashCode())
