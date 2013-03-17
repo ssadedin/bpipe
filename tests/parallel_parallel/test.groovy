@@ -16,7 +16,8 @@ me = {
 }
 
 world = {
-  exec "ls $inputs > result.out"
+  msg "ls $inputs.xls $inputs.xml > result.out"
+  exec "ls $inputs.xls $inputs.xml > result.out"
 }
 
 run {
