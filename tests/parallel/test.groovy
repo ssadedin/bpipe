@@ -22,6 +22,6 @@ end = {
 
 // Stage world and world2 should execute in parallel
 // Both outputs from world and world2 should be forwarded to the "end" stage
-Bpipe.run {
+run {
 	hello + [world,world2] + end
 }
