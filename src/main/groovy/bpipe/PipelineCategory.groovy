@@ -441,9 +441,12 @@ class PipelineCategory {
                 throw new IllegalStateException("Encountered pipeline segment with zero parallel stages?")
                 
             
-            Map<String,List<PipelineStage>> grouped = stagesAtIndex.groupBy { it.stageName }
+            Map<String,List<PipelineStage>> grouped = stagesAtIndex.groupBy { it?.stageName }
             
             grouped.each { stageName, stages ->
+                
+                if(!stageName || !stages)
+                    return
                 
                 log.info "Parallel segment $i contains of identical ${stageName} stages - Merging outputs to single stage"
                 
