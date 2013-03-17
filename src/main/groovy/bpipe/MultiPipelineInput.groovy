@@ -41,6 +41,8 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
         if(result) {
             def mp = new MultiPipelineInput(this.resolvedInputs, stages)
             mp.parent = this
+            mp.resolvedInputs = this.resolvedInputs
+            log.info("My resolved inputs: " + this.resolvedInputs.hashCode() + " child resolved inputs " + mp.resolvedInputs.hashCode())
             return mp
         }
      }

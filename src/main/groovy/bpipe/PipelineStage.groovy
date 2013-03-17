@@ -397,5 +397,8 @@ class PipelineStage {
             Utils.cleanup(newOutputFiles)
         }
     }
-
+    
+    boolean isJoiner() {
+        this.body in this.context.pipelineJoiners
+    }
 }

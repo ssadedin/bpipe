@@ -391,26 +391,76 @@ class PipelineCategory {
             }
             
             def nextInputs = []
-            pipelines.eachWithIndex { Pipeline c,i ->
-                
-                if(log.isLoggable(Level.FINE))
-                    log.fine "Inspecting outputs from segment with stages: ${[c.stages.collect{it.hashCode()},c.stages.collect{it.stageName}].transpose().join(':')}"
-                
-                def out = c.stages[-1].context.nextInputs
-                
-                if(!out)
-                    out = c.stages[-1].context.@output
-                
-                if(log.isLoggable(Level.FINE))
-                    log.info "Next inputs from child $i :  $out stage=${c.stages[-1].hashCode()}, context=${c.stages[-1].context.hashCode()}"
-                
-                if(out)
-                    nextInputs += Utils.box(out)
-            }
-            currentStage.context.rawOutput = nextInputs
-            Dependencies.instance.checkFiles(currentStage.context.@output)
             
-            return nextInputs
+        
+            Pipeline parent = Pipeline.currentRuntimePipeline.get()
+            
+            mergeChildStagesToParent(parent, pipelines)
+
+            return parent.stages[-1].context.@output
+    }
+    
+    /**
+     * Merge 'like' stages from the given pipelines together so that they appear 
+     * as single stages and insert them into the current pipeline.
+     * Add all 'unlike' stages to the parent separately.
+     * 
+     * To explain why merging of 'like' stages is useful, consider the pipeline below:
+     *
+     *       ---- B --- C ----
+     * A -- |                 | ----- D
+     *       ---- B --- C ----
+     *
+     * We want Stage D to see a "virtual" flat pipeline where outputs of the B stages
+     * and C stages are merged down and the pipeline looks like A -- B -- C -- D.
+     * Consider alternatively the following pipeline:
+     * 
+     *       ---- B --- C ----
+     * A -- |                 | ----- F
+     *       ---- D --- E ----
+     *
+     * We want Stage F to see a different "virtual" flat pipeline 
+     * looking like this:
+     * 
+     *   A -- B -- D -- C -- E -- F
+     */
+    static mergeChildStagesToParent(Pipeline parent, List<Pipeline> pipelines) {
+        // Get the output stages without the joiners
+        List<List<PipelineStage>> stagesList = pipelines.collect { c -> c.stages.grep { !it.joiner && !(it in parent.stages) && it.stageName != "Unknown" } }
+        
+        int maxLen = stagesList*.size().max()
+        log.info "Maximum child stage list length = $maxLen"
+        
+        // Fill in shorter stages with nulls
+        stagesList = stagesList.collect { it + ([null] * (maxLen - it.size())) }
+        
+        stagesList.transpose().eachWithIndex { List<PipelineStage> stagesAtIndex, int i ->
+            log.info "Grouping stages ${stagesAtIndex*.stageName} for merging"
+            
+            if(stagesAtIndex.size() == 0)
+                throw new IllegalStateException("Encountered pipeline segment with zero parallel stages?")
+                
+            
+            Map<String,List<PipelineStage>> grouped = stagesAtIndex.groupBy { it.stageName }
+            
+            grouped.each { stageName, stages ->
+                
+                log.info "Parallel segment $i contains of identical ${stageName} stages - Merging outputs to single stage"
+                
+                // Create a merged stage
+                PipelineContext mergedContext = new PipelineContext(null, parent.stages, stages[0].context.pipelineJoiners, stages[0].context.branch)
+                def mergedOutputs = stages.collect { s ->
+                    Utils.box(s.context.nextInputs ?: s.context.@output)
+                }.sum()
+                
+                log.info "Merged outputs are $mergedOutputs"
+                mergedContext.setRawOutput(mergedOutputs)
+                
+                PipelineStage mergedStage = new PipelineStage(mergedContext, stages[0].body)
+                mergedStage.stageName = stages[0].stageName
+                parent.stages.add(mergedStage)
+            }
+        }
     }
     
     static String summarizeErrors(List<Pipeline> pipelines) {

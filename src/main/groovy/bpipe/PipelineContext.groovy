@@ -289,15 +289,20 @@ class PipelineContext {
                    
                def resolved = Utils.unbox(inputWrapper.resolvedInputs[defaultValueIndex])
                
-               log.info("Using non-default output due to input property reference: " + resolved)
+               log.info("Using non-default output due to input property reference: " + resolved + " from resolved inputs " + inputWrapper.resolvedInputs)
                out = resolved +"." + this.stageName
                
                // Since we're resolving based on a different input than the default one,
                // the pipeline output wrapper should use a different one as a default too
                baseOutput = toOutputFolder(out)
            }
-           else
+           else {
+               log.info "No inputs resolved by input wrapper ${inputWrapper?.resolvedInputs?.hashCode()}: outputs based on default ${this.defaultOutput}"
                out = this.getDefaultOutput()
+           }
+       }
+       else {
+           log.info "Using previously set output: ${this.@output}"
        }
       
        if(!out)
@@ -504,7 +509,10 @@ class PipelineContext {
    }
    
    def getInputs() {
-       return new MultiPipelineInput(this.@input, pipelineStages)
+       if(!inputWrapper) {
+           this.inputWrapper = new MultiPipelineInput(this.@input, pipelineStages)
+       }
+       return this.inputWrapper;
    }
    
    /**
@@ -1497,7 +1505,7 @@ class PipelineContext {
        log.info "Found inputs $resolvedInputs for spec $orig"
        
        if(resolvedInputs.any { it == null})
-           throw new PipelineError("Unable to locate one or more inputs specified by 'from' ending with $orig")
+           throw new PipelineError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with $orig")
            
        // resolvedInputs = Utils.unbox(resolvedInputs)
        resolvedInputs = resolvedInputs.flatten().unique()

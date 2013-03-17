@@ -133,6 +133,7 @@ class PipelineInput {
 	 */
 	String mapToCommandValue(def values) {
         def result = String.valueOf(Utils.box(values)[defaultValueIndex])
+        log.info "Adding resolved input $result"
         this.addResolvedInputs([result])
         return result
 	}
