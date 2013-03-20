@@ -302,10 +302,7 @@ class PipelineStage {
      */
     private determineForwardedFiles(List newFiles) {
         
-        if(!context.@output && context.allInferredOutputs) {
-            log.info "Using inferred outputs $context.allInferredOutputs as outputs because no explicit outputs set"
-            context.@output = context.allInferredOutputs
-        }
+        this.resolveOutputs()
         
         // Start by initialzing the next inputs from any specifically 
         // set outputs
@@ -343,6 +340,18 @@ class PipelineStage {
             nextInputs = this.context.@input
         }
         return nextInputs
+    }
+    
+    /**
+     * After a pipeline stage executes outputs can be directly in outputs or they
+     * can have been inferred through implicit references to file extensions on the
+     * output variable.
+     */
+    private resolveOutputs() {
+        if(!context.@output && context.allInferredOutputs) {
+            log.info "Using inferred outputs $context.allInferredOutputs as outputs because no explicit outputs set"
+            context.@output = context.allInferredOutputs
+        }
     }
 
     /**
@@ -382,6 +391,10 @@ class PipelineStage {
      * @param keepFiles    Files that should not be removed
      */
     void cleanupOutputs(List<File> keepFiles) {
+        
+        // Before cleaning up, make sure we resolve the final outputs
+        this.resolveOutputs()
+        
         // Out of caution we don't remove output files if they existed before this stage ran.
         // Otherwise we might destroy existing data
         if(this.context.output != null) {
