@@ -184,6 +184,21 @@ class PipelineContext {
    List<String> preservedOutputs = []
    
    /**
+    * A list of outputs that are to be marked as intermediate.
+    * These will be deleted automatically by user initiated
+    * cleanup operations (see {@link Dependencies#cleanup(java.util.List)},
+    * even if they are leaf outputs from the pipeline
+    */
+   List<String> intermediateOutputs = []
+   
+   /**
+    * A Map of files that are not independent outputs, but which
+    * accompany other outputs, as declared by the user.
+    * Key is output file name, value is accompanied input
+    */
+   Map<String,String>  accompanyingOutputs = [:]
+   
+   /**
     * Flag that can be enabled to cause missing properties to resolve to 
     * outputting the name of the property ie. a reference to $x will produce $x.
     * This allows for a crude pass-through of variables from Bpipe to Bash 
@@ -262,6 +277,16 @@ class PipelineContext {
     */
    def allInferredOutputs = []
    
+   /**
+    * A list of inputs resolved directly by references to $input
+    * and $input<x> variables. 
+    * 
+    * Note that inputs resolved by 
+    * input variable properties (pseudo file extensions) are not tracked 
+    * here but rather inside the PipelineInput wrapper object itself.
+    * To get a complete list of resolved inputs, call the #getResolvedInputs
+    * method.
+    */
    def allResolvedInputs = []
    
    /**
@@ -977,6 +1002,48 @@ class PipelineContext {
         }
     }
     
+    /**
+     * Cause output files created by the given closure to be considered
+     * intermediate files and hence be cleaned up by a user initiated 
+     * cleanup operation, even if they are leaf outputs from the pipeline.
+     */
+    void intermediate(String pattern, Closure c) {
+        def oldFiles = trackedOutputs.values().flatten().unique()
+        c()
+        List<String> matchingOutputs = Utils.glob(pattern) - oldFiles
+        for(def entry in trackedOutputs) {
+            def intermediates = entry.value.grep { matchingOutputs.contains(it) }
+            log.info "Outputs $intermediates marked as intermediate files from stage $stageName by pattern $pattern"
+            this.intermediateOutputs += intermediates
+        }        
+    }
+    
+    /**
+     * Cause output files created by the given closure to be considered
+     * accompanying outputs whose lifecycle depends on that of their 
+     * input or companion file. The prototypical example here is a 
+     * .bai file that exists only to be an index for it's .bam file.
+     */
+    void accompanies(String pattern, Closure c) {
+        def oldFiles = trackedOutputs.values().flatten().unique()
+        c()
+        List<String> newOutputs = trackedOutputs.values().flatten().unique() - oldFiles
+        log.info "Found accompanying outputs : ${newOutputs}"
+        if(!pattern.contains("*")) {
+            pattern = "*."+pattern;
+        }
+        final Pattern m = FastUtils.globToRegex(pattern)
+        def accompanied = getResolvedInputs().grep { m.matcher(it).matches() }
+        if(accompanied) {
+            for(def accompanyingOutput in newOutputs) {
+                log.info "Inputs $accompanied are accompanied by $accompanied (only first will be used)"
+                this.accompanyingOutputs[accompanyingOutput] = accompanied[0]
+            }        
+        }
+        else
+            log.warning "No accompanied inputs found for outputs $newOutputs using pattern $pattern from inputs ${getResolvedInputs()}"
+    }
+    
     void uses(ResourceUnit newResources, Closure block) {
         resources([newResources], block)
     }
@@ -1625,6 +1692,14 @@ class PipelineContext {
     }
     
     /**
+     * An entire list of resolved inputs including those directly resolved 
+     * and those inferred by input variable file extensions.
+     */
+    List<String> getResolvedInputs() {
+       ((this.@inputWrapper?.resolvedInputs?:[]) + this.allResolvedInputs).flatten().unique() 
+    }
+    
+    /**
      * @return true if one or more of the commands in the current
      *         {@link #trackedOutputs} is inconsistent with those
      *         stored in the file system
@@ -1671,4 +1746,3 @@ class PipelineContext {
         return modified
     }
 }
-

@@ -359,7 +359,7 @@ class Dependencies {
                 p.command = cmd
                 
                 
-                def allInputs = ((context.@inputWrapper?.resolvedInputs?:[]) + context.allResolvedInputs).flatten().unique()
+                def allInputs = context.getResolvedInputs()
                 
                 log.info "Context " + context.hashCode() + " for stage " + context.stageName + " has resolved inputs " + allInputs
                 
@@ -372,6 +372,9 @@ class Dependencies {
                     p.cleaned = false
                 
                 p.preserve = String.valueOf(context.preservedOutputs.contains(o))
+                p.intermediate = String.valueOf(context.intermediateOutputs.contains(o))
+                if(context.accompanyingOutputs.containsKey(o))
+                    p.accompanies = context.accompanyingOutputs[o]
                 
                 saveOutputMetaData(p)
             }
@@ -406,6 +409,7 @@ class Dependencies {
             p.timestamp = String.valueOf(p.timestamp)
             
         p.preserve = String.valueOf(p.preserve)
+        p.intermediate = String.valueOf(p.intermediate)
         
         // upToDate and maxTimestamp are "virtual" properties, computed at load time
         // they should not be stored
@@ -455,25 +459,44 @@ class Dependencies {
         // Identify the leaf nodes
         List leaves = findLeaves(graph)
         
+        //  Filter out leaf nodes from this list if they are explicitly specified as intermediate files
+        leaves.removeAll { it.values.every { it.intermediate } }
+        
         // Find all the nodes that exist and match the users specs (or, if no specs, treat as wildcard)
         List internalNodes = (outputs - leaves*.values.flatten()).grep { 
             it.outputFile.exists() && !it.preserve &&  
                 (arguments.isEmpty() || arguments.contains(it.outputFile.name) || arguments.contains(it.outputPath))  
         }
         
+        List<String> internalNodeFileNames = internalNodes*.outputFile*.name
+        List<String> accompanyingOutputFileNames = []
+        
+        // Add any "accompanying" outputs for the outputs that would be cleaned up
+        graph.depthFirst { GraphEntry g ->
+            def accompanyingOutputs = g.values.grep { Properties p -> 
+                p.accompanies && p.accompanies in internalNodeFileNames 
+            }
+            internalNodes += accompanyingOutputs
+            accompanyingOutputFileNames += accompanyingOutputs*.outputFile*.name
+        }
+        
         if(!internalNodes) {
             println """
                 No ${arguments?'matching':'existing'} files were found as eligible outputs to clean up.
                 
-                You may mark a file as disposable by using @Intermediate annotations
+                You may mark a file as disposable by using @intermediate annotations
                 in your Bpipe script.
             """.stripIndent()
         }
         else {
             // Print out each leaf
             println "\nThe following intermediate files will be removed:\n"
-            println '\t' + internalNodes*.outputFile*.name.join('\n\t')
-            println "\nTo retain files, cancel this command and use 'bpipe preserve' to preserve the files you wish to keep"
+            println '\t' + internalNodeFileNames*.plus('\n\t').sum() + accompanyingOutputFileNames*.plus(' (*)\n\t').sum()
+            
+            if(accompanyingOutputFileNames)
+                println "(*) These files were specified to accompany other files to be deleted\n"
+                
+            println "To retain files, cancel this command and use 'bpipe preserve' to preserve the files you wish to keep"
             print "\n"
             
             def answer = Config.userConfig.prompts.handler("Remove/trash these files? (y/t/n): ")
@@ -534,10 +557,11 @@ class Dependencies {
                 
                Properties p = graph.propertiesFor(arg)
                println """
-                   Created:     ${new Date(p.timestamp)}
-                   Inputs used: ${p.inputs.join(',')}
-                   Command:     ${Utils.truncnl(p.command,40)}
-                   Preserved:   ${p.preserved?'yes':'no'}
+                   Created:             ${new Date(p.timestamp)}
+                   Inputs used:         ${p.inputs.join(',')}
+                   Command:             ${Utils.truncnl(p.command,40)}
+                   Preserved:           ${p.preserved?'yes':'no'}
+                   Intermediate output: ${p.intermediate?'yes':'no'}
                """.stripIndent()
            }
             println("\n" + ("=" * Config.config.columns))
@@ -796,7 +820,11 @@ class Dependencies {
         if(!p.containsKey('preserve'))
             p.preserve = 'false'
             
+        if(!p.containsKey('intermediate'))
+            p.intermediate = 'false'
+            
         p.preserve = Boolean.parseBoolean(p.preserve)
+        p.intermediate = Boolean.parseBoolean(p.intermediate)
         return p
     }
     
