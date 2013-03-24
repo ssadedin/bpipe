@@ -328,8 +328,10 @@ public class Pipeline {
             log.info "Running segment with inputs $inputs"
             this.addStage(currentStage)
             if(inputs instanceof List) {
-                currentStage.context.@input = inputs.clone()
-                currentStage.context.branchInputs = inputs.clone()
+                def inputCopy = []
+                inputCopy.addAll(inputs)
+                currentStage.context.@input = inputCopy
+                currentStage.context.branchInputs = inputCopy
             }
             else {
                 currentStage.context.@input = inputs
