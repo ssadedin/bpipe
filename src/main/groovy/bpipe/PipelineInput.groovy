@@ -179,7 +179,7 @@ class PipelineInput {
 	        def reverseOutputs = stages.reverse().grep { 
                 // Only consider outputs from threads that are related to us but don't consider our own
                 // (yet to be created) outputs
-                it.context.threadId in relatedThreads // && !this.is(it.context.@inputWrapper)
+                it.context.threadId in relatedThreads && !this.is(it.context.@inputWrapper)
             }.collect { PipelineStage stage ->
                 Utils.box(stage.context.@output) 
             }
