@@ -39,4 +39,5 @@ if [ $fail -gt 0 ];
 then
   echo "Failed tests:"
   printf "$failures"
+  echo
 fi
