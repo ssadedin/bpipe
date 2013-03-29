@@ -324,31 +324,7 @@ get_classpath
 
 : ${SHOWDEBUG:=false}
 
-# If the only argument is "retry" then actually just run the previous 
-if [ "$COMMAND" == "retry" ]
-then
-    shift 1
-
-    if [ -e .bpipe/lastcmd ];
-    then
-        if [ "$1" == "test" ];
-        then
-            if grep -q "bpipe run" .bpipe/lastcmd ;
-            then
-                sed 's/bpipe run/bpipe test/' .bpipe/lastcmd | bash 
-            else
-                sed 's/bpipe /bpipe test /' .bpipe/lastcmd | bash 
-            fi
-        else
-            bash < .bpipe/lastcmd
-        fi
-    else
-        echo
-        echo "No previous Bpipe command seems to have been run in this directory."
-        echo
-    fi
-    exit
-elif [ "$COMMAND" == "history" ];
+if [ "$COMMAND" == "history" ];
 then
     shift 1
     if [ -e .bpipe/history ];
@@ -496,6 +472,11 @@ then
     shift 1
     TESTMODE="-t"
     COMMAND="run"
+elif [ "$COMMAND" == "retry" ];
+then
+    shift 1
+    COMMAND="run"
+    MODEFLAG="-Dbpipe.mode=retry"
 elif [ "$COMMAND" == "execute" ];
 then
     shift 1
@@ -515,10 +496,13 @@ fi
 
 
 # Don't keep history if no arguments provided
-if [ ! -z "$*" ];
+if [ ! -z "$*" ] && [ "$COMMAND" != "retry" ];
 then
     echo "$0 $COMMAND $*" > .bpipe/lastcmd
-    echo "$0 $COMMAND $*" >> .bpipe/history
+    
+    # Used to append to history here, but now the Java code does it
+    # so that it can happen only when a pipeline actually launches
+    # echo "$0 $COMMAND $*" >> .bpipe/history
 fi
 
 # Run in the background with nohup so that jobs do not abort on logout
