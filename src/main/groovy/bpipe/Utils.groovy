@@ -113,8 +113,17 @@ class Utils {
             File dest = new File(trashDir, f.name)
                 
             if(!Runner.opts.t) {
-                println "Cleaning up file $f to $dest" 
-                f.renameTo(dest)
+                int count = 1;
+                while(dest.exists()) {
+                    dest = new File(trashDir, f.name + ".$count")
+                    ++count
+                }
+                
+                if(!f.renameTo(dest) && f.exists())
+                    println "WARNING: failed to clean up file $f"
+                else
+                    println "Cleaned up file $f to $dest" 
+                
             }
             else
                 println "[TEST MODE] Would clean up file $f to $dest" 
