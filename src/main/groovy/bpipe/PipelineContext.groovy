@@ -485,7 +485,9 @@ class PipelineContext {
    def nextInputs
    
    PipelineInput getInputByIndex(int i) {
-       if(!Utils.isContainer(input) || input.size()<i)
+       
+       def boxed = Utils.box(input)
+       if(input.size()<i)
            throw new PipelineError("Expected $i or more inputs but fewer provided")
        this.allResolvedInputs << input[i-1]
        
@@ -1399,18 +1401,7 @@ class PipelineContext {
           
       def joined = ""
       if(joinNewLines) {
-          def prev
-          cmd.eachLine { 
-              if(!it.trim().isEmpty() || joined.isEmpty()) { 
-                  joined += " " + it
-              }
-              else {
-                  if(!joined.trim().endsWith(";") && !joined.trim().endsWith("&"))
-                      joined += ";"
-                      
-                  joined += " "
-              }
-          }
+          joined = Utils.joinShellLines(cmd)
       }
       else
           joined = cmd

@@ -28,6 +28,7 @@ import groovy.util.logging.Log;
 
 import java.security.DigestInputStream
 import java.security.MessageDigest
+import java.util.regex.Pattern
 
 /**
  * Miscellaneous internal utilities used by Bpipe
@@ -201,6 +202,40 @@ class Utils {
      */
     static String indent(String value) {
         value.split("\n")*.replaceAll("\r","").collect { "    " + it }.join("\n")
+    }
+    
+    static Pattern LEADING_WHITESPACE = ~/^[\s]*/
+    
+    /**
+     * Join commands split over newlines together into single lines in a
+     * safe way so that the user can write their commands containing newlines.
+     * <p>
+     * When a blank line is encountered it is preserved as  new line, and
+     * the previous line is appended with a semicolon if no other terminator
+     * is present.
+     */
+    static String joinShellLines(String cmd) {
+        String joined = ""
+        boolean embeddedQuoteChar = false
+        cmd.eachLine { String line ->
+            
+            if(line.indexOf('"')>=0 || line.indexOf("'")>=0)
+                embeddedQuoteChar = true
+            
+            if(!embeddedQuoteChar) 
+                line = LEADING_WHITESPACE.matcher(line).replaceAll("")
+                
+            if(!line.trim().isEmpty() || joined.isEmpty()) {
+                joined += " " + line
+            }
+            else {
+                if(!joined.trim().endsWith(";") && !joined.trim().endsWith("&"))
+                    joined += ";"
+                    
+                joined += " "
+            }
+        }
+        return joined.trim()
     }
     
     /**
