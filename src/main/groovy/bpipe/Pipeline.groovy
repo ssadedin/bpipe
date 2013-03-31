@@ -714,16 +714,24 @@ public class Pipeline {
         
         def runFiles = Dependencies.instance.outputFilesGenerated
         
-        all = all.collect { runFiles.contains(it) ? it : it + ' (pre-existing)' }
+        all = all.sort {runFiles.contains(it) ? 0 : 1 }.collect { runFiles.contains(it) ? it : it + ' (pre-existing)' }
         
         if(all.size() == 1) {
+            log.info "Output is " + all[0]
             rootContext.msg "Output is " + all[0]
         }
         else
         if(all) {
-            if(all.size() < 5) {
+            if(all.size() <= 5) {
+                log.info "Outputs are: \n\t\t" +  all.join("\n\t\t")
                 rootContext.msg "Outputs are: \n\t\t" +  all.join("\n\t\t")
             }
+            else {
+                rootContext.msg "Outputs are: \n\t\t" +  all[0..4].join("\n\t\t") + "\n\t\t... ${all.size()-5} more ..." 
+            }
+        }
+        else {
+            log.info "No tracked output files from this run"
         }
     }
 }

@@ -74,6 +74,13 @@ class PipelineInput {
     
     List<PipelineStage> stages 
     
+    /**
+     * If a filter is in operation, the current list of file extensions
+     * that it is allowing. This list is shared with PipelineOutput
+     * and may be modified if new input extensions are discovered.
+     */
+    List<String> currentFilter = []
+    
     PipelineInput(def input, List<PipelineStage> stages) {
         this.stages = stages;
         this.input = input
@@ -89,10 +96,21 @@ class PipelineInput {
         return String.valueOf(resolvedValue);
     }
     
-    void addResolvedInputs(List objs) {
+    void addResolvedInputs(List<String> objs) {
         this.resolvedInputs.addAll(objs)
         if(parent)
             parent.addResolvedInputs(objs)
+            
+        // If a filter is in operation and the file extension of the input was not already
+        // resolved by the filter, add it here since this input could now be the input targeted
+        // for filtering (the user may specify it using an $output.<ext> reference
+        if(currentFilter) {
+          objs.collect { it.substring(it.lastIndexOf('.')+1) }.each { 
+              if(!currentFilter.contains(it)) {
+                  currentFilter.add(it)
+              }
+          }
+        }
     }
 	
 	String getPrefix() {

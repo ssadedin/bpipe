@@ -74,7 +74,17 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
             log.info("My resolved inputs: " + this.resolvedInputs.hashCode() + " child resolved inputs " + mp.resolvedInputs.hashCode())
             return mp
         }
-     }
+    }
+    
+    /**
+     * Return the inputs with each one prefixed by the specified flag
+     * @param flag name of flag, including dashes (eg: "-I" or "--input")
+     * @return  string containing each matching input prefixed by the flag and a space
+     */
+    public String withFlag(String flag) {
+       List boxed = Utils.box(super.@input).unique()
+       boxed.collect { "$flag $it" }.join(" ")
+    }
     
 	@Override
 	public Iterator iterator() {

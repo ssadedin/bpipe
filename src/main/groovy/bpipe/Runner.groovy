@@ -154,7 +154,7 @@ class Runner {
             this.runPreserve(args)
             System.exit(0)
         } 
-        else 
+        else
         if(mode == "stopcommands") {
             log.info("Stopping running commands")
             cli = stopCommandsCli
@@ -164,6 +164,15 @@ class Runner {
             System.exit(0)
         } 
         else {
+            
+            if(mode == "retry") {
+                // Substitute arguments from prior command 
+                // to re-run it
+                def retryInfo = parseRetryArgs(args)
+                args = retryInfo[1]
+                mode = retryInfo[0]
+            }
+            
             cli = runCli
             cli.with {
                  h longOpt:'help', 'usage information'
@@ -257,9 +266,10 @@ class Runner {
 
         // If we got this far and are not in test mode, then it's time to 
         // make the logs stick around
-        if(!opts.t)
+        if(!opts.t) {
             Config.config.eraseLogsOnExit = false
-
+            appendCommandToHistoryFile(mode, args, pid)
+        }
 
         def gcl = new GroovyClassLoader()
 
@@ -449,6 +459,95 @@ class Runner {
         System.exit(0)
     }
     
+    /**
+     * Parse the arguments from the retry command to see if the user has 
+     * specified a job or test mode, then find the relevant command
+     * from history and return it
+     * 
+     * @param args  arguments passed to retry 
+     * @return  a list with 2 elements, [ <command>, <arguments> ]
+     */
+    static def parseRetryArgs(args) {
+        
+        // They come in as an array, but there are some things that don't work
+        // on arrays in groovy ... (native java list operations)
+        args = args as List
+        
+        String notFoundMsg = """
+            
+            No previous Bpipe command seems to have been run in this directory."
+
+            """.stripIndent()
+            
+            
+        String usageMsg = """
+           Usage: bpipe retry [jobid] [test]
+        """.stripIndent()
+        
+        def historyFile = new File(".bpipe/history")
+        if(!historyFile.exists()) {
+            System.err.println(notFoundMsg);
+            System.exit(1)
+        }
+        
+        def historyLines = historyFile.readLines()
+        if(!historyLines) {
+            System.err.println(notFoundMsg);
+            System.exit(1)
+        }
+        
+        String commandLine = null
+        boolean testMode = false
+        if(!args) {
+            commandLine = historyLines[-1]
+        }
+        else {
+            if(args[0] == "test") {
+                testMode = true
+                args.remove(0)
+            }
+            
+            if(args) {
+                if(args[0].isInteger()) {
+                  commandLine = historyLines.reverse().find { it.startsWith(args[0] + "\t") }
+                }
+                else {
+                    System.err.println "\nJob ID could not be parsed as integer\n" + usageMsg
+                    System.exit(1)
+                }
+            }
+            else {
+                commandLine = historyLines[-1]
+            }
+        }
+        
+        // Trim off the job id
+        if(commandLine.matches("^[0-9]{1,6}.*\$"))
+            commandLine = commandLine.substring(commandLine.indexOf("\t")+1)
+        
+        // Remove leading "bpipe" and "run" arguments
+        def parsed = (commandLine =~ /bpipe ([a-z]*) (.*)$/)
+        if(!parsed)
+            throw new PipelineError("Internal error: failed to understand format of command from history:\n\n$commandLine\n")
+            
+        args = Utils.splitShellArgs(parsed[0][2]) 
+        def command = parsed[0][1]
+        
+        return [ command,  testMode ? ["-t"] + args : args]
+    }
+    
+    /**
+     * Add a line to the current history file with information about
+     * this run. The current command is stored in .bpipe/lastcmd
+     */
+    static void appendCommandToHistoryFile(String mode, args, String pid) {
+        
+        File history = new File(".bpipe/history")
+        if(!history.exists())
+            history.text = ""
+            
+        history.withWriterAppend { it << [pid, "bpipe $mode " + args.collect { it.contains(" ") ? "'$it'" : it }.join(" ")].join("\t") + "\n" }
+    }
 }
 
 /**
