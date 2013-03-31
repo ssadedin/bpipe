@@ -484,14 +484,23 @@ class PipelineContext {
      */
    def nextInputs
    
+   /**
+    * Return the value of the specified input<n> where n is the 
+    * parameter supplied (index of input to resolve).
+    * 
+    * @param i
+    * @return
+    */
    PipelineInput getInputByIndex(int i) {
        
        def boxed = Utils.box(input)
        if(input.size()<i)
            throw new PipelineError("Expected $i or more inputs but fewer provided")
+           
        this.allResolvedInputs << input[i-1]
        
        PipelineInput wrapper = new PipelineInput(this.@input, pipelineStages)
+       wrapper.currentFilter = currentFilter
        wrapper.defaultValueIndex = i-1
        
        if(!inputWrapper) 
@@ -527,7 +536,7 @@ class PipelineContext {
        if(!inputWrapper || inputWrapper instanceof MultiPipelineInput) {
            inputWrapper = new PipelineInput(this.@input, pipelineStages)
        }
-           
+       inputWrapper.currentFilter = currentFilter    
        return inputWrapper
    }
    
@@ -539,6 +548,7 @@ class PipelineContext {
        if(!inputWrapper || !(inputWrapper instanceof MultiPipelineInput)) {
            this.inputWrapper = new MultiPipelineInput(this.@input, pipelineStages)
        }
+       inputWrapper.currentFilter = currentFilter    
        return this.inputWrapper;
    }
    
