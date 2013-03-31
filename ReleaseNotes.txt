@@ -1,3 +1,61 @@
+=========== Changes for Bpipe Version 0.9.8 ============
+
+-   fixed problems with quoted args becoming unquoted during launch
+    (so eg: bpipe execute 'foo + bar' would not work)
+
+-   fixed 'bpipe retry' not working with quoted arguments
+    in commands
+
+-   fixed filter sometimes incorrectly refusing to allow output files that
+    should work basd on used inputs
+
+-  fix $input1 not resolving in commands if there is only one input
+
+-  fix no information about outputs printed when too many outputs
+
+-  added 'withFlag' function on $inputs, $inputs.<ext> variables for easily
+   adding multiple inputs with the same flag (eg: ${inputs.bam.withFlag("-I")})
+
+-  strip leading spaces from commands when joining lines together for execution
+   (prevent whitespace bloat in command log)
+
+-  jobid now prepended in history file
+
+-  support to retry specified job from history using
+   bpipe retry <jobid>
+
+-  prevent bpipe commands that fail with invalid
+   arguments from getting logged in history
+
+-  don't log full path to bpipe executable in history
+   file (breaks if bpipe location / version changes)
+
+-   fixed files failing to get cleaned up if same file was
+    previously cleaned up + added warning if cleanup fails
+
+-   fixed filter followed by from potentially resolving
+    its own stage output as input
+
+-   fix for mt issue around pipeline inputs (causing
+    parallel_same_stage_outputs test to fail if you run
+    it many times) - regression from beta 3/4
+
+-   support for @intermediate and @accompanies
+    (experimental) annotations
+
+-   fixed failure to cleanup outputs that are inferred from output file
+    extensions rather than transform / filter / produce when pipeline 
+    stage fails
+
+-   fixed multiple references to multiinput properties
+    resulting in duplicated / missed outputs
+
+-   fixed reference to inputs variable followed by
+    reference to input variable returning wrong results
+
+-   fixed later stages not resolving inputs from non-final
+    stages in prior nested parallel segments
+
 =========== Changes for Bpipe Version 0.9.8_beta_5 ============
 
 -   more fixes to make config{} work properly
