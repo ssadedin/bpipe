@@ -248,6 +248,79 @@ class Utils {
     }
     
     /**
+     * Emulate how the shell parses command line arguments by splitting
+     * on spaces while being sensitive to embedded quote characters
+     * 
+     * @return
+     */
+    static List<String> splitShellArgs(String cmd) {
+        final int UNQUOTED = 0
+        final int IN_SQ = 1
+        final int IN_DQ = 2
+        final int NOESC=0
+        final int INESC=1
+        
+        int state = 0
+        int escState = 0
+        
+        String lastChar = ""
+        
+        List<String> args = []
+        
+        StringBuilder arg = new StringBuilder()
+        for(c in cmd) {
+            
+            if(escState == INESC) {
+                arg.append(c)
+                escState = NOESC
+                continue
+            }
+            
+            switch(c) {
+                case "'":
+                    if(state == 0)
+                        state = 1
+                    else
+                    if(state == 1)
+                        state = 0
+                    else
+                      arg.append(c)
+                break
+                
+                case '"':
+                  if(state == 0)
+                      state = 2
+                  else
+                  if(state == 2)
+                      state = 0
+                  else
+                      arg.append(c)
+                break
+                
+                case ' ':
+                case '\t':
+                    if(state == 0) {
+                        args.add(arg.toString())
+                        arg = new StringBuilder()
+                    }
+                    else
+                      arg.append(c)
+                break
+                
+                case '\\':
+                    escState = INESC
+                    break
+                    
+                default:
+                    arg.append(c)
+           }
+        }
+        args.add(arg.toString())
+        
+        return args
+    }
+    
+    /**
      * Return true if the underlying operating system is Windows
      */
     public static boolean isWindows() {

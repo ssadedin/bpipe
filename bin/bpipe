@@ -515,7 +515,14 @@ $SHOWDEBUG && {
 
 LAUNCHER_PID=$$
 
-BPIPE_ARGS="$*"
+# Note $@ handles quoted arguments as blocks instead of splitting them
+# we must requote each arg so it is passed through correctly
+for arg in "$@"
+do
+  BPIPE_ARGS="$BPIPE_ARGS ""'"$arg"'"
+done
+
+echo "ARGS are: $BPIPE_ARGS"
 
 # This complicated way of launching Java is about trying to
 # have java launch with its standard output captured to a log

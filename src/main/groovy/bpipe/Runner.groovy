@@ -168,7 +168,9 @@ class Runner {
             if(mode == "retry") {
                 // Substitute arguments from prior command 
                 // to re-run it
-                args = parseRetryArgs(args)
+                def retryInfo = parseRetryArgs(args)
+                args = retryInfo[1]
+                mode = retryInfo[0]
             }
             
             cli = runCli
@@ -266,7 +268,7 @@ class Runner {
         // make the logs stick around
         if(!opts.t) {
             Config.config.eraseLogsOnExit = false
-            appendCommandToHistoryFile(args, pid)
+            appendCommandToHistoryFile(mode, args, pid)
         }
 
         def gcl = new GroovyClassLoader()
@@ -463,6 +465,7 @@ class Runner {
      * from history and return it
      * 
      * @param args  arguments passed to retry 
+     * @return  a list with 2 elements, [ <command>, <arguments> ]
      */
     static def parseRetryArgs(args) {
         
@@ -523,22 +526,27 @@ class Runner {
             commandLine = commandLine.substring(commandLine.indexOf("\t")+1)
         
         // Remove leading "bpipe" and "run" arguments
-        args = commandLine.split("[\\s]")[2..-1]
+        def parsed = (commandLine =~ /bpipe ([a-z]*) (.*)$/)
+        if(!parsed)
+            throw new PipelineError("Internal error: failed to understand format of command from history:\n\n$commandLine\n")
+            
+        args = Utils.splitShellArgs(parsed[0][2]) 
+        def command = parsed[0][1]
         
-        return testMode ? ["-t"] + args : args
+        return [ command,  testMode ? ["-t"] + args : args]
     }
     
     /**
      * Add a line to the current history file with information about
      * this run. The current command is stored in .bpipe/lastcmd
      */
-    static void appendCommandToHistoryFile(args, String pid) {
+    static void appendCommandToHistoryFile(String mode, args, String pid) {
         
         File history = new File(".bpipe/history")
         if(!history.exists())
             history.text = ""
             
-        history.withWriterAppend { it << [pid, "bpipe run " + args.join(" ")].join("\t") + "\n" }
+        history.withWriterAppend { it << [pid, "bpipe $mode " + args.collect { it.contains(" ") ? "'$it'" : it }.join(" ")].join("\t") + "\n" }
     }
 }
 
