@@ -546,6 +546,9 @@ class Runner {
         if(!history.exists())
             history.text = ""
             
+        if(mode == null)
+            mode = "run"
+            
         history.withWriterAppend { it << [pid, "bpipe $mode " + args.collect { it.contains(" ") ? "'$it'" : it }.join(" ")].join("\t") + "\n" }
     }
 }

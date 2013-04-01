@@ -1666,6 +1666,8 @@ class PipelineContext {
             
             int childCount = pipeline.parent?.childCount?:1
             
+            log.info "Computing threads based on parallel branch count of $childCount"
+            
             // When the user said how many threads to use, just go with it
             // But otherwise, resolve it to the number of cores that the computer has
             int maxThreads = Config.config.customThreads?(int)Config.config.maxThreads : Runtime.getRuntime().availableProcessors()
