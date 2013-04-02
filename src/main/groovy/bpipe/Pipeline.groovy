@@ -208,7 +208,7 @@ public class Pipeline {
     static Set<Chr> chr(Object... objs) {
         
         // Default configuration
-        def cfg = [ filterInputs: false ]
+        def cfg = [ filterInputs: true ]
         
         // If a configuration is passed then override the default config with that
         // Note: the Map will always be first because Groovy enforces that
