@@ -1,7 +1,5 @@
 source ../testsupport.sh
 
-rm -f test.*.csv test.*.txt  test.txt.*;
-
 run test.txt
 
 

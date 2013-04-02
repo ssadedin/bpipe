@@ -214,9 +214,17 @@ class PipelineCategory {
                                 
                             // If the filterInputs option is set, match input files on the region name
                             def childInputs = input
-                            if(chr.config?.filterInputs != false) {
+                            
+                            def filterInputs = chr.config?.filterInputs
+                            
+                            if(filterInputs == "auto") {
+                                filterInputs = Utils.box(input).any { it.matches(/.*\.chr[1-9A-Z_]*\..*$/) }
+                            }
+                            
+                            if(filterInputs) {
                                 log.info "Filtering child pipeline inputs on name $chr.name"
-                                childInputs  = Utils.box(input).grep { i -> i.indexOf('.' + chr.name + '.')>0 }
+                                
+                                childInputs  = Utils.box(input).grep { i -> (i.indexOf('.' + chr.name + '.')>0) }
                                     
                                 // Since the name of the region is already in the file path, it does not need
                                 // to be applied again to output files
