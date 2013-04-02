@@ -14,5 +14,5 @@ world = {
 
 
 run {
-    chr(1..2, filterInputs: true) * [ hello + world ]
+    chr(1..2) * [ hello + world ]
 }
