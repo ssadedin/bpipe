@@ -21,7 +21,6 @@
 # it will be replaced by the build script at build time
 VERSION=0.0.0
 
-
 # Build date as an integer (unix epoch time)
 # This should be 0 in the source tree, 
 # it will be replaced by the build script at build time
@@ -589,7 +588,11 @@ done
 
 # On Cygwin we can use automatic termination of tail,
 # but on Macs we have to emaulate that (grrr)
-if uname | grep -iq cygwin || uname | grep -iq Linux; 
+
+if [ ! -z "$BPIPE_BACKGROUND" ];
+then
+  echo ;
+elif uname | grep -iq cygwin || uname | grep -iq Linux; 
 then
     # echo "DEBUG:  tailing log $LOGFILE using native pid tracking RUNPID=$BPIPE_PID"
     if kill -0 $BPIPE_PID  ;

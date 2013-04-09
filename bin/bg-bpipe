@@ -1,0 +1,17 @@
+#!/bin/bash
+#
+#----------------------------------------------------------
+#
+# Bpipe Background Runner Script
+#
+#----------------------------------------------------------
+#
+
+# Note $@ handles quoted arguments as blocks instead of splitting them
+# we must requote each arg so it is passed through correctly
+for arg in "$@"
+do
+  BPIPE_ARGS="$BPIPE_ARGS $arg"
+done
+
+BPIPE_BACKGROUND=1 bpipe $BPIPE_ARGS
