@@ -741,6 +741,9 @@ class PipelineContext {
        if(applyName)
            pipeline.nameApplied = true
            
+       // Coerce any inputs coming from different folders to the correct output folder
+       files = toOutputFolder(files)
+       
        produce(files, body)
    }
  
@@ -784,9 +787,10 @@ class PipelineContext {
         if(applyName)
             pipeline.nameApplied = true
             
-//        this.currentFilter = boxed.grep { it.indexOf('.')>0 }.collect { it.substring(it.lastIndexOf('.')+1) }
         this.currentFilter = (boxed + Utils.box(this.pipelineStages[-1].originalInputs)).grep { it.indexOf('.')>0 }.collect { it.substring(it.lastIndexOf('.')+1) }
         
+        // Coerce any inputs coming from different folders to the correct output folder
+        files = toOutputFolder(files)
         produce(files, body)
         
         this.currentFilter = []
@@ -891,11 +895,10 @@ class PipelineContext {
     Object produce(Object out, Closure body) { 
         log.info "Producing $out from $this"
         
-        List globOutputs = Utils.box(out).grep { it.contains("*") }
+        // Unwrap any files that may be wrapped in PipelineInput or PipelineOutput objects
+        out = Utils.unwrap(out)      
         
-        // Unwrap any wrapped inputs that may have been passed in the outputs
-        // and coerce them to the correct output folder
-        out = toOutputFolder(Utils.unwrap(out))
+        List globOutputs = Utils.box(out).grep { it.contains("*") }
         
         def lastInputs = this.@input
         boolean doExecute = true
