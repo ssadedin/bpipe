@@ -64,6 +64,8 @@ class PipelineOutput {
     
     Closure outputChangeListener
     
+    Closure outputDirChangeListener
+    
     List<String> overrideOutputs
     
     /**
@@ -113,7 +115,47 @@ class PipelineOutput {
         def inputs = Utils.box(this.output)
         if(inputs.size() <= i)
             throw new PipelineError("Insufficient outputs:  output $i was referenced but there are only ${output.size()} outputs to choose from")
-        return this.output[i]
+        return inputs[i]
+    }
+    
+    /**
+     * Return the parent directory of the current (default) output.
+     * <p>
+     * All outputs that have been specified to be produced in the directory
+     * are considered referenced when this property is accessed.
+     * 
+     * @return  canonical absolute path to parent directory of default (first) output
+     */
+    Object getDir() {
+        List boxed = Utils.box(this.output)
+        
+        String baseOutput = boxed[0]
+
+        // Since a "naked" relative file path ("foo") doesn't
+        // have a parent file, we get null for the parent file in that case
+        File parentDir = new File(baseOutput).parentFile
+        if(parentDir) {
+
+            // We consider ANY output that is generated in the output directory as
+            // being referneced by this
+            if(this.outputChangeListener) {
+                boxed.grep { new File(it).parentFile?.canonicalPath == parentDir.canonicalPath }.each {
+                    this.outputChangeListener(it,null)
+                }
+            }
+        }
+        else {
+            parentDir = new File(".")
+            if(this.outputChangeListener)
+                this.outputChangeListener(baseOutput,null)
+        }
+
+        return parentDir.absoluteFile.canonicalPath
+    }
+    
+    void setDir(Object value) {
+        if(this.outputDirChangeListener)
+            this.outputDirChangeListener(value.toString())
     }
     
     /**

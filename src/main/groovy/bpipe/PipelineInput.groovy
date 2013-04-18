@@ -114,7 +114,7 @@ class PipelineInput {
     }
 	
 	String getPrefix() {
-        return PipelineCategory.getPrefix(String.valueOf(Utils.first(input)));
+        return PipelineCategory.getPrefix(this.toString());
 	}
     
     /**
