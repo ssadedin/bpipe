@@ -397,7 +397,7 @@ class PipelineContext {
            
            Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
            
-           def overrideOutputs = (origOutput.overrideOutputs && origOutput.overrideOutputs.size() >= index ? [ origOutput.overrideOutputs[index-1] ] : [] )
+           def overrideOutputs = (origOutput.overrideOutputs && origOutput.overrideOutputs.size() >= index ? [ origOutput.overrideOutputs[index] ] : [] )
            
            return new PipelineOutput(result, 
                                      origOutput.stageName, 
