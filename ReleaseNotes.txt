@@ -1,5 +1,5 @@
 =========== Changes for Bpipe Version 0.9.8 ============
-
+ 
 -   fixed problems with quoted args becoming unquoted during launch
     (so eg: bpipe execute 'foo + bar' would not work)
 
