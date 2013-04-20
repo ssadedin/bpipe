@@ -1,1 +1,1 @@
-rm -f *.csv .bpipe
+rm -rf *.csv .bpipe
