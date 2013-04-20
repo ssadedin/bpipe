@@ -95,8 +95,17 @@ class XMPPNotificationChannel implements NotificationChannel {
 		synchronized(XMPPNotificationChannel.class) {
 		
 			XMPPConnection connection = new XMPPConnection(connConfig);
-			connection.connect();
-			connection.login(username, password);
+            try {
+    			connection.connect();
+    			connection.login(username, password);
+            }
+            catch(Exception e) {
+                log.severe "Failed to connect / login to XMPP service: $e"
+                System.err.println "WARNING: Failed to send XMPP notification due to connect or login error: $e"
+                if(connection.isConnected())
+                    connection.disconnect()
+                return
+            }
 			
 			log.info("Logged in as " + connection.getUser());
 	

@@ -382,7 +382,7 @@ class PipelineContext {
        try {
            PipelineOutput origOutput = getOutput()
            def o = Utils.box(origOutput.output)
-           def result = o[index-1]
+           def result = o[index]
            if(result == null) {
                log.info "No previously set output at $index from ${o.size()} outputs. Synthesizing from index based on first output"
                if(o[0].indexOf('.')>=0) 
@@ -473,14 +473,14 @@ class PipelineContext {
    PipelineInput getInputByIndex(int i) {
        
        def boxed = Utils.box(input)
-       if(input.size()<i)
+       if(boxed.size()<i)
            throw new PipelineError("Expected $i or more inputs but fewer provided")
            
-       this.allResolvedInputs << input[i-1]
+       this.allResolvedInputs << input[i]
        
        PipelineInput wrapper = new PipelineInput(this.@input, pipelineStages)
        wrapper.currentFilter = currentFilter
-       wrapper.defaultValueIndex = i-1
+       wrapper.defaultValueIndex = i
        
        if(!inputWrapper) 
          this.inputWrapper = wrapper
@@ -867,10 +867,10 @@ class PipelineContext {
         // Unwrap any files that may be wrapped in PipelineInput or PipelineOutput objects
         out = Utils.unwrap(out)      
         
+        List globOutputs = Utils.box(out).grep { it.contains("*") }
+        
         // Coerce so that files go to the right output folder
         out = toOutputFolder(out)
-        
-        List globOutputs = Utils.box(out).grep { it.contains("*") }
         
         def lastInputs = this.@input
         boolean doExecute = true
