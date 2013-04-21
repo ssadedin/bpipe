@@ -438,8 +438,12 @@ public class Pipeline {
         // as output is not terminated with one by default
         cmdlog << ""
         
-        if(launch && (Config.config.mode == "documentation" || Config.config.report)) {
-            documentation()
+        if(launch) {
+			if(Config.config.mode == "documentation" || Config.config.report) 
+                documentation()
+            else
+            if(Config.config.customReport)
+            	generateCustomReport(Config.config.customReport)
         }
         
         return constructedPipeline
@@ -585,6 +589,25 @@ public class Pipeline {
      */
     def documentation() {
         
+        if(!documentation.title)
+            documentation.title = "Pipeline Report"
+            
+	    this.generateFromTemplate("index.html")
+					
+    }
+    
+	def generateCustomReport(String reportName) {
+        documentation.title = "Report"
+	    this.generateFromTemplate(reportName + ".html")
+	}
+	
+	/**
+	 * Instantiates the specified template and generates it from the given pipeline 
+	 * 
+	 * @param templateFile
+	 */
+	void generateFromTemplate(String templateFile) {
+		
         // Now make a graph
         File docDir = new File("doc")
         if(!docDir.exists()) {
@@ -596,36 +619,37 @@ public class Pipeline {
         def docStages = [ [] ]
          
         fillDocStages(docStages)
-        
-        if(!documentation.title)
-            documentation.title = "Pipeline Report"
-            
-         Map docBinding = [
-            stages: docStages,
-            pipeline: this
-        ]
-         
-        if(docStages.any { it.stageName == null })
-            throw new IllegalStateException("Should NEVER have a null stage name here")
-        
-        // Use HTML templates to generate documentation
-        InputStream templateStream
-        File srcTemplateDir = new File(System.getProperty("bpipe.home") + "/src/main/html/bpipe")
-        if(srcTemplateDir.exists())
-            templateStream = new FileInputStream(new File(srcTemplateDir, "index.html"))
-        else
-            templateStream = new FileInputStream(new File(System.getProperty("bpipe.home") + "/html", "index.html"))
-            
-        GStringTemplateEngine e = new GStringTemplateEngine()
-        templateStream.withReader { r ->
-            def template = e.createTemplate(r).make(docBinding)
-            new File(docDir,"index.html").text = template.toString()
-        }
-        templateStream.close()
-        
+		Map docBinding = [
+			stages: docStages,
+			pipeline: this
+		]
+		 
+		if(docStages.any { it.stageName == null })
+			throw new IllegalStateException("Should NEVER have a null stage name here")
+
+		// Use HTML templates to generate documentation
+		InputStream templateStream
+		File srcTemplateDir = new File(System.getProperty("bpipe.home") + "/src/main/html/bpipe")
+		if(srcTemplateDir.exists())
+			templateStream = new FileInputStream(new File(srcTemplateDir, templateFile))
+		else
+			templateStream = new FileInputStream(new File(System.getProperty("bpipe.home") + "/html", "index.html"))
+			
+		GStringTemplateEngine e = new GStringTemplateEngine()
+		templateStream.withReader { r ->
+			def template = e.createTemplate(r).make(docBinding)
+			new File(docDir,templateFile).text = template.toString()
+		}
+		templateStream.close()		
         println "Generated documentation in $docDir"
-    }
+	}
     
+	/**
+	 * Fills the given list with meta data about pipeline stages derived 
+	 * from the current pipeline's execution.  
+	 * 
+	 * @param pipelines
+	 */
     void fillDocStages(List pipelines) {
         
         log.fine "Filling stages $stages"
