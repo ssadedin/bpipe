@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<% def dateFormat = new java.text.SimpleDateFormat("yyyy-M-d H:m:s") %>
+<html>
+    <head>
+        <style type='text/css'>
+
+            body {
+                font-family: arial;
+                margin: 0;
+                padding: 0;
+                color: #333;
+            }
+            #hd {
+                padding: 0 1em 1em 1em;
+                background-color: #f0f0f0;
+            }
+            
+            h1 {
+				font-size: 18pt;
+                padding-top: 0.5em;
+                margin-top: 0;
+            }
+            
+            #bd {
+                padding: 0.5em 1em 1em 1em;
+            }
+            
+            hr {
+                margin-top: 2.8em;
+            }
+            
+            h2.hr {
+                font-size: 16pt;
+                color: #444;    
+                position: relative;
+                top: -1em;
+                margin-top: 0;
+                background-color: white;
+                float: left;
+                margin-left: 20px;
+                padding: 0px 10px;
+            }
+
+			table.sw { border-collapse: collapse; }
+			table.sw th { text-align: left; background-color: #f0f0f0; }
+			table.sw td { text-align: center; }
+			table.sw th, table.sw td { border: solid 1px #888; padding: 0.4em; }
+			table.sw td.desc { text-align: left; }
+
+        </style>
+    </head>
+    <body>
+        <div id='hd'>
+            <h1>Pipeline Software Schedule</h1>
+            <p class='creationDate'>Created by <a class='unobtrusiveLink' href='http://bpipe.org'>Bpipe</a>, ${new Date()}</p>
+        </div>
+
+        <div id='bd'>
+            <table class='sw'>
+				<thead>
+					<tr><th>Name</th><th>Version</th><th>Source</th><th>Description</th></tr>
+				</thead>
+				<tbody>
+				<%  
+					def branch = stages[0];
+					def tools = branch.collect { stage ->
+						 stage.context.documentation?.tools
+					 }.grep { it != null }.sum()
+
+					 tools.each { name, detail ->
+				%>
+				<tr>
+					<td>
+						${name}  
+					</td>
+					<td>	
+							${detail.version}
+					</td>
+					<td>
+						<% if(detail.meta.link) { %>
+							<a href='${detail.meta.link}'>${detail.meta.link}</a>
+						<% } %>
+					</td>
+					<td class='desc'>
+						<% if(detail.meta.desc) { %>
+						  <span class=toolDesc>${detail.meta.desc}</span>
+						<% } %> 
+					</td>
+					</tr>
+				<%}%>
+				</tbody>
+        </table>
+        </div>
+    </body>
+</html>
