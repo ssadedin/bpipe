@@ -94,6 +94,20 @@ class PipelineDelegate {
             return ctx.localVariables[name]
         }
         else
+        if(name.matches("output[0-9]{1,}\$")) {
+            // extract output number
+            int n = (name =~ "output([0-9]{1,})\$")[0][1].toInteger()
+            log.info "Output $n reference resolved by PipelineDelegate"
+            return context.get().invokeMethod("getOutputByIndex", [n-1] as Object[])
+        }
+        else
+        if(name.matches("input[0-9]{1,}\$")) {
+            // extract input number
+            int n = (name =~ "input([0-9]{1,})\$")[0][1].toInteger()
+            log.info "Input $n reference resolved by PipelineDelegate"
+            return context.get().invokeMethod("getInputByIndex", [n-1] as Object[])
+        }
+        else
         if(name == "region") {
             def genome = Pipeline.genomes.values()[0]
             if(!genome) 

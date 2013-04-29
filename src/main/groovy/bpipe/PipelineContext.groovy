@@ -354,6 +354,7 @@ class PipelineContext {
        
        po.branchName = branchName
        po.currentFilter = currentFilter
+       po.outputDirChangeListener = { outputTo(it) }
        return po
    }
    
@@ -387,64 +388,33 @@ class PipelineContext {
    
    def getOutputByIndex(int index) {
        try {
-           log.info "Query for output $index"
            PipelineOutput origOutput = getOutput()
            def o = Utils.box(origOutput.output)
            def result = o[index]
            if(result == null) {
+               log.info "No previously set output at $index from ${o.size()} outputs. Synthesizing from index based on first output"
                if(o[0].indexOf('.')>=0) 
                    result = o[0].replaceAll("\\.([^.]*)\$",".${index+1}.\$1")
                else
                    result = o[0] + (index+1)
            }
+           
+           log.info "Query for output $index base result = $result"
+           
            // result = trackOutput(result)
            
            Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
            
+           def overrideOutputs = (origOutput.overrideOutputs && origOutput.overrideOutputs.size() >= index ? [ origOutput.overrideOutputs[index] ] : [] )
+           
            return new PipelineOutput(result, 
                                      origOutput.stageName, 
                                      origOutput.defaultOutput, 
-                                     origOutput.overrideOutputs, { op,replaced -> onNewOutputReferenced(pipeline, op, replaced)}) 
+                                     overrideOutputs, { op,replaced -> onNewOutputReferenced(pipeline, op, replaced)}) 
        }
        catch(Exception e) {
            e.printStackTrace()
        }
-   }
-   
-   def getOutput1() {
-       return getOutputByIndex(0)
-   }
-   
-   def getOutput2() {
-       return getOutputByIndex(1)
-   }
-   
-   def getOutput3() {
-       return getOutputByIndex(2)
-   }
-   
-   def getOutput4() {
-       return getOutputByIndex(3)
-   }
-   
-   def getOutput5() {
-       return getOutputByIndex(4)
-   }
-    
-   def getOutput6() {
-       return getOutputByIndex(5)
-   }
-   
-   def getOutput7() {
-       return getOutputByIndex(6)
-   }
-    
-   def getOutput8() {
-       return getOutputByIndex(7)
-   }
-   
-   def getOutput9() {
-       return getOutputByIndex(8)
    }
      
    private trackOutput(def output) {
@@ -452,6 +422,15 @@ class PipelineContext {
        referencedOutputs << output
        return output
    } 
+   
+   void var(Map values) {
+       values.each { k,v ->
+           if(!this.localVariables.containsKey(k) && !this.extraBinding.variables.containsKey(k)) {
+               log.info "Using default value of variable $k = $v"
+               this.localVariables[k] = v
+           }
+       }
+   }
    
     /**
     * Coerce all of the arguments (which may be an array of Strings or a single String) to
@@ -502,32 +481,21 @@ class PipelineContext {
    PipelineInput getInputByIndex(int i) {
        
        def boxed = Utils.box(input)
-       if(input.size()<i)
+       if(boxed.size()<i)
            throw new PipelineError("Expected $i or more inputs but fewer provided")
            
-       this.allResolvedInputs << input[i-1]
+       this.allResolvedInputs << input[i]
        
        PipelineInput wrapper = new PipelineInput(this.@input, pipelineStages)
        wrapper.currentFilter = currentFilter
-       wrapper.defaultValueIndex = i-1
+       wrapper.defaultValueIndex = i
        
        if(!inputWrapper) 
          this.inputWrapper = wrapper
            
        return wrapper
    }
-   
-   PipelineInput getInput1() { getInputByIndex(1) }
-   PipelineInput getInput2() {  getInputByIndex(2) }
-   PipelineInput getInput3() {  getInputByIndex(3) }
-   PipelineInput getInput4() {  getInputByIndex(4) }
-   PipelineInput getInput5() {  getInputByIndex(5) }
-   PipelineInput getInput6() {  getInputByIndex(6) }
-   PipelineInput getInput7() {  getInputByIndex(7) }
-   PipelineInput getInput8() {  getInputByIndex(8) }
-   PipelineInput getInput9() {  getInputByIndex(9) }
-   PipelineInput getInput10() {  getInputByIndex(10) }
-   
+  
     /**
     * Check if there is an input, if so, return it.  If not,
     * throw a helpful error message.
@@ -901,12 +869,16 @@ class PipelineContext {
      *       properly handled in the glob matching
      */
     Object produce(Object out, Closure body) { 
+        
         log.info "Producing $out from $this"
         
         // Unwrap any files that may be wrapped in PipelineInput or PipelineOutput objects
         out = Utils.unwrap(out)      
         
         List globOutputs = Utils.box(out).grep { it.contains("*") }
+        
+        // Coerce so that files go to the right output folder
+        out = toOutputFolder(out)
         
         def lastInputs = this.@input
         boolean doExecute = true
@@ -1759,5 +1731,9 @@ class PipelineContext {
         }
         
         return modified
+    }
+    
+    void outputTo(String directoryName) {
+        this.outputDirectory = directoryName
     }
 }
