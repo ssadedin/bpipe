@@ -94,8 +94,10 @@ class PipelineContext {
         def pipeline = Pipeline.currentRuntimePipeline.get()
         if(pipeline)
             this.applyName = pipeline.name && !pipeline.nameApplied
+         
+		this.outputLog = new OutputLog()
     }
-   
+    
     /**
      * Additional variables that are injected into the pipeline stage when it executes.
      * In practice, these allow it to resolve pipeline stages that are loaded from external
@@ -232,6 +234,12 @@ class PipelineContext {
     * is stored in the output property.
     */
    private def defaultOutput
+   
+   /**
+    * Log that will write output from messages and commands executed
+    * by this context / stage
+    */
+   private OutputLog outputLog
    
    def getDefaultOutput() {
 //       log.info "Returning default output " + this.@defaultOutput
@@ -1448,7 +1456,8 @@ class PipelineContext {
       
           CommandExecutor cmdExec = 
               commandManager.start(stageName, joined, config, Utils.box(this.input), 
-                                   new File(outputDirectory), this.usedResources, deferred)
+                                   new File(outputDirectory), this.usedResources,
+								   deferred, this.outputLog)
               
           List outputFilter = cmdExec.ignorableOutputs
           if(outputFilter) {
@@ -1468,9 +1477,9 @@ class PipelineContext {
     void msg(def m) {
         def date = (new Date()).format("HH:mm:ss")
         if(branch)
-            println "$date MSG [$branch]:  $m"
+            this.outputLog.buffer "$date MSG [$branch]:  $m"
         else
-            println "$date MSG:  $m"
+            this.outputLog.buffer "$date MSG:  $m"
     }
    
    /**

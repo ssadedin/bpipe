@@ -26,6 +26,7 @@
 package bpipe.executor
 
 import groovy.util.logging.Log
+import bpipe.OutputLog;
 import bpipe.Utils
 import bpipe.CommandStatus;
 
@@ -43,6 +44,16 @@ class LocalCommandExecutor implements CommandExecutor {
     transient Process process
     
     /**
+     * The output log to which stdout will be written
+     */
+	transient Appendable outputLog = System.out
+    
+    /**
+     * The output log to which stderr will be written
+     */
+	transient Appendable errorLog = System.err
+    
+    /**
      * The exit code returned by the process, only
      * available after the process has exited and
      * status() or waitFor() has been called.
@@ -53,6 +64,9 @@ class LocalCommandExecutor implements CommandExecutor {
      * Set to true if the process is terminated forcibly
      */
     boolean destroyed = false
+    
+	LocalCommandExecutor() {
+	}
     
     void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
       new Thread({
@@ -73,7 +87,7 @@ class LocalCommandExecutor implements CommandExecutor {
 		  }
           
 	      process = Runtime.getRuntime().exec((String[])(['bash','-c',"$cmd"].toArray()))
-	      process.consumeProcessOutput(System.out, System.err)
+	      process.consumeProcessOutput(outputLog, errorLog)
           exitValue = process.waitFor()
 //          process.outputStream.close()
 //          process.inputStream.close()
@@ -115,7 +129,7 @@ class LocalCommandExecutor implements CommandExecutor {
     }
     
     void stop() {
-        // Not implemented.  Java is too stupid to stop a process it previously started,
+        // Not implemented.  Java is too stupid to stop a process it previously started
     }
     
     void cleanup() {
