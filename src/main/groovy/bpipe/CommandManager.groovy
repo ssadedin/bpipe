@@ -88,7 +88,7 @@ class CommandManager {
      *                  on the resulting command executor
      * @return the {@link CommandExecutor} that is executing the job.
      */
-    CommandExecutor start(String name, String cmd, String configName, Collection inputs, File outputDirectory, Map resources, boolean deferred) {
+    CommandExecutor start(String name, String cmd, String configName, Collection inputs, File outputDirectory, Map resources, boolean deferred, Appendable outputLog) {
          
         // How to run the job?  look in user config
 		if(!configName) 
@@ -183,6 +183,12 @@ class CommandManager {
               throw new PipelineTestAbort("Would execute: $cmd")
           else
               throw new PipelineTestAbort("Would execute: $cmd\n\n                using $cmdExec with config $cfg")
+        }
+        
+        // Temporary hack until we figure out design for how output log gets passed through
+        if(cmdExec instanceof LocalCommandExecutor) {
+        	cmdExec.outputLog = outputLog
+        	cmdExec.errorLog = outputLog
         }
 
         // Create a command id for the job
