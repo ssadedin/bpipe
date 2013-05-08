@@ -92,30 +92,25 @@ class DefinePipelineCategory {
      * all of them to all the stages in the list.
      * This is a special case of multiply below. 
      */
-//    static Object plus(Closure other, List segments) {
-//        Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
-//        Closure mul = multiply("*", segments)
-//        def plusImplementation =  { input1 ->
-//            
-//            def currentStage = new PipelineStage(pipeline.createContext(), other)
-//            pipeline.stages << currentStage
-//            currentStage.context.setInput(input1)
-//            currentStage.run()
-//            Utils.checkFiles(currentStage.context.output)
-//                    
-//            // If the stage did not return any outputs then we assume
-//            // that the inputs to the next stage are the same as the inputs
-//            // to the previous stage
-//            def nextInputs = currentStage.context.nextInputs
-//            if(nextInputs == null)
-//                nextInputs = currentStage.context.@input
-//                
-//            Utils.checkFiles(nextInputs)
-//            return mul(nextInputs)
-//		}
-//        pipeline.joiners << plusImplementation
-//        return plusImplementation
-//	}
+    static Object plus(Closure other, List segments) {
+        
+        def mul = multiply("*", segments)
+        
+        def result = { inputs ->
+          if(PipelineCategory.closureNames.containsKey(other)) {
+	            def newStage = new Node(null, PipelineCategory.closureNames[other])
+	            currentStage*.append(newStage)
+                currentStage = [newStage]
+          }
+          
+          if(other in joiners)
+            other()
+          
+          return mul(inputs)
+        }
+        joiners << result
+        return result
+	}
     
     /**
      * Implements the syntax that allows an input filter to 

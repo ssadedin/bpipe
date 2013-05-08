@@ -1267,8 +1267,9 @@ class PipelineContext {
        try {
             this.echoWhenNotFound = true
             log.info("Entering echo mode on context " + this.hashCode())
+            String rTempDir = Utils.createTempDir().absolutePath
             String scr = c()
-            exec("""Rscript - <<'!'
+            exec("""unset TMP; unset TEMP; TEMPDIR="$rTempDir" Rscript - <<'!'
             $scr
 !""",false)
        }
@@ -1396,6 +1397,7 @@ class PipelineContext {
       // (prior to the async or exec command entry) and set as inferredOutputs until
       // the command is executed, and then we wipe them out
       def checkOutputs = this.inferredOutputs + referencedOutputs
+      EventManager.instance.signal(PipelineEvent.COMMAND_CHECK, "Checking command", [ctx: this, command: cmd, joined: joined, outputs: checkOutputs])
       if(!probeMode && checkOutputs && Dependencies.instance.checkUpToDate(checkOutputs,this.@input)) {
           String message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " due to inferred outputs $checkOutputs newer than inputs ${this.@input}"
           log.info message
@@ -1728,3 +1730,4 @@ class PipelineContext {
         this.outputDirectory = directoryName
     }
 }
+

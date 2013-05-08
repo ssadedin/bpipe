@@ -173,6 +173,15 @@ public class Pipeline {
         documentation += docs
     }
     
+    /*
+    static void var(String value, String description) {
+        if(!this.localVariables.containsKey(value) && !this.extraBinding.variables.containsKey(value)) {
+            log.info "Using default value of variable $k = $v"
+            this.localVariables[value] = new UnknownRequiredValue(description:description)
+        }
+    }
+    */
+    
     /**
      * Due to certain constraints in how Groovy handles operator 
      * overloading and injections of methods into classes at runtime,
@@ -633,7 +642,7 @@ public class Pipeline {
 		if(srcTemplateDir.exists())
 			templateStream = new FileInputStream(new File(srcTemplateDir, templateFile))
 		else
-			templateStream = new FileInputStream(new File(System.getProperty("bpipe.home") + "/html", "index.html"))
+			templateStream = new FileInputStream(new File(System.getProperty("bpipe.home") + "/html", templateFile))
 			
 		GStringTemplateEngine e = new GStringTemplateEngine()
 		templateStream.withReader { r ->

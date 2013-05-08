@@ -170,7 +170,13 @@ class Graph extends JFrame {
 		getContentPane().add(graphComponent);
 		MxHierarchicalLayout layout = new MxHierarchicalLayout(graph);
         layout.setDisableEdgeStyle(true)
-		layout.setOrientation(SwingConstants.WEST);
+        
+        boolean vertical = bpipe.Config.userConfig.diagramOrientation == "vertical"
+        if(vertical)
+    		layout.setOrientation(SwingConstants.NORTH);
+          else
+    		layout.setOrientation(SwingConstants.WEST);
+            
 		layout.execute(graph.getDefaultParent());
         
 		// Find the "highest" vertext

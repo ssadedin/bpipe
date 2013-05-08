@@ -44,6 +44,12 @@ public enum PipelineEvent {
 	STAGE_FAILED,
 	
 	/**
+	 * A command is being checked to see if it needs
+	 * to be executed. eg. are inputs older than outputs?
+	 */
+	COMMAND_CHECK,
+	
+	/**
 	 * Future
 	 */
 	COMMAND_STARTED,

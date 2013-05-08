@@ -187,22 +187,24 @@ class Utils {
     
     
     /**
-     * Truncate the input at the first new line or at most 
+     * Truncate the input intelligently at the first new line or at most 
      * maxLen chars, whichever comes first, adding an ellipsis
-     * if the value was actually truncated.
+     * if the value was actually truncated. If a newline appears before
+     * any other non-whitepspace characters then ignore it.
      * 
      * @return truncated string
      */
     static String truncnl(String value, int maxLen) {
         int truncLen = maxLen
-        if(maxLen > value.size())
-            truncLen = value.size()
-            
-        int nlIndex = value.indexOf('\n')
+        String trimmed = value.trim()    
+        if(maxLen > trimmed.size())
+            truncLen = trimmed.size()
+        
+        int nlIndex = trimmed.indexOf('\n')
         if(nlIndex >=0) 
-            return value.substring(0, Math.min(truncLen, nlIndex)) + "..."
+            return trimmed.substring(0, Math.min(truncLen, nlIndex)) + "..."
         else {
-            return value.substring(0, truncLen) + ((truncLen < maxLen) ? "" : "...")
+            return trimmed.substring(0, truncLen) + ((truncLen < maxLen) ? "" : "...")
         }
     }
     
@@ -517,4 +519,24 @@ class Utils {
         }
         return fnames.sort()
     }
+    
+    final static int TEMP_DIR_ATTEMPTS = 500
+    
+    /**
+     * Create a temporary directory 
+     * (Based on Guava library)
+     */
+    public static File createTempDir() {
+        File baseDir = new File(System.getProperty("java.io.tmpdir"));
+        String baseName = Long.toString(System.nanoTime()) + "-";
+      
+        for (int counter = 0; counter < TEMP_DIR_ATTEMPTS; counter++) {
+          File tempDir = new File(baseDir, baseName + counter);
+          if (tempDir.mkdir()) {
+            return tempDir;
+          }
+        }
+        
+        throw new IllegalStateException("Failed to create directory within $TEMP_DIR_ATTEMPTS")
+      }
 }

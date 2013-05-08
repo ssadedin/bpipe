@@ -249,6 +249,7 @@ class Runner {
             def reportStats = new ReportStatisticsListener()
             EventManager.instance.addListener(PipelineEvent.STAGE_STARTED, reportStats)
             EventManager.instance.addListener(PipelineEvent.STAGE_COMPLETED, reportStats)
+            EventManager.instance.addListener(PipelineEvent.COMMAND_CHECK, reportStats)
             Config.config.customReport = opts.R
 		}
 

@@ -36,6 +36,8 @@ class ReportStatisticsListener implements PipelineEventListener {
 	public void onEvent(PipelineEvent eventType, String desc, Map<String, Object> details) {
 		
 		PipelineContext ctx = details?.stage?.context
+        if(!ctx)
+            ctx = details.ctx
 		
 		if(!ctx)	{
 			log.warning("Pipeline stage or context missing from details provided to statistics event")
@@ -53,6 +55,21 @@ class ReportStatisticsListener implements PipelineEventListener {
 				log.info "Annotating stage end time $ctx.stageName"
 				ctx.doc finishedAt: new Date(), elapsedMs: (System.currentTimeMillis() - ctx.documentation.startedAt.time)
 			break
+            
+            case COMMAND_CHECK:
+                log.info "Intercepted command check for command $details.command"
+                def toolsDiscovered = ToolDatabase.instance.probe(details.command)
+                
+                // If no tools discovered, document the command anyway
+                if(!toolsDiscovered) {
+                  ctx.doc(["undocumented": details.command])
+                }
+                else
+                // if some tools are already discovered, merge rather than overwriting all of them
+                if(ctx.documentation.tools)
+                  ctx.documentation.tools += toolsDiscovered
+                else
+                  ctx.doc(["tools" : toolsDiscovered])
 		}
 	}
 }
