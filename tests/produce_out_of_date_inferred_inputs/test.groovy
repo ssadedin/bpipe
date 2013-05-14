@@ -1,10 +1,10 @@
 hello = {
-    exec "cp $input.txt $output.csv ; sleep 1"
+    exec "echo executing1; cp $input.txt $output.csv ; sleep 2"
 }
 
 world = {
     produce("qcstats.xml") {
-        exec "cat $inputs.xml > $output.xml"
+        exec "echo executing2; cat $input.xml > $output.xml"
     }
 }
 
