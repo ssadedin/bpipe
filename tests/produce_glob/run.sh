@@ -14,6 +14,6 @@ grep -q "Inputs are test.csv test[0-9].xml test[0-9].xml test[0-9].xml" test.out
 
 run test.txt
 
-grep -q "Skipping steps to create" test.out || err "Failed to find expected output 'Skipping steps ...'"
+grep -q "executing" test.out && err "Found text 'executing' when everything should have been skipped"
 
 true
