@@ -1,6 +1,6 @@
 hello = {
     from(["txt", "txt", "csv"]) {
-        msg "inputs:  $input1 $input2 $input3"
+        println "inputs:  $input1 $input2 $input3"
     }
 }
 
