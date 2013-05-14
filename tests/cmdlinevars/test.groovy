@@ -7,17 +7,17 @@ bar="BAR"
 fubar="FUBAR"
 
 hello = {
-        msg "foo=$foo"
+        println "foo=$foo"
 	exec "echo $foo > test.txt"
 }
 
 world = {
-        msg "bar=$bar"
+        println "bar=$bar"
 	exec "echo $bar > test.world.txt"
 }
 
 there = {
-        msg "fubar=$fubar"
+        println "fubar=$fubar"
 	exec "echo $fubar > test.there.txt"
 }
 
