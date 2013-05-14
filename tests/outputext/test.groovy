@@ -7,15 +7,15 @@ hello = {
 }
 
 world = {
-    msg "$input => $output.txt, $output.xml"
-    exec "cp $input $output.txt; cp $input $output.xml"
-    msg "$input => $output.tsv"
-    exec "cp $input $output.tsv"
+    println "$input => $output.txt, $output.xml"
+    exec "echo execute1; cp $input $output.txt; cp $input $output.xml"
+    println "$input => $output.tsv"
+    exec "echo execute2; cp $input $output.tsv"
 }
 
 there = {
     produce("test.foo", "test.bar") {
-      exec "cp $input $output.bar"
+      exec "echo execute3; cp $input $output.bar"
     }
 }
 
