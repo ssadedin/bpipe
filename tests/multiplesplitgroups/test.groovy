@@ -1,5 +1,5 @@
 hello = {
-  msg "INPUTS: $input1 $input2"
+  println "INPUTS: $input1 $input2"
 }
 
 run { 
