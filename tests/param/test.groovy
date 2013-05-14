@@ -3,11 +3,11 @@
  * join them together in a pipeline
  */
 hello = {
-        msg "foo = $foo"
+        println "foo = $foo"
 }
 
 bar = {
-        msg "foo = $foo"
+        println "foo = $foo"
 }
 
 
