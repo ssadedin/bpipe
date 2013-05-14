@@ -1,11 +1,11 @@
 folder = {
   produce("thefolder/*") {
-    exec "mkdir thefolder; cp $input thefolder/output.csv"
+    exec "echo execute1; mkdir thefolder; cp $input thefolder/output.csv"
   }
 }
 
 after = {
-  exec "cp $input.csv $output.xml"
+  exec "echo execute2; cp $input.csv $output.xml"
 }
 
 run { folder + after }

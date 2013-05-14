@@ -7,7 +7,7 @@ run test.txt
 grep -q "Stage folder" test.out || err "Failed to find expected stage hello"
 grep -q "Stage after" test.out || err "Failed to find expected stage world"
 
-grep -q "Skipping" test.out && err "Skipped steps incorrectly on first run"
+[ `grep -c "execute" test.out` == 2 ]  || err "Skipped steps incorrectly on first run"
 
 [ ! -f thefolder/output.csv ] && err "Failed to find expected output test.txt"
 [ ! -f output.after.xml ] && err "Failed to find expected output test.world.txt"
@@ -20,7 +20,7 @@ grep -q "output.after.xml" test.out || err "Failed to find output.after.xml in d
 
 run test.txt
 
-grep -q "Skipping steps to create.*newer than test.txt" test.out || err "Failed to skip folder creation step on second run"
-grep -q "Skipping command .*output.after.xml" test.out || err "Failed to skip stage after folder stage on second run"
+grep -q "execute1" test.out && err "Failed to skip folder creation step on second run"
+grep -q "execute2" test.out && err "Failed to skip stage after folder stage on second run"
 
 true
