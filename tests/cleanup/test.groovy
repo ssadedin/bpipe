@@ -7,33 +7,33 @@
  */
 @transform("html")
 hello = {
-	exec "cp $input $output"
+	exec "echo execute1;cp $input $output"
         Thread.sleep(1100)
 }
 
 @transform("csv")
 there = {
-	exec "cp $input $output"
+	exec "echo execute2;cp $input $output"
         Thread.sleep(1100)
 }
 
 @transform("xml")
 world = {
-	exec "cp $input $output"
+	exec "echo execute3;cp $input $output"
         Thread.sleep(1100)
 }
 
 @transform("xls")
 take = {
   from("html") {
-    exec "cp $input $output"
+    exec "echo execute4;cp $input $output"
     Thread.sleep(1100)
   }
 }
 
 @preserve
 me = {
-  exec "echo me > $output"
+  exec "echo execute5;echo me > $output"
 }
 
 run {

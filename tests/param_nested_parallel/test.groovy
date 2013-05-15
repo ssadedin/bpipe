@@ -6,10 +6,10 @@
  * Note: see Issue 57: http://code.google.com/p/bpipe/issues/detail?id=57
  */
 hello = {
-  msg "foo = $foo"
+  println "foo = $foo"
 }
 
 
-Bpipe.run {
+run {
 	"s_%.txt" * [ hello.using(foo:"cat"), hello.using(foo:"bar") ] 
 }

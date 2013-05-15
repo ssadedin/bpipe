@@ -1,5 +1,5 @@
 hello = {
-    msg "inputs are ${inputs.txt.split()}"
+    println "inputs are ${inputs.txt.split()}"
 }
 
 run { hello }

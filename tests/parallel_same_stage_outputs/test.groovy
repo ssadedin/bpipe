@@ -6,12 +6,12 @@
  */
 
 how_are_you = {
-  msg "how_are inputs=$inputs"
+  println "how_are inputs=$inputs"
   exec "sed 's/f/b/g' $input > $output"
 }
 
 take_me_to_your_leader = {
-  msg "take_me inputs=$inputs"
+  println "take_me inputs=$inputs"
   exec "sed 's/f/g/g' $input > $output"
 }
 
@@ -20,8 +20,8 @@ a = {
 }
 
 end = {
-  msg "end inputs=$inputs"
-	exec "cat $inputs > $output"
+  println "end inputs=$inputs"
+  exec "cat $inputs > $output"
 }
 
 // All the outputs should get forwarded to the 'end' stage

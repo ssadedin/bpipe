@@ -887,7 +887,8 @@ class PipelineContext {
         
         // Check for all existing files that match the globs
         List globExistingFiles = globOutputs.collect { Utils.glob(it) }.flatten()
-        if((!globOutputs || globExistingFiles) && Dependencies.instance.checkUpToDate(fixedOutputs + globExistingFiles,lastInputs)) {
+        if((!globOutputs || globExistingFiles)) {
+
           // No inputs were newer than outputs, 
           // but were the commands that created the outputs modified?
           this.output = fixedOutputs
@@ -899,6 +900,11 @@ class PipelineContext {
             body() 
             log.info "Finished probe"
             
+            def allInputs = (getResolvedInputs()  + Utils.box(lastInputs)).unique()
+            if(!Dependencies.instance.checkUpToDate(fixedOutputs + globExistingFiles,allInputs)) {
+                log.info "Not up to date because input inferred by probe of body newer than outputs"
+            }
+            else
             if(!Config.config.enableCommandTracking || !checkForModifiedCommands()) {
                 msg("Skipping steps to create ${Utils.box(out).unique()} because " + (lastInputs?"newer than $lastInputs" : " file already exists"))
                 log.info "Skipping produce body"
@@ -1406,16 +1412,22 @@ class PipelineContext {
       // the command is executed, and then we wipe them out
       def checkOutputs = this.inferredOutputs + referencedOutputs
       EventManager.instance.signal(PipelineEvent.COMMAND_CHECK, "Checking command", [ctx: this, command: cmd, joined: joined, outputs: checkOutputs])
-      if(!probeMode && checkOutputs && Dependencies.instance.checkUpToDate(checkOutputs,this.@input)) {
+
+      // We expect that the actual inputs will have been resolved by evaluation of the command to be executed 
+      // before this method is invoked
+      def actualResolvedInputs = Utils.box(this.@inputWrapper?.resolvedInputs)
+
+      log.info "Checking actual resolved inputs $actualResolvedInputs"
+      if(!probeMode && checkOutputs && Dependencies.instance.checkUpToDate(checkOutputs,actualResolvedInputs)) {
           String message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " due to inferred outputs $checkOutputs newer than inputs ${this.@input}"
           log.info message
           msg message
           
-          // Reset the inferred outputs - once they are used the user should have to refer to them
-          // again to re-invoke them
           return new ProbeCommandExecutor()
       }
           
+      // Reset the inferred outputs - once they are used the user should have to refer to them
+      // again to re-invoke them
       this.inferredOutputs = []
       
       if(!probeMode) {
@@ -1739,4 +1751,5 @@ class PipelineContext {
         this.outputDirectory = directoryName
     }
 }
+
 
