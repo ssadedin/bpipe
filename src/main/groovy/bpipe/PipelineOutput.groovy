@@ -203,8 +203,8 @@ class PipelineOutput {
         // If the extension of the output is the same as the extension of the 
         // input then this is more like a filter; remove the previous output extension from the path
         // eg: foo.csv.bar => foo.baz.csv
-        String branchSegment = branchName ? '.' + branchName : ''
-        String segments = [branchSegment,stageName,name].collect { it.replaceAll("^\\.","").replaceAll("\\.\$","") }.join(".")
+        List branchSegment = branchName ? ['.' + branchName] : [] 
+        String segments = (branchSegment + [stageName,name]).collect { it.replaceAll("^\\.","").replaceAll("\\.\$","") }.join(".")
         if(stageName.equals(this.output)) {
            this.outputUsed = this.defaultOutput + '.' + name 
         }
@@ -215,7 +215,7 @@ class PipelineOutput {
         }
         else { // more like a transform: keep the old extension in there (foo.csv.bar => foo.csv.bar.xml)
             this.outputUsed = this.defaultOutput.replaceAll('\\.'+stageName+'$', '')
-                                                .replaceAll('\\.[^\\.]*$', segments)
+                                                .replaceAll('\\.[^\\.]*$', '.' + segments)
         }
         
         if(this.outputUsed.startsWith(".") && !this.outputUsed.startsWith("./")) // occurs when no inputs given to script and output extension used

@@ -348,6 +348,8 @@
 	                            </td>
 	                        </tr>
 	                        <%}%>
+                            
+                            <tr><th>Commands</th><td>${ctx.trackedOutputs.keySet().join("<br>")}</td></tr>
 	
 	
 	                        <%if(doc.outputs || ctx.outputs) {%>
