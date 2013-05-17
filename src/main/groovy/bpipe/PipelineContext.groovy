@@ -66,7 +66,7 @@ class PipelineContext {
      * of threads for the command to use.
      */
     public final static String THREAD_LAZY_VALUE = '__bpipe_lazy_resource_threads__'
-   
+    
     /**
      * Create a Pipeline Context with the specified adidtional bound variables and
      * pipeline stages as well.
@@ -304,7 +304,7 @@ class PipelineContext {
    def getOutput() {
        String baseOutput = Utils.first(this.getDefaultOutput()) 
        def out = this.@output
-       if(out == null) { // Output not set elsewhere
+       if(out == null || this.currentFileNameTransform) { // Output not set elsewhere, or set dynamically based on inputs
            
            // If an input property was referenced, compute the default from that instead
            if(inputWrapper?.resolvedInputs) {
@@ -323,7 +323,12 @@ class PipelineContext {
                def resolved = Utils.unbox(inputWrapper.resolvedInputs[defaultValueIndex])
                
                log.info("Using non-default output due to input property reference: " + resolved + " from resolved inputs " + inputWrapper.resolvedInputs)
-               out = resolved +"." + this.stageName
+               
+               if(this.currentFileNameTransform != null) {
+                   out = this.currentFileNameTransform.transform(Utils.box(resolved), this.applyName)
+               }
+               else
+                   out = resolved +"." + this.stageName
                
                // Since we're resolving based on a different input than the default one,
                // the pipeline output wrapper should use a different one as a default too
@@ -340,7 +345,7 @@ class PipelineContext {
       
        if(!out)
               return null
-           
+                         
        out = toOutputFolder(out)
        
        def pipeline = Pipeline.currentRuntimePipeline.get()
@@ -695,7 +700,6 @@ class PipelineContext {
            extensionCounts[e] = 0
        }
        
-//       def inp = Utils.first(this.@input)
        if(!Utils.first(this.@input)) 
            throw new PipelineError("Expected input but no input provided") 
        
@@ -724,6 +728,14 @@ class PipelineContext {
    }
  
    List<String> currentFilter = []
+   
+   /**
+    * Transform to be applied to inputs to determine output file names
+    * Used by filter below, to ensure that inputs get remapped if a different
+    * input is inferred by the actual command executed. If set, this is re-executed
+    * when the output is queried (see #getOutput())
+    */
+   FileNameTransformer currentFileNameTransform = null
     
     /**
      * Specifies an output that keeps the same type of file but modifies 
@@ -733,43 +745,20 @@ class PipelineContext {
      */
     Object filter(List<String> types, Closure body) {
         
-        def pipeline = Pipeline.currentRuntimePipeline.get()
         def boxed = Utils.box(this.@input)
-        def typeCounts = [:]
-        for(def e in types) 
-            typeCounts[e] = 0
-      
-        def files = types.collect { String type ->
-            def inp = boxed[typeCounts[type] % boxed.size()]
-            if(!inp) 
-               throw new PipelineError("Expected input but no input provided") 
-               
-            log.info "Filtering based on input $inp"
-            
-             typeCounts[type]++
-            String oldExt = (inp =~ '\\.[^\\.]*$')[0]
-            if(applyName) {
-                // Arguably, we should add the filter type to the name here as well.
-                // However we're already adding the chromosome, so the filename is already
-                // unique at this point, and we'd like to keep it short
-                return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+/*'.'+ type+*/oldExt)
-            }
-            else
-                return inp.replaceAll('(\\.[^\\.]*$)','.'+type+oldExt)
-        }
-        
-        log.info "Filtering using $types produces outputs $files"
-        
-        if(applyName)
-            pipeline.nameApplied = true
             
         this.currentFilter = (boxed + Utils.box(this.pipelineStages[-1].originalInputs)).grep { it.indexOf('.')>0 }.collect { it.substring(it.lastIndexOf('.')+1) }
+        
+        this.currentFileNameTransform = new FilterFileNameTransformer(types: types)
+        
+        def files = currentFileNameTransform.transform(boxed, applyName)
         
         // Coerce any inputs coming from different folders to the correct output folder
         files = toOutputFolder(files)
         produce(files, body)
         
         this.currentFilter = []
+        this.currentFileNameTransform = null
     }
   
     Object filter(String type, Closure body) {
@@ -923,9 +912,10 @@ class PipelineContext {
             if(Utils.box(this.@output)) {
                 this.output = Utils.box(fixedOutputs) + Utils.box(this.@output)
             }
-            else
+            else {
                 this.output = fixedOutputs
-            
+            }
+             
             // Store the list of output files so that if we are killed 
             // they can be cleaned up
             this.uncleanFilePath.text += Utils.box(this.output)?.join("\n") 
@@ -971,6 +961,8 @@ class PipelineContext {
                     this.output = result
             }
         }
+        
+        this.currentFileNameTransform = null
 
         this.fromCleanups.each { it() }
         this.fromCleanups = []

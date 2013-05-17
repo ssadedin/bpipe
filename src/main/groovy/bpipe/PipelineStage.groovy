@@ -172,7 +172,7 @@ class PipelineStage {
                 
                 EventManager.instance.signal(PipelineEvent.STAGE_STARTED, "Starting stage $displayName", [stage:this])
                 
-                if(context.output == null && context.@defaultOutput == null) {
+                if(context.@output == null && context.@defaultOutput == null) {
                     if(context.@input) {
                         // If we are running in a sub-pipeline that has a name, make sure we
                         // reflect that in the output file name.  The name should only be applied to files
