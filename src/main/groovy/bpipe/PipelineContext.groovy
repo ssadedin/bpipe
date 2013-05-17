@@ -336,7 +336,8 @@ class PipelineContext {
            }
            else {
                log.info "No inputs resolved by input wrapper ${inputWrapper?.resolvedInputs?.hashCode()}: outputs based on default ${this.defaultOutput}"
-               out = this.getDefaultOutput()
+               if(out == null)
+                   out = this.getDefaultOutput()
            }
        }
        else {
