@@ -98,7 +98,12 @@ class PipelineInput {
     }
     
     void addResolvedInputs(List<String> objs) {
-        this.resolvedInputs.addAll(objs)
+        
+        for(inp in objs) {
+            if(!this.resolvedInputs.contains(inp))
+                this.resolvedInputs.add(inp)
+        }
+        
         if(parent)
             parent.addResolvedInputs(objs)
             
