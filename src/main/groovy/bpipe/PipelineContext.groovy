@@ -307,7 +307,13 @@ class PipelineContext {
        if(out == null || this.currentFileNameTransform) { // Output not set elsewhere, or set dynamically based on inputs
            
            // If an input property was referenced, compute the default from that instead
-           if(inputWrapper?.resolvedInputs) {
+           def allResolved = allUsedInputWrappers.collect { k,v -> 
+               v.resolvedInputs 
+           }
+           
+           allResolved = allResolved.flatten()
+//           if(inputWrapper?.resolvedInputs) {
+           if(allResolved) {
                
                // By default, if multiple inputs were resolved by the input wrapper,
                // we take the first UNLESS one of the inputs corresponds to a branching
@@ -316,16 +322,16 @@ class PipelineContext {
                // otherwise multiple parallel paths will resolve to the same output.
                int defaultValueIndex = -1;
                if(branchInputs)
-                   defaultValueIndex = inputWrapper.resolvedInputs.findIndexOf { it in branchInputs }
+                   defaultValueIndex = allResolved.findIndexOf { it in branchInputs }
                if(defaultValueIndex<0)
                    defaultValueIndex = 0
                    
-               def resolved = Utils.unbox(inputWrapper.resolvedInputs[defaultValueIndex])
+               def resolved = Utils.unbox(allResolved[defaultValueIndex])
                
-               log.info("Using non-default output due to input property reference: " + resolved + " from resolved inputs " + inputWrapper.resolvedInputs)
+               log.info("Using non-default output due to input property reference: " + resolved + " from resolved inputs " + allResolved)
                
                if(this.currentFileNameTransform != null) {
-                   out = this.currentFileNameTransform.transform(Utils.box(resolved), this.applyName)
+                   out = this.currentFileNameTransform.transform(Utils.box(allResolved), this.applyName)
                }
                else
                    out = resolved +"." + this.stageName
@@ -335,7 +341,7 @@ class PipelineContext {
                baseOutput = toOutputFolder(out)
            }
            else {
-               log.info "No inputs resolved by input wrapper ${inputWrapper?.resolvedInputs?.hashCode()}: outputs based on default ${this.defaultOutput}"
+               log.info "No inputs resolved by input wrappers: outputs based on default ${this.defaultOutput}"
                if(out == null)
                    out = this.getDefaultOutput()
            }
@@ -464,6 +470,12 @@ class PipelineContext {
    PipelineInput inputWrapper
    
    /**
+    * All input wrappers that got referenced during a pipeline stage, keyed on 
+    * index
+    */
+   Map<Integer,PipelineInput> allUsedInputWrappers = new TreeMap()
+   
+   /**
     * If this context is spawning a new branch in the pipeline, the inputs that
     * are responsible for the branch are set here. This is used in certain cases
     * to set a different default output
@@ -498,7 +510,10 @@ class PipelineContext {
        
        if(!inputWrapper) 
          this.inputWrapper = wrapper
-           
+       
+       if(!allUsedInputWrappers.containsKey(i)) {
+           allUsedInputWrappers[i] = wrapper
+       }    
        return wrapper
    }
   
@@ -517,6 +532,7 @@ class PipelineContext {
        }
        if(!inputWrapper || inputWrapper instanceof MultiPipelineInput) {
            inputWrapper = new PipelineInput(this.@input, pipelineStages)
+           this.allUsedInputWrappers[0] = inputWrapper
        }
        inputWrapper.currentFilter = currentFilter    
        return inputWrapper
@@ -529,6 +545,7 @@ class PipelineContext {
    def getInputs() {
        if(!inputWrapper || !(inputWrapper instanceof MultiPipelineInput)) {
            this.inputWrapper = new MultiPipelineInput(this.@input, pipelineStages)
+           this.allUsedInputWrappers[0] = inputWrapper
        }
        inputWrapper.currentFilter = currentFilter    
        return this.inputWrapper;

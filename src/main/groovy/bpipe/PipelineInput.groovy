@@ -92,7 +92,8 @@ class PipelineInput {
            throw new PipelineError("Expected ${defaultValueIndex+1} or more inputs but fewer provided")
             
         String resolvedValue = boxed[defaultValueIndex]
-        this.resolvedInputs.add(resolvedValue)
+        if(!this.resolvedInputs.contains(resolvedValue))
+            this.resolvedInputs.add(resolvedValue)
         return String.valueOf(resolvedValue);
     }
     

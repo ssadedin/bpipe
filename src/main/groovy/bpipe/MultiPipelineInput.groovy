@@ -57,7 +57,10 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
 
 	String toString() {
        List boxed = Utils.box(super.@input).unique()
-       this.resolvedInputs += boxed
+       for(String i in boxed) {
+           if(!this.resolvedInputs.contains(i))
+               this.resolvedInputs.add(i)
+       }
        return boxed.join(" ")
     }
     
