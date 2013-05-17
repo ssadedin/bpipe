@@ -6,8 +6,8 @@ align = {
 
 dedupe = {
     filter("foo") {
-      msg "$input.txt => $output"
-      exec "cat $input.txt > $output"
+      msg "$input.align => $output"
+      exec "cat $input.align > $output"
     }
 }
 
