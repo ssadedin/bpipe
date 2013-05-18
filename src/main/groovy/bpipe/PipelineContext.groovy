@@ -1701,6 +1701,22 @@ class PipelineContext {
     void outputTo(String directoryName) {
         this.outputDirectory = directoryName
     }
+    
+    PipelineDelegate myDelegate = null
+    
+    /**
+     * In order for "magic" methods to get resolved when invoked directly on the 
+     * context (as opposed to referenced in an unqualified way inside a pipeline body
+     * closure) we need to forward calls to missing methods explicitly through to the
+     * delegate.
+     */
+    Object methodMissing(String name, args) {
+        if(myDelegate)
+            return myDelegate.methodMissing(name,args)
+        else {
+            throw new PipelineError("An unknown function $name was invoked (arguments = ${args.grep {!it.class.name.startsWith('script') }}).\n\nPlease check your script to ensure this function is correct.")
+        }    
+    }
 }
 
 

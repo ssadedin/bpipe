@@ -28,7 +28,6 @@ class PipelineDelegate {
                 ParameterizedClosure pc = body
                 context.localVariables = pc.getExtraVariables()
             }
-            
         
             if(body.getDelegate() == null || !(body.getDelegate() instanceof PipelineDelegate)) {
                 
@@ -40,6 +39,8 @@ class PipelineDelegate {
             else {
                 body.getDelegate().context.set(context)
             }
+            
+            context.myDelegate =body.getDelegate()
         }
     }
     
@@ -78,8 +79,15 @@ class PipelineDelegate {
         if(name == "multi") {
             context.get().invokeMethod("multiExec", [args as List] as Object[])
         }
-        else
-          return context.get().invokeMethod(name, args)
+        else {
+            context.get().myDelegate = null
+            try {
+                return context.get().invokeMethod(name, args)
+            }
+            finally {
+                context.get().myDelegate = this
+            }
+        }
     }
     
     def propertyMissing(String name) {
