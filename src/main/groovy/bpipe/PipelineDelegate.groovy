@@ -65,14 +65,14 @@ class PipelineDelegate {
             context.get().invokeMethod("fromImpl", [actualArgs, body] as Object[])
         }
         else
-        if(name == "produce") {
+        if(name in ["produce","transform","filter"]) {
             if(args.size()<2) 
                 throw new IllegalArgumentException("produce requires an argument: please supply a file name or wild card expression matching files to be produced")
                 
             def actualArgs = args[0..-2] as List
             def body = args[-1]
             
-            context.get().invokeMethod("produceImpl", [actualArgs, body] as Object[])
+            context.get().invokeMethod(name+"Impl", [actualArgs, body] as Object[])
         }
         else
         if(name == "multi") {

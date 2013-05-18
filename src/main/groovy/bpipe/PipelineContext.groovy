@@ -710,8 +710,12 @@ class PipelineContext {
     * Specifies an output that converts an input file to a different kind of file,
     * ("transforms" it). Convenience wrapper for {@link #produce(Closure, Object, Closure)}
     * for the case where the file extension is replaced with a new one.
-    */
-   Object transform(List<String> exts, Closure body) {
+     * <p>
+     * <b>Note</b>: This is a "magic" method invoked by the user 
+     * as "transform" - see {@link PipelineDelegate#methodMissing(String, Object)}
+     * for how this actually happens.
+     */
+   Object transformImpl(List<String> exts, Closure body) {
        
        def extensionCounts = [:]
        for(def e in exts) {
@@ -760,8 +764,12 @@ class PipelineContext {
      * it ("filters" it). Convenience wrapper for {@link #produce(Closure, Object, Closure)}
      * for the case where the same file extension is kept but a transformation
      * type is added to the name.
+     * <p>
+     * <b>Note</b>: This is a "magic" method invoked by the user 
+     * as "filter" - see {@link PipelineDelegate#methodMissing(String, Object)}
+     * for how this actually happens.
      */
-    Object filter(List<String> types, Closure body) {
+    Object filterImpl(List<String> types, Closure body) {
         
         def boxed = Utils.box(this.@input)
             
@@ -778,47 +786,7 @@ class PipelineContext {
         this.currentFilter = []
         this.currentFileNameTransform = null
     }
-  
-    Object filter(String type, Closure body) {
-        filter([type],body)
-    }
-    
-    Object filter(String type1, String type2, Closure body) { 
-        filter([type1,type2],body)
-    }
-    
-    Object filter(String type1, String type2, String type3, Closure body) { 
-        filter([type1,type2,type3],body)
-    }
-    
-    Object filter(String type1, String type2, String type3, String type4, Closure body) { 
-        filter([type1,type2,type3,type4],body)
-    }
-    
-    Object filter(String type1, String type2, String type3, String type4, String type5, Closure body) { 
-        filter([type1,type2,type3,type4,type5],body)
-    }
-    
-    Object transform(String ext, Closure body) {
-        transform([ext],body)
-    }
-    
-    Object transform(String ext1, String ext2, Closure body) { 
-        transform([ext1,ext2],body)
-    }
-    
-    Object transform(String ext1, String ext2, String ext3, Closure body) { 
-        transform([ext1,ext2,ext3],body)
-    }
-    
-    Object transform(String ext1, String ext2, String ext3, String ext4, Closure body) { 
-        transform([ext1,ext2,ext3,ext4],body)
-    }
-    
-    Object transform(String ext1, String ext2, String ext3, String ext4, String ext5, Closure body) { 
-        transform([ext1,ext2,ext3,ext4,ext5],body)
-    }
-    
+   
     /**
      * Specifies that the given output(s) (out) will be produced
      * by the given closure, and skips execution of the closure
@@ -836,12 +804,17 @@ class PipelineContext {
      * the files were really in earlier stages then they will
      * be recapitulated as outputs again in this stage which
      * may result in undesirable behavior.
+     * <p>
+     * <b>Note</b>: This is a "magic" method invoked by the user 
+     * as "produce" - see {@link PipelineDelegate#methodMissing(String, Object)}
+     * for how this actually happens.
      * 
      * @TODO above issue can possibly be mitigated if we do an 
      *       upwards hierachical search to check outputs from prior
      *       stages
      * @TODO the case where an output directory is set is not yet
      *       properly handled in the glob matching
+     *       
      */
     Object produceImpl(Object out, Closure body) { 
         
