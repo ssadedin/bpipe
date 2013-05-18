@@ -742,7 +742,7 @@ class PipelineContext {
        // Coerce any inputs coming from different folders to the correct output folder
        files = toOutputFolder(files)
        
-       produce(files, body)
+       produceImpl(files, body)
    }
  
    List<String> currentFilter = []
@@ -773,7 +773,7 @@ class PipelineContext {
         
         // Coerce any inputs coming from different folders to the correct output folder
         files = toOutputFolder(files)
-        produce(files, body)
+        produceImpl(files, body)
         
         this.currentFilter = []
         this.currentFileNameTransform = null
@@ -819,38 +819,6 @@ class PipelineContext {
         transform([ext1,ext2,ext3,ext4,ext5],body)
     }
     
-    Object produce(String out1, String out2, Closure body) { 
-        produce([out1,out2],body)
-    }
-    
-    Object produce(String out1, String out2, String out3, Closure body) { 
-        produce([out1,out2,out3],body)
-    }
-    
-    Object produce(String out1, String out2, String out3, String out4, Closure body) { 
-        produce([out1,out2,out3,out4],body)
-    }
-    
-    Object produce(String out1, String out2, String out3, String out4, String out5, Closure body) { 
-        produce([out1,out2,out3,out4,out5],body)
-    }
-    
-    Object produce(String out1, String out2, String out3, String out4, String out5, String out6, Closure body) { 
-        produce([out1,out2,out3,out4,out5,out6],body)
-    }
-    
-    Object produce(String out1, String out2, String out3, String out4, String out5, String out6, String out7, Closure body) { 
-        produce([out1,out2,out3,out4,out5,out6,out7],body)
-    }
-    
-    Object produce(String out1, String out2, String out3, String out4, String out5, String out6, String out7, String out8, Closure body) { 
-        produce([out1,out2,out3,out4,out5,out6,out7,out8],body)
-    }
-    
-    Object produce(String out1, String out2, String out3, String out4, String out5, String out6, String out7, String out8, String out9, Closure body) { 
-        produce([out1,out2,out3,out4,out5,out6,out7,out8,out9],body)
-    }
-    
     /**
      * Specifies that the given output(s) (out) will be produced
      * by the given closure, and skips execution of the closure
@@ -875,7 +843,7 @@ class PipelineContext {
      * @TODO the case where an output directory is set is not yet
      *       properly handled in the glob matching
      */
-    Object produce(Object out, Closure body) { 
+    Object produceImpl(Object out, Closure body) { 
         
         log.info "Producing $out from $this"
         
