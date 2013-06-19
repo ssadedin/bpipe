@@ -228,7 +228,7 @@ class Utils {
     static String joinShellLines(String cmd) {
         String joined = ""
         boolean embeddedQuoteChar = false
-        cmd.eachLine { String line ->
+        cmd.trim().eachLine { String line ->
             
             if(line.indexOf('"')>=0 || line.indexOf("'")>=0)
                 embeddedQuoteChar = true
