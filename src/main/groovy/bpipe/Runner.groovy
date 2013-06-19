@@ -458,7 +458,7 @@ class Runner {
      * @param args
      */
     static void runPreserve(def args) {
-        def cli = new CliBuilder(usage: "bpipe preserve <file1> [<file2>] ...")
+        def cli = new CliBuilder(usage: "bpipe preserve <file1> [<file2>] ...", posix:true)
         def opt = cli.parse(args)
         if(!opt.arguments()) {
             println ""
