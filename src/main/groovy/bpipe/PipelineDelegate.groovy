@@ -23,7 +23,20 @@ class PipelineDelegate {
     }
     
     static void setDelegateOn(PipelineContext context, Closure body) {
-        synchronized(body) {
+        
+        // Note we must synchronize on the inner body, not outer as 
+        // otherwise can result in the same stage getting a delegate set
+        // in parallel (race). This causes NullPointer exception later on with null ctx.
+        def realBody = body
+        if(body instanceof ParameterizedClosure) {
+            ParameterizedClosure pc = body
+            // Note: not using direct access (ie: with @) causes property not found here.
+            // Not at all sure why, but presumably all the messing around with delegates is to blame
+            realBody = pc.@body
+        }
+        
+        synchronized(realBody) {
+            // log.fine "Setting or creating a delegate for context ${context.hashCode()} body ${body.hashCode()}/${body.delegate.class.name} in thread ${Thread.currentThread().id}"
             if(body instanceof ParameterizedClosure) {
                 ParameterizedClosure pc = body
                 context.localVariables = pc.getExtraVariables()
