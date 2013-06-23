@@ -1,1 +1,1 @@
-rm -f *.goo.txt *.csv *.xml
+rm -rf *.goo.txt *.csv *.xml .bpipe
