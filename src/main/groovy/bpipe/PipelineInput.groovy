@@ -107,16 +107,7 @@ class PipelineInput {
         if(parent)
             parent.addResolvedInputs(objs)
             
-        // If a filter is in operation and the file extension of the input was not already
-        // resolved by the filter, add it here since this input could now be the input targeted
-        // for filtering (the user may specify it using an $output.<ext> reference
-        if(currentFilter) {
-          objs.collect { it.substring(it.lastIndexOf('.')+1) }.each { 
-              if(!currentFilter.contains(it)) {
-                  currentFilter.add(it)
-              }
-          }
-        }
+        addFilterExts(objs)
     }
 	
 	String getPrefix() {
@@ -241,6 +232,19 @@ class PipelineInput {
 	            
 			log.info "Found files with exts $exts : $filesWithExts"
 	        return filesWithExts.flatten().unique()
+        }
+    }
+    
+    void addFilterExts(List objs) {
+        // If a filter is in operation and the file extension of the input was not already
+        // resolved by the filter, add it here since this input could now be the input targeted
+        // for filtering (the user may specify it using an $output.<ext> reference
+        if(currentFilter) {
+          objs.collect { it.substring(it.lastIndexOf('.')+1) }.each {
+              if(!currentFilter.contains(it)) {
+                  currentFilter.add(it)
+              }
+          }
         }
     }
 }

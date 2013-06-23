@@ -51,7 +51,7 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
     @Override
 	public String mapToCommandValue(def values) {
 		def result = Utils.box(values)
-        result.each { this.resolvedInputs << String.valueOf(it) }   
+        addResolvedInputs(result)
         return result.collect { String.valueOf(it) }.join(' ')
 	}
 
@@ -61,6 +61,8 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
            if(!this.resolvedInputs.contains(i))
                this.resolvedInputs.add(i)
        }
+       addFilterExts(boxed)
+       
        return boxed.join(" ")
     }
     
@@ -74,6 +76,7 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
             def mp = new MultiPipelineInput(this.resolvedInputs.clone(), stages)
             mp.parent = this
             mp.resolvedInputs = this.resolvedInputs
+            mp.currentFilter = this.currentFilter
             log.info("My resolved inputs: " + this.resolvedInputs.hashCode() + " child resolved inputs " + mp.resolvedInputs.hashCode())
             return mp
         }
