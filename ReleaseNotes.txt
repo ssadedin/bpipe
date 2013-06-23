@@ -1,4 +1,67 @@
-=========== Changes for Bpipe Version 0.9.8 ============
+
+========== Changes for Bpipe Version 0.9.8.1 ============
+
+-    Fix race condition causing occasional null pointer
+     exception, making param_nested_parallel test fail
+
+-    fix exception when using bpipe preserve
+
+-    fix potential leading semicolon when executing command
+
+-    fix for incorrect input inferred by filter if actual
+     input used different to those supplied by previous stage
+
+-    fixed regression causing '..' in filenames from output
+     extension that operates like transform
+
+-    fix double period in inferred output names when no
+     explicit filter / transform present
+
+-    fixed dependencies working incorrectly with produce; stage skipped even if
+     actual inferred / used input was newer than actual inferred output
+
+-    fix multiple instances of Bpipe running R scripts
+     clashing other
+
+-    support for "diagramOrientation="vertical" in
+     bpipe.config to change orientation of diagrams
+
+-    fix diagrams not generating correctly for some
+     pipeline architectures
+
+-    fix commands used to generate outputs sometimes
+     displaying as "..." when using "bpipe query"
+
+-    improvements to tool database - more links, better
+     descriptions, etc.
+
+-    to prevent some of the massive output 
+     that comes from large pipelines when re-executing, buffer
+     messages unless a stage actually does something.
+
+-    support for producing custom reports, named by
+     command line
+
+-    added source for software schedule report
+
+-    fix input ext on output with index referencing
+     wrong output
+
+-    fix cleanup not removing directory
+
+-    fix glob on output folder not working
+
+-    fixed output explicitly specified in produce() to be
+     in folder still remapped to default output dir
+
+-    added alternative bpipe runner that runs in background
+
+-    fixed filterInputs still not working right with chr()
+     behavior now defaults based on whether the input files contain
+     chromosome references rather than always filtering
+
+
+========== Changes for Bpipe Version 0.9.8 ============
  
 -   fixed problems with quoted args becoming unquoted during launch
     (so eg: bpipe execute 'foo + bar' would not work)
