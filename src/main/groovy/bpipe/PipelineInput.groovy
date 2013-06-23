@@ -247,4 +247,12 @@ class PipelineInput {
           }
         }
     }
+    
+    public int size() {
+        if(this.@input)
+          Utils.box(this.@input)[0].size()
+        else
+            0
+    }
+    
 }

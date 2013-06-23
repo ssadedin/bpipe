@@ -97,4 +97,8 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
 	public Iterator iterator() {
 		return Utils.box(super.@input).listIterator()
 	}
+    
+    public int size() {
+        return Utils.box(super.@input).size()
+    }
 }
