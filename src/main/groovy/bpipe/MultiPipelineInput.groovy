@@ -89,6 +89,7 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
      */
     public String withFlag(String flag) {
        List boxed = Utils.box(super.@input).unique()
+       addResolvedInputs(boxed)
        boxed.collect { "$flag $it" }.join(" ")
     }
     

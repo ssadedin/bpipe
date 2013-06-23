@@ -72,7 +72,7 @@ class OutputLog implements Appendable {
     }
     
     void flush() {
-        println buffer
+        print buffer
         buffer.setLength(0)
     }
 
