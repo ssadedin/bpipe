@@ -371,6 +371,12 @@ class PipelineContext {
    }
    
    /**
+    * Outputs that have been replaced by overriding from a filter whose extension was 
+    * inferred by an output property reference
+    */
+   List<String> replacedOutputs = []
+   
+   /**
     * Called by the embedded {@link PipelineOutput} object
     * that wraps the $output variable whenever a new output
     * is referenced in a pipeline.
@@ -391,7 +397,7 @@ class PipelineContext {
            pipeline.nameApplied=true
         } 
        if(replaced) 
-           this.@output = Utils.box(this.@output).collect { (it == replaced) ? o : it }
+           this.@output = Utils.box(this.@output).collect { if(it == replaced) { replacedOutputs.add(it) ; return o } else { return it } }
    }
    
    def getOutputs() {
@@ -869,7 +875,8 @@ class PipelineContext {
         
         if(doExecute) {
             if(Utils.box(this.@output)) {
-                this.output = /* Utils.box(fixedOutputs) + */ Utils.box(this.@output)
+                this.output = Utils.box(fixedOutputs) +  Utils.box(this.@output)
+                this.output.removeAll(replacedOutputs)
             }
             else {
                 this.output = fixedOutputs
