@@ -1,11 +1,13 @@
 hello = {
-    exec "cp $input.txt $output.csv"
-    exec "cp $input.txt $output.xml"
+    produce("test1.hello.csv", "test1.hello.xml") {
+        exec "cp $input.txt test1.hello.csv"
+        exec "cp $input.txt test1.hello.xml"
+    }
 }
 
 world = {
     filter("goo") {
-        exec "cat $inputs.txt > $output.txt"
+        exec "echo '${inputs.txt.withFlag("--test")}' > $output.txt"
     }
 }
 
