@@ -405,7 +405,8 @@ class PipelineCategory {
             
             mergeChildStagesToParent(parent, pipelines)
 
-            return parent.stages[-1].context.@output
+            def finalOutputs = parent.stages[-1].context.@output
+            return finalOutputs
     }
     
     /**
@@ -442,36 +443,46 @@ class PipelineCategory {
         // Fill in shorter stages with nulls
         stagesList = stagesList.collect { it + ([null] * (maxLen - it.size())) }
         
-        stagesList.transpose().eachWithIndex { List<PipelineStage> stagesAtIndex, int i ->
+        def transposed = stagesList.transpose()
+        transposed.eachWithIndex { List<PipelineStage> stagesAtIndex, int i ->
             log.info "Grouping stages ${stagesAtIndex*.stageName} for merging"
             
             if(stagesAtIndex.size() == 0)
                 throw new IllegalStateException("Encountered pipeline segment with zero parallel stages?")
                 
-            
             Map<String,List<PipelineStage>> grouped = stagesAtIndex.groupBy { it?.stageName }
-            
             grouped.each { stageName, stages ->
-                
+                  
                 if(!stageName || !stages)
                     return
-                
+                  
                 log.info "Parallel segment $i contains of identical ${stageName} stages - Merging outputs to single stage"
-                
+                  
                 // Create a merged stage
                 PipelineContext mergedContext = new PipelineContext(null, parent.stages, stages[0].context.pipelineJoiners, stages[0].context.branch)
                 def mergedOutputs = stages.collect { s ->
                     Utils.box(s.context.nextInputs ?: s.context.@output)
                 }.sum()
-                
+                  
                 log.info "Merged outputs are $mergedOutputs"
                 mergedContext.setRawOutput(mergedOutputs)
-                
+                  
                 PipelineStage mergedStage = new PipelineStage(mergedContext, stages[0].body)
                 mergedStage.stageName = stages[0].stageName
                 parent.stages.add(mergedStage)
             }
         }
+        
+        // Finally add a merged stage that has all the outputs from the last stages
+        List<PipelineStage> finalStages = transposed[-1]
+        PipelineContext mergedContext = new PipelineContext(null, parent.stages, finalStages[0].context.pipelineJoiners, finalStages[0].context.branch)
+        def mergedOutputs = finalStages.collect { s ->
+            Utils.box(s.context.nextInputs ?: s.context.@output)
+        }.sum().unique()
+        log.info "Last merged outputs are $mergedOutputs"
+        mergedContext.setRawOutput(mergedOutputs)
+        PipelineStage mergedStage = new PipelineStage(mergedContext, finalStages[0].body)
+        parent.stages.add(mergedStage)
     }
     
     static String summarizeErrors(List<Pipeline> pipelines) {
