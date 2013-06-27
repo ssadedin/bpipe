@@ -402,6 +402,7 @@ class PipelineCategory {
             
         
             Pipeline parent = Pipeline.currentRuntimePipeline.get()
+            log.info "Parent pipeline of concurent sections ${pipelines.collect { it.hashCode() }} is ${parent.hashCode()}"
             
             mergeChildStagesToParent(parent, pipelines)
 
@@ -456,7 +457,8 @@ class PipelineCategory {
                 if(!stageName || !stages)
                     return
                   
-                log.info "Parallel segment $i contains of identical ${stageName} stages - Merging outputs to single stage"
+                if(stages.size()>1)
+                  log.info "Parallel segment $i contains ${stages.size()} identical ${stageName} stages - Merging outputs to single stage"
                   
                 // Create a merged stage
                 PipelineContext mergedContext = new PipelineContext(null, parent.stages, stages[0].context.pipelineJoiners, stages[0].context.branch)
@@ -474,15 +476,23 @@ class PipelineCategory {
         }
         
         // Finally add a merged stage that has all the outputs from the last stages
-        List<PipelineStage> finalStages = transposed[-1]
-        PipelineContext mergedContext = new PipelineContext(null, parent.stages, finalStages[0].context.pipelineJoiners, finalStages[0].context.branch)
+        log.info "There are ${transposed.size()} stages from nested pipelines"
+        List<PipelineStage> finalStages = stagesList.collect { List<PipelineStage> stages -> stages.reverse().find { it != null } }
+        log.info "There ${finalStages} parallel paths in final stage"
+        
+        def joiners = finalStages.context.pipelineJoiners
+        PipelineContext mergedContext = 
+            new PipelineContext(null, parent.stages, joiners, 'all')
         def mergedOutputs = finalStages.collect { s ->
-            Utils.box(s.context.nextInputs ?: s.context.@output)
+            Utils.box(s.context.nextInputs ?: s.context.@output) 
         }.sum().unique()
         log.info "Last merged outputs are $mergedOutputs"
         mergedContext.setRawOutput(mergedOutputs)
-        PipelineStage mergedStage = new PipelineStage(mergedContext, finalStages[0].body)
+        PipelineStage mergedStage = new PipelineStage(mergedContext, finalStages.find { it != null }.body)
+        mergedStage.stageName = finalStages*.stageName.join("_")+"_bpipe_merge"
         parent.stages.add(mergedStage)
+        
+        return mergedOutputs
     }
     
     static String summarizeErrors(List<Pipeline> pipelines) {
