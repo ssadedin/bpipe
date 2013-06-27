@@ -30,9 +30,12 @@ import groovy.text.GStringTemplateEngine.GStringTemplate;
 import java.lang.annotation.Retention;
 
 import java.lang.annotation.RetentionPolicy;
+import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicInteger;
 import groovy.util.logging.Log;
 import java.util.regex.Pattern;
+
+import org.codehaus.groovy.reflection.CachedMethod;
 
 import bpipe.graph.Graph;
 import static Utils.isContainer 
@@ -483,29 +486,52 @@ public class Pipeline {
     
     private void loadExternalStages() {
         GroovyShell shell = new GroovyShell(externalBinding)
-        def pipeFolder = new File(System.properties["user.home"], "bpipes")
+        def pipeFolders = [new File(System.properties["user.home"], "bpipes")]
         if(System.getenv("BPIPE_LIB")) {
-            pipeFolder = new File(System.getenv("BPIPE_LIB"))
+            pipeFolders = System.getenv("BPIPE_LIB").split(Utils.isWindows()?";":":").collect { new File(it) }
         }
         
-        List<File> libPaths = []
-        if(!pipeFolder.exists()) {
-            log.warning("Pipeline folder $pipeFolder could not be found")
-        }
-        else
-            libPaths = pipeFolder.listFiles().grep { it.name.endsWith("groovy") }
+        pipeFolders.addAll(loadedPaths)
         
-        def scripts = (libPaths + loadedPaths).each { scriptFile ->
-            log.info("Evaluating library file $scriptFile")
-            try {
-                shell.evaluate(PIPELINE_IMPORTS+" binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true; " + scriptFile.text)
-            }
-            catch(Exception ex) {
-                log.severe("Failed to evaluate script $scriptFile: "+ ex)
-                System.err.println("WARN: Error evaluating script $scriptFile: " + ex.getMessage())
-            }
-            PipelineCategory.addStages(externalBinding)
-        } 
+        for(File pipeFolder in pipeFolders) {
+          List<File> libPaths = []
+          if(!pipeFolder.exists()) {
+              log.warning("Pipeline folder $pipeFolder could not be found")
+          }
+          else
+          if(pipeFolder.isFile()) {
+              libPaths = [pipeFolder]
+          }
+          else
+          if(pipeFolder.isDirectory()) {
+              libPaths = pipeFolder.listFiles().grep { it.name.endsWith(".groovy") }
+          }
+          else {
+              log.warning("Pipeline folder $pipeFolder was not a normal directory or file")
+              System.err.println("Pipeline folder $pipeFolder was not a normal directory or file")
+          }
+          
+          libPaths.sort()
+              
+          // Load all the scripts from this path / folder
+          libPaths.each { scriptFile ->
+              log.info("Evaluating library file $scriptFile")
+              try {
+                  Script script = shell.evaluate(PIPELINE_IMPORTS+" binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true; " + scriptFile.text + "\nthis")
+                  script.getMetaClass().getMethods().each { CachedMethod m ->
+                      if(m.declaringClass.name.matches("Script[0-9]*") && !["__\$swapInit","run","main"].contains(m.name)) {
+                        println "Found method ${m.name} from ${m.declaringClass.name} in script $scriptFile"
+                        externalBinding.variables[m.name] = { Object[] args -> script.getMetaClass().invokeMethod(script,m.name,args) }
+                      }
+                  }
+              }
+              catch(Exception ex) {
+                  log.severe("Failed to evaluate script $scriptFile: "+ ex)
+                  System.err.println("WARN: Error evaluating script $scriptFile: " + ex.getMessage())
+              }
+          } 
+        }
+        PipelineCategory.addStages(externalBinding)
     }
     
     
