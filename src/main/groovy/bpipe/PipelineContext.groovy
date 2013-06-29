@@ -450,6 +450,25 @@ class PipelineContext {
        }
    }
    
+   void requires(Map values) {
+       values.each { k,v ->
+           if(!this.localVariables.containsKey(k) && !this.extraBinding.variables.containsKey(k)) {
+               throw new PipelineError(
+               """
+                       Pipeline stage ${this.stageName} requires a parameter $k but this parameter was not specified
+
+                       You can specify it by adding 'using' to your pipeline. For example:
+
+                               ${this.stageName}.using($k:<value>)
+
+                       The parameter $k is described as follows:
+
+                               $v
+               """.stripIndent())
+           }
+       }
+   }
+    
     /**
     * Coerce all of the arguments (which may be an array of Strings or a single String) to
     * point to files in the local directory.
