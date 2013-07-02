@@ -29,12 +29,12 @@ public enum PipelineEvent {
 	SUCCEEDED,
 	
 	/**
-	 * Future
+	 * Supported
 	 */
 	STAGE_STARTED,
 	
 	/**
-	 * Future
+	 * Supported
 	 */
 	STAGE_COMPLETED,
 	

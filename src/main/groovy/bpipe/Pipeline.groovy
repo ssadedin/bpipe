@@ -41,6 +41,11 @@ import bpipe.graph.Graph;
 import static Utils.isContainer 
 import static Utils.unbox 
 
+
+class ListBouncer {
+    List elements = []
+}
+
 /**
  * Main Pipeline class.  Used by client to start a pipeline
  * running by specifying initial inputs and setting up 
@@ -415,6 +420,26 @@ public class Pipeline {
         def constructedPipeline
         use(PipelineCategory) {
             
+            ArrayList.metaClass.plus = { x ->
+                if(x instanceof Closure) {
+                   if(delegate && (delegate[-1] instanceof ListBouncer)) {
+                       delegate[-1].elements.add(x)
+                   }
+                   else {
+                       ListBouncer b = new ListBouncer()
+                       b.elements.add(x)
+                       delegate.add(b)
+                       return delegate
+                   }
+                }
+                else {
+                    ArrayList result = new ArrayList()
+                    result.addAll(delegate)
+                    result.add(x)
+                    return result
+                }
+            }
+            
             // Build the actual pipeline
             Pipeline.withCurrentUnderConstructionPipeline(this) {
                 
@@ -422,7 +447,18 @@ public class Pipeline {
                 
 				// See bug #60
                 if(constructedPipeline instanceof List) {
+                    
+                    // If ListBouncer at the end ...
+                    ListBouncer bouncer = null
+                    if(constructedPipeline[-1] instanceof ListBouncer) {
+                        bouncer = constructedPipeline[-1]
+                        constructedPipeline = constructedPipeline[0..-2]
+                    }
+                    
                     constructedPipeline = PipelineCategory.splitOnFiles("*", constructedPipeline, false)
+                    if(bouncer != null) {
+                        constructedPipeline = constructedPipeline + bouncer.elements.sum()
+                    }
                 }
             }
             

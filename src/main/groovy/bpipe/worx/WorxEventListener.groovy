@@ -97,6 +97,7 @@ class WorxEventListener implements PipelineEventListener {
                 log.info "Annotating stage end time $ctx.stageName"
                 ctx.doc finishedAt: new Date(), elapsedMs: (System.currentTimeMillis() - ctx.documentation.startedAt.time)
             break
+        }
     }
 
 }
