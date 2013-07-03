@@ -86,7 +86,7 @@ class LocalCommandExecutor implements CommandExecutor {
               log.info "Converted $origCmd to $cmd to account for broken Java argument escaping"
 		  }
           
-	      process = Runtime.getRuntime().exec((String[])(['bash','-c',"$cmd"].toArray()))
+	      process = Runtime.getRuntime().exec((String[])(['bash','-e','-c',"$cmd"].toArray()))
 	      process.consumeProcessOutput(outputLog, errorLog)
           exitValue = process.waitFor()
 //          process.outputStream.close()
