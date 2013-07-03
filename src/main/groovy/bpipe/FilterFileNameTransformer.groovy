@@ -38,6 +38,9 @@ class FilterFileNameTransformer implements FileNameTransformer {
         
         def pipeline = Pipeline.currentRuntimePipeline.get()
         
+        if(!inputs)
+            throw new PipelineError("A pipeline stage was specified as a filter, but the stage did not receive any inputs")
+            
         def typeCounts = [:]
         for(def e in types)
             typeCounts[e] = 0
