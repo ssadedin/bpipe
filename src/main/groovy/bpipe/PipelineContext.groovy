@@ -768,6 +768,7 @@ class PipelineContext {
            if(txed in boxed) {
                txed = txed.replaceAll('\\.'+extension+'$', '.'+this.stageName+'.'+extension)
            }
+           return txed
        }
        
        log.info "Transform using $exts produces outputs $files"
