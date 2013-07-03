@@ -559,7 +559,6 @@ public class Pipeline {
                   Script script = shell.evaluate(PIPELINE_IMPORTS+" binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true; " + scriptFile.text + "\nthis")
                   script.getMetaClass().getMethods().each { CachedMethod m ->
                       if(m.declaringClass.name.matches("Script[0-9]*") && !["__\$swapInit","run","main"].contains(m.name)) {
-                        println "Found method ${m.name} from ${m.declaringClass.name} in script $scriptFile"
                         externalBinding.variables[m.name] = { Object[] args -> script.getMetaClass().invokeMethod(script,m.name,args) }
                       }
                   }
