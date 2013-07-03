@@ -424,6 +424,7 @@ public class Pipeline {
                 if(x instanceof Closure) {
                    if(delegate && (delegate[-1] instanceof ListBouncer)) {
                        delegate[-1].elements.add(x)
+                       return delegate
                    }
                    else {
                        ListBouncer b = new ListBouncer()
@@ -443,6 +444,7 @@ public class Pipeline {
             // Build the actual pipeline
             Pipeline.withCurrentUnderConstructionPipeline(this) {
                 
+                
                 constructedPipeline = pipeline()
                 
 				// See bug #60
@@ -455,6 +457,7 @@ public class Pipeline {
                         constructedPipeline = constructedPipeline[0..-2]
                     }
                     
+                    currentRuntimePipeline.set(this)
                     constructedPipeline = PipelineCategory.splitOnFiles("*", constructedPipeline, false)
                     if(bouncer != null) {
                         constructedPipeline = constructedPipeline + bouncer.elements.sum()
@@ -462,8 +465,8 @@ public class Pipeline {
                 }
             }
             
-        
             if(launch) {
+                
                 try {
                     runSegment(inputFile, constructedPipeline)
                 }
