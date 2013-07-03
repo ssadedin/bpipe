@@ -445,7 +445,10 @@ class PipelineContext {
        values.each { k,v ->
            if(!this.localVariables.containsKey(k) && !this.extraBinding.variables.containsKey(k)) {
                log.info "Using default value of variable $k = $v"
-               this.localVariables[k] = v
+               if(v instanceof Closure)
+                 this.localVariables[k] = v()
+               else
+                 this.localVariables[k] = v
            }
        }
    }
@@ -757,10 +760,14 @@ class PipelineContext {
        def files = exts.collect { String extension ->
            def inp = boxed[extensionCounts[extension] % boxed.size()]
            extensionCounts[extension]++
-           if(applyName)
-               return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+'.'+extension)
-           else
-               return inp.replaceAll('\\.[^\\.]*$','.'+extension)
+           def txed = applyName ?
+               inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+'.'+extension)
+               :
+               inp.replaceAll('\\.[^\\.]*$','.'+extension)
+
+           if(txed in boxed) {
+               txed = txed.replaceAll('\\.'+extension+'$', '.'+this.stageName+'.'+extension)
+           }
        }
        
        log.info "Transform using $exts produces outputs $files"
@@ -1744,5 +1751,6 @@ class PipelineContext {
         }    
     }
 }
+
 
 
