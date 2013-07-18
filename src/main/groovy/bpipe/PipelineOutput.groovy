@@ -127,7 +127,7 @@ class PipelineOutput {
      * @return  canonical absolute path to parent directory of default (first) output
      */
     Object getDir() {
-        List boxed = Utils.box(this.output)
+        List boxed = Utils.box(this.overrideOutputs) + Utils.box(this.outputUsed)
         
         String baseOutput = boxed[0]
 
@@ -146,11 +146,16 @@ class PipelineOutput {
         }
         else {
             parentDir = new File(".")
-            if(this.outputChangeListener)
-                this.outputChangeListener(baseOutput,null)
+            if(baseOutput) {
+                if(this.outputChangeListener)
+                    this.outputChangeListener(baseOutput,null)
+            }
         }
 
-        return parentDir.absoluteFile.canonicalPath
+        String result = parentDir.absoluteFile.canonicalPath
+        if(Utils.isWindows())
+            result  = result.replaceAll('\\\\', '/')
+        return result
     }
     
     void setDir(Object value) {
