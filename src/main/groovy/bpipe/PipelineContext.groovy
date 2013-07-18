@@ -759,7 +759,7 @@ class PipelineContext {
        
        // If the pipeline branched, we need to add a segment to the new files name
        // to differentiate it from other parallel branches
-       String additionalSegment = applyName ? '.'+pipeline.name+'.' : ''
+       String additionalSegment = applyName ? '.'+pipeline.name : ''
        
        def files = exts.collect { String extension ->
            String inp = boxed[extensionCounts[extension] % boxed.size()]
