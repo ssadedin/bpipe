@@ -215,7 +215,10 @@ class PipelineOutput {
         }
         else { // more like a transform: keep the old extension in there (foo.csv.bar => foo.csv.bar.xml)
             this.outputUsed = this.defaultOutput.replaceAll('\\.'+stageName+'$', '')
-                                                .replaceAll('\\.[^\\.]*$', '.' + segments)
+            if(outputUsed.contains("."))
+                outputUsed = outputUsed.replaceAll('\\.[^\\.]*$', '.' + segments)
+            else
+                outputUsed = outputUsed + "." + segments
         }
         
         if(this.outputUsed.startsWith(".") && !this.outputUsed.startsWith("./")) // occurs when no inputs given to script and output extension used

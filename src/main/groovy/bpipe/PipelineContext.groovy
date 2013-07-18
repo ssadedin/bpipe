@@ -757,14 +757,18 @@ class PipelineContext {
        
        def boxed = Utils.box(this.@input)
        
+       // If the pipeline branched, we need to add a segment to the new files name
+       // to differentiate it from other parallel branches
+       String additionalSegment = applyName ? '.'+pipeline.name+'.' : ''
+       
        def files = exts.collect { String extension ->
-           def inp = boxed[extensionCounts[extension] % boxed.size()]
+           String inp = boxed[extensionCounts[extension] % boxed.size()]
            extensionCounts[extension]++
-           def txed = applyName ?
-               inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+'.'+extension)
+           String txed = inp.contains(".") ?
+                   inp.replaceAll('\\.[^\\.]*$',additionalSegment + '.'+extension)
                :
-               inp.replaceAll('\\.[^\\.]*$','.'+extension)
-
+                   inp + additionalSegment+'.'+extension;
+                   
            if(txed in boxed) {
                txed = txed.replaceAll('\\.'+extension+'$', '.'+this.stageName+'.'+extension)
            }
