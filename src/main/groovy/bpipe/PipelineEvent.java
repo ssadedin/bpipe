@@ -62,5 +62,10 @@ public enum PipelineEvent {
 	/**
 	 * Future
 	 */
-	COMMAND_FAILED
+	COMMAND_FAILED,
+	
+    /**
+     * Bpipe is exiting - Supported
+     */
+	SHUTDOWN
 }
