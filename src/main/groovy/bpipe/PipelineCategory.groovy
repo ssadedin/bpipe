@@ -204,6 +204,7 @@ class PipelineCategory {
                     threads << {
             
                         try {
+                            
                             // First we make a "dummy" stage that contains the inputs
                             // to the next stage as outputs.  This allows later logic
                             // to find these "inputs" correctly when it expects to see

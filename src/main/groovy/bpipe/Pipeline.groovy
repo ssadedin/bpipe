@@ -82,6 +82,11 @@ public class Pipeline {
     Map<String,String> variables = [:]
     
     /**
+     * Id of thread that is running this pipeline
+     */
+    Long threadId
+    
+    /**
      * List of past stages that have already produced outputs.  This 
      * list is built up progressively as pipeline stages execute.
      */
@@ -341,6 +346,8 @@ public class Pipeline {
         
             this.rootContext = createContext()
             
+            this.threadId = Thread.currentThread().id
+            
             def currentStage = new PipelineStage(rootContext, s)
             log.info "Running segment with inputs $inputs"
             this.addStage(currentStage)
@@ -380,6 +387,7 @@ public class Pipeline {
     private Closure execute(def inputFile, Object host, Closure pipeline, boolean launch=true) {
         
         Pipeline.rootThreadId = Thread.currentThread().id
+        this.threadId = Pipeline.rootThreadId
         
         // We have to manually add all the external variables to the outer pipeline stage
         this.externalBinding.variables.each { 

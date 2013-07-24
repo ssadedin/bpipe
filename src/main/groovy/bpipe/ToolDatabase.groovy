@@ -143,8 +143,26 @@ class Tool {
 			return hostCommand.substring(index, origIndex+name.size())
 	}
 	
-	static String DELIMITERS = '/ \t;'
+    /**
+     * Delimiters that tokenise a path
+     */
+	static String PATH_DELIMITERS = '/ \t;'
 	
+    /**
+     * Delimiters that end a file name
+     */
+	static String FILE_END_DELIMITERS = ' \t;'
+    
+    /**
+     * Determine the index of the tool specified by <code>name</code>
+     * in a command. Searches for a reference to <code>name</code> that
+     * is delimited by path delimiters on either side so that
+     * substrings of other commands are not falsely detected.
+     * 
+     * @param command   command to search for name
+     * @param name      name of tool to search for
+     * @return
+     */
 	static int indexOfTool(String command, String name) {
 		int start = 0
 		while(true) {
@@ -159,12 +177,15 @@ class Tool {
 			
 			start = index + name.size()
 			
+            // Character before must be a delimiter
 			if(index>0) {
-				if(DELIMITERS.indexOf(command.charAt(index-1) as int)<0)
+				if(PATH_DELIMITERS.indexOf(command.charAt(index-1) as int)<0)
 					continue
 			}
+            
+            // Character after must be a delimiter
 			if(index<command.size()-1-name.size()) {
-				if(DELIMITERS.indexOf(command.charAt(index+jarredName.size()) as int)<0)
+				if(FILE_END_DELIMITERS.indexOf(command.charAt(index+jarredName.size()) as int)<0)
 					continue
 			}
 			return index

@@ -95,7 +95,7 @@ class PipelineContext {
         if(pipeline)
             this.applyName = pipeline.name && !pipeline.nameApplied
          
-		this.outputLog = new OutputLog()
+        this.outputLog = new OutputLog()
     }
     
     /**
@@ -1432,7 +1432,7 @@ class PipelineContext {
           CommandExecutor cmdExec = 
               commandManager.start(stageName, joined, config, Utils.box(this.input), 
                                    new File(outputDirectory), this.usedResources,
-								   deferred, this.outputLog)
+                                   deferred, this.outputLog)
               
           List outputFilter = cmdExec.ignorableOutputs
           if(outputFilter) {
@@ -1613,16 +1613,32 @@ class PipelineContext {
         this.uncleanFilePath.text = ""
     }
     
+    /**
+     * Cache of related contexts so that we do not compute them too often
+     */
+    Set<PipelineContext> relatedContexts = new HashSet<PipelineContext>()
+    
     boolean isRelatedContext(PipelineContext ctx) {
         
         if(ctx.threadId == threadId)
             return true
             
-        // This is a hack: we allow inputs from the root pipeline, 
-        // which ensures child threads can see inputs that cascaded down
-        // from the parent "root".  But this would not work in a multi-level
-        // pipeline - threads launching threads.  
-        return ctx.threadId == Pipeline.rootThreadId
+        if(ctx.threadId == Pipeline.rootThreadId)
+            return true
+            
+        if(ctx in relatedContexts)
+            return true
+            
+        // NOTE: THIS SHOULD BE A RECURSIVE UPWARDS SEARCH
+        // TODO: FIX THIS
+        Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
+        def parentContexts = pipeline.parent.stages*.context
+        if(ctx in parentContexts) {
+            relatedContexts.add(ctx)
+            return true
+        }
+            
+        return false
     }
     
     /**
@@ -1756,6 +1772,7 @@ class PipelineContext {
         }    
     }
 }
+
 
 
 
