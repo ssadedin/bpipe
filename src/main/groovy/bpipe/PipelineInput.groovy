@@ -189,6 +189,13 @@ class PipelineInput {
         
         def orig = exts
         def relatedThreads = [Thread.currentThread().id, Pipeline.rootThreadId]
+        
+        Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
+        while(pipeline.parent && pipeline.parent!=pipeline) {
+            relatedThreads.add(pipeline.parent.threadId)
+            pipeline = pipeline.parent
+        }
+        
         synchronized(stages) {
             
 	        def reverseOutputs = stages.reverse().grep { 
