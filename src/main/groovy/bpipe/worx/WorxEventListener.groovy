@@ -172,11 +172,15 @@ class WorxEventListener implements PipelineEventListener {
             log.info "Sending event " + job.toString()
             
             Map eventDetails = job.properties.clone()
-                                       .grep {!(it.value instanceof PipelineStage)}
-                                       .collectEntries()
+                                  .collect {(it.value instanceof PipelineStage) ? it.value.toProperties() : it}
+                                  .collectEntries()
                     
             eventDetails.time = System.currentTimeMillis()
             eventDetails.event = job.event.name()
+            eventDetails += [
+                pid: Config.config.pid,
+                script: Config.config.script
+            ]
             sendEventJson(JsonOutput.toJson([events: [eventDetails]]))
             
             def response = readResponse(socketReader)

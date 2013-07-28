@@ -31,6 +31,8 @@ import java.util.logging.Handler;
 import java.util.logging.Level
 import java.util.logging.Logger;
 
+import bpipe.worx.WorxEventListener;
+
 import groovy.transform.CompileStatic;
 import groovy.util.logging.Log
 
@@ -91,7 +93,9 @@ class Runner {
         
         // Before we do anything else, add a shutdown hook so that termination of the process causes the job to 
         // to be removed from the user's folder
+        log.info "Adding shutdown hook"
         System.addShutdownHook { 
+            
             def home = System.getProperty("user.home")
             def jobFile = new File("$home/.bpipedb/jobs/$pid")
             if(jobFile.exists()) {
@@ -104,6 +108,14 @@ class Runner {
             
             if(Config.config.eraseLogsOnExit) {
                 new File(".bpipe/logs/${parentPid}.erase.log").text=""
+            }
+            
+            try {
+                // Call events listening for shutdown event
+                EventManager.instance.signal(PipelineEvent.SHUTDOWN, "Shutting down process $pid")
+            }
+            catch(Exception e) {
+                log.warning "Failure in shutdown events shutdown",e
             }
         }
                 
@@ -252,9 +264,14 @@ class Runner {
             EventManager.instance.addListener(PipelineEvent.COMMAND_CHECK, reportStats)
             Config.config.customReport = opts.R
 		}
+        
+        if(Config.userConfig.worx.enable) {
+            new WorxEventListener().start()
+        }
 
         def pipelineArgs = null
         String pipelineSrc
+        Config.config.script = opt.arguments()[0]
         if(mode == "execute") {
             pipelineSrc = 'Bpipe.run { ' + opt.arguments()[0] + '}'
         }

@@ -118,6 +118,16 @@ class PipelineStage {
     def originalInputs
     
     /**
+     * Time when body of pipeline stage was launched
+     */
+    long startDateTimeMs
+    
+    /**
+     * Time when body of pipeline stage exited
+     */
+    long endDateTimeMs
+    
+    /**
      * Executes the pipeline stage body, wrapping it with logic and instrumentation
      * to manage the pipeline. 
      * <p>
@@ -195,28 +205,8 @@ class PipelineStage {
             }   
             context.stageName = stageName
             
-            this.running = true
-            PipelineDelegate.setDelegateOn(context,body)
-            if(PipelineCategory.wrappers.containsKey(stageName)) {
-                log.info("Executing stage $stageName inside wrapper")
-                PipelineCategory.wrappers[stageName](body, context.@input)
-            }
-            else { 
-				use(PipelineBodyCategory) {
-	                def returnedInputs = body(context.@input)
-					if(joiner) {
-						context.nextInputs = returnedInputs
-					}
-				}
-            }
-            
-            // Clear the link to output references from affecting the output
-            // this stops any references we make below from potentially modifying the
-            // outputs
-            // HMMM: this would have no effect because a new output wrapper is created 
-            // each time?!
-//            if(this.context.@output)
-//              this.context.@output.outputChangeListener = null
+            // Execute the actual body of the pipeline stage
+            runBody()
                 
             succeeded = true
             if(!joiner) {
@@ -268,6 +258,34 @@ class PipelineStage {
         
         return context.nextInputs
     }
+
+    /**
+     * Execute the body of the pipeline stage
+     * @return
+     */
+	private runBody() {
+		this.running = true
+		PipelineDelegate.setDelegateOn(context,body)
+		this.startDateTimeMs = System.currentTimeMillis()
+		try {
+			if(PipelineCategory.wrappers.containsKey(stageName)) {
+				log.info("Executing stage $stageName inside wrapper")
+				PipelineCategory.wrappers[stageName](body, context.@input)
+			}
+			else {
+				use(PipelineBodyCategory) {
+					def returnedInputs = body(context.@input)
+					if(joiner) {
+						context.nextInputs = returnedInputs
+					}
+				}
+			}
+		}
+		finally {
+			this.running = false
+			this.endDateTimeMs = System.currentTimeMillis()
+		}
+	}
 
     /**
      * Interrogate the PipelineContext and the specified list of 
@@ -413,5 +431,15 @@ class PipelineStage {
     
     boolean isJoiner() {
         this.body in this.context.pipelineJoiners
+    }
+    
+    Map toProperties() {
+        return [
+                stageName : this.stageName,
+                startMs : this.startDateTimeMs,
+                endMs : this.endDateTimeMs,
+                branch: this.context.branch,
+                threadId: this.context.threadId
+            ]
     }
 }
