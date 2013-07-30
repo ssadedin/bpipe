@@ -93,7 +93,7 @@ class Runner {
         
         // Before we do anything else, add a shutdown hook so that termination of the process causes the job to 
         // to be removed from the user's folder
-        log.info "Adding shutdown hook"
+//        log.info "Adding shutdown hook"
         System.addShutdownHook { 
             
             def home = System.getProperty("user.home")
@@ -115,7 +115,7 @@ class Runner {
                 EventManager.instance.signal(PipelineEvent.SHUTDOWN, "Shutting down process $pid")
             }
             catch(Exception e) {
-                log.warning "Failure in shutdown events shutdown",e
+                // log.warn "Failure in shutdown events shutdown",e
             }
         }
                 

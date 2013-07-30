@@ -233,7 +233,6 @@ class WorxEventListener implements PipelineEventListener {
     public void onEvent(PipelineEvent eventType, String desc, Map<String, Object> details) {
         
         if(eventType == SHUTDOWN) {
-            println "Worx handling shutdown event"
             this.shutdown()
             return
         }
