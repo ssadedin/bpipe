@@ -1,3 +1,72 @@
+========== Changes for Bpipe Version 0.9.8.3 ============
+
+
+-    fix input not resolved by from / input ext when
+     reference embedded in nested
+
+-    fix %bin% expansion incorrect when tool command is
+     part of the full path containing the tool itself - eg:
+     /usr/local/bwa/bwa-0.5.9/bwa
+
+-    fix possible double period in output file name (regression)
+
+-    fix references to output.dir causing outputs to be
+     inferred even when no outputs actually decided yet for
+     stage (eg: before produce / transform / filter, etc.).
+
+-    fix backslashes in file paths causing invalid output
+     paths on Windows
+
+-    fixed failures when files without extensions created
+     as outputs / inputs
+
+-    run commands using -e option with bash so that failure
+     of any command within script results in abort
+
+-    nicer error message when a filter encounters the
+     situation that no inputs were provided
+
+-    fix transform producing same output as input when
+     output file of same type as input
+
+-    add support for closure as value for variable default
+     to compute default value at runtime, prevent referencing  
+     unless actually needed (useful eg: if the default should be 
+     an input when not provided)
+
+-    attempt to fix out-of-order execution of pipelines
+     that start with list and append stages after
+
+-    support for "requires" to specify required parameters
+     for a pipeline stage
+
+-    support for multiple paths in BPIPE_LIB
+
+-    support for script files in BPIPE_LIB (in addition
+     to folders of scripts)
+
+-    support for ordering of execution of modules in
+     BPIPE_LIB
+
+-    fix output files not merged correctly when multiple
+     levels of nested
+     parallel segments end at same point
+
+-    updated to add withFlag for more stringent test case
+
+-    changed build to use manually downloaded gridgain lib
+     (GridGain pulled their repo support :-( )
+
+
+========== Changes for Bpipe Version 0.9.8.1 ============
+
+-  fix double spaced output
+
+-  fix input.size() and inputs.size() throwing exceptions
+
+-  fix potential incorrect output inferred in filter operation,
+   causing 'expected output not found' error in some filter 
+   scenarios
 
 ========== Changes for Bpipe Version 0.9.8.1 ============
 
