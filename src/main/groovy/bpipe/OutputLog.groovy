@@ -88,7 +88,7 @@ class OutputLog implements Appendable {
         }
     }
     
-    @CompileStatic
+//    @CompileStatic
     void flush(CharSequence output) {
         
         if(output != null) {
@@ -100,7 +100,7 @@ class OutputLog implements Appendable {
         
     }
     
-    @CompileStatic
+//    @CompileStatic
     void bufferLine(String line) {
         if(commandId) {
             String branchId = branch ?: "0"

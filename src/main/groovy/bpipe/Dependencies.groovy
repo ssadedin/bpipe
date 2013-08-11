@@ -320,7 +320,10 @@ class Dependencies {
      */
     synchronized void saveOutputs(PipelineContext context, List<File> oldFiles, Map<File,Long> timestamps, List<String> inputs) {
         GraphEntry root = getOutputGraph()
-        context.trackedOutputs.each { String cmd, List<String> outputs ->
+        context.trackedOutputs.each { String id, Command command ->
+            
+            String cmd = command.command
+            List<String> outputs = command.outputs
             for(def o in outputs) {
                 o = Utils.first(o)
                 if(!o)
@@ -357,6 +360,7 @@ class Dependencies {
                 String hash = Utils.sha1(cmd+"_"+o)
 
                 p.command = cmd
+                p.commandId = command.id
                 
                 
                 def allInputs = context.getResolvedInputs()
@@ -825,6 +829,7 @@ class Dependencies {
             
         p.preserve = Boolean.parseBoolean(p.preserve)
         p.intermediate = Boolean.parseBoolean(p.intermediate)
+        p.commandId = (p.commandId!=null)?p.commandId.toInteger():-1
         return p
     }
     

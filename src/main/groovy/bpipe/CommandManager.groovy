@@ -88,7 +88,9 @@ class CommandManager {
      *                  on the resulting command executor
      * @return the {@link CommandExecutor} that is executing the job.
      */
-    CommandExecutor start(String name, String cmd, String configName, Collection inputs, File outputDirectory, Map resources, boolean deferred, Appendable outputLog) {
+    CommandExecutor start(String name, Command command, String configName, Collection inputs, File outputDirectory, Map resources, boolean deferred, Appendable outputLog) {
+        
+        String cmd = command.command
          
         // How to run the job?  look in user config
 		if(!configName) 
@@ -186,11 +188,12 @@ class CommandManager {
         }
         
         // Create a command id for the job
-        String commandId = CommandId.newId()
-        log.info "Created bpipe command id " + commandId
+        command.id = CommandId.newId()
+        
+        log.info "Created bpipe command id " + command.id
         
         // Temporary hack until we figure out design for how output log gets passed through
-        OutputLog commandLog = new OutputLog(outputLog, commandId)
+        OutputLog commandLog = new OutputLog(outputLog, command.id)
         if(cmdExec instanceof LocalCommandExecutor) {
         	cmdExec.outputLog = commandLog
         	cmdExec.errorLog = commandLog
@@ -200,11 +203,12 @@ class CommandManager {
         if(deferred)
             wrapped.deferred = true
         
-        wrapped.start(cfg, commandId, name, cmd, outputDirectory)
+        wrapped.start(cfg, command.id, name, command.command, outputDirectory)
     		
-		this.commandIds[cmdExec] = commandId
+		this.commandIds[cmdExec] = command.id
+		this.commandIds[wrapped] = command.id
             
-        new File(commandDir, commandId).withObjectOutputStream { it << cmdExec }
+        new File(commandDir, command.id).withObjectOutputStream { it << cmdExec }
         
         return wrapped
     }
