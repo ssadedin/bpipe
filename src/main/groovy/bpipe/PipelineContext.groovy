@@ -165,7 +165,7 @@ class PipelineContext {
     * All outputs from this stage, mapped by command 
     * that created them
     */
-   Map<Integer,List<String> > trackedOutputs = [:]
+   Map<String,List<String> > trackedOutputs = [:]
    
    /**
     * When a command is run, output variables that are referenced in 
@@ -921,8 +921,8 @@ class PipelineContext {
         
         if(this.@output) {
             log.info "Adding outputs " + this.@output + " as a result of produce"
-            
-            int commandId = -1
+           
+            String commandId = -1
             Utils.box(this.@output).each { o ->
                 
                 // If no inputs were resolved, we assume generically that all the inputs
@@ -974,7 +974,7 @@ class PipelineContext {
         return out
     }
     
-    void trackOutputIfNotAlreadyTracked(String o, String command, int commandId) {
+    void trackOutputIfNotAlreadyTracked(String o, String command, String commandId) {
         if(!(o in this.referencedOutputs) && !(o in this.inferredOutputs) && !(o in this.allInferredOutputs)) {
              if(!this.trackedOutputs[commandId]) {
                  this.trackedOutputs[commandId] = new Command(id: commandId, outputs: [o], command: command)
