@@ -1236,7 +1236,7 @@ class PipelineContext {
         Thread.sleep(200)
         
         if(!this.probeMode)
-            this.commandManager.cleanup(p)
+            this.commandManager.cleanup(c.executor)
             
         throw new PipelineError("Command failed with exit status = $exitResult : \n$cmd")
       }
