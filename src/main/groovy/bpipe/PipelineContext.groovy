@@ -1427,7 +1427,7 @@ class PipelineContext {
           log.info message
           msg message
           
-          return new Command(executor:ProbeCommandExecutor())
+          return new Command(executor:new ProbeCommandExecutor())
       }
           
       // Reset the inferred outputs - once they are used the user should have to refer to them

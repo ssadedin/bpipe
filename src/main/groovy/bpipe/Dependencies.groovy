@@ -829,7 +829,7 @@ class Dependencies {
             
         p.preserve = Boolean.parseBoolean(p.preserve)
         p.intermediate = Boolean.parseBoolean(p.intermediate)
-        p.commandId = (p.commandId!=null)?p.commandId.toInteger():-1
+        p.commandId = (p.commandId!=null)?p.commandId:"-1"
         return p
     }
     
