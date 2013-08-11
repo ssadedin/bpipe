@@ -922,7 +922,7 @@ class PipelineContext {
         if(this.@output) {
             log.info "Adding outputs " + this.@output + " as a result of produce"
            
-            String commandId = -1
+            String commandId = "-1"
             Utils.box(this.@output).each { o ->
                 
                 // If no inputs were resolved, we assume generically that all the inputs
@@ -933,7 +933,7 @@ class PipelineContext {
                     allResolvedInputs.addAll(Utils.box(this.@input))
                 }
                 
-                if(commandId == -1)
+                if(commandId == "-1")
                     commandId = CommandId.newId()
   
                 // It's possible the user used produce() but did not actually reference
@@ -951,10 +951,10 @@ class PipelineContext {
                 
                 log.info "Found outputs for glob $pattern: [$result]"
                 
-                int commandId = -1;
+                String commandId = "-1"
                 
                 result.each { 
-                    if(commandId == -1) 
+                    if(commandId == "-1")
                         commandId = CommandId.newId(); 
                     trackOutputIfNotAlreadyTracked(it, "<produce>", commandId) 
                 }
