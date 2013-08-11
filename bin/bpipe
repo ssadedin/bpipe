@@ -31,6 +31,9 @@ BUILDDATE=0
 # as otherwise Java can default to extreme amounts (gigabytes)
 : ${MAX_JAVA_MEM:="256m"}
 
+# Pattern used to parse log files when tailing
+TAIL_PATTERN='s/\[[0-9]*\.\{0,1\}[0-9]*\]\t//g' 
+
 #----------------------------------------------------------
 # Kill a whole tree of processes in a cross platform way.
 # Note, in some situations killing the parent process is 
@@ -405,7 +408,7 @@ then
         ROWS_OPT="-n $TAIL_ROWS"
     fi
     
-    tail $ROWS_OPT $TAIL_OPT $* .bpipe/logs/$LOG_ID.log
+    tail $ROWS_OPT $TAIL_OPT $* .bpipe/logs/$LOG_ID.log | sed "$TAIL_PATTERN"
 	    
     exit
 elif [ "$COMMAND" == "stop" ];
@@ -597,14 +600,14 @@ then
     # echo "DEBUG:  tailing log $LOGFILE using native pid tracking RUNPID=$BPIPE_PID"
     if kill -0 $BPIPE_PID  ;
     then
-      tail -f --pid=$BPIPE_PID $LOGFILE 
+      tail -f --pid=$BPIPE_PID $LOGFILE | sed "$TAIL_PATTERN"
     else
-      tail $LOGFILE 
+      tail $LOGFILE | sed "$TAIL_PATTERN"
       echo "tail $LOGFILE"
     fi
 else
     #echo "DEBUG:  tailing log using MacOSX pid tracking emulation RUNPID=$RUNPID"
-    tail -f $LOGFILE &
+    tail -f $LOGFILE | sed "$TAIL_PATTERN"
     TAIL_PID="$!"
 
     # Wait for the Java Bpipe process to finish naturally (not Ctrl-C, see above for that)

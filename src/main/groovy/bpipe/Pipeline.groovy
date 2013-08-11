@@ -648,7 +648,7 @@ public class Pipeline {
             genome = RegionSet.load(cachedGenome) 
             println "Finished loading genome $cachedGenome in ${System.currentTimeMillis() - startTimeMs} ms"
             
-        }
+        } 
         else {
             String url = "http://hgdownload.soe.ucsc.edu/goldenPath/$name/database/ensGene.txt.gz"
             log.info "Downloading genome from $url"

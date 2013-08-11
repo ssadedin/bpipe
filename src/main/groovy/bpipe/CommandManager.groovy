@@ -185,16 +185,17 @@ class CommandManager {
               throw new PipelineTestAbort("Would execute: $cmd\n\n                using $cmdExec with config $cfg")
         }
         
-        // Temporary hack until we figure out design for how output log gets passed through
-        if(cmdExec instanceof LocalCommandExecutor) {
-        	cmdExec.outputLog = outputLog
-        	cmdExec.errorLog = outputLog
-        }
-
         // Create a command id for the job
         String commandId = CommandId.newId()
         log.info "Created bpipe command id " + commandId
         
+        // Temporary hack until we figure out design for how output log gets passed through
+        OutputLog commandLog = new OutputLog(outputLog, commandId)
+        if(cmdExec instanceof LocalCommandExecutor) {
+        	cmdExec.outputLog = commandLog
+        	cmdExec.errorLog = commandLog
+        }
+
         ThrottledDelegatingCommandExecutor wrapped = new ThrottledDelegatingCommandExecutor(cmdExec, resources)
         if(deferred)
             wrapped.deferred = true

@@ -95,7 +95,7 @@ class PipelineContext {
         if(pipeline)
             this.applyName = pipeline.name && !pipeline.nameApplied
          
-        this.outputLog = new OutputLog()
+        this.outputLog = new OutputLog(branch)
     }
     
     /**
