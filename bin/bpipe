@@ -32,7 +32,7 @@ BUILDDATE=0
 : ${MAX_JAVA_MEM:="256m"}
 
 # Pattern used to parse log files when tailing
-TAIL_PATTERN='s/\[[0-9a-zA-Z_]*\(\.\{0,1\}[0-9]*\)\{1,\}\]\t//g' 
+TAIL_PATTERN='s/\[[0-9a-zA-Z_-]*\(\.\{0,1\}[0-9]*\)\{1,\}\]\t//g' 
 
 #----------------------------------------------------------
 # Kill a whole tree of processes in a cross platform way.
@@ -261,7 +261,6 @@ get_classpath() {
 # Print out a list of currently active jobs
 # Bpipe stores a list of currently active jobs in the
 # user's home directory under .bpipedb/jobs.
-# 
 #----------------------------------------------------------
 print_jobs() {
     if [ -e ~/.bpipedb/jobs/ ];
@@ -292,6 +291,66 @@ print_jobs() {
            fi
         done
     fi
+}
+
+
+#----------------------------------------------------------
+# Show a running tail of currently running job OR
+# the trailing lines of a finished job.
+# Argument -t can be used to select a specific thread to 
+# show output for (by the thread's branch name). Additional
+# arguments can be passed which are sent straight through to tail.
+#----------------------------------------------------------
+display_log() {
+    if uname | grep -q Darwin ;
+    then
+        TERM_HEIGHT=`stty -a | grep -o '[0-9]* rows;' | sed 's/[^0-9]//g'`
+    else
+        TERM_HEIGHT=`stty -a | grep -o 'rows [0-9]*;' | sed 's/[^0-9]//g'`
+    fi
+    
+    if [ -z "$TERM_HEIGHT" ];
+    then
+        TERM_HEIGHT=80
+    fi
+
+    THREAD_EXPR="cat"
+    if [ "$1" == "-t" ];
+    then
+      THREAD_ID="$2"
+      THREAD_EXPR="grep ^\[$THREAD_ID\(\.\{0,1\}[0-9]*\)\{0,\}\]"$'\t'
+      shift
+      shift
+    fi
+    
+    # Note that the log is not named with the PID of the Java process (unfortunately) but rather
+    # with the PID of the shell script that started it.  Therefore we have to 
+    # list files to find the 'most recent' log.
+    # TODO: for consistency / sanity should try to change this
+    LOG_ID=`ls -tc .bpipe/logs/*.log | grep -v 'bpipe\.' | grep '[0-9]' | head -1 | grep -o '[0-9]*.log$' | sed 's/[^0-9]//g'`
+    
+    if is_running ;
+    then
+        TAIL_OPT="-f"
+        TAIL_ROWS=$TERM_HEIGHT
+    else
+        let 'TAIL_ROWS=TERM_HEIGHT-7'
+        echo ""
+        echo "MSG: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"
+        echo "MSG:     NOTE: Pipeline completed as process $LAST_PID.  Trailing lines follow."
+        echo "MSG:     Use bpipe log -n <lines> to see more lines"
+        echo "MSG: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+        echo ""
+    fi
+    
+    if echo "$*" | grep -q '\-n' ;
+    then
+        ROWS_OPT=""
+    else
+        ROWS_OPT="-n $TAIL_ROWS"
+    fi
+    
+    $THREAD_EXPR .bpipe/logs/$LOG_ID.log | tail $ROWS_OPT $TAIL_OPT $* | sed "$TAIL_PATTERN"
 }
 
 # Locate Bpipe's home directory
@@ -368,48 +427,7 @@ then
 elif [ "$COMMAND" == "log" ];
 then
     shift 1
-    
-    if uname | grep -q Darwin ;
-    then
-        TERM_HEIGHT=`stty -a | grep -o '[0-9]* rows;' | sed 's/[^0-9]//g'`
-    else
-        TERM_HEIGHT=`stty -a | grep -o 'rows [0-9]*;' | sed 's/[^0-9]//g'`
-    fi
-    
-    if [ -z "$TERM_HEIGHT" ];
-    then
-        TERM_HEIGHT=80
-    fi
-    
-    # Note that the log is not named with the PID of the Java process (unfortunately) but rather
-    # with the PID of the shell script that started it.  Therefore we have to 
-    # list files to find the 'most recent' log.
-    # TODO: for consistency / sanity should try to change this
-    LOG_ID=`ls -tc .bpipe/logs/*.log | grep -v 'bpipe\.' | grep '[0-9]' | head -1 | grep -o '[0-9]*.log$' | sed 's/[^0-9]//g'`
-    
-    if is_running ;
-    then
-        TAIL_OPT="-f"
-        TAIL_ROWS=$TERM_HEIGHT
-    else
-        let 'TAIL_ROWS=TERM_HEIGHT-7'
-        echo ""
-        echo "MSG: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"
-        echo "MSG:     NOTE: Pipeline completed as process $LAST_PID.  Trailing lines follow."
-        echo "MSG:     Use bpipe log -n <lines> to see more lines"
-        echo "MSG: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
-        echo ""
-    fi
-    
-    if echo "$*" | grep -q '\-n' ;
-    then
-        ROWS_OPT=""
-    else
-        ROWS_OPT="-n $TAIL_ROWS"
-    fi
-    
-    tail $ROWS_OPT $TAIL_OPT $* .bpipe/logs/$LOG_ID.log | sed "$TAIL_PATTERN"
-	    
+    display_log $*
     exit
 elif [ "$COMMAND" == "stop" ];
 then
