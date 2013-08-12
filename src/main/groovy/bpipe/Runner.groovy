@@ -53,6 +53,7 @@ class Runner {
     
     final static String builddate = System.getProperty("bpipe.builddate")?:System.currentTimeMillis()
     
+    final static ParamsBinding binding = new ParamsBinding()
     
     final static String DEFAULT_HELP = """
         bpipe [run|test|debug|execute] [options] <pipeline> <in1> <in2>...
@@ -301,7 +302,6 @@ class Runner {
         def gcl = new GroovyClassLoader()
 
         // add all user specified parameters to the binding
-        ParamsBinding binding = new ParamsBinding()
         if( opts.params ) {  // <-- note: ending with the 's' character the 'param' option, will force to return it as list of string
             log.info "Adding CLI parameters: ${opts.params}"
                
