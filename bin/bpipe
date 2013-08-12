@@ -314,15 +314,6 @@ display_log() {
         TERM_HEIGHT=80
     fi
 
-    THREAD_EXPR="cat"
-    if [ "$1" == "-t" ];
-    then
-      THREAD_ID="$2"
-      THREAD_EXPR="grep ^\[$THREAD_ID\(\.\{0,1\}[0-9]*\)\{0,\}\]"$'\t'
-      shift
-      shift
-    fi
-    
     # Note that the log is not named with the PID of the Java process (unfortunately) but rather
     # with the PID of the shell script that started it.  Therefore we have to 
     # list files to find the 'most recent' log.
@@ -349,8 +340,9 @@ display_log() {
     else
         ROWS_OPT="-n $TAIL_ROWS"
     fi
-    
-    $THREAD_EXPR .bpipe/logs/$LOG_ID.log | tail $ROWS_OPT $TAIL_OPT $* | sed "$TAIL_PATTERN"
+   
+    #$THREAD_EXPR .bpipe/logs/$LOG_ID.log | sed -u "$TAIL_PATTERN" |  tail $ROWS_OPT $TAIL_OPT $* 
+    java -Xmx${MAX_JAVA_MEM} -classpath "$CP"  $BPIPEDEBUG -Dbpipe.home="$JVM_BPIPE_HOME" bpipe.Tail $ROWS_OPT $TAIL_OPT $* $LOG_ID
 }
 
 # Locate Bpipe's home directory

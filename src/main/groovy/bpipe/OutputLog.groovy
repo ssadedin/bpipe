@@ -116,7 +116,11 @@ class OutputLog implements Appendable {
 
     @Override
     public Appendable append(CharSequence arg0) throws IOException {
-        this.flush(arg0)
+        if(arg0=='\n')
+          this.flush()
+        else
+          buffer(arg0)
+          
         return this;
     }
 
