@@ -443,7 +443,7 @@ class PipelineContext {
    
    void var(Map values) {
        values.each { k,v ->
-           if(!this.localVariables.containsKey(k) && !this.extraBinding.variables.containsKey(k)) {
+           if(!this.localVariables.containsKey(k) && !this.extraBinding.variables.containsKey(k) && !Runner.binding.variables.containsKey(k)) {
                log.info "Using default value of variable $k = $v"
                if(v instanceof Closure)
                  this.localVariables[k] = v()
@@ -455,7 +455,7 @@ class PipelineContext {
    
    void requires(Map values) {
        values.each { k,v ->
-           if(!this.localVariables.containsKey(k) && !this.extraBinding.variables.containsKey(k)) {
+           if(!this.localVariables.containsKey(k) && !this.extraBinding.variables.containsKey(k) && !Runner.binding.variables.containsKey(k)) {
                throw new PipelineError(
                """
                        Pipeline stage ${this.stageName} requires a parameter $k but this parameter was not specified
@@ -1346,7 +1346,20 @@ class PipelineContext {
         log.info "Scaled resource use to ${usedResources.values()} to execute in multi block"
         
         try {
-          List<CommandExecutor> execs = cmds.collect { async(it,true,null,true) }
+          def aborts = []
+          List<CommandExecutor> execs = cmds.collect { 
+              try {
+                async(it,true,null,true) 
+              }
+              catch(PipelineTestAbort e) {
+                 aborts << e 
+              }
+          }
+          
+          if(aborts) {
+              throw new PipelineTestAbort("Would execute multiple commands: \n\n" + [ 1..aborts.size(),aborts.collect { it.message.replaceAll("Would execute:","") }].transpose()*.join("\t").join("\n"))
+          }
+          
           List<Integer> exitValues = []
           List<CommandThread> threads = execs.collect { new CommandThread(toWaitFor:it) }
           threads*.start()
