@@ -609,6 +609,7 @@ done
 
 # On Cygwin we can use automatic termination of tail,
 # but on Macs we have to emaulate that (grrr)
+echo "Going into tail ..."
 
 if [ ! -z "$BPIPE_BACKGROUND" ];
 then
@@ -625,7 +626,7 @@ then
     fi
 else
     #echo "DEBUG:  tailing log using MacOSX pid tracking emulation RUNPID=$RUNPID"
-    tail -f $LOGFILE | sed "$TAIL_PATTERN"
+    tail -f $LOGFILE | sed "$TAIL_PATTERN" &
     TAIL_PID="$!"
 
     # Wait for the Java Bpipe process to finish naturally (not Ctrl-C, see above for that)
