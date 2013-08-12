@@ -418,9 +418,12 @@ public class Pipeline {
             cmdlog << "# Starting pipeline at " + (new Date())
             cmdlog << "# Input files:  $inputFile"
             cmdlog << "# Output Log:  " + Config.config.outputLogPath 
-            println("="*Config.config.columns)
-            println("|" + " Starting Pipeline at $startDateTime".center(Config.config.columns-2) + "|")
-            println("="*Config.config.columns)
+            
+            OutputLog startLog = new OutputLog("----")
+            startLog.bufferLine("="*Config.config.columns)
+            startLog.bufferLine("|" + " Starting Pipeline at $startDateTime".center(Config.config.columns-2) + "|")
+            startLog.bufferLine("="*Config.config.columns)
+            startLog.flush()
             
             about(startedAt: new Date())
         }
@@ -648,7 +651,7 @@ public class Pipeline {
             genome = RegionSet.load(cachedGenome) 
             println "Finished loading genome $cachedGenome in ${System.currentTimeMillis() - startTimeMs} ms"
             
-        }
+        } 
         else {
             String url = "http://hgdownload.soe.ucsc.edu/goldenPath/$name/database/ensGene.txt.gz"
             log.info "Downloading genome from $url"

@@ -173,10 +173,9 @@ class PipelineStage {
                     PipelineCategory.closureNames.containsKey(body) ? PipelineCategory.closureNames[body] : "${stageCount}"
 	            context.stageName = stageName
 				
-				displayName = pipeline.name ? "$stageName [$pipeline.name]" : stageName
+				displayName = pipeline.name ? "$stageName [" + pipeline.name.replaceAll('\\.[^.]*$','') + "]" : stageName
                     
-                println ""
-                println " Stage ${displayName} ".center(Config.config.columns,"=")
+                context.outputLog.flush("\n"+" Stage ${displayName} ".center(Config.config.columns,"="))
                 CommandLog.cmdLog << "# Stage $displayName"
                 ++stageCount
                 

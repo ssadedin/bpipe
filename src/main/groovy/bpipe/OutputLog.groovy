@@ -26,6 +26,7 @@ package bpipe
 
 import java.io.IOException;
 
+import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;
 
 /**
@@ -52,6 +53,27 @@ class OutputLog implements Appendable {
      */
     StringBuilder buffer = new StringBuilder()
     
+    String branch
+    String prefix
+    String commandId
+    
+    OutputLog(String branch) {
+        this.branch = branch
+        this.prefix = branch == null ? "" : "[$branch]\t" 
+        this.commandId = null
+    }
+    
+    /**
+     * Create an output log for a specific command, in the context of a parent output log
+     * 
+     * @param parent
+     */
+    OutputLog(OutputLog parent, String commandId) {
+        this.branch = parent.branch
+        this.prefix = branch == null ? "" : "[$branch]\t" 
+        this.commandId = commandId
+    }
+     
     final static char NEWLINE = '\n' as char
     
     /**
@@ -60,38 +82,55 @@ class OutputLog implements Appendable {
      * 
      * @param output
      */
-    void buffer(String output) {
-        buffer.append(output)
-        buffer.append(NEWLINE)
+    void buffer(CharSequence output) {
+        output.eachLine { String line ->
+            bufferLine(line)
+        }
     }
     
-    void flush(String output) {
-        println buffer
-        println output
+//    @CompileStatic
+    void flush(CharSequence output) {
+        
+        if(output != null) {
+            buffer(output)
+        }
+        
+        print buffer.toString()
         buffer.setLength(0)
+        
+    }
+    
+//    @CompileStatic
+    void bufferLine(String line) {
+        if(commandId) {
+            String branchId = branch ?: "0"
+            buffer.append("[${branchId}.${commandId}]\t"+ line+NEWLINE)
+        }
+        else
+            buffer.append(prefix + line+NEWLINE)
     }
     
     void flush() {
-        print buffer
-        buffer.setLength(0)
+        flush(null)
     }
 
     @Override
     public Appendable append(CharSequence arg0) throws IOException {
-        buffer.append(arg0)
-        this.flush()
+        this.flush(arg0)
         return this;
     }
 
     @Override
     public Appendable append(char arg0) throws IOException {
-        buffer.append(arg0);
+        throw new UnsupportedOperationException("Buffering individual characters is not supported")
+        buffer(arg0)
         this.flush();
         return this;
     }
 
     @Override
     public Appendable append(CharSequence arg0, int arg1, int arg2) {
+        throw new UnsupportedOperationException("Buffering substrings not supported")
         buffer.append(arg0,arg1,arg2)
         this.flush()
         return this;

@@ -310,7 +310,6 @@ class PipelineCategory {
             InputSplitter splitter = new InputSplitter()
             Map samples = splitter.split(pattern, input)
             
-           
             if(samples.isEmpty() && !requireMatch && pattern == "*")        
                 samples["*"] = input
                 
@@ -347,6 +346,8 @@ class PipelineCategory {
                     Closure segmentClosure = s
                     threads << {
                         try {
+                            int segmentNumber = segments.indexOf(segmentClosure) + 1
+                            
                             // First we make a "dummy" stage that contains the inputs
                             // to the next stage as outputs.  This allows later logic
                             // to find these "inputs" correctly when it expects to see
@@ -360,7 +361,15 @@ class PipelineCategory {
                                 
                             log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
                             child.addStage(dummyPriorStage)
-                            child.name = id
+                            if(segments.size()>1) {
+                                if(id == "all")
+                                    child.name = segmentNumber.toString()
+                                else
+                                    child.name = id + "." + segmentNumber
+                            }
+                            else
+                                child.name = id
+                            
                             child.nameApplied = true
                             child.runSegment(files, segmentClosure)
                         }

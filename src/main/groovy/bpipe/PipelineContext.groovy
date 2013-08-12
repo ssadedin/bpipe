@@ -95,7 +95,7 @@ class PipelineContext {
         if(pipeline)
             this.applyName = pipeline.name && !pipeline.nameApplied
          
-        this.outputLog = new OutputLog()
+        this.outputLog = new OutputLog(branch)
     }
     
     /**
@@ -664,10 +664,9 @@ class PipelineContext {
            }
        }       
        
-       if(!this.trackedOutputs["filterRows"])
-         this.trackedOutputs["filterRows"] = []
-         
-       this.trackedOutputs["filterRows"] += fileName 
+       
+       Command command = new Command(id:CommandId.newId(), command: "filterRows")
+       this.trackedOutputs[command.commandId] << fileName 
    }
    
    
@@ -724,10 +723,8 @@ class PipelineContext {
          outFile = new FileOutputStream(fileName)
        }
        
-       if(!this.trackedOutputs["<streamed>"])
-         this.trackedOutputs["<streamed>"] = []
-         
-       this.trackedOutputs["<streamed>"] += fileName
+       Command cmd = new Command(id:CommandId.newId(), command: "<streamed>", outputs:[fileName])
+       this.trackedOutputs[cmd.id] = cmd
        
        return outFile
    }
@@ -924,6 +921,8 @@ class PipelineContext {
         
         if(this.@output) {
             log.info "Adding outputs " + this.@output + " as a result of produce"
+           
+            String commandId = "-1"
             Utils.box(this.@output).each { o ->
                 
                 // If no inputs were resolved, we assume generically that all the inputs
@@ -933,13 +932,15 @@ class PipelineContext {
                 if(!allResolvedInputs && !this.inputWrapper?.resolvedInputs) {
                     allResolvedInputs.addAll(Utils.box(this.@input))
                 }
+                
+                if(commandId == "-1")
+                    commandId = CommandId.newId()
   
                 // It's possible the user used produce() but did not actually reference
                 // the output variable anywhere in the body. In that case, we
                 // don't know which command used the output variable so we add an "anonymous" 
                 // output
-               
-                trackOutputIfNotAlreadyTracked(o, "<produce>")
+                trackOutputIfNotAlreadyTracked(o, "<produce>", commandId)
             }
         }
         
@@ -950,7 +951,13 @@ class PipelineContext {
                 
                 log.info "Found outputs for glob $pattern: [$result]"
                 
-                result.each { trackOutputIfNotAlreadyTracked(it, "<produce>") }
+                String commandId = "-1"
+                
+                result.each { 
+                    if(commandId == "-1")
+                        commandId = CommandId.newId(); 
+                    trackOutputIfNotAlreadyTracked(it, "<produce>", commandId) 
+                }
                 
                 if(Utils.box(this.@output))
                     this.output = this.@output + result
@@ -967,12 +974,13 @@ class PipelineContext {
         return out
     }
     
-    void trackOutputIfNotAlreadyTracked(String o, String command) {
+    void trackOutputIfNotAlreadyTracked(String o, String command, String commandId) {
         if(!(o in this.referencedOutputs) && !(o in this.inferredOutputs) && !(o in this.allInferredOutputs)) {
-           if(!this.trackedOutputs[command])
-             this.trackedOutputs[command] = [o]
-           else
-             this.trackedOutputs[command] << o
+             if(!this.trackedOutputs[commandId]) {
+                 this.trackedOutputs[commandId] = new Command(id: commandId, outputs: [o], command: command)
+             }
+             else
+                 this.trackedOutputs[commandId].outputs << o
         } 
     }
     
@@ -982,11 +990,11 @@ class PipelineContext {
      * @param pattern
      */
     void preserve(String pattern, Closure c) {
-        def oldFiles = trackedOutputs.values().flatten().unique()
+        def oldFiles = getAllTrackedOutputs()
         c()
         List<String> matchingOutputs = Utils.glob(pattern) - oldFiles
         for(def entry in trackedOutputs) {
-            def preserved = entry.value.grep { matchingOutputs.contains(it) }
+            def preserved = entry.value.outputs.grep { matchingOutputs.contains(it) }
             log.info "Outputs $preserved marked as preserved from stage $stageName by pattern $pattern"
             this.preservedOutputs += preserved
         }
@@ -998,11 +1006,11 @@ class PipelineContext {
      * cleanup operation, even if they are leaf outputs from the pipeline.
      */
     void intermediate(String pattern, Closure c) {
-        def oldFiles = trackedOutputs.values().flatten().unique()
+        def oldFiles = getAllTrackedOutputs()
         c()
         List<String> matchingOutputs = Utils.glob(pattern) - oldFiles
         for(def entry in trackedOutputs) {
-            def intermediates = entry.value.grep { matchingOutputs.contains(it) }
+            def intermediates = entry.value.outputs.grep { matchingOutputs.contains(it) }
             log.info "Outputs $intermediates marked as intermediate files from stage $stageName by pattern $pattern"
             this.intermediateOutputs += intermediates
         }        
@@ -1015,9 +1023,9 @@ class PipelineContext {
      * .bai file that exists only to be an index for it's .bam file.
      */
     void accompanies(String pattern, Closure c) {
-        def oldFiles = trackedOutputs.values().flatten().unique()
+        def oldFiles = getAllTrackedOutputs()
         c()
-        List<String> newOutputs = trackedOutputs.values().flatten().unique() - oldFiles
+        List<String> newOutputs = getAllTrackedOutputs() - oldFiles
         log.info "Found accompanying outputs : ${newOutputs}"
         if(!pattern.contains("*")) {
             pattern = "*."+pattern;
@@ -1032,6 +1040,10 @@ class PipelineContext {
         }
         else
             log.warning "No accompanied inputs found for outputs $newOutputs using pattern $pattern from inputs ${getResolvedInputs()}"
+    }
+    
+    List<String> getAllTrackedOutputs() {
+        trackedOutputs.values()*.outputs.flatten().unique()       
     }
     
     void uses(ResourceUnit newResources, Closure block) {
@@ -1208,26 +1220,29 @@ class PipelineContext {
       
       this.referencedOutputs += inferredOutputs
       
-      this.trackedOutputs[cmd] = this.referencedOutputs
-        
-     
+      def commandReferencedOutputs = this.referencedOutputs
+      
+      // Reset referenced outputs so they can be re-evaluated for next command independently of this one
       this.referencedOutputs = []
       
-      CommandExecutor p = async(cmd, joinNewLines, config)
-      int exitResult = p.waitFor()
+      Command c = async(cmd, joinNewLines, config)
+      
+      c.outputs = commandReferencedOutputs
+     
+      int exitResult = c.executor.waitFor()
       if(exitResult != 0) {
         // Output is still spooling from the process.  By waiting a bit we ensure
         // that we don't interleave the exception trace with the output
         Thread.sleep(200)
         
         if(!this.probeMode)
-            this.commandManager.cleanup(p)
+            this.commandManager.cleanup(c.executor)
             
         throw new PipelineError("Command failed with exit status = $exitResult : \n$cmd")
       }
       
       if(!this.probeMode)
-            this.commandManager.cleanup(p)
+            this.commandManager.cleanup(c.executor)
     }
     
     
@@ -1296,7 +1311,7 @@ class PipelineContext {
       return outputBuffer.toString()
     }
     
-    CommandExecutor async(String cmd, String config) {
+    Command async(String cmd, String config) {
         async(cmd, true, config)
     }
     
@@ -1349,7 +1364,7 @@ class PipelineContext {
           def aborts = []
           List<CommandExecutor> execs = cmds.collect { 
               try {
-                async(it,true,null,true) 
+                async(it,true,null,true).executor 
               }
               catch(PipelineTestAbort e) {
                  aborts << e 
@@ -1389,11 +1404,11 @@ class PipelineContext {
      * and starting the command using it.  The exit code is not checked and
      * the command may still be running on return.  The Job instance 
      * is returned.  Callers can use the
-     * {@link CommandExecutor#waitFor()} to wait for the Job to finish.
+     * {@link CommandExecutor#waitFor()} on the command's CommandExecutor to wait for the Job to finish.
      * @param deferred      If true, the command will not actually be started until
      *                      the waitFor() method is called
      */
-    CommandExecutor async(String cmd, boolean joinNewLines=true, String config = null, boolean deferred=false) {
+    Command async(String cmd, boolean joinNewLines=true, String config = null, boolean deferred=false) {
         
       // Replacement of magic $thread variable with real value 
       cmd = cmd.replaceAll(THREAD_LAZY_VALUE, this.usedResources['threads'].amount as String)
@@ -1425,7 +1440,7 @@ class PipelineContext {
           log.info message
           msg message
           
-          return new ProbeCommandExecutor()
+          return new Command(executor:new ProbeCommandExecutor())
       }
           
       // Reset the inferred outputs - once they are used the user should have to refer to them
@@ -1441,20 +1456,21 @@ class PipelineContext {
           // Add the tools to our documentation
           if(toolsDiscovered)
               this.doc(["tools" : toolsDiscovered])
-      
-          CommandExecutor cmdExec = 
-              commandManager.start(stageName, joined, config, Utils.box(this.input), 
+       
+          Command command = new Command(command:joined)
+          command.executor = 
+              commandManager.start(stageName, command, config, Utils.box(this.input), 
                                    new File(outputDirectory), this.usedResources,
                                    deferred, this.outputLog)
-              
-          List outputFilter = cmdExec.ignorableOutputs
+          trackedOutputs[command.id] = command              
+          List outputFilter = command.executor.ignorableOutputs
           if(outputFilter) {
               this.outputMask.addAll(outputFilter)
           }
-          return cmdExec
+          return command
       }
       else {
-          return new ProbeCommandExecutor()
+          return new Command(executor:new ProbeCommandExecutor())
       }
     }
     
@@ -1725,7 +1741,9 @@ class PipelineContext {
      */
     boolean checkForModifiedCommands() {
         boolean modified = false
-        trackedOutputs.each { String cmd, List<String> outputs ->
+        trackedOutputs.each { String cmd, Command command ->
+            
+            List<String> outputs = command.outputs
             if(modified)
                 return
                 
