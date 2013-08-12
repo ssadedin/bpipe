@@ -86,11 +86,18 @@ class Tail {
             }
           
             // Attempt to read the requested number of lines
+            boolean first = true
             while(true) {
                 
                 String line = r.readLine()
                 if(line == null) {
                     break
+                }
+                
+                // First line may be "partial" since we just jumped to an arbitrary byte offset
+                if(first) {
+                    first = false
+                    continue
                 }
                 
                 // Extract the thread id
