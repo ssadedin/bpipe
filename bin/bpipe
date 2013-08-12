@@ -32,7 +32,7 @@ BUILDDATE=0
 : ${MAX_JAVA_MEM:="256m"}
 
 # Pattern used to parse log files when tailing
-TAIL_PATTERN='s/\[[0-9a-zA-Z_-]*\(\.\{0,1\}[0-9]*\)\{1,\}\]\t//g' 
+TAIL_PATTERN='s/\[[0-9a-zA-Z_-]*\(\.\{0,1\}[0-9]*\)\{1,\}\]'$'\t//g' 
 
 #----------------------------------------------------------
 # Kill a whole tree of processes in a cross platform way.
@@ -607,13 +607,11 @@ do
     fi
 done
 
-# On Cygwin we can use automatic termination of tail,
-# but on Macs we have to emaulate that (grrr)
-echo "Going into tail ..."
-
 if [ ! -z "$BPIPE_BACKGROUND" ];
 then
   echo ;
+# On Cygwin we can use automatic termination of tail,
+# but on Macs we have to emaulate that (grrr)
 elif uname | grep -iq cygwin || uname | grep -iq Linux; 
 then
     # echo "DEBUG:  tailing log $LOGFILE using native pid tracking RUNPID=$BPIPE_PID"
