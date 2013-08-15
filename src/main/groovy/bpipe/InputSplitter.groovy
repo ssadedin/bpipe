@@ -47,7 +47,7 @@ class InputSplitter {
         List<Integer> splitGroups = splitMap.splits
         
         def unsortedResult = [:]
-        for(String inp in Utils.box(input)) {
+        for(String inp in Utils.box(input).collect { new File(it).name }) {
             Matcher m = (inp =~ regex)
             if(!m)
 			    continue
