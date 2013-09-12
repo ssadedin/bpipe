@@ -32,7 +32,7 @@ BUILDDATE=0
 : ${MAX_JAVA_MEM:="256m"}
 
 # Pattern used to parse log files when tailing
-TAIL_PATTERN='s/\[[0-9a-zA-Z_-]*\(\.\{0,1\}[0-9]*\)\{1,\}\]'$'\t//g' 
+TAIL_PATTERN='s/\[[.0-9a-zA-Z_-]*\(\.\{0,1\}[0-9]*\)\{1,\}\]'$'\t//g' 
 
 #----------------------------------------------------------
 # Kill a whole tree of processes in a cross platform way.
@@ -612,11 +612,10 @@ then
       tail -f --pid=$BPIPE_PID $LOGFILE | sed "$TAIL_PATTERN"
     else
       tail $LOGFILE | sed "$TAIL_PATTERN"
-      echo "tail $LOGFILE"
     fi
 else
     #echo "DEBUG:  tailing log using MacOSX pid tracking emulation RUNPID=$RUNPID"
-    tail -f $LOGFILE | sed "$TAIL_PATTERN" &
+    tail -f $LOGFILE | sed -l "$TAIL_PATTERN" &
     TAIL_PID="$!"
 
     # Wait for the Java Bpipe process to finish naturally (not Ctrl-C, see above for that)
