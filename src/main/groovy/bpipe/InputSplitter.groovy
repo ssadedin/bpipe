@@ -47,8 +47,11 @@ class InputSplitter {
         List<Integer> splitGroups = splitMap.splits
         
         def unsortedResult = [:]
-        for(String inp in Utils.box(input).collect { new File(it).name }) {
-            Matcher m = (inp =~ regex)
+        for(String inp in Utils.box(input)) {
+            // Note that we need to split on the name of the file
+            // without directory since it may have come from another directory
+            // and we do not want to include that in the branch name
+            Matcher m = (new File(inp).name =~ regex)
             if(!m)
 			    continue
                 
