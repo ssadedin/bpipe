@@ -70,23 +70,22 @@ class Tail {
         try {
           int backwardsBytes = lines*250
           List buffer = []
+          boolean first = true
           while(buffer.size()<lines) {
               
             if(r != null) {
                 r.close()
                 backwardsBytes = backwardsBytes * 2
-                if(backwardsBytes > logFile.length())
-                    break
             }
             
             r = new BufferedReader(new FileReader(logFile))
+            
             int skipLength = logFile.length() - backwardsBytes
             if(skipLength>0) {
               r.skip(skipLength)
             }
           
             // Attempt to read the requested number of lines
-            boolean first = true
             while(true) {
                 
                 String line = r.readLine()
@@ -113,6 +112,10 @@ class Tail {
                 if(buffer.size() > lines)
                     buffer.remove(0)
             }
+            
+            // If already read past start of file, no point in looping even if we did not fill enough lines
+            if(backwardsBytes > logFile.length())
+                    break
           }
           
           buffer.each { println(it) }
@@ -127,10 +130,14 @@ class Tail {
               }
               else {
                 int tabIndex = line.indexOf('\t')
-                String metaData = line.substring(0, tabIndex)
-                if(threadId && metaData.indexOf(threadId)!=1)
-                    continue
-                println line.substring(line.indexOf('\t')+1)
+                if(tabIndex>=0) {
+                  String metaData = line.substring(0, tabIndex)
+                  if(threadId && metaData.indexOf(threadId)!=1)
+                      continue
+                  println line.substring(line.indexOf('\t')+1)
+                }
+                else
+                  println line
               }
           }
         }

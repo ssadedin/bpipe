@@ -80,8 +80,12 @@ class PipelineDelegate {
         }
         else
         if(name in ["produce","transform","filter"]) {
-            if(args.size()<2) 
-                throw new IllegalArgumentException("produce requires an argument: please supply a file name or wild card expression matching files to be produced")
+            if(name == "transform" && args.size()<2) {
+                args = args.clone() + [null]
+            }
+            else
+            if(args.size()<2)
+                throw new IllegalArgumentException("$name requires an argument: please supply a file name or wild card expression matching files to be produced")
                 
             def actualArgs = args[0..-2] as List
             def body = args[-1]

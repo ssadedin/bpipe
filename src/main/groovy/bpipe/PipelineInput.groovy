@@ -133,7 +133,7 @@ class PipelineInput {
     def propertyMissing(String name) {
 		log.info "Searching for missing property: $name"
         def exts = [name]
-        def resolved = resolveInputsWithExtensions(exts)
+        def resolved = resolveInputsEndingWith(exts)
         if(resolved.size() <= defaultValueIndex)
             throw new PipelineError("Insufficient inputs: at least ${defaultValueIndex+1} inputs are expected with extension .${name} but only ${resolved.size()} are available")
 		return mapToCommandValue(resolved)
@@ -185,7 +185,11 @@ class PipelineInput {
      * previous stages to find the first output that ends with the extension specified
      * for each of the given exts.
      */
-    def resolveInputsWithExtensions(def exts) {    
+    List<String> resolveInputsEndingWith(def exts) {    
+        resolveInputsEndingWithPatterns(exts.collect { it.replace('.','\\.')+'$' })
+    }
+    
+    List<String> resolveInputsEndingWithPatterns(def exts) {    
         
         def orig = exts
         def relatedThreads = [Thread.currentThread().id, Pipeline.rootThreadId]
@@ -220,16 +224,17 @@ class PipelineInput {
 	        // rather than searching backwards for a previous match
 	        reverseOutputs.add(0,Utils.box(this.@input))
 	        
-	        def filesWithExts = Utils.box(exts).collect { String inp ->
+	        def filesWithExts = Utils.box(exts).collect { String pattern ->
 	            
-	            if(!inp.startsWith("."))
-	                inp = "." + inp
+	            if(!pattern.startsWith("\\."))
+	                pattern = "." + pattern
 	            
+                pattern = '^.*' + pattern
 	            for(s in reverseOutputs) {
 	                log.info("Checking outputs ${s}")
-	                def o = s.find { it?.endsWith(inp) }
+	                def o = s.find { it?.matches(pattern) }
 	                if(o)
-	                    return s.grep { it?.endsWith(inp) }
+	                    return s.grep { it?.matches(pattern) }
 //	                    return o
 	            }
 	        }

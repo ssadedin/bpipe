@@ -24,6 +24,7 @@
  */
 package bpipe
 
+import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;
 
 import java.security.DigestInputStream
@@ -539,4 +540,25 @@ class Utils {
         
         throw new IllegalStateException("Failed to create directory within $TEMP_DIR_ATTEMPTS")
       }
+    
+    @CompileStatic
+    static String dotJoin(String... values) {
+        StringBuilder result = new StringBuilder(128)
+        for(String value in values) {
+            if(value.endsWith('.')) {
+                value = value[0..-2]    
+            }
+            
+            if(value.startsWith('.')) {
+                result.append(value)
+            }
+            else {
+              if(result.size()) {
+                  result.append('.')
+              }
+              result.append(value)
+            }
+        }
+        return result.toString()
+    }
 }

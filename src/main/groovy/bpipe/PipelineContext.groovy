@@ -666,7 +666,8 @@ class PipelineContext {
        
        
        Command command = new Command(id:CommandId.newId(), command: "filterRows")
-       this.trackedOutputs[command.commandId] << fileName 
+       this.trackedOutputs[command.id] = command
+       command.outputs << fileName 
    }
    
    
@@ -742,45 +743,11 @@ class PipelineContext {
      */
    Object transformImpl(List<String> exts, Closure body) {
        
-       def extensionCounts = [:]
-       for(def e in exts) {
-           extensionCounts[e] = 0
-       }
-       
-       if(!Utils.first(this.@input)) 
-           throw new PipelineError("Expected input but no input provided") 
-       
-       def pipeline = Pipeline.currentRuntimePipeline.get()
-       
-       def boxed = Utils.box(this.@input)
-       
-       // If the pipeline branched, we need to add a segment to the new files name
-       // to differentiate it from other parallel branches
-       String additionalSegment = applyName ? '.'+pipeline.name : ''
-       
-       def files = exts.collect { String extension ->
-           String inp = boxed[extensionCounts[extension] % boxed.size()]
-           extensionCounts[extension]++
-           String txed = inp.contains(".") ?
-                   inp.replaceAll('\\.[^\\.]*$',additionalSegment + '.'+extension)
-               :
-                   inp + additionalSegment+'.'+extension;
-                   
-           if(txed in boxed) {
-               txed = txed.replaceAll('\\.'+extension+'$', '.'+this.stageName+'.'+extension)
-           }
-           return txed
-       }
-       
-       log.info "Transform using $exts produces outputs $files"
-       
-       if(applyName)
-           pipeline.nameApplied = true
-           
-       // Coerce any inputs coming from different folders to the correct output folder
-       files = toOutputFolder(files)
-       
-       produceImpl(files, body)
+       def tx = new TransformOperation(this,exts,body)
+       if(body)
+           tx.execute()
+       else
+           return tx
    }
  
    List<String> currentFilter = []
@@ -1799,7 +1766,12 @@ class PipelineContext {
         if(myDelegate)
             return myDelegate.methodMissing(name,args)
         else {
-            throw new PipelineError("An unknown function $name was invoked (arguments = ${args.grep {!it.class.name.startsWith('script') }}).\n\nPlease check your script to ensure this function is correct.")
+            try {
+              throw new PipelineError("An unknown function '$name' was invoked (arguments = ${args.grep {!it.class.name.startsWith('script') }}).\n\nPlease check your script to ensure this function is correct.")
+            }
+            catch(Exception e) {
+              throw new PipelineError("An unknown function '$name' was invoked.\n\nPlease check your script to ensure this function is correct.")
+            }
         }    
     }
 }
