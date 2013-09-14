@@ -59,12 +59,12 @@ class TransformOperation {
                    toPattern = '.' + toPattern
             }
             String txed = inp.contains(".") ?
-                    inp.replaceAll(fromPattern, Utils.dotJoin(additionalSegment,toPattern))
+                    inp.replaceAll(fromPattern, FastUtils.dotJoin(additionalSegment,toPattern))
                 :
-                    Utils.dotJoin(inp,additionalSegment,extension)
+                    FastUtils.dotJoin(inp,additionalSegment,extension)
                     
             if(txed in files) {
-                txed = txed.replaceAll('\\.'+extension+'$', '.'+Utils.dotJoin(ctx.stageName,extension))
+                txed = txed.replaceAll('\\.'+extension+'$', '.'+FastUtils.dotJoin(ctx.stageName,extension))
             }
             return txed
         }

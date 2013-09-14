@@ -25,6 +25,8 @@
 
 package bpipe;
 
+import groovy.transform.CompileStatic;
+
 import java.util.regex.Pattern;
 
 /**
@@ -61,4 +63,29 @@ public class FastUtils {
         output.append('$');
         return Pattern.compile(output.toString());
     }
+    
+    /**
+     * @return Return a string consisting of given values concatenated with dots,
+     *         trimming any leading or trailing dots to ensure there are no 
+     *         "double dots" in the resulting string.
+     */
+    static String dotJoin(String... values) {
+        StringBuilder result = new StringBuilder(128);
+        for(String value : values) {
+            if(value.endsWith(".")) {
+                value = value.substring(0, value.length()-1);
+            }
+            
+            if(value.startsWith(".")) {
+                result.append(value);
+            }
+            else {
+              if(result.length() > 0) {
+                  result.append(".");
+              }
+              result.append(value);
+            }
+        }
+        return result.toString();
+    }    
 }
