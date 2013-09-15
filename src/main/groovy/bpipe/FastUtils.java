@@ -80,7 +80,7 @@ public class FastUtils {
                 result.append(value);
             }
             else {
-              if(result.length() > 0) {
+              if(result.length() > 0 && !value.isEmpty()) {
                   result.append(".");
               }
               result.append(value);
