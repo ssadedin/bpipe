@@ -80,20 +80,59 @@ class TransformOperation {
         this.files = Utils.box(ctx.@input)
     }
     
+    void to(String toPattern, Closure c) {
+        to([toPattern],c)
+    }
+    
+    void to(String toPattern1, String toPattern2, Closure c) {
+        to([toPattern1,toPattern2],c)
+    }
+     
     /**
      * Change this transform operation from simple mode to the advanced mode where
      * both a "from" pattern and a "to" pattern are provided, and execute the 
      * transform.
      */
-    void to(String toPattern, Closure c) {
+    void to(List<String> toPatterns, Closure c) {
+        
         this.body = c
-        String pattern = '.*'+exts[0]
-        if(!pattern.endsWith('$'))
-            pattern += '$'
-        PipelineInput input = new PipelineInput(this.files, this.ctx.pipelineStages)
-//        this.files = this.files.grep { it.matches(pattern) }
-        this.files = input.resolveInputsEndingWithPatterns(exts.collect { it + '$'})
-        execute(exts[0],toPattern)
+        
+        // We are going to re-resolve the files to use based on the 
+        // from patterns (which are stored in exts)
+        this.files = []
+        
+        // Expanded list of from patterns : there will be one for each input resolved
+        // (so if one pattern matches 2 inputs, it appears twice).
+        List fromPatterns = []
+        
+        // Expanded list of to patterns : there will be one for each input resolved
+        // (so if one pattern matches 2 inputs, it appears twice).
+        List expandedToPatterns = []
+        
+        // In the advanced case, the "file extensions" are not file extensions, but
+        // regular expressions for matching files to transform from
+        for(def toFromPair in [toPatterns,exts].transpose()) {
+            
+            String toPattern = toFromPair[0]
+            String fromPattern = toFromPair[1]
+            
+            String pattern = '.*'+fromPattern
+            if(!pattern.endsWith('$'))
+                pattern += '$'
+                
+            PipelineInput input = new PipelineInput(this.files, this.ctx.pipelineStages)
+            List<String> filesResolved = input.resolveInputsEndingWithPatterns([fromPattern + '$'], [fromPattern])
+            this.files.addAll(filesResolved)
+            
+            // Add a from pattern for every file that was resolved
+            fromPatterns.addAll([fromPattern] * filesResolved.size())
+            expandedToPatterns.addAll([toPattern] * filesResolved.size())
+        }
+        
+        // Replace the original list of from patterns with our expanded list
+        this.exts = fromPatterns
+        
+        execute(fromPatterns,expandedToPatterns)
     }
     
     /**
@@ -103,17 +142,17 @@ class TransformOperation {
      * outputs are computed by taking their inputs, and replacing their extensions
      * with those set in the constructor by {@link #exts}.
      */
-    void execute(String fromPattern = '\\.[^\\.]*$', String providedToPattern = null) {
+    void execute(List<String> fromPatterns = ['\\.[^\\.]*$'], List<String> providedToPatterns = null) {
         def extensionCounts = [:]
         for(def e in exts) {
             extensionCounts[e] = 0
         }
         
         if(!Utils.first(files)) {
-            if(!providedToPattern)
+            if(!providedToPatterns) // Basic form: no pattern used, only file extensions
               throw new PipelineError("Expected input but no input provided")
             else
-              throw new PipelineError("Expected input but no input could be resolved matching pattern $fromPattern")
+              throw new PipelineError("Expected input but no input could be resolved matching pattern ${fromPatterns[0]}")
         }
         
         def pipeline = Pipeline.currentRuntimePipeline.get()
@@ -122,10 +161,19 @@ class TransformOperation {
         // to differentiate it from other parallel branches
         String additionalSegment = ctx.applyName ? '.'+pipeline.name : ''
         
+        int count = 0
         def outFiles = exts.collect { String extension ->
-            String inp = this.files[extensionCounts[extension] % files.size()]
+            
+            // In the simple case, only 1 from pattern exists - we always replace the file extension
+            // In advanced case we expect 1 from pattern and 1 toPattern per file
+            int fromPatternIndex = count%fromPatterns.size()
+            int fileIndex = (providedToPatterns == null) ? extensionCounts[extension] % files.size() : fromPatternIndex
+            
+            String inp = this.files[fileIndex]
+            String fromPattern = fromPatterns[fromPatternIndex]
+            
             extensionCounts[extension]++
-            String toPattern = providedToPattern
+            String toPattern = providedToPatterns[count]
             if(toPattern == null) {
                toPattern = extension 
                if(!toPattern.startsWith('.'))
@@ -135,10 +183,13 @@ class TransformOperation {
                     inp.replaceAll(fromPattern, FastUtils.dotJoin(additionalSegment,toPattern))
                 :
                     FastUtils.dotJoin(inp,additionalSegment,extension)
-                    
+            
+            // A small hack that is designed to avoid a situation where an output 
+            // receives the same name as an input file
             if(txed in files) {
                 txed = txed.replaceAll('\\.'+extension+'$', '.'+FastUtils.dotJoin(ctx.stageName,extension))
             }
+            ++count
             return txed
         }
         

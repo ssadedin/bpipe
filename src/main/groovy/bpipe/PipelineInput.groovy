@@ -186,10 +186,18 @@ class PipelineInput {
      * for each of the given exts.
      */
     List<String> resolveInputsEndingWith(def exts) {    
-        resolveInputsEndingWithPatterns(exts.collect { it.replace('.','\\.')+'$' })
+        resolveInputsEndingWithPatterns(exts.collect { it.replace('.','\\.')+'$' }, exts)
     }
     
-    List<String> resolveInputsEndingWithPatterns(def exts) {    
+    /**
+     * Search the pipeline hierarchy backwards to find inputs matching the patterns specified 
+     * in 'exts'.
+     * 
+     * @param exts  pattern (regular expressions) to match
+     * @param origs user friendly versions of the above to display in errors
+     * @return  list of inputs matching given patterns
+     */
+    List<String> resolveInputsEndingWithPatterns(def exts, def origs) {    
         
         def orig = exts
         def relatedThreads = [Thread.currentThread().id, Pipeline.rootThreadId]
@@ -224,8 +232,11 @@ class PipelineInput {
 	        // rather than searching backwards for a previous match
 	        reverseOutputs.add(0,Utils.box(this.@input))
 	        
-	        def filesWithExts = Utils.box(exts).collect { String pattern ->
-	            
+            List missingExts = []
+	        def filesWithExts = [Utils.box(exts),origs].transpose().collect { extsAndOrigs ->
+	            String pattern = extsAndOrigs[0]
+	            String origName = extsAndOrigs[1]
+                
 	            if(!pattern.startsWith("\\."))
 	                pattern = "." + pattern
 	            
@@ -237,10 +248,11 @@ class PipelineInput {
 	                    return s.grep { it?.matches(pattern) }
 //	                    return o
 	            }
+                missingExts << origName
 	        }
-	        
-	        if(filesWithExts.any { it == null})
-	            throw new PipelineError("Unable to locate one or more specified inputs from pipeline with extension(s) $orig")
+            
+	        if(missingExts)
+	            throw new PipelineError("Unable to locate one or more specified inputs from pipeline with the following extension(s):\n\n" + missingExts*.padLeft(15," ").join("\n"))
 	            
 			log.info "Found files with exts $exts : $filesWithExts"
 	        return filesWithExts.flatten().unique()
