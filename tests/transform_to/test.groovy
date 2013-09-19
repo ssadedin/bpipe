@@ -5,8 +5,14 @@ hello = {
 }
 
 world = {
-    transform('.fastq.gz')  to('_fastqc.zip')  {
-        exec "cat $input.gz > $output.zip"
+    transform('.fastq.gz','.xml')  to('_fastqc.zip','.tsv')  {
+        exec """
+            cat $input1.gz > $output1.zip
+
+            cat $input2.gz > $output2.zip
+
+            touch $output.tsv
+        """
     }
 }
 
