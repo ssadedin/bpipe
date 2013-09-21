@@ -1,1 +1,1 @@
-rm -f *.xml *.zip
+rm -f *.xml *.zip *.tsv
