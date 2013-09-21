@@ -46,6 +46,19 @@ class ListBouncer {
     List elements = []
 }
 
+
+/**
+ * Utility to convert a Node structure to a Map structure (primarily, for export as Json)
+ */
+class NodeListCategory {
+    static Map toMap(Node n) {
+        return  n.children()?[name: n.name(), children: n.children()*.toMap()]:[name:n.name()]
+    }
+    static String toJson(Node n) {
+        groovy.json.JsonOutput.toJson(n.toMap())
+    }
+}
+
 /**
  * Main Pipeline class.  Used by client to start a pipeline
  * running by specifying initial inputs and setting up 
@@ -328,7 +341,7 @@ public class Pipeline {
             pipeline.execute(inputFile, host, pipelineBuilder)
         else
         if(mode in ["diagram","diagrameditor"])
-            pipeline.diagram(host, pipelineBuilder, Runner.opts.arguments()[0], mode == "diagrameditor")
+            pipeline.renderMxGraph(pipeline.diagram(host, pipelineBuilder), Runner.opts.arguments()[0], mode == "diagrameditor")
         else
         if(mode in ["documentation"])
             pipeline.documentation(host, pipelineBuilder, Runner.opts.arguments()[0])
@@ -383,6 +396,7 @@ public class Pipeline {
             log.info "Finished running segment for inputs $inputs"
         }
     }
+    
 
     private Closure execute(def inputFile, Object host, Closure pipeline, boolean launch=true) {
         
@@ -426,6 +440,14 @@ public class Pipeline {
             startLog.flush()
             
             about(startedAt: new Date())
+        }
+        
+        Node pipelineStructure = diagram(host, pipeline)
+        
+        println "Executing pipeline: "
+        use(NodeListCategory) {
+            println groovy.json.JsonOutput.prettyPrint(pipelineStructure.toJson())
+            EventManager.instance.signal(PipelineEvent.STARTED, "Pipeline started", [pipeline:pipelineStructure.toMap()])
         }
     
         def constructedPipeline
@@ -774,9 +796,13 @@ public class Pipeline {
     }
     
     /**
-     * This method creates a diagram of the pipeline instead of running it
+     * Generate a model of the pipeline in the form of Groovy Node objects
+     * 
+     * @param host
+     * @param pipeline  Closure that is to execute the pipeline
+     * @return  A tree of Nodes reflecting the pipeline structure
      */
-    def diagram(Object host, Closure pipeline, String fileName, boolean editor) {
+    Node diagram(Object host, Closure pipeline) {
         
         // We have to manually add all the external variables to the outer pipeline stage
         this.externalBinding.variables.each {
@@ -794,20 +820,26 @@ public class Pipeline {
         use(DefinePipelineCategory) {
             pipeline()()
         }
-        
+        return DefinePipelineCategory.inputStage
+    }
+    
+    /**
+     * This method creates a diagram of the pipeline instead of running it
+     */
+    void renderMxGraph(Node root, String fileName, boolean editor) {
+               
         // Now make a graph
         // println "Found stages " + DefinePipelineCategory.stages
-        Graph g = new Graph(DefinePipelineCategory.inputStage)
+        Graph g = new Graph(root)
         if(editor) {
             g.display()
         }
         else {
             String outputFileName = fileName+".png"
-            println "Creating diagram $outputFileName"
+           println "Creating diagram $outputFileName"
             g.render(outputFileName)
-        }
+        } 
     }
-    
     
     void addStage(PipelineStage stage) {
         synchronized(this.stages) {

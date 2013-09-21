@@ -212,8 +212,8 @@ class WorxEventListener implements PipelineEventListener {
     }
     
     void start() {
-        
         [
+             PipelineEvent.STARTED,
              PipelineEvent.STAGE_STARTED,
              PipelineEvent.STAGE_COMPLETED, 
              PipelineEvent.SHUTDOWN
@@ -240,16 +240,18 @@ class WorxEventListener implements PipelineEventListener {
         PipelineContext ctx = details?.stage?.context
         if(!ctx)
             ctx = details.ctx
-        
-        if(!ctx)    {
-            log.warning("Pipeline stage or context missing from details provided to statistics event")
-            return
+       
+        if(eventType == STARTED) {
+            if(details.pipeline) {
+                details.pipeline = groovy.json.JsonOutput.toJson(details.pipeline)
+            }
         }
         
         WorxEventJob job = new WorxEventJob(event:eventType, properties: [desc: desc] + details)
         
         this.service.submit(job);
         
+        /*
         switch(eventType) {
             
             case STAGE_STARTED:
@@ -259,8 +261,8 @@ class WorxEventListener implements PipelineEventListener {
             case STAGE_COMPLETED:
                 ctx.doc finishedAt: new Date(), elapsedMs: (System.currentTimeMillis() - ctx.documentation.startedAt.time)
             break
-            
         }
+        */
     }
     
     void shutdown() {
