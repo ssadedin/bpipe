@@ -819,10 +819,13 @@ public class Pipeline {
             
         use(DefinePipelineCategory) {
             def realizedPipeline = pipeline()
-            if(!(realizedPipeline in PipelineCategory.closureNames))
-                realizedPipeline()
-            else
-                DefinePipelineCategory.inputStage.appendNode(PipelineCategory.closureNames[realizedPipeline])
+            Utils.box(realizedPipeline).each { realizedBranch ->
+                if(!(realizedBranch in PipelineCategory.closureNames)) {
+                    realizedBranch()
+                }
+                else
+                    DefinePipelineCategory.inputStage.appendNode(PipelineCategory.closureNames[realizedBranch])
+            }
         }
         return DefinePipelineCategory.inputStage
     }

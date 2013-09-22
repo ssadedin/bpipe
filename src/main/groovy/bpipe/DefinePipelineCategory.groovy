@@ -128,6 +128,14 @@ class DefinePipelineCategory {
             
 			log.info "multiply on input $input with pattern $pattern"
             
+            segments = segments.collect {
+                if(it instanceof List) {
+                    return multiply("*",it)
+                }
+                else
+                    return it
+            }
+            
 			// Match the input
             InputSplitter splitter = new InputSplitter()
             Map samples = splitter.split(pattern, input)
@@ -136,6 +144,7 @@ class DefinePipelineCategory {
 			// separate pipeline for each one, and for each parallel stage
            def oldStages = currentStage
            def newStages = []
+           
            for(Closure s in segments) {
                 log.info "Processing segment ${s.hashCode()}"
                 currentStage = oldStages
