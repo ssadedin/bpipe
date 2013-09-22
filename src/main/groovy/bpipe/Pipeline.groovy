@@ -818,7 +818,11 @@ public class Pipeline {
             pipeline.setDelegate(host)
             
         use(DefinePipelineCategory) {
-            pipeline()()
+            def realizedPipeline = pipeline()
+            if(!(realizedPipeline in PipelineCategory.closureNames))
+                realizedPipeline()
+            else
+                DefinePipelineCategory.inputStage.appendNode(PipelineCategory.closureNames[realizedPipeline])
         }
         return DefinePipelineCategory.inputStage
     }
