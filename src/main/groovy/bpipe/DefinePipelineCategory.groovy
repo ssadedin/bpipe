@@ -112,6 +112,10 @@ class DefinePipelineCategory {
         return result
 	}
     
+	static Object multiply(Set chrs, List segments) {
+        multiply("*", segments)
+    }
+    
     /**
      * Implements the syntax that allows an input filter to 
      * break inputs into samples and pass to multiple parallel 

@@ -442,7 +442,7 @@ public class Pipeline {
             about(startedAt: new Date())
         }
         
-//        Node pipelineStructure = diagram(host, pipeline)
+        Node pipelineStructure = diagram(host, pipeline)
 //        
 //        println "Executing pipeline: "
 //        use(NodeListCategory) {
