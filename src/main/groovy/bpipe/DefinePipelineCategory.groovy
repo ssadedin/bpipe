@@ -26,6 +26,8 @@ package bpipe
 
 import static bpipe.Utils.*
 
+import java.util.Map;
+
 import groovy.lang.Closure
 
 import groovy.util.logging.Log
@@ -166,5 +168,12 @@ class DefinePipelineCategory {
         return multiplyImplementation
         
 	}
+    
+    static Closure using(Closure c, Map params) {
+        return c
+    }
 	
+    static Closure using(Closure c, Object... args) {
+        return c
+    }
 }
