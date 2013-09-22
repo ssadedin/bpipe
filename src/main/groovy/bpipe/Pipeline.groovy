@@ -442,14 +442,14 @@ public class Pipeline {
             about(startedAt: new Date())
         }
         
-        Node pipelineStructure = diagram(host, pipeline)
-        
-        println "Executing pipeline: "
-        use(NodeListCategory) {
-            println groovy.json.JsonOutput.prettyPrint(pipelineStructure.toJson())
-            EventManager.instance.signal(PipelineEvent.STARTED, "Pipeline started", [pipeline:pipelineStructure.toMap()])
-        }
-    
+//        Node pipelineStructure = diagram(host, pipeline)
+//        
+//        println "Executing pipeline: "
+//        use(NodeListCategory) {
+//            println groovy.json.JsonOutput.prettyPrint(pipelineStructure.toJson())
+//            EventManager.instance.signal(PipelineEvent.STARTED, "Pipeline started", [pipeline:pipelineStructure.toMap()])
+//        }
+//    
         def constructedPipeline
         use(PipelineCategory) {
             
