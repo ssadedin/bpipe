@@ -173,7 +173,7 @@ class TransformOperation {
             String fromPattern = fromPatterns[fromPatternIndex]
             
             extensionCounts[extension]++
-            String toPattern = providedToPatterns[count]
+            String toPattern = providedToPatterns?providedToPatterns[count]:null
             if(toPattern == null) {
                toPattern = extension 
                if(!toPattern.startsWith('.'))
