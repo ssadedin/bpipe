@@ -32,7 +32,7 @@ BUILDDATE=0
 : ${MAX_JAVA_MEM:="256m"}
 
 # Pattern used to parse log files when tailing
-TAIL_PATTERN='s/\[[.0-9a-zA-Z_-]*\(\.\{0,1\}[0-9]*\)\{1,\}\]'$'\t//g' 
+TAIL_PATTERN='s/\[[*.0-9a-zA-Z_-]*\(\.\{0,1\}[0-9]*\)\{1,\}\]'$'\t//g' 
 
 #----------------------------------------------------------
 # Kill a whole tree of processes in a cross platform way.
