@@ -16,3 +16,4 @@ bpipe run test.groovy  >> test.out
 
 grep -q touch commandlog.txt && err "Command to create output_dir/test1.foo was issued again on second run"
 
+true
