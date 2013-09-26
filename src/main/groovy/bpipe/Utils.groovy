@@ -27,6 +27,8 @@ package bpipe
 import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
 import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.util.regex.Pattern
@@ -54,6 +56,10 @@ class Utils {
         // Fixing issue 44 - https://code.google.com/p/bpipe/issues/detail?id=44
         if( !outputs || !inputs )
             return []
+            
+        // Remove any directories appearing as inputs - their timestamps change whenever
+        // any file in the dir changes
+        inputs = inputs.grep { !(new File(it).isDirectory())}
 
         // Box into a collection for simplicity
         outputs = box(outputs)
@@ -541,5 +547,4 @@ class Utils {
         throw new IllegalStateException("Failed to create directory within $TEMP_DIR_ATTEMPTS")
       }
     
-
 }

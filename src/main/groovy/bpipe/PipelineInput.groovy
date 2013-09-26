@@ -131,13 +131,31 @@ class PipelineInput {
      * that has the given file extension
      */
     def propertyMissing(String name) {
-		log.info "Searching for missing property: $name"
-        def exts = [name]
-        def resolved = resolveInputsEndingWith(exts)
-        if(resolved.size() <= defaultValueIndex)
-            throw new PipelineError("Insufficient inputs: at least ${defaultValueIndex+1} inputs are expected with extension .${name} but only ${resolved.size()} are available")
+		log.info "Searching for missing Property: $name"
+        def resolved
+        if(name =="dir") {
+            log.info "Trying to resolve input as directory ...."
+            resolved = resolveInputAsDirectory()
+            if(!resolved) 
+                throw new PipelineError("Expected a directory as input, but no current input to this stage was a directory: \n" + Utils.box(input).join("\n"))
+        }
+        else {
+          def exts = [name]
+          resolved = resolveInputsEndingWith(exts)
+          if(resolved.size() <= defaultValueIndex)
+              throw new PipelineError("Insufficient inputs: at least ${defaultValueIndex+1} inputs are expected with extension .${name} but only ${resolved.size()} are available")
+        }
 		return mapToCommandValue(resolved)
      }
+    
+    String resolveInputAsDirectory() {
+        List outputStack = this.computeOutputStack()
+        for(List outputs in outputStack) {
+            def result = Utils.box(outputs).find { new File(it).isDirectory() }
+            if(result)
+                return result
+        }
+    }
 	
 	/**
 	 * Maps given values to a form ready to be included
@@ -200,37 +218,9 @@ class PipelineInput {
     List<String> resolveInputsEndingWithPatterns(def exts, def origs) {    
         
         def orig = exts
-        def relatedThreads = [Thread.currentThread().id, Pipeline.rootThreadId]
-        
-        Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
-        while(pipeline.parent && pipeline.parent!=pipeline) {
-            relatedThreads.add(pipeline.parent.threadId)
-            pipeline = pipeline.parent
-        }
-        
         synchronized(stages) {
             
-	        def reverseOutputs = stages.reverse().grep { 
-                // Only consider outputs from threads that are related to us but don't consider our own
-                // (yet to be created) outputs
-                it.context.threadId in relatedThreads && !this.is(it.context.@inputWrapper)
-            }.collect { PipelineStage stage ->
-                Utils.box(stage.context.@output) 
-            }
-	        
-	        // Add a final stage that represents the original inputs (bit of a hack)
-	        // You can think of it as the initial inputs being the output of some previous stage
-	        // that we know nothing about
-	        reverseOutputs.add(Utils.box(stages[0].context.@input))
-            
-            // Consider not just the actual inputs to the stage, but also the *original* unmodified inputs
-            if(stages[0].originalInputs)
-    	        reverseOutputs.add(Utils.box(stages[0].originalInputs))
-	        
-	        // Add an initial stage that represents the current input to this stage.  This way
-	        // if the from() spec is used and matches the actual inputs then it will go with those
-	        // rather than searching backwards for a previous match
-	        reverseOutputs.add(0,Utils.box(this.@input))
+            def reverseOutputs = computeOutputStack()
 	        
             List missingExts = []
 	        def filesWithExts = [Utils.box(exts),origs].transpose().collect { extsAndOrigs ->
@@ -257,6 +247,47 @@ class PipelineInput {
 			log.info "Found files with exts $exts : $filesWithExts"
 	        return filesWithExts.flatten().unique()
         }
+    }
+    
+    /**
+     * Compute a list of outputs from previous stages, in reverse order that they occurred
+     * in the pipeline, and includes the original inputs as the last stage. This "stack" of inputs
+     * provides an appropriate order for searching for inputs to a pipeline stage.
+     */
+    List<List<String>> computeOutputStack() {
+        
+        def relatedThreads = [Thread.currentThread().id, Pipeline.rootThreadId]
+        
+        Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
+        while(pipeline.parent && pipeline.parent!=pipeline) {
+            relatedThreads.add(pipeline.parent.threadId)
+            pipeline = pipeline.parent
+        }
+        
+        
+        def reverseOutputs = stages.reverse().grep { 
+            // Only consider outputs from threads that are related to us but don't consider our own
+            // (yet to be created) outputs
+            it.context.threadId in relatedThreads && !this.is(it.context.@inputWrapper)
+        }.collect { PipelineStage stage ->
+            Utils.box(stage.context.@output) 
+        }
+        
+        // Add a final stage that represents the original inputs (bit of a hack)
+        // You can think of it as the initial inputs being the output of some previous stage
+        // that we know nothing about
+        reverseOutputs.add(Utils.box(stages[0].context.@input))
+            
+          // Consider not just the actual inputs to the stage, but also the *original* unmodified inputs
+          if(stages[0].originalInputs)
+  	        reverseOutputs.add(Utils.box(stages[0].originalInputs))
+        
+        // Add an initial stage that represents the current input to this stage.  This way
+        // if the from() spec is used and matches the actual inputs then it will go with those
+        // rather than searching backwards for a previous match
+        reverseOutputs.add(0,Utils.box(this.@input))        
+            
+        return reverseOutputs
     }
     
     void addFilterExts(List objs) {
