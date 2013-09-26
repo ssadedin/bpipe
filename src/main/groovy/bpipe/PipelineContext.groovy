@@ -824,7 +824,7 @@ class PipelineContext {
         // Unwrap any files that may be wrapped in PipelineInput or PipelineOutput objects
         out = Utils.unwrap(out)      
         
-        List globOutputs = Utils.box(out).grep { it.contains("*") }
+        List globOutputs = Utils.box(toOutputFolder(Utils.box(out).grep { it.contains("*") }))
         
         // Coerce so that files go to the right output folder
         out = toOutputFolder(out)
