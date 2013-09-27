@@ -482,7 +482,12 @@ class PipelineContext {
            outputFolder.mkdirs()
            
        String outPrefix = this.outputDirectory == "." ? "" : this.outputDirectory + "/" 
-       def newOutputs = Utils.box(outputs).collect { outPrefix + new File(it.toString()).name }
+       def newOutputs = Utils.box(outputs).collect { 
+           if(it.toString().contains("/") && it.toString().contains("*")) 
+               return it
+           else
+             return outPrefix + new File(it.toString()).name 
+       }
        return Utils.unbox(newOutputs)
    }
    
