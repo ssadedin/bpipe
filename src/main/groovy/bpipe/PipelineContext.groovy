@@ -1382,9 +1382,6 @@ class PipelineContext {
      */
     Command async(String cmd, boolean joinNewLines=true, String config = null, boolean deferred=false) {
         
-      // Replacement of magic $thread variable with real value 
-      cmd = cmd.replaceAll(THREAD_LAZY_VALUE, this.usedResources['threads'].amount as String)
-      
       if(config == null)
           config = this.defaultConfig
           
@@ -1395,6 +1392,24 @@ class PipelineContext {
       else
           joined = cmd
           
+      // note - set the command here, so that it can be used to resolve
+      // the right configuration. However we set it again below
+      // after we have resolved the right thread / procs value
+      Command command = new Command(command:joined, configName:config)
+      
+      // Replacement of magic $thread variable with real value 
+      String actualThreads = this.usedResources['threads'].amount as String  
+      
+      // If the config itself specifies procs, it should override the auto-thread magic variable
+      // which may get given a crazy high number of threads
+      if(config) {
+          def procs = command.getConfig(Utils.box(this.input)).procs
+          if(procs)
+              actualThreads = String.valueOf(Math.min(procs.toInteger(), actualThreads.toInteger()))
+      }
+      
+      command.command = joined.replaceAll(THREAD_LAZY_VALUE, actualThreads)
+      
       // Inferred outputs are outputs that are picked up through the user's use of 
       // $ouput.<ext> form in their commands. These are intercepted at string evaluation time
       // (prior to the async or exec command entry) and set as inferredOutputs until
@@ -1429,7 +1444,6 @@ class PipelineContext {
           if(toolsDiscovered)
               this.doc(["tools" : toolsDiscovered])
        
-          Command command = new Command(command:joined)
           command.executor = 
               commandManager.start(stageName, command, config, Utils.box(this.input), 
                                    new File(outputDirectory), this.usedResources,
