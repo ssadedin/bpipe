@@ -358,14 +358,18 @@ class PipelineContext {
        def pipeline = Pipeline.currentRuntimePipeline.get()
        String branchName = applyName  ? pipeline.name : null
        
+       
        def po = new PipelineOutput(out,
-                                    this.stageName, 
-                                 baseOutput,
-                                 Utils.box(this.@output), 
-                                 { o,replaced -> onNewOutputReferenced(pipeline, o, replaced)}) 
+                                   this.stageName, 
+                                   baseOutput,
+                                   Utils.box(this.@output),
+                                   { o,replaced -> onNewOutputReferenced(pipeline, o, replaced)}) 
        
        po.branchName = branchName
-       po.currentFilter = currentFilter
+       if(this.currentFileNameTransform instanceof FilterFileNameTransformer)
+         po.currentFilter = currentFileNameTransform
+         
+       po.resolvedInputs = this.resolvedInputs
        po.outputDirChangeListener = { outputTo(it) }
        return po
    }
@@ -781,7 +785,7 @@ class PipelineContext {
             
         this.currentFilter = (boxed + Utils.box(this.pipelineStages[-1].originalInputs)).grep { it.indexOf('.')>0 }.collect { it.substring(it.lastIndexOf('.')+1) }
         
-        this.currentFileNameTransform = new FilterFileNameTransformer(types: types)
+        this.currentFileNameTransform = new FilterFileNameTransformer(types: types, exts: currentFilter)
         
         def files = currentFileNameTransform.transform(boxed, applyName)
         

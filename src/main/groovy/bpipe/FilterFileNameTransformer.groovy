@@ -31,10 +31,22 @@ import java.util.List;
 @Log
 class FilterFileNameTransformer implements FileNameTransformer {
     
+    /**
+     * Names of filters (prepended prior to extension)
+     */
     List<String> types
+    
+    /**
+     * Extensions of files on which this filter was applied
+     */
+    List<String> exts = []
+    
+    boolean nameApplied = false
 
     @Override
     public List<String> transform(List<String> inputs,  boolean applyName) {
+        
+        this.nameApplied = applyName
         
         def pipeline = Pipeline.currentRuntimePipeline.get()
         

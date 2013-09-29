@@ -69,10 +69,17 @@ class PipelineOutput {
     List<String> overrideOutputs
     
     /**
+     * A list of inputs that were resolved prior to this output being referenced
+     * Used when a choice between two possible output references is possible,
+     * to use the one best associated with actual resolved input
+     */
+    List<String> resolvedInputs = []
+    
+    /**
      * If a filter is executing, a list of the file extensions that were available
      * to the filter 
      */
-    List<String> currentFilter = []
+    FilterFileNameTransformer currentFilter = null
     
     /**
      * If the output should add an extra segment to generated output files then that
@@ -183,10 +190,21 @@ class PipelineOutput {
         String result = this.overrideOutputs.find { it.toString().endsWith('.' + name) }
         def replaced = null
         if(!result) {
-            if(name in currentFilter) {
+            if(currentFilter && (name in currentFilter.exts)) {
                 log.info "Allowing reference to output not produced by filter because it was available from a filtering of an alternative input"
+                
                 replaced = this.overrideOutputs[0]
-                result = this.overrideOutputs[0].replaceAll('\\.[^.]*$',"." + name)
+                
+                // result = this.overrideOutputs[0].replaceAll('\\.[^.]*$',"." + name)
+                String baseInput = this.resolvedInputs.find {it.endsWith(name)}
+                if(!baseInput) {
+                    baseInput = this.overrideOutputs[0]
+                  result = baseInput.replaceAll('\\.[^.]*$',"." + name)
+                }
+                else {
+                    log.info "Recomputing filter on base input $baseInput to achieve match with output extension $name"
+                    result = this.currentFilter.transform([baseInput], this.currentFilter.nameApplied)[0]
+                }
             }
         }
         
