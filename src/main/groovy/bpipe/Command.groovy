@@ -24,8 +24,10 @@
  */
 package bpipe
 
+import groovy.util.logging.Log;
 import bpipe.executor.CommandExecutor;
 
+@Log
 class Command {
     
     String id
@@ -35,4 +37,63 @@ class Command {
     List outputs = []
     
     CommandExecutor executor
+    
+    String configName
+    
+    /**
+     * Internal configuration = accessed via getConfig()
+     */
+    private Map cfg
+    
+    Map getConfig(inputs) {
+        if(cfg != null)
+            return cfg
+            
+        // How to run the job?  look in user config
+        if(!configName)
+            configName = command.trim().split(/\s/)[0].trim()
+        
+        log.info "Checking for configuration for command $configName"
+        
+        // Use default properties from root entries into user config
+        def defaultConfig = Config.userConfig.findAll { !(it.value instanceof Map) }
+        log.info "Default command properties: $defaultConfig"
+        
+        def rawCfg = defaultConfig
+        
+        def cmdConfig = Config.userConfig.containsKey("commands")?Config.userConfig.commands[configName]:null
+        if(cmdConfig && cmdConfig instanceof Map)  {
+            // override properties in default config with those for the
+            // specific command
+            rawCfg = defaultConfig + cmdConfig
+        }
+        
+        // Make a new map
+        this.cfg = rawCfg.clone()
+        
+        // Resolve inputs to files
+        List fileInputs = inputs.collect { new File(it) }
+        
+        // Execute any executable properties that are closures
+        rawCfg.each { key, value ->
+            if(value instanceof Closure) {
+                cfg[key] = value(fileInputs)
+            }
+            
+            // Special case - walltime can be specified as integer number of seconds
+            if(key == 'walltime' && !(cfg[key] instanceof String)) {
+                cfg[key] = formatWalltime(cfg[key])
+                log.info "Converted walltime is " + cfg[key]
+            }
+        }
+        return cfg
+    }
+    
+    private String formatWalltime(def walltime) {
+       // Treat as integer, convert to string
+       int hours = (int)Math.floor(walltime / 3600)
+       int minutes = (int)Math.floor((walltime - hours*3600)/60)
+       int seconds = walltime % 60
+       return String.format('%02d:%02d:%02d', hours, minutes, seconds )
+    }
 }

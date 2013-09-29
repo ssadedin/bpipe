@@ -121,6 +121,18 @@ make_pbs_script () {
              fi
              # the SMP queue never requests cores (it gets a single node)
              procs_request="";;
+
+       *)    if [[ -z $MEMORY ]]; then
+                memory_request=""
+             else
+                memory_request="#PBS -l mem=${MEMORY}gb" 
+             fi 
+             if [[ -z $PROCS ]]; then
+                procs_request="#PBS -l procs=$DEFAULT_BATCH_PROCS"
+             else
+                procs_request="#PBS -l procs=$PROCS"
+             fi
+             ;;
    esac
 
    # write out the job script to a file
