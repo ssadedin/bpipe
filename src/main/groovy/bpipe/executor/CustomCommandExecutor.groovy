@@ -312,7 +312,7 @@ class CustomCommandExecutor implements CommandExecutor {
                     throw new PipelineError("Job ${commandId} returned UNKNOWN status prior to completion. This may indicate your job queue is configured to time out jobs too quickly.  Please consult your administrator to see if job information can be retained longer.")
                 }
                 else
-                  log.warn "Job status query returned UNKNOWN for job ${commandId}. Will retry."
+                  log.warning "Job status query returned UNKNOWN for job ${commandId}. Will retry."
 
                 ++errorCount
             }
