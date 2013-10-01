@@ -1439,7 +1439,7 @@ class PipelineContext {
       this.inferredOutputs = []
       
       if(!probeMode) {
-          CommandLog.cmdLog.write(cmd)
+          CommandLog.cmdLog.write(command.command)
           
           // Check the command for versions of tools it uses
           if(!Runner.opts.t) { // Don't execute probes if the user is just testing the pipeline
