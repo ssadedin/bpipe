@@ -27,10 +27,10 @@ package bpipe.executor
 
 import bpipe.CommandStatus
 import bpipe.Config;
+import bpipe.OSResourceThrottle;
 import bpipe.PipelineError
 import bpipe.Utils
 
-import java.util.concurrent.Semaphore
 import groovy.util.logging.Log
 
 /**
@@ -85,16 +85,6 @@ class CustomCommandExecutor implements CommandExecutor {
      * Whether cleanup has been called 
      */
     boolean cleanedUp
-	
-	/**
-	 * The concurrency allowed for calling the custom command script.
-	 * By default, the concurrency is 1, meaning that we do not assume
-	 * that the custom script supports concurrency at all.  This also
-	 * prevents hitting resource constraints (such as max file handles)
-	 * on systems where small limits have been placed on the 
-	 * head node that is submitting jobs.
-	 */
-	static Semaphore concurrencyCounter;
     
     /**
      * Create a custom command with the specified script as its
@@ -185,10 +175,7 @@ class CustomCommandExecutor implements CommandExecutor {
     }
 	
 	static synchronized acquireLock(Map cfg) {
-		if(concurrencyCounter == null) {
-			concurrencyCounter = new Semaphore(cfg?.concurrency?:1)
-		}
-		concurrencyCounter.acquire()
+        OSResourceThrottle.instance.acquireLock(cfg)
 	}
 
     /**
@@ -219,7 +206,7 @@ class CustomCommandExecutor implements CommandExecutor {
 	 * maximum concurrency for the custom script is not exceeded.
 	 */
 	def withLock(Closure action) {
-		withLock(null, action)
+		OSResourceThrottle.instance.withLock(null,action)
 	}
 	
 	/**
@@ -227,13 +214,7 @@ class CustomCommandExecutor implements CommandExecutor {
 	 * maximum concurrency for the custom script is not exceeded.
 	 */
 	def withLock(Map cfg, Closure action) {
-		acquireLock(cfg) 
-		try {
-			return action()
-		}
-		finally {
-			concurrencyCounter.release()
-		}
+		OSResourceThrottle.instance.withLock(cfg,action)
 	}
 
     @Override

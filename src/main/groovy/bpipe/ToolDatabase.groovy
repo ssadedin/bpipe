@@ -81,28 +81,31 @@ class Tool {
 	 */
 	void probe(String hostCommand) {
 		
-		if(probed) 
-			return
-			
-		String binary = expandToolName(hostCommand)
-		log.info "Binary for $name expanded to $binary"
-		
-		String realizedCommand = probeCommand.replaceAll("%bin%", binary)
-		
-		log.info "Probing version of tool using probe command $realizedCommand"
-		
-		Process process = Runtime.getRuntime().exec((String[])(['bash','-c',"$realizedCommand"].toArray()))
-		StringWriter output = new StringWriter()
-        StringWriter errorOutput = new StringWriter()
-		process.consumeProcessOutput(output, errorOutput)
-		int exitCode = process.waitFor()
-		if(exitCode == 0) {
-			version = output.toString()
-			probeSucceeded = true
-		}
-		else {
-			version = "Unable to determine version (error occured, see log)" 
-            log.info "Probe command $realizedCommand failed with error output: " + errorOutput.toString()
+        OSResourceThrottle.instance.withLock {
+            
+    		if(probed) 
+    			return
+    			
+    		String binary = expandToolName(hostCommand)
+    		log.info "Binary for $name expanded to $binary"
+    		
+    		String realizedCommand = probeCommand.replaceAll("%bin%", binary)
+    		
+    		log.info "Probing version of tool using probe command $realizedCommand"
+    		
+    		Process process = Runtime.getRuntime().exec((String[])(['bash','-c',"$realizedCommand"].toArray()))
+    		StringWriter output = new StringWriter()
+            StringWriter errorOutput = new StringWriter()
+    		process.consumeProcessOutput(output, errorOutput)
+    		int exitCode = process.waitFor()
+    		if(exitCode == 0) {
+    			version = output.toString()
+    			probeSucceeded = true
+    		}
+    		else {
+    			version = "Unable to determine version (error occured, see log)" 
+                log.info "Probe command $realizedCommand failed with error output: " + errorOutput.toString()
+    		}
 		}
 	}
 	
