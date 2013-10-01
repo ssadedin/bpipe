@@ -1214,7 +1214,7 @@ class PipelineContext {
         if(!this.probeMode)
             this.commandManager.cleanup(c.executor)
             
-        throw new PipelineError("Command failed with exit status = $exitResult : \n$cmd")
+        throw new PipelineError("Command failed with exit status = $exitResult : \n\n$c.command")
       }
       
       if(!this.probeMode)
