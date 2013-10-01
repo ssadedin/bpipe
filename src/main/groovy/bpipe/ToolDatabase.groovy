@@ -106,6 +106,7 @@ class Tool {
     			version = "Unable to determine version (error occured, see log)" 
                 log.info "Probe command $realizedCommand failed with error output: " + errorOutput.toString()
     		}
+            probed = true
 		}
 	}
 	

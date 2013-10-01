@@ -1442,12 +1442,14 @@ class PipelineContext {
           CommandLog.cmdLog.write(cmd)
           
           // Check the command for versions of tools it uses
-          def toolsDiscovered = ToolDatabase.instance.probe(cmd)
+          if(!Runner.opts.t) { // Don't execute probes if the user is just testing the pipeline
+            def toolsDiscovered = ToolDatabase.instance.probe(cmd)
           
-          // Add the tools to our documentation
-          if(toolsDiscovered)
-              this.doc(["tools" : toolsDiscovered])
-       
+            // Add the tools to our documentation
+            if(toolsDiscovered)
+                this.doc(["tools" : toolsDiscovered])
+          }
+         
           command.executor = 
               commandManager.start(stageName, command, config, Utils.box(this.input), 
                                    new File(outputDirectory), this.usedResources,
