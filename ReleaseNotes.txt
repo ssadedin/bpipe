@@ -1,3 +1,76 @@
+========== Changes for Bpipe Version 0.9.8.4 ============
+
+-    fix __bpipe_lazy_resource_threads__ appearing in
+     output when commands fail instead of real value of $threads
+
+-    fix __bpipe_lazy_resource_threads__ appearing in
+     command log instead of real value of $thread
+
+-    prevented tools being probed more often than needed
+
+-    moved throttling of command execution into separate
+     class, applied throttling to tool probing so as to lessen chances
+     of exhausting threads or file handles when running with 
+     large numbers of inputs and highly parallel pipelines
+
+-    fix log.warn causing any UNKNOWN status code return
+     from PBS/Torque to exit with error instead of retrying
+
+-    fix filter transforms sometimes basing output file
+     on wrong input 
+
+-    preliminary SLURM support via Andrew Lonsdale (thanks!)
+
+-    when a command is configured with to use a specific
+     number of procs, that should override the magic $threads
+     variable value
+
+-    PBS / Torque support not sending memory config for
+     queues other than 'batch' or 'smp'
+
+-    hack: add ability to put extra classes into
+     $BPIPE_LIB/extra-lib.jar for use in pipeline script
+
+-    don't convert outputs containing paths to output
+     folder
+
+-    further support for inputs that are directories -
+     prevent checking of timestamp of directory, search the 
+     full output tree instead of just immediate inputs to stage 
+     when a directory input is requested
+
+-    fix glob outputs not recognized as already created
+     when in explicitly set output folder
+
+-    fix "using" construct causing diagrams to fail
+
+-    fixed diagram failure on nested parallel section, and
+     when a parallel section is the root element in the pipeline
+
+-    fix diagrams failing with exception stack trace when
+     pipeline is split by chromosome
+
+-    fix diagrams not working when only a single stage
+     defined in pipeline
+
+-    add support for transform(".xml") to(".csv") { }
+     style syntax (experimental)
+
+-    better error message for referencing undefined function
+
+-    fixed branch names including directory portions of
+     input file paths when split on files from other directory
+
+-    ensure variables can be overriden from the command
+     line
+
+-    show all commands when test mode aborts a multi
+     command
+
+-    option to show only output from single thread with
+     bpipe log -t
+
+
 ========== Changes for Bpipe Version 0.9.8.3 ============
 
 
