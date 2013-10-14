@@ -205,9 +205,9 @@ class InputSplitter {
             lastPos = c
             lastRight = rightFlank
 		}
-        int lastRenderedPos = lastPos+1+(lastRight.size()?1:0)
+        int lastRenderedPos = lastPos+(lastRight.size()?1:0)
         if(lastRenderedPos < pattern.size()-1)
-            result << pattern.substring(lastRenderedPos, pattern.size())
+            result << pattern.substring(lastRenderedPos+1, pattern.size())
         
         Map resultMap = [ 
             pattern: result.toString(),
