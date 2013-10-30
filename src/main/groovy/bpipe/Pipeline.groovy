@@ -42,10 +42,22 @@ import static Utils.isContainer
 import static Utils.unbox 
 
 
+/**
+ * This class is a hack / workaround to enable a specific syntax quirk
+ * to work in an intuitive way. Normally groovy evaluates expressions left
+ * to right, so closure + list invokes Closure.plus(List ...). However if the
+ * List is the first item in the expression: list + closure then Groovy tries to invoke
+ * List.plus() which places the closure into the list instead of implementing Bpipe's
+ * pipeline logic. This class is part of how we hack groovy to make the syntax work
+ * how we want (see below for where it is used).
+ */
 class ListBouncer {
     List elements = []
+    
+    // Note: invoked when diagram is created
+    void call() {
+    }
 }
-
 
 /**
  * Utility to convert a Node structure to a Map structure (primarily, for export as Json)
@@ -197,6 +209,38 @@ public class Pipeline {
      */
     static about(Map<String,Object> docs) {
         documentation += docs
+    }
+    
+    static title(String theTitle) {
+        about(title:theTitle)
+    }
+    
+    static version(Object version) {
+        about(version:version)   
+    }
+    
+    /**
+     * Inputs that are declared as required by the user
+     */
+    static Map requiredInputs = [:]
+    
+    /**
+     * Declare the given inputs as required
+     */
+    static inputs(Map<String,Object> requiredInputs) {
+        // Check that the given inputs are provided, or throw an error
+        Pipeline.requiredInputs += requiredInputs
+    }
+    
+    void checkRequiredInputs(def providedInputs) {
+        requiredInputs.each { key, details ->
+            log.info "Checking if input matching $key is provided"
+            if(!providedInputs.any { it.endsWith('.' + key)}) {
+                throw new InputMissingError(key,details)
+            }
+            else
+                log.info "Input type $key provided"
+        }
     }
     
     /*
@@ -442,6 +486,27 @@ public class Pipeline {
             about(startedAt: new Date())
         }
         
+        ArrayList.metaClass.plus = { x ->
+            if(x instanceof Closure) {
+                if(delegate && (delegate[-1] instanceof ListBouncer)) {
+                    delegate[-1].elements.add(x)
+                    return delegate
+                }
+                else {
+                    ListBouncer b = new ListBouncer()
+                    b.elements.add(x)
+                    delegate.add(b)
+                    return delegate
+                }
+            }
+            else {
+                ArrayList result = new ArrayList()
+                result.addAll(delegate)
+                result.add(x)
+                return result
+            }
+        }
+
         Node pipelineStructure = diagram(host, pipeline)
 //        
 //        println "Executing pipeline: "
@@ -453,27 +518,7 @@ public class Pipeline {
         def constructedPipeline
         use(PipelineCategory) {
             
-            ArrayList.metaClass.plus = { x ->
-                if(x instanceof Closure) {
-                   if(delegate && (delegate[-1] instanceof ListBouncer)) {
-                       delegate[-1].elements.add(x)
-                       return delegate
-                   }
-                   else {
-                       ListBouncer b = new ListBouncer()
-                       b.elements.add(x)
-                       delegate.add(b)
-                       return delegate
-                   }
-                }
-                else {
-                    ArrayList result = new ArrayList()
-                    result.addAll(delegate)
-                    result.add(x)
-                    return result
-                }
-            }
-            
+           
             // Build the actual pipeline
             Pipeline.withCurrentUnderConstructionPipeline(this) {
                 
@@ -499,16 +544,25 @@ public class Pipeline {
             }
             
             if(launch) {
-                
                 try {
+                    this.checkRequiredInputs(Utils.box(inputFile))
                     runSegment(inputFile, constructedPipeline)
                 }
                 catch(PatternInputMissingError e) {
                     new File(".bpipe/prompt_input_files." + Config.config.pid).text = ''
                 }
+                catch(InputMissingError e) {
+                    println """
+                        A required input was missing from the files given as input.
+                        
+                                 Input Type:  $e.inputType
+                                Description:  $e.description""".stripIndent()
+                    failed = true
+                }
                 
                 println("\n"+" Pipeline Finished ".center(Config.config.columns,"="))
-                rootContext.msg "Finished at " + (new Date())
+                if(rootContext)
+                  rootContext.msg "Finished at " + (new Date())
                 about(finishedAt: new Date())
                 
                 EventManager.instance.signal(PipelineEvent.FINISHED, failed?"Failed":"Succeeded")
