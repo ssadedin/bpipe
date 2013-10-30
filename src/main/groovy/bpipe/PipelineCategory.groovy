@@ -148,7 +148,7 @@ class PipelineCategory {
      */
     static Object plus(Closure other, List segments) {
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
-        Closure mul = multiply("*", segments)
+        Closure mul = splitOnFiles("*", segments, false)
         def plusImplementation =  { input1 ->
             
             def currentStage = new PipelineStage(Pipeline.currentRuntimePipeline.get().createContext(), other)
