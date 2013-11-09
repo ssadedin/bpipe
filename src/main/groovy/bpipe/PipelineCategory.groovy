@@ -216,7 +216,7 @@ class PipelineCategory {
                             // If the filterInputs option is set, match input files on the region name
                             def childInputs = input
                             
-                            def filterInputs = chr.config?.filterInputs
+                            def filterInputs = chr instanceof Chr ? chr.config?.filterInputs : "auto"
                             
                             if(filterInputs == "auto") {
                                 filterInputs = Utils.box(input).any { it.matches(/.*\.chr[1-9A-Z_]*\..*$/) }
@@ -243,10 +243,10 @@ class PipelineCategory {
                                 
                             log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
                             child.addStage(dummyPriorStage)
-                            def region = chr.region
+                            def region = chr instanceof Chr ? chr.region : ""
                             child.variables += [chr: region]
                             child.variables += [region: region]
-                            child.name = chr.name
+                            child.name = chr instanceof Chr ? chr.name : chr
                             child.runSegment(childInputs, segmentClosure)
                         }
                         catch(Exception e) {

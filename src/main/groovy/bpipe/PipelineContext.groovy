@@ -405,7 +405,11 @@ class PipelineContext {
    }
    
    def getOutputs() {
-       return Utils.box(getOutput())
+       def raw =  getOutput()
+       // Used to 'box' the result, but now this is a PipelineOutput that supports direct access by index, 
+       // so should not need it
+//       def result =  Utils.box(raw)
+       return raw
    }
    
    def getOutputByIndex(int index) {
@@ -1408,8 +1412,13 @@ class PipelineContext {
       // which may get given a crazy high number of threads
       if(config) {
           def procs = command.getConfig(Utils.box(this.input)).procs
-          if(procs)
+          if(procs) {
+              if(procs instanceof String) {
+                 // Allow range of integers
+                 procs = procs.replaceAll(" *-.*\$","")
+              }
               actualThreads = String.valueOf(Math.min(procs.toInteger(), actualThreads.toInteger()))
+          }
       }
       
       command.command = joined.replaceAll(THREAD_LAZY_VALUE, actualThreads)

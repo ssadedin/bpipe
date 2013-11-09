@@ -119,10 +119,10 @@ class PipelineOutput {
      *   exec "cp foo.txt ${output[0]}"
      */
     String getAt(int i) {
-        def inputs = Utils.box(this.output)
-        if(inputs.size() <= i)
-            throw new PipelineError("Insufficient outputs:  output $i was referenced but there are only ${output.size()} outputs to choose from")
-        return inputs[i]
+        def outs = Utils.box(this.output)
+        if(outs.size() <= i)
+            throw new PipelineError("Insufficient outputs:  output ${i+1} was referenced but there are only ${outs.size()} outputs to choose from")
+        return outs[i]
     }
     
     /**
