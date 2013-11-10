@@ -757,8 +757,14 @@ public class Pipeline {
     }
     
 	def generateCustomReport(String reportName) {
-        documentation.title = "Report"
-	    this.generateFromTemplate(reportName + ".html")
+        try {
+          documentation.title = "Report"
+    	    this.generateFromTemplate(reportName + ".html")
+        }
+        catch(PipelineError e) {
+            System.err.println "\nA problem occurred generating your report:"
+            System.err.println e.message + "\n"
+        }
 	}
 	
 	/**
@@ -766,7 +772,7 @@ public class Pipeline {
 	 * 
 	 * @param templateFile
 	 */
-	void generateFromTemplate(String templateFile) {
+	void generateFromTemplate(String templateFileName) {
 		
         // Now make a graph
         File docDir = new File("doc")
@@ -790,15 +796,21 @@ public class Pipeline {
 		// Use HTML templates to generate documentation
 		InputStream templateStream
 		File srcTemplateDir = new File(System.getProperty("bpipe.home") + "/src/main/html/bpipe")
-		if(srcTemplateDir.exists())
-			templateStream = new FileInputStream(new File(srcTemplateDir, templateFile))
-		else
-			templateStream = new FileInputStream(new File(System.getProperty("bpipe.home") + "/html", templateFile))
-			
+        File templateFile = srcTemplateDir.exists() ? 
+              new File(srcTemplateDir, templateFileName) 
+            : 
+              new File(System.getProperty("bpipe.home") + "/html", templateFileName)
+              
+        if(!templateFile.exists()) {
+            throw new PipelineError("""
+                The documentation template you specified (${templateFileName.replaceAll(".html","")}) could not be located. Valid report templates are:
+            """.stripIndent() + "\n\t" + templateFile.parentFile.listFiles()*.name.collect{it.replaceAll(".html","")}.join("\n\t"))
+        }
+		templateStream = new FileInputStream(templateFile)
 		GStringTemplateEngine e = new GStringTemplateEngine()
 		templateStream.withReader { r ->
 			def template = e.createTemplate(r).make(docBinding)
-			new File(docDir,templateFile).text = template.toString()
+			new File(docDir,templateFileName).text = template.toString()
 		}
 		templateStream.close()		
         println "Generated documentation in $docDir"
