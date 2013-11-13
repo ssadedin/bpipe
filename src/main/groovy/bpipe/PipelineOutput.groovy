@@ -237,9 +237,17 @@ class PipelineOutput {
             this.outputUsed = this.defaultOutput.replaceAll("[.]{0,1}"+name+"\\."+stageName, '.' + segments)
         }
         else { // more like a transform: keep the old extension in there (foo.csv.bar => foo.csv.bar.xml)
+            
+            // First remove the stage name, if it is at the end
             this.outputUsed = this.defaultOutput.replaceAll('\\.'+stageName+'$', '')
+            
+            // Then replace the extension on the file with the requested one
             if(outputUsed.contains("."))
-                outputUsed = outputUsed.replaceAll('\\.[^\\.]*$', '.' + segments)
+                // Here we allow a potential match on a number in the base output, since that can 
+                // occur when the use uses multiple outputs ($output1.csv, $output2.csv) and 
+                // the same output file is generated for the outputs - such file names get 
+                // a numeric index inserted. eg: test1.txt, test1.txt.2
+                outputUsed = outputUsed.replaceAll('\\.[^\\.]*(\\.[0-9]*){0,1}$', '$1.'+segments)
             else
                 outputUsed = outputUsed + "." + segments
         }
