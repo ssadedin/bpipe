@@ -1237,6 +1237,10 @@ class PipelineContext {
      * @param scr
      */
     void R(Closure c) {
+        R(c,null)
+    }
+    
+    void R(Closure c, String config) {
         log.info("Running some R code")
         
         // When probing, just evaluate the string and return
@@ -1265,7 +1269,8 @@ class PipelineContext {
             String scr = c()
             exec("""unset TMP; unset TEMP; TEMPDIR="$rTempDir" Rscript - <<'!'
             $scr
-!""",false)
+!
+""",false, config)
        }
        finally {
            this.echoWhenNotFound = oldEchoFlag
