@@ -192,7 +192,7 @@ class Runner {
                  d longOpt:'dir', 'output directory', args:1
                  t longOpt:'test', 'test mode'
                  r longOpt:'report', 'generate an HTML report / documentation for pipeline'
-                 'R' longOpt:'report', 'generate named report', args: 1
+                 'R' longOpt:'report', 'generate report using named template', args: 1
                  n longOpt:'threads', 'maximum threads', args:1
                  m longOpt:'memory', 'maximum memory', args:1
                  l longOpt:'resource', 'place limit on named resource', args:1, argName: 'resource=value'
