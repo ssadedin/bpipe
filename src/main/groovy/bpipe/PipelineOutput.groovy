@@ -239,7 +239,12 @@ class PipelineOutput {
         else { // more like a transform: keep the old extension in there (foo.csv.bar => foo.csv.bar.xml)
             
             // First remove the stage name, if it is at the end
-            this.outputUsed = this.defaultOutput.replaceAll('\\.'+stageName+'$', '')
+            outputUsed = this.defaultOutput.replaceAll('\\.'+stageName+'$', '')
+            
+            // If the branch name is now at the end and there is a suffix we can remove the suffix
+            // eg: produce test.chr1.hello.csv rather than test.txt.chr1.hello.csv
+            // (see param_chr_override test)
+            outputUsed = outputUsed.replaceAll(/(\.[^.]*)\./+branchName,'.'+branchName)
             
             // Then replace the extension on the file with the requested one
             if(outputUsed.contains("."))
