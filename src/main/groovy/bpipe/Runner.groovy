@@ -314,8 +314,10 @@ class Runner {
             log.info "No CLI parameters specified"
         }
         
-        if(opts.L) 
-            binding.setParam("region", new RegionValue(value: opts.L))
+        if(opts.L) { 
+            Config.userConfig.region = new RegionValue(value: opts.L)
+            binding.setParam("region", Config.userConfig.region)
+        }
 
         // create the pipeline script instance and set the binding obj
         Script script = gcl.parseClass(pipelineSrc).newInstance()
