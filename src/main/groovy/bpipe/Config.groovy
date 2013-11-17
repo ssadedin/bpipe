@@ -28,7 +28,10 @@ class Config {
         // some features might make outputs go to separate directories
         // (eg: per sample, etc.)
         defaultOutputDirectory : ".",
-        
+
+	    // Default name of doc pipeline html file
+		defaultDocHtml: "index.html",
+
         // The maximum number of threads that Bpipe will launch 
         // when running jobs
         maxThreads : 32,

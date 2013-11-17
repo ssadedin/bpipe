@@ -405,7 +405,11 @@ class PipelineContext {
    }
    
    def getOutputs() {
-       return Utils.box(getOutput())
+       def raw =  getOutput()
+       // Used to 'box' the result, but now this is a PipelineOutput that supports direct access by index, 
+       // so should not need it
+//       def result =  Utils.box(raw)
+       return raw
    }
    
    def getOutputByIndex(int index) {
@@ -413,10 +417,13 @@ class PipelineContext {
            PipelineOutput origOutput = getOutput()
            def o = Utils.box(origOutput.output)
            def result = o[index]
+           String origDefaultOutput = origOutput.defaultOutput
            if(result == null) {
                log.info "No previously set output at $index from ${o.size()} outputs. Synthesizing from index based on first output"
-               if(o[0].indexOf('.')>=0) 
+               if(o[0].indexOf('.')>=0) {
                    result = o[0].replaceAll("\\.([^.]*)\$",".${index+1}.\$1")
+                   origDefaultOutput = origDefaultOutput.replaceAll("\\.([^.]*)\$",".${index+1}.\$1")
+               }
                else
                    result = o[0] + (index+1)
            }
@@ -431,7 +438,7 @@ class PipelineContext {
            
            return new PipelineOutput(result, 
                                      origOutput.stageName, 
-                                     origOutput.defaultOutput, 
+                                     origDefaultOutput,
                                      overrideOutputs, { op,replaced -> onNewOutputReferenced(pipeline, op, replaced)}) 
        }
        catch(Exception e) {
@@ -1413,8 +1420,13 @@ class PipelineContext {
       // which may get given a crazy high number of threads
       if(config) {
           def procs = command.getConfig(Utils.box(this.input)).procs
-          if(procs)
+          if(procs) {
+              if(procs instanceof String) {
+                 // Allow range of integers
+                 procs = procs.replaceAll(" *-.*\$","")
+              }
               actualThreads = String.valueOf(Math.min(procs.toInteger(), actualThreads.toInteger()))
+          }
       }
       
       command.command = joined.replaceAll(THREAD_LAZY_VALUE, actualThreads)

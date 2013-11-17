@@ -191,6 +191,7 @@ class Runner {
                  h longOpt:'help', 'usage information'
                  d longOpt:'dir', 'output directory', args:1
                  t longOpt:'test', 'test mode'
+                 f longOpt: 'filename', 'output file name of report', args:1
                  r longOpt:'report', 'generate an HTML report / documentation for pipeline'
                  'R' longOpt:'report', 'generate report using named template', args: 1
                  n longOpt:'threads', 'maximum threads', args:1
@@ -249,22 +250,24 @@ class Runner {
             }
             Concurrency.instance.setLimit(limit[0],limit[1] as Integer)
         }
-        
+
         if(opts.r) {
             Config.config.report = true
-            def reportStats = new ReportStatisticsListener()
+            setDefaultDocHtml(opts.f)
+			def reportStats = new ReportStatisticsListener()
             EventManager.instance.addListener(PipelineEvent.STAGE_STARTED, reportStats)
             EventManager.instance.addListener(PipelineEvent.STAGE_COMPLETED, reportStats)
         }
         else
-		if(opts.R) {
-			log.info "Creating report $opts.R"
+        if(opts.R) {
+            log.info "Creating report $opts.R"
+            setDefaultDocHtml(opts.f)
             def reportStats = new ReportStatisticsListener()
             EventManager.instance.addListener(PipelineEvent.STAGE_STARTED, reportStats)
             EventManager.instance.addListener(PipelineEvent.STAGE_COMPLETED, reportStats)
             EventManager.instance.addListener(PipelineEvent.COMMAND_CHECK, reportStats)
             Config.config.customReport = opts.R
-		}
+        }
         
         if(Config.userConfig.worx.enable) {
             new WorxEventListener().start()
@@ -334,6 +337,12 @@ class Runner {
                 throw e
         }
     }
+
+    private static setDefaultDocHtml(outFile){
+         if(outFile){
+             Config.config.defaultDocHtml = outFile
+	     }
+	}
 
     private static handleMissingPropertyFromPipelineScript(MissingPropertyException e) {
         // A bit of a hack: the parsed script ends up with a class name like script123243242...

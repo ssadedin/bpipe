@@ -751,12 +751,16 @@ public class Pipeline {
         
         if(!documentation.title)
             documentation.title = "Pipeline Report"
-            
-	    this.generateFromTemplate("index.html")
+
+		def outFile = Config.config.defaultDocHtml
+	    this.generateFromTemplate("index.html", outFile)
 					
     }
     
 	def generateCustomReport(String reportName) {
+        documentation.title = "Report"
+		def outFile = Config.config.defaultDocHtml
+	    this.generateFromTemplate(reportName + ".html", outFile)
         try {
           documentation.title = "Report"
     	    this.generateFromTemplate(reportName + ".html")
@@ -772,7 +776,7 @@ public class Pipeline {
 	 * 
 	 * @param templateFile
 	 */
-	void generateFromTemplate(String templateFileName) {
+	void generateFromTemplate(String templateFile, String outFile) {
 		
         // Now make a graph
         File docDir = new File("doc")
@@ -810,10 +814,11 @@ public class Pipeline {
 		GStringTemplateEngine e = new GStringTemplateEngine()
 		templateStream.withReader { r ->
 			def template = e.createTemplate(r).make(docBinding)
+			new File(docDir, outFile).text = template.toString()
 			new File(docDir,templateFileName).text = template.toString()
 		}
 		templateStream.close()		
-        println "Generated documentation in $docDir"
+        println "Generated documentation in $docDir "+Config.config.defaultDocHtml
 	}
     
 	/**
