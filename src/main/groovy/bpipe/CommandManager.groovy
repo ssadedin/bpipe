@@ -146,8 +146,12 @@ class CommandManager {
         if(Runner.opts.t) {
             if(cmdExec instanceof LocalCommandExecutor)
               throw new PipelineTestAbort("Would execute: $cmd")
-          else
+          else {
+              if(cfg && command.configName) {
+                  cfg.name = configName
+              }
               throw new PipelineTestAbort("Would execute: $cmd\n\n                using $cmdExec with config $cfg")
+          }
         }
         
         // Create a command id for the job
