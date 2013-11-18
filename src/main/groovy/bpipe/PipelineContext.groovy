@@ -497,6 +497,9 @@ class PipelineContext {
            if(it.toString().contains("/") && it.toString().contains("*")) 
                return it
            else
+           if(it.toString().contains("/") && new File(it).exists()) 
+               return it
+           else
              return outPrefix + new File(it.toString()).name 
        }
        return Utils.unbox(newOutputs)
