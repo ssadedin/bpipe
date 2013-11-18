@@ -193,7 +193,7 @@ class Runner {
                  t longOpt:'test', 'test mode'
                  f longOpt: 'filename', 'output file name of report', args:1
                  r longOpt:'report', 'generate an HTML report / documentation for pipeline'
-                 'R' longOpt:'report', 'generate named report', args: 1
+                 'R' longOpt:'report', 'generate report using named template', args: 1
                  n longOpt:'threads', 'maximum threads', args:1
                  m longOpt:'memory', 'maximum memory', args:1
                  l longOpt:'resource', 'place limit on named resource', args:1, argName: 'resource=value'
@@ -314,8 +314,10 @@ class Runner {
             log.info "No CLI parameters specified"
         }
         
-        if(opts.L) 
-            binding.setParam("region", new RegionValue(value: opts.L))
+        if(opts.L) { 
+            Config.userConfig.region = new RegionValue(value: opts.L)
+            binding.setParam("region", Config.userConfig.region)
+        }
 
         // create the pipeline script instance and set the binding obj
         Script script = gcl.parseClass(pipelineSrc).newInstance()

@@ -316,6 +316,19 @@ public class Pipeline {
             }
         }
         
+        // If a region was specified on the command line or in config, 
+        // check for overlap
+        if(Config.userConfig.region) {
+            if(result.any { it.name == Config.userConfig.region.value }) {
+              result.clear()
+              result.add(new Chr(Config.userConfig.region.value, cfg))
+            }
+            else {
+                println "WARNING: region specified on command line or configuration (${Config.userConfig.region})  does not overlap regions specified in pipeline: $objs"
+                println "WARNING: region will be ignored for this portion of the pipeline"
+            }
+        }
+        
         return result
     }
     
@@ -758,9 +771,15 @@ public class Pipeline {
     }
     
 	def generateCustomReport(String reportName) {
-        documentation.title = "Report"
-		def outFile = Config.config.defaultDocHtml
-	    this.generateFromTemplate(reportName + ".html", outFile)
+        try {
+  		  def outFile = reportName + ".html"
+          documentation.title = "Report"
+    	  this.generateFromTemplate(reportName + ".html", outFile)
+        }
+        catch(PipelineError e) {
+            System.err.println "\nA problem occurred generating your report:"
+            System.err.println e.message + "\n"
+        }
 	}
 	
 	/**
@@ -768,7 +787,7 @@ public class Pipeline {
 	 * 
 	 * @param templateFile
 	 */
-	void generateFromTemplate(String templateFile, String outFile) {
+	void generateFromTemplate(String templateFileName, String outFile) {
 		
         // Now make a graph
         File docDir = new File("doc")
@@ -792,11 +811,17 @@ public class Pipeline {
 		// Use HTML templates to generate documentation
 		InputStream templateStream
 		File srcTemplateDir = new File(System.getProperty("bpipe.home") + "/src/main/html/bpipe")
-		if(srcTemplateDir.exists())
-			templateStream = new FileInputStream(new File(srcTemplateDir, templateFile))
-		else
-			templateStream = new FileInputStream(new File(System.getProperty("bpipe.home") + "/html", templateFile))
-			
+        File templateFile = srcTemplateDir.exists() ? 
+              new File(srcTemplateDir, templateFileName) 
+            : 
+              new File(System.getProperty("bpipe.home") + "/html", templateFileName)
+              
+        if(!templateFile.exists()) {
+            throw new PipelineError("""
+                The documentation template you specified (${templateFileName.replaceAll(".html","")}) could not be located. Valid report templates are:
+            """.stripIndent() + "\n\t" + templateFile.parentFile.listFiles()*.name.collect{it.replaceAll(".html","")}.join("\n\t"))
+        }
+		templateStream = new FileInputStream(templateFile)
 		GStringTemplateEngine e = new GStringTemplateEngine()
 		templateStream.withReader { r ->
 			def template = e.createTemplate(r).make(docBinding)

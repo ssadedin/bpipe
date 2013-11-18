@@ -219,6 +219,8 @@ class Utils {
      * Return the given string indented by 4 spaces.  Highly inefficient.
      */
     static String indent(String value) {
+        if(value == null)
+            return "    null"
         value.split("\n")*.replaceAll("\r","").collect { "    " + it }.join("\n")
     }
     
