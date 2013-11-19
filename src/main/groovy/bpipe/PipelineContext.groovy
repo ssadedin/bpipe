@@ -1491,6 +1491,8 @@ class PipelineContext {
      * Write a message to the output of the current stage
      */
     void msg(def m) {
+        if(probeMode)
+            return
         def date = (new Date()).format("HH:mm:ss")
         if(branch)
             this.outputLog.buffer "$date MSG [$branch]:  $m"
