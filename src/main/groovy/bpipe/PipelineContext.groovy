@@ -497,6 +497,9 @@ class PipelineContext {
            if(it.toString().contains("/") && it.toString().contains("*")) 
                return it
            else
+           if(it.toString().contains("/") && new File(it).exists()) 
+               return it
+           else
              return outPrefix + new File(it.toString()).name 
        }
        return Utils.unbox(newOutputs)
@@ -1488,6 +1491,8 @@ class PipelineContext {
      * Write a message to the output of the current stage
      */
     void msg(def m) {
+        if(probeMode)
+            return
         def date = (new Date()).format("HH:mm:ss")
         if(branch)
             this.outputLog.buffer "$date MSG [$branch]:  $m"
