@@ -1,6 +1,6 @@
 source ../testsupport.sh
 
-run test.txt
+bpipe run -L chr2 test.groovy test.txt > test.out
 
 exists test.chr2.hello.csv
 
