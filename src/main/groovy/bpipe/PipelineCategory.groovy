@@ -172,10 +172,15 @@ class PipelineCategory {
         return plusImplementation
     }
     
+    static Object multiply(List objs, List segments) {
+        multiply(objs.collect { it.toString() } as Set, segments)
+    }
+    
     static Object multiply(Set objs, List segments) {
-        if(!objs) 
-            throw new PipelineError("Multiply syntax requires a non-empty list of files or chromosomes, but no entries were in the supplied set")
         
+        if(!objs) 
+            throw new PipelineError("Multiply syntax requires a non-empty list of files, strings, or chromosomes, but no entries were in the supplied set")
+            
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
         
         def multiplyImplementation = { input ->

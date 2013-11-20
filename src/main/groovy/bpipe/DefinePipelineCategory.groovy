@@ -114,6 +114,10 @@ class DefinePipelineCategory {
         return result
 	}
     
+	static Object multiply(List chrs, List segments) {
+        multiply("*", segments)
+    }
+    
 	static Object multiply(Set chrs, List segments) {
         multiply("*", segments)
     }
