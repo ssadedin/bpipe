@@ -26,15 +26,23 @@ package bpipe
 
 import groovy.transform.CompileStatic;
 
-class Branch extends Expando implements Comparable {
+/**
+ * Metadata about a branch within a pipeline
+ * <p>
+ * Behaves as a String via delegation to String variable, but
+ * extends Expando so that the user can set arbitrary properties,
+ * which get carried between pipeline stages.
+ * 
+ * @author simon.sadedin@mcri.edu.au
+ */
+class Branch extends Expando {
     
     @Delegate
     String name = ""
     
     Branch parent = null
     
-    @CompileStatic
-    Branch getTop() {
+    Branch getTop() { // Causes compile to fail :-(
         if(parent == null) {
             return this
         }
@@ -43,38 +51,10 @@ class Branch extends Expando implements Comparable {
         }
     }
     
-    /*
-     * Not working?
-    @Override
-    public boolean equals(Object other) {
-        if(other instanceof Branch)  
-            return this.name == other?.name
-            
-        return this.name == other
-    }
-    */
-    
     public void setParent(Branch parent) {
         // Copy values of properties 
         parent.properties.each { entry ->
             this.setProperty(entry.key, entry.value)
         }
     }
-
-    /*
-    @Override
-    public int hashCode() {
-        return name.hashCode();
-    }
-
-
-
-    @Override
-    public int compareTo(Object o) {
-        if(this.name != null)
-            this.name.compareTo(o)
-        else
-            return o == this.name
-    }
-    */
 }
