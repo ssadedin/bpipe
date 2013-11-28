@@ -57,4 +57,9 @@ class Branch extends Expando {
             this.setProperty(entry.key, entry.value)
         }
     }
+    
+    @Override
+    String toString() {
+        name
+    }
 }
