@@ -51,4 +51,14 @@ class ForwardHost {
     
         this.forwarders << f
     }
+    
+    /**
+     * Ensure any remaining output is copied
+     */
+    void stopForwarding() {
+        this.forwarders*.cancel()
+        
+        // Now run them all one last time to flush any last contents
+        this.forwarders*.run()
+    }
 }
