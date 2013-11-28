@@ -149,10 +149,10 @@ class SlurmCommandExecutor extends CustomCommandExecutor implements CommandExecu
     }
 
         void cleanup() {
-                this.forwarders*.cancel()
-        // slurm12 is stdout and stderr
-        File slurm12= new File("slurm-"+this.commandId+".out")
-                if(slurm12.exists())
+            this.stopForwarding()
+            // slurm12 is stdout and stderr
+            File slurm12= new File("slurm-"+this.commandId+".out")
+            if(slurm12.exists())
                         slurm12.delete()
         }
 

@@ -76,7 +76,7 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
     }
 
 	void cleanup() {
-		this.forwarders*.cancel()
+        this.stopForwarding()
 		File of = new File(this.name+".o"+this.commandId)
 		if(of.exists())
 			of.delete()
