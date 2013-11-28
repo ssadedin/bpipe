@@ -331,7 +331,7 @@ public class Pipeline {
         // If a region was specified on the command line or in config, 
         // check for overlap
         if(Config.userConfig.region) {
-            if(result.any { it.branch.name == Config.userConfig.region.value }) {
+            if(result.any { it.name == Config.userConfig.region.value }) {
               result.clear()
               result.add(new Chr(Config.userConfig.region.value, cfg))
             }
