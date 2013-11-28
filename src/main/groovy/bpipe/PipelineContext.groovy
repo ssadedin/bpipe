@@ -80,7 +80,7 @@ class PipelineContext {
      *                        an output that matches the specified extension.
      *
      */
-    public PipelineContext(Binding extraBinding, List<PipelineStage> pipelineStages, List<Closure> pipelineJoiners, String branch) {
+    public PipelineContext(Binding extraBinding, List<PipelineStage> pipelineStages, List<Closure> pipelineJoiners, Branch branch) {
         super();
         if(pipelineStages == null)
             throw new IllegalArgumentException("pipelineStages cannot be null")
@@ -95,7 +95,7 @@ class PipelineContext {
         if(pipeline)
             this.applyName = pipeline.name && !pipeline.nameApplied
          
-        this.outputLog = new OutputLog(branch)
+        this.outputLog = new OutputLog(branch.name)
     }
     
     /**
@@ -219,7 +219,7 @@ class PipelineContext {
     * The name for this segment of the pipeline.  The name is blank by default but 
     * is non-blank when pipeline branches are created from chromosomes or file name matches.
     */
-   String branch = ""
+   Branch branch 
    
    /**
     * A list of executable closures to be executed when the next produce statement completes

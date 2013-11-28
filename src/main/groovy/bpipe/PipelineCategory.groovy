@@ -173,7 +173,7 @@ class PipelineCategory {
     }
     
     static Object multiply(List objs, List segments) {
-        multiply(objs.collect { it.toString() } as Set, segments)
+        multiply(objs.collect { String.valueOf(it) } as Set, segments)
     }
     
     static Object multiply(Set objs, List segments) {
@@ -251,7 +251,7 @@ class PipelineCategory {
                             def region = chr instanceof Chr ? chr.region : ""
                             child.variables += [chr: region]
                             child.variables += [region: region]
-                            child.name = chr instanceof Chr ? chr.name : chr
+                            child.branch = new Branch(name:chr instanceof Chr ? chr.name : chr)
                             child.runSegment(childInputs, segmentClosure)
                         }
                         catch(Exception e) {
@@ -366,15 +366,14 @@ class PipelineCategory {
                                 
                             log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
                             child.addStage(dummyPriorStage)
+                            String childName = id
                             if(segments.size()>1) {
                                 if(id == "all")
-                                    child.name = segmentNumber.toString()
+                                    childName = segmentNumber.toString()
                                 else
-                                    child.name = id + "." + segmentNumber
+                                    childName = id + "." + segmentNumber
                             }
-                            else
-                                child.name = id
-                            
+                            child.branch = new Branch(name:childName)
                             child.nameApplied = true
                             child.runSegment(files, segmentClosure)
                         }
@@ -497,7 +496,7 @@ class PipelineCategory {
         
         def joiners = finalStages.context.pipelineJoiners
         PipelineContext mergedContext = 
-            new PipelineContext(null, parent.stages, joiners, 'all')
+            new PipelineContext(null, parent.stages, joiners, new Branch(name:'all'))
         def mergedOutputs = finalStages.collect { s ->
             Utils.box(s.context.nextInputs ?: s.context.@output) 
         }.sum().unique()

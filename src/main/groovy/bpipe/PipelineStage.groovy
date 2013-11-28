@@ -437,7 +437,7 @@ class PipelineStage {
                 stageName : this.stageName,
                 startMs : this.startDateTimeMs,
                 endMs : this.endDateTimeMs,
-                branch: this.context.branch,
+                branch: this.context.branch.toString(),
                 threadId: this.context.threadId
             ]
     }

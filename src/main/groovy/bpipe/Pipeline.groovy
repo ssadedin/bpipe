@@ -134,11 +134,19 @@ public class Pipeline {
     int childCount = 0
     
     /**
-     * A name for the pipeline that is added to output file names when 
-     * the pipeline is run as a child pipeline.  This is null and not used
-     * in the default, root pipeline
+     * Metadata about the branch within which this pipeline is running. 
+     * The primary meta data is a name for the pipeline that is added to 
+     * output file names when the pipeline is run as a child pipeline.
+     * This is null and not used in the default, root pipeline
      */
-    String name 
+    Branch branch = new Branch(name:"")
+    
+    void setBranch(Branch value) {
+        this.branch = value
+        if(this.parent) {
+            this.branch.setParent(this.parent.branch)
+        }
+    }
     
     /**
      * Whether the name for the pipeline has been applied in the naming of
@@ -202,6 +210,10 @@ public class Pipeline {
      */
     Pipeline() {
         this.joiners = segmentJoiners.clone()
+    }
+    
+    String getName() {
+        return branch?.name?:""
     }
     
     /**
@@ -319,7 +331,7 @@ public class Pipeline {
         // If a region was specified on the command line or in config, 
         // check for overlap
         if(Config.userConfig.region) {
-            if(result.any { it.name == Config.userConfig.region.value }) {
+            if(result.any { it.branch.name == Config.userConfig.region.value }) {
               result.clear()
               result.add(new Chr(Config.userConfig.region.value, cfg))
             }
@@ -601,7 +613,7 @@ public class Pipeline {
     }
     
     PipelineContext createContext() {
-       def ctx = new PipelineContext(this.externalBinding, this.stages, this.joiners, this.name) 
+       def ctx = new PipelineContext(this.externalBinding, this.stages, this.joiners, this.branch) 
        ctx.outputDirectory = Config.config.defaultOutputDirectory
        return ctx
     }
