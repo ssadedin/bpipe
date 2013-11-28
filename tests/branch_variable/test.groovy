@@ -15,8 +15,10 @@ there = {
 }
 
 greetings = {
+    // Both forms should resolve
     println "branch.foo = $branch.foo"
-    exec "echo $branch.foo | cat - $input.xsl > $output.bed"
+    println "foo = $foo"
+    exec "echo $foo | cat - $input.xsl > $output.bed"
 }
 
 run {

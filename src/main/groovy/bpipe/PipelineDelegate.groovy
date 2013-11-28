@@ -129,6 +129,10 @@ class PipelineDelegate {
             return ctx.localVariables[name]
         }
         else
+        if(ctx.branch.properties.containsKey(name)) {
+            return ctx.branch.getProperty(name)
+        } 
+        else
         if(name.matches("output[0-9]{1,}\$")) {
             // extract output number
             int n = (name =~ "output([0-9]{1,})\$")[0][1].toInteger()
