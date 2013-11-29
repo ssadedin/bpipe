@@ -1,3 +1,63 @@
+
+========== Changes for Bpipe Version 0.9.8.5 ============
+
+-   fix output.dir not working if transform annotation used
+
+-   fix silly mistake causing load external stages to fail
+
+-   fix loading a pipeline stage from within a loaded pipeline stage not
+    working
+
+-   added ability to set branch level variables that are carried forward
+    through the pipeline via branch.<name> = "something" syntax
+
+-   Fix output sometimes not fully flushed when running pipelines using
+    resource managers
+
+-   support for using arbitrary lists for parallelization over any 
+    list of items
+
+-   fix msg writing output during probes (causing double output in 
+    certain situations)
+
+-   when an output that is specified as an absolute / relative file that exists, 
+    fix not seeing it in dependency graph
+
+-   better file names when output extension occurs in combination with
+    introduction of branch name (foo.chr1.csv instead of foo.txt.chr1.csv)
+    NOTE: in rare situations this might cause output file names to change,
+    thus may cause outputs to get recomputed for existing pipelines (in rare cases)
+
+-   allow command line region to override chr() within pipeline
+
+-   fix command configuration sometimes not displaying name
+
+-   slightly better description of command for specifying report 
+    template (see Google Group discussion)
+
+-   fix R code failing when last line contains certain syntax
+
+-   Enable specifying file name for reports (Patch from Ido Tamir,
+    thank you!)
+
+-   fix problems when multiple implicit outputs computed from same input file
+    (output1.foo and output2.foo end up the same file)
+
+-   handle incorrect report template much more nicely than a giant stack
+    trace
+
+========== Changes for Bpipe Version 0.9.8.4.1 ============
+
+-   fix middle parallel section causing spurious error if no inputs provided
+    at start of pipeline
+
+-   fix error when pipeline starts with parallel section and adds a
+    subsequent stage (regression)
+
+-   fix file splitting patterns not working properly for very specific case
+    of a split wildcard (%) followed by 2 chars
+
+
 ========== Changes for Bpipe Version 0.9.8.4 ============
 
 -    fix __bpipe_lazy_resource_threads__ appearing in
