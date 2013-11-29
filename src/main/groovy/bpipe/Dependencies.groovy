@@ -563,7 +563,7 @@ class Dependencies {
                println """
                    Created:             ${new Date(p.timestamp)}
                    Inputs used:         ${p.inputs.join(',')}
-                   Command:             ${Utils.truncnl(p.command,80)}
+                   Command:             ${p.command}
                    Preserved:           ${p.preserved?'yes':'no'}
                    Intermediate output: ${p.intermediate?'yes':'no'}
                """.stripIndent()
