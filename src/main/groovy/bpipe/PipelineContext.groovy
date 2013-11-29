@@ -302,7 +302,7 @@ class PipelineContext {
     * String-like object that intercepts property references
     */
    def getOutput() {
-       String baseOutput = Utils.first(this.getDefaultOutput()) 
+       String baseOutput = Utils.first(this.getDefaultOutput())
        def out = this.@output
        if(out == null || this.currentFileNameTransform) { // Output not set elsewhere, or set dynamically based on inputs
            
@@ -1799,6 +1799,8 @@ class PipelineContext {
     
     void outputTo(String directoryName) {
         this.outputDirectory = directoryName
+        if(this.@output)
+            this.@output = toOutputFolder(this.@output)
     }
     
     PipelineDelegate myDelegate = null
