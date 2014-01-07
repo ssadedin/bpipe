@@ -1,0 +1,3 @@
+hello = {
+  exec "echo world"
+}

@@ -737,8 +737,14 @@ public class Pipeline {
      */
     static synchronized void load(String path) {
         File f = new File(path)
-        if(!f.exists())
-            throw new PipelineError("A file requested to be loaded from path $path but this path could not be accessed.")
+        if(!f.exists()) {
+            // Attempt to resolve the file relative to the main script location if
+            // it cannot be resolved directly
+            f = new File(new File(Config.config.script).parentFile, path)
+        }
+        
+        if(!f.exists()) 
+            throw new PipelineError("A script, requested to be loaded from file '$path', could not be accessed.")
             
         loadedPaths << f
     }
@@ -992,7 +998,21 @@ public class Pipeline {
         rootContext.outputLog.flush()
     }
     
+    /**
+     * Convenience function to convert the given string to a file.
+     * Also ensures that the file has a parent directory, which 
+     * is useful so that the user can reliably refer to the folder
+     * in which the file exists (otherwise, file.parentFile returns
+     * null in certain cases, which can be unexpected).
+     * 
+     * @param fileName
+     * @return
+     */
     static File file(String fileName) {
-        new File(fileName)
+        File f = new File(fileName)
+        if(!f.parentFile)
+            f = new File(".",f)
+            
+        return f
     }
 }

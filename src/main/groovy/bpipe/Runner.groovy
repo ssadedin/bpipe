@@ -31,6 +31,8 @@ import java.util.logging.Handler;
 import java.util.logging.Level
 import java.util.logging.Logger;
 
+import org.codehaus.groovy.runtime.StackTraceUtils;
+
 import bpipe.worx.WorxEventListener;
 
 import groovy.transform.CompileStatic;
@@ -338,7 +340,22 @@ class Runner {
             else
                 throw e
         }
-    }
+        catch(PipelineError e) {
+            log.severe "Reporting exception to user: "
+            log.log(Level.SEVERE, "Reporting exception to user", e)
+            
+            System.err.println(" Bpipe Error ".center(Config.config.columns,"="))
+            System.err.println("\nAn error occurred executing your pipeline:\n\n${e.message.center(Config.config.columns,' ')}\n\nPlease see the details below for more information.\n")
+            System.err.println(" Error Details ".center(Config.config.columns, "="))
+            System.err.println()
+            Throwable sanitized = StackTraceUtils.deepSanitize(e)
+            sanitized.printStackTrace()
+            System.err.println()
+            System.err.println "=" * Config.config.columns
+            System.err.println("\nMore details about why this error occurred may be available in the full log file .bpipe/bpipe.log\n")
+            System.exit(1)
+        }
+   }
 
     private static setDefaultDocHtml(outFile){
          if(outFile){
