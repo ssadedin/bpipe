@@ -198,6 +198,9 @@ class TransformOperation {
         if(ctx.applyName)
             pipeline.nameApplied = true
             
+            
+        ctx.checkAccompaniedOutputs(files)
+            
         // Coerce any inputs coming from different folders to the correct output folder
         outFiles = ctx.toOutputFolder(outFiles)
         

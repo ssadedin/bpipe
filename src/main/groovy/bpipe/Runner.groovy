@@ -364,6 +364,13 @@ class Runner {
 	}
 
     private static handleMissingPropertyFromPipelineScript(MissingPropertyException e) {
+        
+        // Log the full stack trace
+        log.log(Level.SEVERE, "Missing variable failure", e)
+        def s = new StringWriter()
+        e.printStackTrace(new PrintWriter(s))
+        log.severe(s.toString())
+        
         // A bit of a hack: the parsed script ends up with a class name like script123243242...
         // so search for that in the stack trace to find the line number
         int lineNumber = e.stackTrace.find { it.className ==~ /script[0-9]{1,}/ }.lineNumber

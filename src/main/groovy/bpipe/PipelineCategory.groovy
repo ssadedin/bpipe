@@ -283,6 +283,16 @@ class PipelineCategory {
         splitOnFiles(pattern,segments,true)
     }
     
+    static Object multiply(Map branches, List segments) {
+        Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
+        def multiplyImplementation = { input ->
+          splitOnMap(branches,segments)
+        }
+        log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
+        pipeline.joiners << multiplyImplementation
+        return multiplyImplementation
+    }
+    
     /**
      * Implements the syntax that allows an input filter to 
      * break inputs into samples and pass to multiple parallel 
@@ -291,25 +301,11 @@ class PipelineCategory {
      * <code>"sample_%_*.txt" * [stage1 + stage2 + stage3]</code>
      */
     static Object splitOnFiles(String pattern, List segments, boolean requireMatch) {
-        segments = segments.collect { 
-            if(it instanceof List) {
-                return multiply("*",it)
-            }
-            else 
-                return it
-        }
-        
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
         
         def multiplyImplementation = { input ->
             
             log.info "multiply on input $input with pattern $pattern"
-            
-            PipelineStage currentStage = new PipelineStage(pipeline.createContext(), {})
-            Pipeline.currentRuntimePipeline.get().addStage(currentStage)
-            currentStage.context.setInput(input)
-            
-            log.info "Created pipeline stage ${currentStage.hashCode()} for parallel block"
             
             // Match the input
             InputSplitter splitter = new InputSplitter()
@@ -335,65 +331,85 @@ class PipelineCategory {
                     throw new PipelineError("The pattern provided '$pattern' did not match any of the files provided as input $input")
                 else
                     throw new PatternInputMissingError("An input pattern was specified '$pattern' but no inputs were given when Bpipe was run.")
-					
-            // Now we have all our samples, make a 
-            // separate pipeline for each one, and for each parallel stage
-            List<Pipeline> childPipelines = []
-            List<Runnable> threads = []
-            for(Closure s in segments) {
-                log.info "Processing segment ${s.hashCode()}"
-                samples.each { id, files ->
                     
-                    log.info "Creating pipeline to run parallel segment $id with files $files"
-                   
-                    Pipeline child = Pipeline.currentRuntimePipeline.get().fork()
-                    currentStage.children << child
-                    Closure segmentClosure = s
-                    threads << {
-                        try {
-                            int segmentNumber = segments.indexOf(segmentClosure) + 1
-                            
-                            // First we make a "dummy" stage that contains the inputs
-                            // to the next stage as outputs.  This allows later logic
-                            // to find these "inputs" correctly when it expects to see
-                            // all "inputs" reflected as some output of an earlier stage
-                            PipelineContext dummyPriorContext = pipeline.createContext()
-                            PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
-                                
-                            // Need to set this without redirection to the output folder because otherwise
-                            dummyPriorContext.setRawOutput(files)
-                            dummyPriorContext.@input = files
-                                
-                            log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
-                            child.addStage(dummyPriorStage)
-                            String childName = id
-                            if(segments.size()>1) {
-                                if(id == "all")
-                                    childName = segmentNumber.toString()
-                                else
-                                    childName = id + "." + segmentNumber
-                            }
-                            child.branch = new Branch(name:childName)
-                            child.nameApplied = true
-                            child.runSegment(files, segmentClosure)
-                        }
-                        catch(Exception e) {
-                            log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
-                            StackTraceUtils.sanitize(e).printStackTrace()
-                            child.failExceptions << e
-                            child.failed = true
-                        }
-                    } as Runnable
-                    childPipelines << child
-                }
-            }
-            return runAndWaitFor(currentStage, childPipelines, threads)
+            return splitOnMap(input, samples,segments)
         }
+					
         
         log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
         pipeline.joiners << multiplyImplementation
         
         return multiplyImplementation
+    }
+    
+    static Object splitOnMap(def input, Map<String, List> samples, List segments) {
+        Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
+        segments = segments.collect { 
+            if(it instanceof List) {
+                return multiply("*",it)
+            }
+            else 
+                return it
+        }
+        
+        PipelineStage currentStage = new PipelineStage(pipeline.createContext(), {})
+        Pipeline.currentRuntimePipeline.get().addStage(currentStage)
+        currentStage.context.setInput(input)
+            
+        log.info "Created pipeline stage ${currentStage.hashCode()} for parallel block"
+        
+        // Now we have all our samples, make a 
+        // separate pipeline for each one, and for each parallel stage
+        List<Pipeline> childPipelines = []
+        List<Runnable> threads = []
+        for(Closure s in segments) {
+            log.info "Processing segment ${s.hashCode()}"
+            samples.each { id, files ->
+                    
+                log.info "Creating pipeline to run parallel segment $id with files $files"
+                   
+                Pipeline child = Pipeline.currentRuntimePipeline.get().fork()
+                currentStage.children << child
+                Closure segmentClosure = s
+                threads << {
+                    try {
+                        int segmentNumber = segments.indexOf(segmentClosure) + 1
+                            
+                        // First we make a "dummy" stage that contains the inputs
+                        // to the next stage as outputs.  This allows later logic
+                        // to find these "inputs" correctly when it expects to see
+                        // all "inputs" reflected as some output of an earlier stage
+                        PipelineContext dummyPriorContext = pipeline.createContext()
+                        PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
+                                
+                        // Need to set this without redirection to the output folder because otherwise
+                        dummyPriorContext.setRawOutput(files)
+                        dummyPriorContext.@input = files
+                                
+                        log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
+                        child.addStage(dummyPriorStage)
+                        String childName = id
+                        if(segments.size()>1) {
+                            if(id == "all")
+                                childName = segmentNumber.toString()
+                            else
+                                childName = id + "." + segmentNumber
+                        }
+                        child.branch = new Branch(name:childName)
+                        child.nameApplied = true
+                        child.runSegment(files, segmentClosure)
+                    }
+                    catch(Exception e) {
+                        log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
+                        StackTraceUtils.sanitize(e).printStackTrace()
+                        child.failExceptions << e
+                        child.failed = true
+                    }
+                } as Runnable
+                childPipelines << child
+            }
+        }
+        return runAndWaitFor(currentStage, childPipelines, threads)
     }
     
     static runAndWaitFor(PipelineStage currentStage, List<Pipeline> pipelines, List<Runnable> threads) {

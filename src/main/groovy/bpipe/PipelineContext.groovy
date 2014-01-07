@@ -26,6 +26,7 @@
 package bpipe
 
 import groovy.util.logging.Log;
+import java.util.regex.Matcher
 import java.util.regex.Pattern;
 
 import static Utils.*
@@ -201,6 +202,11 @@ class PipelineContext {
    Map<String,String>  accompanyingOutputs = [:]
    
    /**
+    * List of patterns that match accompanying outputs
+    */
+   Pattern activeAccompanierPattern = null
+   
+   /**
     * Flag that can be enabled to cause missing properties to resolve to 
     * outputting the name of the property ie. a reference to $x will produce $x.
     * This allows for a crude pass-through of variables from Bpipe to Bash 
@@ -335,6 +341,8 @@ class PipelineContext {
                }
                else
                    out = resolved +"." + this.stageName
+                   
+               this.checkAccompaniedOutputs([resolved])
                
                // Since we're resolving based on a different input than the default one,
                // the pipeline output wrapper should use a different one as a default too
@@ -371,6 +379,10 @@ class PipelineContext {
          
        po.resolvedInputs = this.resolvedInputs
        po.outputDirChangeListener = { outputTo(it) }
+       
+       if(this.activeAccompanierPattern)
+           po.transformMode = "extend"
+           
        return po
    }
    
@@ -488,11 +500,14 @@ class PipelineContext {
     * point to files in the local directory.
     */
    def toOutputFolder(outputs) {
-       File outputFolder = new File(this.outputDirectory)
+       
+       String outDir = this.outputDirectory
+       
+       File outputFolder = new File(outDir)
        if(!outputFolder.exists())
            outputFolder.mkdirs()
            
-       String outPrefix = this.outputDirectory == "." ? "" : this.outputDirectory + "/" 
+       String outPrefix = outDir == "." ? "" : outDir + "/" 
        def newOutputs = Utils.box(outputs).collect { 
            if(it.toString().contains("/") && it.toString().contains("*")) 
                return it
@@ -503,6 +518,27 @@ class PipelineContext {
              return outPrefix + new File(it.toString()).name 
        }
        return Utils.unbox(newOutputs)
+   }
+   
+   void checkAccompaniedOutputs(List<String> inputsToCheck) {
+       def outDir = this.outputDirectory
+       if(((outDir == null) || (outDir==".")) && this.activeAccompanierPattern) {
+           
+           List<String> resolved = getResolvedInputs() + inputsToCheck
+           
+           String matchedInput = resolved.find { this.activeAccompanierPattern.matcher(it) }
+           
+           // If one of the resolved inputs matches an accompanying pattern, then it should
+           // output to the same directory as the output
+           if(matchedInput) {
+               log.info "Input $matchedInput matches accompanier pattern $activeAccompanierPattern"
+               File f = new File(matchedInput)
+               if(!f.parentFile)
+                   f = new File(".",f)
+                   
+               this.outputDirectory = f.parentFile.path
+           }
+       }
    }
    
    /**
@@ -1006,26 +1042,32 @@ class PipelineContext {
      * Cause output files created by the given closure to be considered
      * accompanying outputs whose lifecycle depends on that of their 
      * input or companion file. The prototypical example here is a 
-     * .bai file that exists only to be an index for it's .bam file.
+     * .bai file that exists only to be an index for its .bam file.
      */
     void accompanies(String pattern, Closure c) {
         def oldFiles = getAllTrackedOutputs()
-        c()
-        List<String> newOutputs = getAllTrackedOutputs() - oldFiles
-        log.info "Found accompanying outputs : ${newOutputs}"
-        if(!pattern.contains("*")) {
-            pattern = "*."+pattern;
+        this.activeAccompanierPattern = FastUtils.globToRegex(pattern)
+        try {
+          c()
+          List<String> newOutputs = getAllTrackedOutputs() - oldFiles
+          log.info "Found accompanying outputs : ${newOutputs}"
+          if(!pattern.contains("*")) {
+              pattern = "*."+pattern;
+          }
+          def accompanied = getResolvedInputs().grep { activeAccompanierPattern.matcher(it).matches() }
+          if(accompanied) {
+              for(def accompanyingOutput in newOutputs) {
+                  log.info "Inputs $accompanied are accompanied by $accompanied (only first will be used)"
+                  this.accompanyingOutputs[accompanyingOutput] = accompanied[0]
+                  forward(accompanied[0])
+              }        
+          }
+          else
+              log.warning "No accompanied inputs found for outputs $newOutputs using pattern $pattern from inputs ${getResolvedInputs()}"
         }
-        final Pattern m = FastUtils.globToRegex(pattern)
-        def accompanied = getResolvedInputs().grep { m.matcher(it).matches() }
-        if(accompanied) {
-            for(def accompanyingOutput in newOutputs) {
-                log.info "Inputs $accompanied are accompanied by $accompanied (only first will be used)"
-                this.accompanyingOutputs[accompanyingOutput] = accompanied[0]
-            }        
+        finally {
+            this.activeAccompanierPattern = null
         }
-        else
-            log.warning "No accompanied inputs found for outputs $newOutputs using pattern $pattern from inputs ${getResolvedInputs()}"
     }
     
     List<String> getAllTrackedOutputs() {

@@ -88,6 +88,12 @@ class PipelineOutput {
     String branchName = null
     
     /**
+     * Whether output file extensions should replace the existing extension from an 
+     * input file, or add to the end.
+     */
+    String transformMode = "replace"
+    
+    /**
      * Create a pipeline output wrapper
      * 
      * @param output            the output to be returned if this object is directly converted to a string
@@ -247,14 +253,19 @@ class PipelineOutput {
             outputUsed = outputUsed.replaceAll(/(\.[^.]*)\./+branchName,'.'+branchName)
             
             // Then replace the extension on the file with the requested one
-            if(outputUsed.contains("."))
-                // Here we allow a potential match on a number in the base output, since that can 
-                // occur when the use uses multiple outputs ($output1.csv, $output2.csv) and 
-                // the same output file is generated for the outputs - such file names get 
-                // a numeric index inserted. eg: test1.txt, test1.txt.2
-                outputUsed = outputUsed.replaceAll('\\.[^\\.]*(\\.[0-9]*){0,1}$', '$1.'+segments)
-            else
-                outputUsed = outputUsed + "." + segments
+            if(this.transformMode == "replace") {
+                if(outputUsed.contains("."))
+                    // Here we allow a potential match on a number in the base output, since that can 
+                    // occur when the use uses multiple outputs ($output1.csv, $output2.csv) and 
+                    // the same output file is generated for the outputs - such file names get 
+                    // a numeric index inserted. eg: test1.txt, test1.txt.2
+                    outputUsed = outputUsed.replaceAll('\\.[^\\.]*(\\.[0-9]*){0,1}$', '$1.'+segments)
+                else
+                    outputUsed = outputUsed + "." + segments
+            }
+            else {
+                outputUsed = outputUsed + "." + name
+            }
         }
         
         if(this.outputUsed.startsWith(".") && !this.outputUsed.startsWith("./")) // occurs when no inputs given to script and output extension used

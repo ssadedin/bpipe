@@ -237,7 +237,12 @@ class ToolDatabase {
 			if(!commandContainsTool(command,name))
 				return
 			
-			tool.probe(command) 
+            try {
+    			tool.probe(command) 
+            }
+            catch(Exception e) {
+                log.severe("Probe for tool $name failed: " + e.toString())
+            }
 			
 			result[name] = tool
 		}
