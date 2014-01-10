@@ -498,6 +498,7 @@ class PipelineContext {
     /**
     * Coerce all of the arguments (which may be an array of Strings or a single String) to
     * point to files in the local directory.
+    * This method is (and must remain) side-effect free
     */
    def toOutputFolder(outputs) {
        
@@ -926,7 +927,7 @@ class PipelineContext {
         if(doExecute) {
             if(Utils.box(this.@output)) {
                 this.output = Utils.box(fixedOutputs) +  Utils.box(this.@output)
-                this.output.removeAll(replacedOutputs)
+                this.output.removeAll { it in replacedOutputs  || toOutputFolder(it) in replacedOutputs}
             }
             else {
                 this.output = fixedOutputs
