@@ -68,6 +68,17 @@ class Config {
      */
     public static ConfigObject userConfig
     
+    /**
+     * Read user controlled configuration file from several cascading locations.
+     * The different configuration files are read in order so that they take increasing
+     * priority.
+     * <li>.bpipeconfig in the user's home directory (lowest priority)
+     * <li>bpipe.config in the location of the pipeline definition file
+     * <li>bpipe.config in the location where the pipeline is running
+     * 
+     * (the last two above will often be the same, but when one pipeline for running many
+     * different analyses it will be useful)
+     */
     public static void readUserConfig() {
 		
         ConfigSlurper slurper = new ConfigSlurper()
@@ -88,13 +99,27 @@ class Config {
             return System.in.withReader { it.readLine() }
         }
 		
+        // Configuration in user home directory
 		File homeConfigFile = new File(System.getProperty("user.home"), ".bpipeconfig")
 		ConfigObject homeConfig
 		if(homeConfigFile.exists()) {
             homeConfig = slurper.parse(homeConfigFile.toURI().toURL())
 		}
-		
+        
         File configFile = new File("bpipe.config")
+        
+        // Configuration in directory next to main pipeline script
+        File pipelineConfigFile = new File(new File(config.script).absoluteFile.parentFile, "bpipe.config")
+		ConfigObject pipelineConfig
+        if(pipelineConfigFile.exists() && (pipelineConfigFile.absolutePath != configFile.absolutePath)) {
+            log.info "Reading Bpipe configuration from ${pipelineConfigFile.absolutePath}"
+            pipelineConfig = slurper.parse(pipelineConfigFile.toURI().toURL())
+        }
+        else {
+            log.info "No configuration file found in same dir as pipeline file"
+        }
+		
+        // Configuration in local directory (where pipeline is running)
 		ConfigObject localConfig
         if(configFile.exists()) {
             log.info "Reading Bpipe configuration from ${configFile.absolutePath}"
@@ -104,12 +129,16 @@ class Config {
             log.info "No local configuration file found"
         }
 		
-		
         userConfig = builtInConfig ? builtInConfig : new ConfigObject()
 		if(homeConfig) {
 			log.info "Merging home config file"
 			userConfig.merge(homeConfig)
 		}
+        
+        if(pipelineConfig) {
+            log.info "Merging pipeline config file"
+			userConfig.merge(pipelineConfig)
+        }
         
 		if(localConfig) {
 			log.info "Merging local config file"

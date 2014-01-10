@@ -124,16 +124,6 @@ class Runner {
                 
         def parentLog = initializeLogging(pid)
         
-        // read the configuration file, if available
-        try {
-            Config.readUserConfig()
-        }
-        catch( Exception e ) {
-            def cause = e.getCause() ?: e
-            println("Error parsing 'bpipe.config' file. Cause: ${cause.getMessage() ?: cause}")
-            System.exit(1)
-        }
-        
         def cli 
         String mode = System.getProperty("bpipe.mode")
         if(mode == "diagram")  {
@@ -219,6 +209,21 @@ class Runner {
             System.exit(1)
         }
         
+        // Note: configuration reading depends on the script, so this
+        // needs to come first
+        Config.config.script = opt.arguments()[0]
+        
+        // read the configuration file, if available
+        try {
+            Config.readUserConfig()
+        }
+        catch( Exception e ) {
+            def cause = e.getCause() ?: e
+            println("\nError parsing 'bpipe.config' file. Cause: ${cause.getMessage() ?: cause}\n")
+            reportExceptionToUser(e)
+            System.exit(1)
+        }
+        
         opts = opt
         if(opts.v) {
             ConsoleHandler console = new ConsoleHandler()
@@ -277,7 +282,6 @@ class Runner {
 
         def pipelineArgs = null
         String pipelineSrc
-        Config.config.script = opt.arguments()[0]
         if(mode == "execute") {
             pipelineSrc = 'Bpipe.run { ' + opt.arguments()[0] + '}'
         }
@@ -341,21 +345,27 @@ class Runner {
                 throw e
         }
         catch(PipelineError e) {
-            log.severe "Reporting exception to user: "
-            log.log(Level.SEVERE, "Reporting exception to user", e)
-            
-            System.err.println(" Bpipe Error ".center(Config.config.columns,"="))
-            System.err.println("\nAn error occurred executing your pipeline:\n\n${e.message.center(Config.config.columns,' ')}\n\nPlease see the details below for more information.\n")
-            System.err.println(" Error Details ".center(Config.config.columns, "="))
-            System.err.println()
-            Throwable sanitized = StackTraceUtils.deepSanitize(e)
-            sanitized.printStackTrace()
-            System.err.println()
-            System.err.println "=" * Config.config.columns
-            System.err.println("\nMore details about why this error occurred may be available in the full log file .bpipe/bpipe.log\n")
-            System.exit(1)
+            reportExceptionToUser(e)
         }
    }
+    
+    private static reportExceptionToUser(Throwable e) {
+        log.severe "Reporting exception to user: "
+        log.log(Level.SEVERE, "Reporting exception to user", e)
+        
+        String msg = e.message?:"Unknown Error (Null message)"
+
+        System.err.println(" Bpipe Error ".center(Config.config.columns,"="))
+        System.err.println("\nAn error occurred executing your pipeline:\n\n${msg.center(Config.config.columns,' ')}\n\nPlease see the details below for more information.\n")
+        System.err.println(" Error Details ".center(Config.config.columns, "="))
+        System.err.println()
+        Throwable sanitized = StackTraceUtils.deepSanitize(e)
+        sanitized.printStackTrace()
+        System.err.println()
+        System.err.println "=" * Config.config.columns
+        System.err.println("\nMore details about why this error occurred may be available in the full log file .bpipe/bpipe.log\n")
+        System.exit(1)
+    }
 
     private static setDefaultDocHtml(outFile){
          if(outFile){

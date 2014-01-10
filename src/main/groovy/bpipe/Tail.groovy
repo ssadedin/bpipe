@@ -142,7 +142,8 @@ class Tail {
           }
         }
         finally {
-            r.close()
+            if(r)
+              r.close()
         }
     }
 }
