@@ -55,19 +55,23 @@ class GraphEntry {
      * Search the graph for entry with given outputfile
      */
     GraphEntry entryFor(String outputFile) {
-        findBy { it.outputFile.name == outputFile }
+        // In case of non-default output directory, the outputFile itself may be in a directory
+        File outputFileFile = new File(outputFile)
+        findBy { it.outputFile.canonicalPath == outputFileFile.canonicalPath }
     }
     
     /**
      * Search the graph for properties for the given output file
      */
     Properties propertiesFor(String outputFile) { 
+       // In case of non-default output directory, the outputFile itself may be in a directory
+       File outputFileFile = new File(outputFile)
        def values = entryFor(outputFile)?.values
        if(!values)
            return null
            
        for(def o in values) {
-           if(o.outputFile.name ==  outputFile) {
+           if(o.outputFile.canonicalPath == outputFileFile.canonicalPath) {
                return o
            }
        }
