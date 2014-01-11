@@ -535,7 +535,7 @@ class PipelineContext {
                log.info "Input $matchedInput matches accompanier pattern $activeAccompanierPattern"
                File f = new File(matchedInput)
                if(!f.parentFile)
-                   f = new File(".",f)
+                   f = new File(new File("."),f.name)
                    
                this.outputDirectory = f.parentFile.path
            }

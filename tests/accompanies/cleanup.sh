@@ -1,1 +1,1 @@
-rm -f .bpipe *.bai *.bam
+rm -rf .bpipe *.bai *.bam

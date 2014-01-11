@@ -507,6 +507,15 @@ class Runner {
             y longOpt: 'yes', 'answer yes to any prompts or questions'
         }
         def opt = cli.parse(args)
+        
+        // Cleanup uses some aspects of user config
+        try {
+            Config.readUserConfig()
+        }
+        catch(Exception e) {
+            println "WARNING: reading config files experienced error: $e"
+        }
+        
         if(opt.y) {
             Config.userConfig.prompts.handler = { msg -> return "y"}
         }
