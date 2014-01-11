@@ -96,7 +96,9 @@ class Tail {
                 // First line may be "partial" since we just jumped to an arbitrary byte offset
                 if(first) {
                     first = false
-                    continue
+                    if(skipLength>0) // If we didn't skip any bytes then the first line is 
+                                     // the actual first line of the log file; don't omit it.
+                        continue
                 }
                 
                 // Extract the thread id

@@ -146,7 +146,7 @@ class CustomCommandExecutor implements CommandExecutor {
             env.MEMORY = config.memory
 			 
         if(config?.procs) 
-            env.PROCS = config.procs
+            env.PROCS = config.procs.toString()
             
         if(config?.queue) 
             env.QUEUE = config.queue

@@ -103,7 +103,7 @@ class SlurmCommandExecutor extends CustomCommandExecutor implements CommandExecu
             env.MEMORY = (config.memory.toInteger() * 1024).toString()
 
         if(config?.procs)
-            env.PROCS = config.procs
+            env.PROCS = config.procs.toString()
 
         if(config?.queue)
             env.QUEUE = config.queue
