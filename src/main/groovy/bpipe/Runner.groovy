@@ -260,20 +260,12 @@ class Runner {
 
         if(opts.r) {
             Config.config.report = true
-            setDefaultDocHtml(opts.f)
-			def reportStats = new ReportStatisticsListener()
-            EventManager.instance.addListener(PipelineEvent.STAGE_STARTED, reportStats)
-            EventManager.instance.addListener(PipelineEvent.STAGE_COMPLETED, reportStats)
+			def reportStats = new ReportStatisticsListener("index",opts.f?:"index.html")
         }
         else
         if(opts.R) {
             log.info "Creating report $opts.R"
-            setDefaultDocHtml(opts.f)
-            def reportStats = new ReportStatisticsListener()
-            EventManager.instance.addListener(PipelineEvent.STAGE_STARTED, reportStats)
-            EventManager.instance.addListener(PipelineEvent.STAGE_COMPLETED, reportStats)
-            EventManager.instance.addListener(PipelineEvent.COMMAND_CHECK, reportStats)
-            Config.config.customReport = opts.R
+            def reportStats = new ReportStatisticsListener(opts.R, opts.f?:opts.R+".html")
         }
         
         if(Config.userConfig.worx.enable) {
@@ -300,6 +292,8 @@ class Runner {
 		
 		if(!opts.t)
 			NotificationManager.instance.configure(Config.userConfig)
+            
+        configureReportsFromUserConfig()
 
         // If we got this far and are not in test mode, then it's time to 
         // make the logs stick around
@@ -366,12 +360,6 @@ class Runner {
         System.err.println("\nMore details about why this error occurred may be available in the full log file .bpipe/bpipe.log\n")
         System.exit(1)
     }
-
-    private static setDefaultDocHtml(outFile){
-         if(outFile){
-             Config.config.defaultDocHtml = outFile
-	     }
-	}
 
     private static handleMissingPropertyFromPipelineScript(MissingPropertyException e) {
         
@@ -631,6 +619,17 @@ class Runner {
             mode = "run"
             
         history.withWriterAppend { it << [pid, "bpipe $mode " + args.collect { it.contains(" ") ? "'$it'" : it }.join(" ")].join("\t") + "\n" }
+    }
+    
+    static void configureReportsFromUserConfig() {
+        
+        if(!Config.userConfig.containsKey("reports"))
+            return
+        
+        Config.userConfig.reports.each { reportName, reportConfig -> 
+           log.info "Found report $reportName configured with config $reportConfig" 
+           new ReportStatisticsListener(reportName, reportConfig.fileName?:reportName + ".html", reportConfig.dir?:"doc", reportConfig.notification?:false)
+        }
     }
 }
 

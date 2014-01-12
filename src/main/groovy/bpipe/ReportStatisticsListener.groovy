@@ -31,6 +31,29 @@ import static PipelineEvent.*
 
 @Log
 class ReportStatisticsListener implements PipelineEventListener {
+    
+    String reportName
+    
+    String outputFileName
+    
+    String outputDir
+    
+    boolean notification = false
+    
+    ReportStatisticsListener() {
+        this("index","index.html")
+    }
+    
+    ReportStatisticsListener(String reportName, String outputFileName, String outputDir="doc", boolean notification=false) {
+        this.reportName = reportName
+        this.outputFileName = outputFileName
+        this.outputDir = outputDir
+        this.notification = notification
+        EventManager.instance.addListener(PipelineEvent.STAGE_STARTED, this)
+        EventManager.instance.addListener(PipelineEvent.STAGE_COMPLETED, this)
+        EventManager.instance.addListener(PipelineEvent.COMMAND_CHECK, this)
+        EventManager.instance.addListener(PipelineEvent.FINISHED, this)
+    }
 
 	@Override
 	public void onEvent(PipelineEvent eventType, String desc, Map<String, Object> details) {
@@ -39,7 +62,7 @@ class ReportStatisticsListener implements PipelineEventListener {
         if(!ctx)
             ctx = details.ctx
 		
-		if(!ctx)	{
+		if(!ctx && (eventType in [STAGE_STARTED,STAGE_COMPLETED]))	{
 			log.warning("Pipeline stage or context missing from details provided to statistics event")
 			return
 		}
@@ -70,6 +93,25 @@ class ReportStatisticsListener implements PipelineEventListener {
                   ctx.documentation.tools += toolsDiscovered
                 else
                   ctx.doc(["tools" : toolsDiscovered])
+                break
+                
+            case FINISHED:
+                generateCustomReport(details.pipeline)
+                if(notification)
+                    EventManager.instance.signal(PipelineEvent.REPORT_GENERATED, "Report generated: $reportName", [reportListener: this])
+                break
 		}
 	}
+    
+    def generateCustomReport(Pipeline pipeline) {
+        try {
+          if(!pipeline.documentation.title)
+            pipeline.documentation.title = "Pipeline Report"
+          new ReportGenerator().generateFromTemplate(pipeline, reportName + ".html", this.outputDir, this.outputFileName)
+        }
+        catch(PipelineError e) {
+            System.err.println "\nA problem occurred generating your report:"
+            System.err.println e.message + "\n"
+        }
+    }
 }

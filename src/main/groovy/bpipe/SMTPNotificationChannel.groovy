@@ -28,11 +28,17 @@ import groovy.util.logging.Log;
 
 import java.util.Map
 
+import javax.activation.DataHandler;
+import javax.activation.DataSource;
+import javax.activation.FileDataSource;
 import javax.mail.Message;
+import javax.mail.Multipart;
 import javax.mail.Session;
 import javax.mail.Transport;
 import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage
+import javax.mail.internet.MimeMultipart
 
 /**
  * Sends notifications using SMTP server
@@ -84,6 +90,18 @@ class SMTPNotificationChannel implements NotificationChannel {
 	
 	@Override
 	public void notify(PipelineEvent event, String subject, Map<String, Object> model) {
+		String subjectLine = "Pipeline " + event.name().toLowerCase() + ": " + subject + " in directory " + (new File(".").absoluteFile.parentFile.name)
+		String text = "Pipeline event: $event occured at " + (new Date()) + "\n\nFull path: " + (new File(".").absolutePath)
+        
+        // For a report event, attach the actual report
+        if(event == PipelineEvent.REPORT_GENERATED) {
+            sendEmail(subject,text, new File(new File(model.reportListener.outputDir), model.reportListener.outputFileName))
+        }
+        else
+            sendEmail(subject,text)
+	}
+    
+    public void sendEmail(String subjectLine, String text, File attachment = null) {
 		Properties props = new Properties();
 		props.put("mail.smtp.host", host);
 		if(port != -1) {
@@ -108,15 +126,35 @@ class SMTPNotificationChannel implements NotificationChannel {
 		else 
 			session = Session.getDefaultInstance(props)
  
-		String subjectLine = "Pipeline " + event.name().toLowerCase() + ": " + subject + " in directory " + (new File(".").absoluteFile.parentFile.name)
 		Message message = new MimeMessage(session);
 		message.setFrom(new InternetAddress(from));
-
 		recipients.split(",").collect { it.trim() }.each { message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(it)) }
 		message.setSubject(subjectLine);
-		message.setText("Pipeline finished at " + (new Date()) + "\n\nFull path: " + (new File(".").absolutePath));
+        
+        if(attachment) {
+            Multipart multipart = new MimeMultipart();
+            
+            // Add the first part: the text content
+            MimeBodyPart messageBodyPart = new MimeBodyPart();
+            messageBodyPart.setText(text)
+            multipart.addBodyPart(messageBodyPart)
+            
+            // Add the second part: the attachment
+            log.info "Adding attachment to notification email: $attachment.absolutePath"
+            MimeBodyPart attachBodyPart = new MimeBodyPart();
+            DataSource source = new FileDataSource(attachment);
+            attachBodyPart.setDataHandler(new DataHandler(source));
+            attachBodyPart.setFileName(attachment.name);
+            multipart.addBodyPart(attachBodyPart);
+            message.setContent(multipart)
+        }
+        else {
+    		message.setText(text);
+        }
+        
+        log.info "Sending email message to $recipients [subject=$subjectLine]"
 		Transport.send(message);
-	}
+    }
 }
 
 @Log

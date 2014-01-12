@@ -67,5 +67,10 @@ public enum PipelineEvent {
     /**
      * Bpipe is exiting - Supported
      */
-	SHUTDOWN
+	SHUTDOWN,
+	
+	/**
+	 * A report has been generated (supported)
+	 */
+    REPORT_GENERATED
 }

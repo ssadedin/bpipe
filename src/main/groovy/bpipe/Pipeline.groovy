@@ -590,7 +590,7 @@ public class Pipeline {
                   rootContext.msg "Finished at " + (new Date())
                 about(finishedAt: new Date())
                 
-                EventManager.instance.signal(PipelineEvent.FINISHED, failed?"Failed":"Succeeded")
+                EventManager.instance.signal(PipelineEvent.FINISHED, failed?"Failed":"Succeeded", [pipeline:this])
                 if(!failed) {
                     summarizeOutputs(stages)
                 }
@@ -602,11 +602,13 @@ public class Pipeline {
         cmdlog << ""
         
         if(launch) {
+            /*
 			if(Config.config.mode == "documentation" || Config.config.report) 
                 documentation()
             else
             if(Config.config.customReport)
             	generateCustomReport(Config.config.customReport)
+              */
         }
         
         return constructedPipeline
@@ -795,15 +797,18 @@ public class Pipeline {
             documentation.title = "Pipeline Report"
 
 		def outFile = Config.config.defaultDocHtml
-	    this.generateFromTemplate("index.html", outFile)
-					
+        
+        // We build up a list of pipeline stages
+        // so the seed for that is a list with one empty list
+        
+	    new ReportGenerator().generateFromTemplate(this,"index.html", outFile)
     }
     
 	def generateCustomReport(String reportName) {
         try {
   		  def outFile = reportName + ".html"
           documentation.title = "Report"
-    	  this.generateFromTemplate(reportName + ".html", outFile)
+    	  new ReportGenerator().generateFromTemplate(this,reportName + ".html", outFile)
         }
         catch(PipelineError e) {
             System.err.println "\nA problem occurred generating your report:"
@@ -811,55 +816,6 @@ public class Pipeline {
         }
 	}
 	
-	/**
-	 * Instantiates the specified template and generates it from the given pipeline 
-	 * 
-	 * @param templateFile
-	 */
-	void generateFromTemplate(String templateFileName, String outFile) {
-		
-        // Now make a graph
-        File docDir = new File("doc")
-        if(!docDir.exists()) {
-            docDir.mkdir()
-        }
-        
-        // We build up a list of pipeline stages
-        // so the seed for that is a list with one empty list
-        def docStages = [ [] ]
-         
-        fillDocStages(docStages)
-		Map docBinding = [
-			stages: docStages,
-			pipeline: this
-		]
-		 
-		if(docStages.any { it.stageName == null })
-			throw new IllegalStateException("Should NEVER have a null stage name here")
-
-		// Use HTML templates to generate documentation
-		InputStream templateStream
-		File srcTemplateDir = new File(System.getProperty("bpipe.home") + "/src/main/html/bpipe")
-        File templateFile = srcTemplateDir.exists() ? 
-              new File(srcTemplateDir, templateFileName) 
-            : 
-              new File(System.getProperty("bpipe.home") + "/html", templateFileName)
-              
-        if(!templateFile.exists()) {
-            throw new PipelineError("""
-                The documentation template you specified (${templateFileName.replaceAll(".html","")}) could not be located. Valid report templates are:
-            """.stripIndent() + "\n\t" + templateFile.parentFile.listFiles()*.name.collect{it.replaceAll(".html","")}.join("\n\t"))
-        }
-		templateStream = new FileInputStream(templateFile)
-		GStringTemplateEngine e = new GStringTemplateEngine()
-		templateStream.withReader { r ->
-			def template = e.createTemplate(r).make(docBinding)
-			new File(docDir, outFile).text = template.toString()
-		}
-		templateStream.close()		
-        println "Generated documentation in $docDir "+Config.config.defaultDocHtml
-	}
-    
 	/**
 	 * Fills the given list with meta data about pipeline stages derived 
 	 * from the current pipeline's execution.  
