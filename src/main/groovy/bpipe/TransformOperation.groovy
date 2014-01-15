@@ -88,6 +88,10 @@ class TransformOperation {
         to([toPattern1,toPattern2],c)
     }
      
+    void to(String toPattern1, String toPattern2, String toPattern3, Closure c) {
+        to([toPattern1,toPattern2,toPattern3],c)
+    }
+    
     /**
      * Change this transform operation from simple mode to the advanced mode where
      * both a "from" pattern and a "to" pattern are provided, and execute the 
@@ -108,6 +112,14 @@ class TransformOperation {
         // Expanded list of to patterns : there will be one for each input resolved
         // (so if one pattern matches 2 inputs, it appears twice).
         List expandedToPatterns = []
+        
+        // If there are not enough exts to match all the patterns
+        // they map to, we repeat the last one to fill up the missing ones
+        if(exts.size() < toPatterns.size()) {
+            exts = exts.clone()
+            while(exts.size() < toPatterns.size())
+              exts.add( exts[-1] )
+        }
         
         // In the advanced case, the "file extensions" are not file extensions, but
         // regular expressions for matching files to transform from
