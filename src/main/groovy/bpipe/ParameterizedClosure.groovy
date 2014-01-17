@@ -38,13 +38,17 @@ import groovy.util.logging.Log;
 @Log
 class ParameterizedClosure extends Closure {
     
-    public ParameterizedClosure(Map variables, Closure body) {
+    public ParameterizedClosure(def variables, Closure body) {
         super(body.owner);
         this.body = body
         this.extraVariables = variables
     }
     
-    Map extraVariables
+    /**
+     * A Map defining variables OR a closure that can be 
+     * executed to return such a map
+     */
+    def extraVariables
     
     Closure body
 

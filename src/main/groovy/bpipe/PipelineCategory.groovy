@@ -64,13 +64,17 @@ class PipelineCategory {
         return c
     }
    
-    static Closure cfg(Closure c, Map params) {
+    static Closure cfg(Closure c, def params) {
         def pc = new ParameterizedClosure(params, c)
         if(closureNames.containsKey(c))
             closureNames[pc] = closureNames[c]
         return pc
     }
     
+   static Closure using(Closure c, Closure params) {
+        cfg(c,params)
+    }
+   
    static Closure using(Closure c, Map params) {
         cfg(c,params)
     }
@@ -286,8 +290,17 @@ class PipelineCategory {
     static Object multiply(Map branches, List segments) {
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
         def multiplyImplementation = { input ->
-          splitOnMap(branches,segments)
+            
+            def inputs = Utils.box(input)
+            
+            // Filter so that only inputs actually received are left in the
+            // provided map
+            // Map filteredBranches = branches.keySet().collectEntries { key -> 
+            //   [key, Utils.box(branches[key]).removeAll { !(it in inputs) }]
+            //}
+            splitOnMap(branches,segments)
         }
+        
         log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
         pipeline.joiners << multiplyImplementation
         return multiplyImplementation

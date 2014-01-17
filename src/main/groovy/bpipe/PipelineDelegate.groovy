@@ -37,11 +37,6 @@ class PipelineDelegate {
         
         synchronized(realBody) {
             // log.fine "Setting or creating a delegate for context ${context.hashCode()} body ${body.hashCode()}/${body.delegate.class.name} in thread ${Thread.currentThread().id}"
-            if(body instanceof ParameterizedClosure) {
-                ParameterizedClosure pc = body
-                context.localVariables = pc.getExtraVariables()
-            }
-        
             if(body.getDelegate() == null || !(body.getDelegate() instanceof PipelineDelegate)) {
                 
                 log.fine "Existing delegate has type ${body.delegate.class.name} in thread ${Thread.currentThread().id}"
@@ -54,6 +49,17 @@ class PipelineDelegate {
             }
             
             context.myDelegate =body.getDelegate()
+            
+            if(body instanceof ParameterizedClosure) {
+                ParameterizedClosure pc = body
+                def extras = pc.getExtraVariables()
+                if(extras instanceof Closure) {
+                    extras.setDelegate(context.myDelegate)
+                    extras = extras()
+                }
+                context.localVariables = extras
+            }
+        
         }
     }
     
