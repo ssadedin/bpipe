@@ -393,6 +393,10 @@ elif [ "$COMMAND" == "cleanup" ];
 then
     shift 1
     exec java -Xmx${MAX_JAVA_MEM} -classpath "$CP" $BPIPEDEBUG -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=cleanup bpipe.Runner $* 
+elif [ "$COMMAND" == "status" ];
+then
+    shift 1
+    exec java -Xmx${MAX_JAVA_MEM} -classpath "$CP"  $BPIPEDEBUG -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=status bpipe.Runner $* 
 elif [ "$COMMAND" == "query" ];
 then
     shift 1

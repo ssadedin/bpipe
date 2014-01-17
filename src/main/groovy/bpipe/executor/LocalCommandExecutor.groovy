@@ -60,6 +60,10 @@ class LocalCommandExecutor implements CommandExecutor {
      */
     Integer exitValue = null
     
+    String runningCommand
+    
+    Date startedAt = null
+    
     /**
      * Set to true if the process is terminated forcibly
      */
@@ -85,6 +89,9 @@ class LocalCommandExecutor implements CommandExecutor {
 			  }
               log.info "Converted $origCmd to $cmd to account for broken Java argument escaping"
 		  }
+          
+          this.runningCommand = cmd
+          this.startedAt = new Date()
           
 	      process = Runtime.getRuntime().exec((String[])(['bash','-e','-c',"$cmd"].toArray()))
 	      process.consumeProcessOutput(outputLog, errorLog)
@@ -135,4 +142,7 @@ class LocalCommandExecutor implements CommandExecutor {
     void cleanup() {
     }
     
+    String statusMessage() {
+        "$runningCommand, running since $startedAt (local command)"
+    }
 }

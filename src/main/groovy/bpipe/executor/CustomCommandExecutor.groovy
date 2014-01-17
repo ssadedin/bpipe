@@ -80,6 +80,16 @@ class CustomCommandExecutor implements CommandExecutor {
      * Set after construction. 
      */
     Map config
+    
+    /**
+     * The actual command executed
+     */
+    String runningCommand
+    
+    /**
+     * Date started
+     */
+    Date startedAt
   
     /**
      * Whether cleanup has been called 
@@ -153,6 +163,9 @@ class CustomCommandExecutor implements CommandExecutor {
             
          String startCmd = pb.command().join(' ')
         log.info "Starting command: " + startCmd
+        
+        this.runningCommand = startCmd
+        this.startedAt = new Date()
 		
 		withLock(cfg) {
 	        Process p = pb.start()
@@ -373,5 +386,9 @@ class CustomCommandExecutor implements CommandExecutor {
     }
     
     void cleanup() {
+    }
+    
+    String statusMessage() {
+        "$runningCommand, running since $startedAt ($config)"
     }
 }

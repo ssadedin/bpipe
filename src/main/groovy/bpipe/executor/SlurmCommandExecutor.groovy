@@ -116,6 +116,9 @@ class SlurmCommandExecutor extends CustomCommandExecutor implements CommandExecu
          String startCmd = pb.command().join(' ')
         log.info "Starting command: " + startCmd
 
+        this.runningCommand = startCmd
+        this.startedAt = new Date()
+
         withLock(cfg) {
             Process p = pb.start()
                 Utils.withStreams(p) {

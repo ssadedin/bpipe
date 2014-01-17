@@ -235,4 +235,26 @@ class CommandManager {
         if(!new File(this.commandDir, commandId).renameTo(new File(this.completedDir, commandId)))
             log.warning("Unable to cleanup persisted file for command $commandId")
     }
+    
+    public static List<CommandExecutor> getCurrentCommands() {
+        
+        List<CommandExecutor> result = []
+        
+        File commandsDir = new File(DEFAULT_COMMAND_DIR)
+        commandsDir.eachFileMatch(~/[0-9]+/) { File f ->
+            log.info "Loading command info from $f.absolutePath"
+            CommandExecutor cmd
+            log.info "Loading command $cmd"
+            try {
+                f.withObjectInputStream { result.add(it.readObject()) }
+            }
+            catch(PipelineError e) {
+              System.err.println("Failed to read details for command: $cmd.\n\n${Utils.indent(e.message)}")
+            }
+            catch(Throwable t) {
+              System.err.println("An unexpected error occured while reading details for command : $cmd.\n\n${Utils.indent(t.message)}")
+            }
+        }
+        return result
+    }
 }

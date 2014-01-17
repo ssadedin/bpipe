@@ -160,6 +160,12 @@ class Runner {
             System.exit(0)
         } 
         else
+        if(mode == "status") {
+            log.info("Displaying status")
+            this.runStatus(args)
+            System.exit(0)
+        } 
+        else
         if(mode == "stopcommands") {
             log.info("Stopping running commands")
             cli = stopCommandsCli
@@ -290,10 +296,10 @@ class Runner {
         // Add event listeners that come directly from configuration
         EventManager.instance.configure(Config.userConfig)
 		
-		if(!opts.t)
+		if(!opts.t) {
 			NotificationManager.instance.configure(Config.userConfig)
-            
-        configureReportsFromUserConfig()
+            configureReportsFromUserConfig()
+		}
 
         // If we got this far and are not in test mode, then it's time to 
         // make the logs stick around
@@ -338,7 +344,7 @@ class Runner {
             else
                 throw e
         }
-        catch(PipelineError e) {
+        catch(Throwable e) {
             reportExceptionToUser(e)
         }
    }
@@ -526,6 +532,10 @@ class Runner {
         }
         Dependencies.instance.preserve(opt.arguments())
         System.exit(0)
+    }
+    
+    static void runStatus(def args) {
+        new StatusCommand().execute(args)
     }
     
     /**
