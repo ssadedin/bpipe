@@ -228,6 +228,9 @@ class PipelineStage {
             
             Dependencies.instance.saveOutputs(context, oldFiles, modified, Utils.box(this.context.@input))
         }
+        catch(UserTerminateBranchException e) {
+            throw e
+        }
         catch(PipelineTestAbort e) {
             throw e
         }

@@ -1866,6 +1866,24 @@ class PipelineContext {
             }
         }    
     }
+    
+    /**
+     * Cause the pipeline to explicitly fail with a given message
+     * @param message
+     */
+    void fail(String message) {
+        throw new PipelineError("Pipeline stage ${stageName} aborted with the following message:\n\n$message\n")
+    }
+    
+    /**
+     * Cause the current branch to terminate and not process any further, but 
+     * without causing a pipeline failure
+     * 
+     * @param message   message or reason for success (displayed to end user)
+     */
+    void succeed(String message) {
+        throw new UserTerminateBranchException(message)
+    }
 }
 
 
