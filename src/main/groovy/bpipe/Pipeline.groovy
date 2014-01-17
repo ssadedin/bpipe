@@ -446,6 +446,11 @@ public class Pipeline {
             try {
                 currentStage.run()
             }
+            catch(UserTerminateBranchException e) {
+                log.info "Pipeline segment ${this.branch} has terminated by 'succeed' in user script: $e.message"
+                
+                println "${new Date()} MSG: Branch ${branch=='all'?'':branch} completed: $e.message"
+            }
             catch(PipelineError e) {
                 log.info "Pipeline segment failed (2): " + e.message
                 System.err << "Pipeline failed! (2) \n\n"+e.message << "\n\n"
