@@ -1,4 +1,5 @@
 #!/bin/bash
+# vim: expandtab:ts=4
 
 # Start, stop and get status of jobs running on a Slurm job scheduler.
 #
@@ -59,7 +60,7 @@ JOBTYPE_FAILED=9              # jobtype variable led to non-zero exit status
 
 ESSENTIAL_ENV_VARS="COMMAND NAME"
 OPTIONAL_ENV_VARS="WALLTIME PROCS QUEUE JOBDIR JOBTYPE MEMORY"
-DEFAULT_BATCH_MEM=1024
+DEFAULT_BATCH_MEM=4096
 DEFAULT_BATCH_PROCS=1
 DEFAULT_WALLTIME="01:00:00" # one hour
 DEFAULT_QUEUE=debug	#Queue is parition in slurm, will use this with -p
@@ -124,24 +125,28 @@ make_slurm_script () {
    # handle the single, smp and mpi types specially
    case $JOBTYPE in
       single) if [[ -z $MEMORY ]]; then
-                memory_request="#SBATCH --mem-per-cpu=${DEFAULT_BATCH_MEM}"
+                memory_request="#SBATCH --mem=${DEFAULT_BATCH_MEM}"
              else
-                memory_request="#SBATCH --mem-per-cpu=${MEMORY}"
+                memory_request="#SBATCH --mem=${MEMORY}"
              fi
              if [[ -z $PROCS ]]; then
                 procs_request="#SBATCH --ntasks=$DEFAULT_BATCH_PROCS"
              else
-                procs_request="#SBATCH --ntasks=$PROCS"
+                procs_request=$(printf "#SBATCH --ntasks=$PROCS\n#SBATCH --nodes=1")
              fi
-	     command_prefix="";; # used in mpi only
+             command_prefix="";; # used in mpi only
+
+
       smp)   if [[ -z $MEMORY ]]; then
                 memory_request=""
              else
                 memory_request="#SBATCH --mem=${MEMORY}" 
              fi
              # the SMP queue never requests cores (it gets a single node), and has --exclusive flag
-	     command_prefix="" # used in mpi only
+             # (this may be VLSCI specific)
              procs_request="#SBATCH --nodes=1;#SBATCH --exclusive";;
+             command_prefix="" # used in mpi only
+
       mpi) if [[ -z $MEMORY ]]; then
                 memory_request="#SBATCH --mem-per-cpu=${DEFAULT_BATCH_MEM}"
              else
@@ -152,7 +157,7 @@ make_slurm_script () {
              else
                 procs_request="#SBATCH --ntasks=$PROCS"
              fi
-	command_prefix="mpirun";;
+             command_prefix="mpirun";;
    esac
 
    # write out the job script to a file
@@ -183,7 +188,7 @@ start () {
          sbatch_exit_status=$?
          if [[ $? -eq 0 ]]
             then
-		# SLURM syntax: Submitted batch job <jobID>
+               # SLURM syntax: Submitted batch job <jobID>
                # strip all but numbers , which assumes remainder is job identifier
                #job_id_number=`echo $job_id_full | sed -n 's/\([0-9][0-9]*\).*/\1/p'`
                job_id_number=`echo $job_id_full | sed 's/[^0-9]//g'`
@@ -222,45 +227,48 @@ stop () {
 status () {
    # make sure we have a job id on the command line
    if [[ $# -ge 1 ]]
-      then
+   then
          # get the output of scontrol
-	scontrol_output=`scontrol show job $1`
+         scontrol_output=`scontrol show job $1`
          scontrol_success=$?
          if [[ $scontrol_success == 0 ]]
-            then
-		job_state=`echo $scontrol_output|grep JobState|sed 's/.*JobState=\([A-Z]*\) .*/\1/'` # JobState is in caps
+         then
+               job_state=`echo $scontrol_output|grep JobState|sed 's/.*JobState=\([A-Z]*\) .*/\1/'` # JobState is in caps
                case "$job_state" in
                   CONFIGURING|PENDING|SUSPENDED) echo WAITING;; 
                   COMPLETING|RUNNING) echo RUNNING;;    
                   CANCELLED|COMPLETED|FAILED|NODE_FAIL|PREEMPTED|TIMEOUT) 
-	# scontrol will include ExitCode=N:M, where the N is exit code and M is signal (ignored)
-	#	command_exit_status=`echo $scontrol_output |grep Exit|sed 's/.*ExitCode=\([0-9]*\):[0-9]*/\1/'`
-		command_exit_status=`echo $scontrol_output|tr ' ' '\n' |awk -vk="ExitCode" -F"=" '$1~k{ print $2}'|awk -F":" '{print $1}'`
-           # it is possible that command_exit_status will be empty
-           # for example we start the job and then it waits in the queue
-           # and then will kill it without it ever running
-                     echo "COMPLETE $command_exit_status";;
+                  # scontrol will include ExitCode=N:M, where the N is exit code and M is signal (ignored)
+                  #        command_exit_status=`echo $scontrol_output |grep Exit|sed 's/.*ExitCode=\([0-9]*\):[0-9]*/\1/'`
+                  command_exit_status=`echo $scontrol_output|tr ' ' '\n' |awk -vk="ExitCode" -F"=" '$1~k{ print $2}'|awk -F":" '{print $1}'`
+
+                  # it is possible that command_exit_status will be empty
+                  # for example we start the job and then it waits in the queue
+                  # and then will kill it without it ever running
+                  echo "COMPLETE $command_exit_status";;
+
                   *) echo UNKNOWN;;
                esac
                exit $SUCCESS
-            # it seems if scontrol doesn't know about the job id it returns 1 - but
-	  # this is not a specific  cerror code. 
-            # this can happen on a legitimate job id when scontrol decides that
-            # the job is too old to remember about
-            elif [[ $scontrol_success == 1 ]]
-               then
-			errortext="slurm_load_jobs error: Invalid job id specified"
-			if  [[ $scontrol_output == $errortext ]]
-			then 
-                  		echo UNKNOWN
-			else
-            		# all other scontrol errors are treated as failures
-               			exit $SCONTROL_FAILED
-			fi
-            else
+
+          # it seems if scontrol doesn't know about the job id it returns 1 - but
+          # this is not a specific  cerror code. 
+          # this can happen on a legitimate job id when scontrol decides that
+          # the job is too old to remember about
+          elif [[ $scontrol_success == 1 ]]
+          then
+                errortext="slurm_load_jobs error: Invalid job id specified"
+                if  [[ $scontrol_output == $errortext ]]
+                then 
+                          echo UNKNOWN
+                else
+                    # all other scontrol errors are treated as failures
+                               exit $SCONTROL_FAILED
+                fi
+          else
                exit $SCONTROL_FAILED
-         fi
-      else
+          fi
+   else
          echo "$program_name ERROR: status requires a job identifier"
          exit $STATUS_MISSING_JOBID
    fi
