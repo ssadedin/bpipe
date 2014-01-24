@@ -1102,10 +1102,10 @@ class PipelineContext {
             }
             
             if(name == "GB") {
-                return new ResourceUnit(amount: (n as Integer) * 1024)
+                return new ResourceUnit(key: name, amount: (n as Integer) * 1024)
             }
             else {
-                return new ResourceUnit(amount: n as Integer)
+                return new ResourceUnit(key: name, amount: n as Integer)
             }
         }
         resources(res, block)
