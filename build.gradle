@@ -23,6 +23,8 @@ dependencies {
 
 }
 
+// Check for presence of GridGain library - if not available, exclude the
+// source files that depend on it
 if(!new File("local-lib").listFiles().find { it.name =~ /gridgain.*.jar/ }) {
     println ""
     println "=" * 80
@@ -31,11 +33,9 @@ if(!new File("local-lib").listFiles().find { it.name =~ /gridgain.*.jar/ }) {
     println ""
     sourceSets { main { groovy {
         srcDir 'src'
-
-                    exclude '**/Gridgain*.groovy'
+            exclude '**/Gridgain*.groovy'
     } } }
 }
-
 
 task stage(dependsOn: jar) << {
   ant.mkdir(dir: STAGE)
@@ -69,4 +69,8 @@ task dist(dependsOn: stage) << {
     ant.tarfileset(dir: "build/stage", filemode:"755", includes: "bpipe-${VERSION}/bin/**", excludes:"**/*.swp")
   }
   ant.gzip(destfile:"build/bpipe-${VERSION}.tar.gz", src: "build/bpipe-${VERSION}.tar")
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '1.0'
 }
