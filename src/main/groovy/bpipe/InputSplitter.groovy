@@ -157,16 +157,17 @@ class InputSplitter {
 //		    throw new PipelineError("A sample split pattern must contain a % character to indicate the splitting point")
 		
 		List<Integer> starPos = pattern.findIndexValues { it == "*" }.collect { it as Integer }
+		List<Integer> hashPos = pattern.findIndexValues { it == "#" }.collect { it as Integer }
         
-		log.info "Found * pattern at $starPos and % at $percs"
+		log.info "Found * pattern at $starPos, hash at $hashPos and % at $percs"
         
-        List sorted = (starPos + percs).sort()
+        List sorted = (starPos + hashPos + percs).sort()
 		
         log.info "Sorted: $sorted"
         
 		List<Integer> percGroups = sorted.findIndexValues { it in percs }.collect { it as Integer }
         if(!percGroups) {
-		    sorted = starPos
+		    sorted = starPos + hashPos
             sorted.sort()
         }
         
@@ -198,7 +199,8 @@ class InputSplitter {
 			// any exclusion in the pattern.  If there is one,
 			// exclude characters matching the right flanking character
 //            def wildcard = rightFlank ? "[^"+rightFlank+"]*" : ".*" 
-            def wildcard = rightFlank ? ".*?" : ".*"
+            String matchChar = (c in hashPos) ? '[0-9]' : '.'
+            def wildcard = matchChar + (rightFlank ? "*?" : "*")
             def group = "($wildcard)"
             result << leftFlank + group + rightFlank
 			log.fine "chunk for $c:  " + (leftFlank + group + rightFlank)

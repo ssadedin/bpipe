@@ -65,6 +65,55 @@ class InputSplitterTest {
        ]
     }
  
+//    @Test
+//    void testHarriet() {
+//        
+//		def inputs = [
+//            "6578_1#16_1.fastq.gz",
+//            "6578_1#16_2.fastq.gz",
+//            "6578_1#2_1.fastq.gz",
+//            "6578_1#2_2.fastq.gz"
+//           ]
+//        
+//       def pattern = "%#%_*.fastq.gz"
+//       
+//       def splitMap = splitter.convertPattern(pattern)
+//       
+//       assert splitMap.pattern
+//       assert splitMap.splits.size() == 2
+//       
+//       def result = splitter.split(pattern, inputs)
+//       
+//       assert result == [
+//            "6578_1.16" : ["6578_1#16_1.fastq.gz", "6578_1#16_2.fastq.gz"],
+//            "6578_2.2" : ["6578_1#2_1.fastq.gz", "6578_1#2_2.fastq.gz"]
+//       ]
+//    }
+    
+    @Test
+    void testLeadingCommonPrefix() {
+        
+	   def inputs = [ "11D_F_H14.txt", "11D_H14.txt", "11D_M_H14.txt" ]
+        
+       def pattern = "%_H"
+       
+       def splitMap = splitter.convertPattern(pattern)
+       
+       println "Split pattern == $splitMap.pattern"
+       
+//       assert splitMap.pattern
+//       assert splitMap.splits.size() == 2
+       
+       def result = splitter.split(pattern, inputs)
+       
+       println "RESULT: $result"
+       
+       assert result == [
+            "11D_F" : [inputs[0]],
+            "11D_M" : [inputs[2]],
+            "11D" : [inputs[1]]
+       ]
+    }
     
 	@Test
 	public void testSplit() {
@@ -221,6 +270,15 @@ class InputSplitterTest {
         assert matches[0][2] == "foo"
         assert matches[0][3] == "bar"
 	}
+    
+    @Test
+    void testNumericMatch() {
+        def result = splitter.split("%_R#.gz",["test1_R1.gz", "test1_R2.gz", "test2_RX_R1.gz", "test2_RX_R2.gz"])
+        assert result == [ 
+            "test1" : ["test1_R1.gz", "test1_R2.gz"],
+            "test2_RX" : ["test2_RX_R1.gz", "test2_RX_R2.gz"]
+        ]
+    }
     
 
 	@Test
