@@ -26,6 +26,7 @@
 package bpipe
 
 import groovy.util.logging.Log;
+import groovy.xml.MarkupBuilder
 import java.util.regex.Matcher
 import java.util.regex.Pattern;
 
@@ -1884,8 +1885,17 @@ class PipelineContext {
     void succeed(String message) {
         throw new UserTerminateBranchException(message)
     }
+    
+    def currentBuilder = null
+    
+    String html(Closure c) {
+        
+        def result = new StringWriter()
+        currentBuilder = new MarkupBuilder(result)
+        currentBuilder.html(c)
+        currentBuilder = null
+        return result.toString()
+    }
 }
-
-
 
 
