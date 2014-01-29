@@ -113,6 +113,10 @@ class PipelineDelegate {
         if(name == "multi") {
             context.get().invokeMethod("multiExec", [args as List] as Object[])
         }
+        else
+        if(context.get().currentBuilder) {
+            context.get().currentBuilder.invokeMethod(name, args)
+        }
         else {
             context.get().myDelegate = null
             try {
