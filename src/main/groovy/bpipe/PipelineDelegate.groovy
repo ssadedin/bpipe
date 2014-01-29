@@ -96,7 +96,18 @@ class PipelineDelegate {
             def actualArgs = args[0..-2] as List
             def body = args[-1]
             
-            context.get().invokeMethod(name+"Impl", [actualArgs, body] as Object[])
+            def result = context.get().invokeMethod(name+"Impl", [actualArgs, body] as Object[])
+            
+//            if(name == "produce") {
+            if(false) {
+                // When the user has explicitly invoked "produce", we then assume that they have 
+                Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
+                if(pipeline) {
+                    log.info "Setting name applied for branch $pipeline.branch because produce was explicitly invoked with arguments $args"
+                    pipeline.nameApplied = true
+                }
+            }
+            return result
         }
         else
         if(name == "multi") {
