@@ -156,6 +156,10 @@ public class Pipeline {
      */
     boolean nameApplied = false
     
+    void setNameApplied(boolean value) {
+        this.nameApplied = value
+    }
+    
     /**
      * Flag that is set to true if this pipeline has executed and experienced 
      * a failure
@@ -661,7 +665,7 @@ public class Pipeline {
         }
     }
     
-    private void loadExternalStagesFromPaths(GroovyShell shell, List<File> paths) {
+    private static void loadExternalStagesFromPaths(GroovyShell shell, List<File> paths) {
         for(File pipeFolder in paths) {
             List<File> libPaths = []
             if(!pipeFolder.exists()) {
@@ -689,10 +693,10 @@ public class Pipeline {
                     Script script = shell.evaluate(PIPELINE_IMPORTS+" binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true; " + scriptFile.text + "\nthis")
                     script.getMetaClass().getMethods().each { CachedMethod m ->
                         if(m.declaringClass.name.matches("Script[0-9]*") && !["__\$swapInit","run","main"].contains(m.name)) {
-                          externalBinding.variables[m.name] = { Object[] args -> script.getMetaClass().invokeMethod(script,m.name,args) }
+                          shell.context.variables[m.name] = { Object[] args -> script.getMetaClass().invokeMethod(script,m.name,args) }
                         }
                     }
-                    log.fine "Binding now has variables: " + externalBinding.variables
+                    log.fine "Binding now has variables: " + shell.context.variables
                 }
                 catch(Exception ex) {
                     log.severe("Failed to evaluate script $scriptFile: "+ ex)
@@ -700,7 +704,7 @@ public class Pipeline {
                 }
             }
           }
-          PipelineCategory.addStages(externalBinding)
+          PipelineCategory.addStages(shell.context)
     }
     
     /**
@@ -753,6 +757,9 @@ public class Pipeline {
         if(!f.exists()) 
             throw new PipelineError("A script, requested to be loaded from file '$path', could not be accessed.")
             
+        def shell = new GroovyShell(Runner.binding)
+        loadExternalStagesFromPaths(shell, [f])
+         
         loadedPaths << f
     }
     
