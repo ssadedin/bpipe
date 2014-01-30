@@ -117,7 +117,12 @@ class XMPPNotificationChannel implements NotificationChannel {
 			
 			String eventDescr = Utils.upperCaseWords(event.name().toLowerCase().replaceAll("_"," "))
 			
-			String content = eventDescr + ": " + subject + " (" + (new File(".").absoluteFile.parentFile.name) + ")"
+            String content
+            if(event == PipelineEvent.SEND)
+                content = subject
+            else
+    			content = eventDescr + ": " + subject + " (" + (new File(".").absoluteFile.parentFile.name) + ")"
+                
 			recipients.split(",").each {
 				try {
 					Chat chat = chatmanager.createChat(it, null);

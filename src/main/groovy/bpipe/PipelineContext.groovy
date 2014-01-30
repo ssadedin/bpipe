@@ -1888,13 +1888,16 @@ class PipelineContext {
     
     def currentBuilder = null
     
-    String html(Closure c) {
-        
-        def result = new StringWriter()
-        currentBuilder = new MarkupBuilder(result)
-        currentBuilder.html(c)
-        currentBuilder = null
-        return result.toString()
+    Sender html(Closure c) {
+        new Sender(this).html(c)
+    }
+    
+    Sender text(Closure c) {
+        new Sender(this).text(c)
+    }
+    
+    Sender send(Sender s) {
+        return s
     }
 }
 

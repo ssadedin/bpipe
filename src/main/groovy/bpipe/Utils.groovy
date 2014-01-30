@@ -549,4 +549,34 @@ class Utils {
         throw new IllegalStateException("Failed to create directory within $TEMP_DIR_ATTEMPTS")
       }
     
+    /**
+     * Return true if the specified token is a part of the given file name, separated by delimiters
+     * @param token
+     * @param name
+     * @return
+     */
+    static boolean isTokenInName(String token, String name) {
+        
+    }
+    
+    static List collectText(Object n, Closure c) {
+        collectText(n, [], c)
+    }
+    
+    /**
+     * Collect text strings from an XML document
+     * @param n
+     * @param allText
+     * @return
+     */
+    static List collectText(Object n, List results, Closure c) {
+        if (n.getClass().getName() == "java.lang.String") {
+            results.add(c(n))
+        } else {
+            n.children().each { child ->
+                collectText(child, results, c)
+            }
+        }
+        return results
+    }
 }

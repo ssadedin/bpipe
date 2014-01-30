@@ -114,6 +114,10 @@ class DefinePipelineCategory {
         return result
 	}
     
+    static Object multiply(java.util.regex.Pattern pattern, List segments) {
+        multiply("*", segments)
+    }
+    
 	static Object multiply(List chrs, List segments) {
         multiply("*", segments)
     }

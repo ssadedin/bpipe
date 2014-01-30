@@ -72,5 +72,10 @@ public enum PipelineEvent {
 	/**
 	 * A report has been generated (supported)
 	 */
-    REPORT_GENERATED
+    REPORT_GENERATED,
+    
+    /**
+     * The user generated a 'SEND' event themselves with the 'send' command
+     */
+    SEND
 }

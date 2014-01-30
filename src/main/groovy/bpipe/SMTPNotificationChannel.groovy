@@ -93,15 +93,18 @@ class SMTPNotificationChannel implements NotificationChannel {
 		String subjectLine = "Pipeline " + event.name().toLowerCase() + ": " + subject + " in directory " + (new File(".").absoluteFile.parentFile.name)
 		String text = "Pipeline event: $event occured at " + (new Date()) + "\n\nFull path: " + (new File(".").absolutePath)
         
-        // For a report event, attach the actual report
-        if(event == PipelineEvent.REPORT_GENERATED) {
+        if(event == PipelineEvent.SEND) {
+            sendEmail(subject, model["send.content"], new File(model["send.file"]), model["send.contentType"])
+        }
+        else
+        if(event == PipelineEvent.REPORT_GENERATED) { // For a report event, attach the actual report
             sendEmail(subject,text, new File(new File(model.reportListener.outputDir), model.reportListener.outputFileName))
         }
         else
             sendEmail(subject,text)
 	}
     
-    public void sendEmail(String subjectLine, String text, File attachment = null) {
+    public void sendEmail(String subjectLine, String text, File attachment = null, String contentType = null) {
 		Properties props = new Properties();
 		props.put("mail.smtp.host", host);
 		if(port != -1) {
@@ -129,14 +132,19 @@ class SMTPNotificationChannel implements NotificationChannel {
 		Message message = new MimeMessage(session);
 		message.setFrom(new InternetAddress(from));
 		recipients.split(",").collect { it.trim() }.each { message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(it)) }
-		message.setSubject(subjectLine);
+        
+		message.setSubject(Utils.truncnl(subjectLine, 80));
         
         if(attachment) {
             Multipart multipart = new MimeMultipart();
             
             // Add the first part: the text content
             MimeBodyPart messageBodyPart = new MimeBodyPart();
-            messageBodyPart.setText(text)
+            if(contentType)
+        		messageBodyPart.setContent(text, contentType + "; charset=utf-8")
+            else
+                messageBodyPart.setText(text)
+                
             multipart.addBodyPart(messageBodyPart)
             
             // Add the second part: the attachment
@@ -149,7 +157,11 @@ class SMTPNotificationChannel implements NotificationChannel {
             message.setContent(multipart)
         }
         else {
-    		message.setText(text);
+            if(contentType) {
+        		message.setContent(text, contentType + "; charset=utf-8")
+            }
+            else
+        		message.setText(text);
         }
         
         log.info "Sending email message to $recipients [subject=$subjectLine]"

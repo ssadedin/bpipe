@@ -48,6 +48,11 @@ class NotificationManager {
 	Map<String,Long> sendTimestamps = [:]
     
     /**
+     * Configured notification channels
+     */
+    Map<String,NotificationChannel> channels = [:]
+    
+    /**
      * Configure this notification manager with the given configuration object
      * <p>
      * Causes the manager to subscribe to necessary events to send configured
@@ -74,21 +79,35 @@ class NotificationManager {
                 }
             }
             
+            // this.channels[name] = channel
+            channelCfg.channel = channel
+            
             // Wire up required events
             eventFilter.each {
                 EventManager.instance.addListener(it, { evt, desc, detail -> 
-					sendNotification(channelCfg, channel, evt, desc, detail)
+					sendNotification(channelCfg, evt, desc, detail)
 
 	            } as PipelineEventListener)
             }    
         }
     }
 	
+	void sendNotification(String channelName, PipelineEvent evt, String desc, Map detail) {
+        
+        if(!this.cfg.notifications.containsKey(channelName))
+            throw new PipelineError("An unknown communication recipient / channel was specified")
+        
+        // Find the correct configuration
+        sendNotification(this.cfg.notifications[channelName], evt, desc, detail)
+    }
+    
 	/**
 	 * Send the given notification, subject to constraints on sends that are configured for
 	 * the channel
 	 */
-	void sendNotification(ConfigObject cfg, NotificationChannel channel, PipelineEvent evt, String desc, Map detail) {
+	void sendNotification(ConfigObject cfg, PipelineEvent evt, String desc, Map detail) {
+        
+        NotificationChannel channel = cfg.channel
 		
 		long intervalMs = cfg.interval?:0
 		

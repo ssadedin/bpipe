@@ -64,7 +64,7 @@ class PipelineDelegate {
     }
     
     def methodMissing(String name, args) {
-        log.fine "Query for method $name on ${context.get()} via delegate ${this} in thread ${Thread.currentThread().id}"
+//        log.info "Query for method $name on ${context.get()} with args ${args.collect {it.class.name}} via delegate ${this} in thread ${Thread.currentThread().id}"
         
         if(name == "from") {
             if(args.size()<1) 
