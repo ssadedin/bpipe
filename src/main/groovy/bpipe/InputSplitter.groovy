@@ -2,6 +2,7 @@ package bpipe
 
 import groovy.util.logging.Log;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Implements logic for splitting input files into groups by sample using simple
@@ -46,12 +47,20 @@ class InputSplitter {
         String regex = splitMap.pattern
         List<Integer> splitGroups = splitMap.splits
         
+        split(~regex, splitGroups, input)
+	}
+    
+	Map split(Pattern pattern, input) {
+        split(pattern,[0],input)
+    }
+    
+	Map split(Pattern pattern, List<Integer> splitGroups, input) {
         def unsortedResult = [:]
         for(String inp in Utils.box(input)) {
             // Note that we need to split on the name of the file
             // without directory since it may have come from another directory
             // and we do not want to include that in the branch name
-            Matcher m = (new File(inp).name =~ regex)
+            Matcher m = (pattern.matcher(new File(inp).name))
             if(!m)
 			    continue
                 
@@ -70,9 +79,9 @@ class InputSplitter {
 		// however we want to also sort them 
         Map sortedResult = [:]
         unsortedResult.each {  k,v ->
-            sortedResult[k] = this.sortNumericThenLexically(regex, splitGroups, v)
+            sortedResult[k] = this.sortNumericThenLexically(pattern, splitGroups, v)
 		}
-	}
+    }
     
     /**
      * Sort by using the groups matched by the given regex
@@ -86,11 +95,11 @@ class InputSplitter {
      * @param v
      * @return    a reordered version of the input list
      */
-    List sortNumericThenLexically(String regex, List<Integer> skipGroups, List v) {
+    List sortNumericThenLexically(Pattern regex, List<Integer> skipGroups, List v) {
 		return v.sort { String i1, String i2 ->
             // Match 
-			Matcher m1 = (i1 =~ regex)
-			Matcher m2 = (i2 =~ regex)
+			Matcher m1 = regex.matcher(i1)
+			Matcher m2 = regex.matcher(i2)
             
             // Convert the regex matches to lists
             List g1 = [], g2 = []

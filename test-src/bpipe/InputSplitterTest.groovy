@@ -214,7 +214,7 @@ class InputSplitterTest {
 					 "s_1_7.txt"
                  ]
 			
-        def result = splitter.sortNumericThenLexically("_([^_]*)_(.*)",[0], l1)
+        def result = splitter.sortNumericThenLexically(~"_([^_]*)_(.*)",[0], l1)
         assert result == [
 		        	 "s_1_1.txt",
 					 "s_1_2.txt",
@@ -286,5 +286,13 @@ class InputSplitterTest {
         def pattern =  splitter.convertPattern(/_%_*.txt/) 
 		assert pattern == [pattern:"_(.*?)_(.*?)\\.txt",splits:[0]]
 	}
-	
+    
+    @Test 
+    void testWithPattern() {
+        def result = splitter.split(~"(.*)_R[0-9]*.gz",["test1_R1.gz", "test1_R2.gz", "test2_RX_R1.gz", "test2_RX_R2.gz"])
+        assert result == [ 
+            "test1" : ["test1_R1.gz", "test1_R2.gz"],
+            "test2_RX" : ["test2_RX_R1.gz", "test2_RX_R2.gz"]
+        ]        
+    }
 }

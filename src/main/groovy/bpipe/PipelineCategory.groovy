@@ -276,6 +276,10 @@ class PipelineCategory {
         return multiplyImplementation
     }
     
+    static Object multiply(java.util.regex.Pattern pattern, List segments) {
+        splitOnFiles(pattern,segments,true)
+    }
+    
     /**
      * Implements the syntax that allows an input filter to 
      * break inputs into samples and pass to multiple parallel 
@@ -312,8 +316,13 @@ class PipelineCategory {
      * stages in the form
      * <p>
      * <code>"sample_%_*.txt" * [stage1 + stage2 + stage3]</code>
+     * 
+     * @param pattern   either a String or a Pattern object
+     * @param segments  a list of closures to run in paraellel
+     * @param requireMatch  if true, the pipeline will fail if there are 
+     *                      no matches to the pattern
      */
-    static Object splitOnFiles(String pattern, List segments, boolean requireMatch) {
+    static Object splitOnFiles(def pattern, List segments, boolean requireMatch) {
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
         
         def multiplyImplementation = { input ->
@@ -528,7 +537,7 @@ class PipelineCategory {
             new PipelineContext(null, parent.stages, joiners, new Branch(name:'all'))
         def mergedOutputs = finalStages.collect { s ->
             Utils.box(s.context.nextInputs ?: s.context.@output) 
-        }.sum().unique()
+        }.sum().unique { new File(it).canonicalPath }
         log.info "Last merged outputs are $mergedOutputs"
         mergedContext.setRawOutput(mergedOutputs)
         PipelineStage mergedStage = new PipelineStage(mergedContext, finalStages.find { it != null }.body)
