@@ -295,6 +295,8 @@ class Runner {
         
         // Add event listeners that come directly from configuration
         EventManager.instance.configure(Config.userConfig)
+        
+        Concurrency.instance.initFromConfig()
 		
 		if(!opts.t) {
 			NotificationManager.instance.configure(Config.userConfig)
@@ -342,7 +344,7 @@ class Runner {
                 handleMissingPropertyFromPipelineScript(e)
             }
             else
-                throw e
+                reportExceptionToUser(e)
         }
         catch(Throwable e) {
             reportExceptionToUser(e)

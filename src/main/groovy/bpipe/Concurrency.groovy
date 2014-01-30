@@ -235,5 +235,15 @@ class Concurrency {
    void setLimit(String resourceName, int amount) {
        this.resourceAllocations.put(resourceName, new Semaphore(amount))
    }
-    
+   
+   void initFromConfig() {
+       
+       if(!Config.userConfig.limits) 
+           return
+       
+       Config.userConfig.limits.each { key, value ->
+           log.info "Setting limit $key with value $value from user configuration"
+           setLimit(key, value)
+       }
+   }
 }
