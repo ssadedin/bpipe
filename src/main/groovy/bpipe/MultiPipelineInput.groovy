@@ -84,13 +84,21 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
     
     /**
      * Return the inputs with each one prefixed by the specified flag
+     * <p>
+     * If the flag ends with "=" then no space is included between the flag
+     * and the option. Otherwise, a space is included.
+     * 
      * @param flag name of flag, including dashes (eg: "-I" or "--input")
      * @return  string containing each matching input prefixed by the flag and a space
      */
     public String withFlag(String flag) {
        List boxed = Utils.box(super.@input).unique()
        addResolvedInputs(boxed)
-       boxed.collect { "$flag $it" }.join(" ")
+       if(flag.endsWith("=")) {
+           return boxed.collect { "${flag}${it}" }.join(" ") 
+       }
+       else
+         return boxed.collect { "$flag $it" }.join(" ")
     }
     
 	@Override
