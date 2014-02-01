@@ -167,7 +167,7 @@ class SlurmCommandExecutor extends CustomCommandExecutor implements CommandExecu
      */
     @Override
     List<String> getIgnorableOutputs() {
-        return ["slurm-"+this.commandId+".out"]
+        return ["slurm-[0-9]*.out"]
     }
 
     String toString() {
