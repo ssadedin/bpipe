@@ -25,6 +25,7 @@
 package bpipe
 
 import groovy.lang.Closure;
+import groovy.util.logging.Log;
 import groovy.xml.MarkupBuilder
 
 /**
@@ -35,19 +36,28 @@ import groovy.xml.MarkupBuilder
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+@Log
 class Sender {
     
     PipelineContext ctx
     
     String contentType
     
-    String content
+    /**
+     * Content may be a string or it may be a closure that returns a string
+     */
+    def content
     
     String defaultSubject
+    
+    Map details = [:]
+    
+    Closure onSend = null
 
     public Sender(PipelineContext ctx) {
         this.ctx = ctx
         this.content = content
+        this.defaultSubject = "Message from Pipeline Stage $ctx.stageName"
     }
     
     /**
@@ -78,8 +88,38 @@ class Sender {
         ctx.currentBuilder = null
         this.content = result.toString()
         this.contentType = "text/html"
-        this.defaultSubject = Utils.collectText(new XmlParser().parseText(this.content)) { it }[0]
+        this.extractSubjectFromHTML()
         return this
+    }
+    
+    Sender report(String reportName) {
+        
+        File reportDir = new File(".bpipe/reports/"+Config.config.pid+"/")
+        reportDir.mkdirs()
+        File outFile = new File(reportDir, Math.round(Math.random()*100000) + "." + new File(reportName).name)
+        
+        this.content = {
+          Map binding = details.withDefault { ctx.myDelegate.propertyMissing(it) }
+          new ReportGenerator(reportBinding:binding).generateFromTemplate(Pipeline.currentRuntimePipeline.get(), reportName, reportDir.absolutePath, outFile.name) 
+          contentType = outFile.name.endsWith("html") ? "text/html" : "text/plain"
+          extractSubjectFromHTML()
+          return outFile.text
+        }
+        
+        return this    
+    }
+    
+    void extractSubjectFromHTML() {
+        // We make an attempt to extract the first line of text as a subject
+        // when the type is HTML
+        if(contentType == "text/html") {
+            try {
+              this.defaultSubject = Utils.collectText(new XmlParser().parseText(this.content)) { it }[0]
+            }
+            catch(Exception e) {
+               // .. Ignore .. 
+            }
+        } 
     }
     
     /**
@@ -89,12 +129,16 @@ class Sender {
      * 
      * @param details
      */
-    void to(Map details) {
+    void to(Map extraDetails) {
+        
+        // Don't send anything if the pipeline stage was just being probed
+        if(ctx.probeMode)
+            return
+            
+        this.details = extraDetails
         
         // Find the config object
         String cfgName = details.channel
-        
-        println "Sending $content to $cfgName!"
         
         if(cfgName.startsWith('$'))
             cfgName = cfgName.substring(1)
@@ -107,12 +151,45 @@ class Sender {
             details.subject = defaultSubject
         }
         
-        NotificationManager.instance.sendNotification(cfgName, PipelineEvent.SEND, details.subject, [
+        // Dereference the content, if necessary
+        if(content instanceof Closure) {
+            content = content() // Note: may change / set contentType
+        }
+        
+        log.info "Sending $content to $cfgName!"
+        
+       File sentFolder = new File(".bpipe/sent/")
+       sentFolder.mkdirs()
+       
+       File sentFile = new File(sentFolder, cfgName + "." + ctx.stageName + "." + Utils.sha1(this.details.subject + content))
+       if(sentFile.exists() && Dependencies.instance.checkUpToDate(sentFile.absolutePath, ctx.@input)) {
+           log.info "Sent file $sentFile.absolutePath already exists - skipping send of this message"
+           if(onSend != null) {
+             onSend(details)
+           } 
+           return
+       }
+       sentFile.text = content
+       
+       if(Runner.opts.t) {
+           log.info "Would send $content to $cfgName, but we are in test mode"
+           if(onSend != null) {
+             onSend(details)
+           } 
+       }
+       else
+           log.info "Sending $content to $cfgName"
+       
+       NotificationManager.instance.sendNotification(cfgName, PipelineEvent.SEND, this.details.subject, [
             "send.content": content,
-            "send.subject": details.subject,
+            "send.subject": this.details.subject,
             "send.contentType" : this.contentType,
-            "send.file" : details.file
+            "send.file" : this.details.file
         ]) 
+       
+       if(onSend != null) {
+           onSend(details)
+       }
     }
     
     /**

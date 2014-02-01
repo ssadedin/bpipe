@@ -58,6 +58,8 @@ class ForwardHost {
     void stopForwarding() {
         this.forwarders*.cancel()
         
+        log.info "Flushing outputs for forwarders: $forwarders"
+        
         // Now run them all one last time to flush any last contents
         this.forwarders*.run()
     }

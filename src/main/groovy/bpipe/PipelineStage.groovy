@@ -160,7 +160,7 @@ class PipelineStage {
         List<File> oldFiles = new File(context.outputDirectory).listFiles() as List
         oldFiles = oldFiles?:[]
         boolean joiner = (body in this.context.pipelineJoiners)
-		
+        
 		// The name used for displaying this stage
 		String displayName = "Unknown Stage"
         try {
@@ -203,6 +203,9 @@ class PipelineStage {
                 log.info("Stage $displayName : INPUT=${context.@input} OUTPUT=${context.defaultOutput}")
             }   
             context.stageName = stageName
+            
+            if(stageName in Config.config.breakAt)
+                Config.config.breakTriggered = true
             
             // Execute the actual body of the pipeline stage
             runBody()

@@ -60,7 +60,13 @@ class Config {
 		
 		// The path to the file that is capturing the output for this 
 		// Bpipe run 
-		outputLogPath: null
+		outputLogPath: null,
+        
+        // Stages where the pipeline should break at (set with -u on command line)
+        breakAt: [],
+        
+        // Whether a break has been triggered
+        breakTriggered : false
     ]
     
     /**

@@ -903,7 +903,12 @@ class PipelineContext {
           try {
             PipelineDelegate.setDelegateOn(this, body)
             log.info("Probing command using inputs ${this.@input}")
-            body() 
+            try {
+              body() 
+            }
+            catch(Exception e) {
+                log.info "Exception occurred during proble: $e.message"
+            }
             log.info "Finished probe"
             
             def allInputs = (getResolvedInputs()  + Utils.box(lastInputs)).unique()
@@ -1268,7 +1273,7 @@ class PipelineContext {
         if(!this.probeMode)
             this.commandManager.cleanup(c.executor)
             
-        throw new PipelineError("Command failed with exit status = $exitResult : \n\n$c.command")
+        throw new CommandFailedException("Command failed with exit status = $exitResult : \n\n$c.command")
       }
       
       if(!this.probeMode)
@@ -1560,7 +1565,7 @@ class PipelineContext {
     */
    Object fromImpl(Object exts, Closure body) {
        
-       log.info "Searching for inputs matching spec $exts"
+       log.info "From clause searching for inputs matching spec $exts"
        def orig = exts
        
        // Find all the pipeline stages outputs that were created
@@ -1876,6 +1881,13 @@ class PipelineContext {
         throw new PipelineError("Pipeline stage ${stageName} aborted with the following message:\n\n$message\n")
     }
     
+    Sender fail(Sender s) {
+        s.onSend = { details ->
+            throw new PipelineError("Pipeline stage ${stageName} aborted with the following message:\n\n$details.subject\n")
+        }
+        return s
+    }    
+    
     /**
      * Cause the current branch to terminate and not process any further, but 
      * without causing a pipeline failure
@@ -1888,6 +1900,13 @@ class PipelineContext {
     
     def currentBuilder = null
     
+    Sender succeed(Sender s) {
+        s.onSend = { details ->
+            throw new UserTerminateBranchException(details.subject)
+        }
+        return s
+    }
+    
     Sender html(Closure c) {
         new Sender(this).html(c)
     }
@@ -1896,8 +1915,16 @@ class PipelineContext {
         new Sender(this).text(c)
     }
     
+    Sender report(String reportName) {
+        new Sender(this).report(reportName)
+    }
+    
     Sender send(Sender s) {
         return s
+    }
+    
+    Checker check(Closure c) {
+        return new Checker(this,c)
     }
 }
 

@@ -143,7 +143,7 @@ class CommandManager {
         }
 
         
-        if(Runner.opts.t) {
+        if(Runner.opts.t || Config.config.breakTriggered) {
             if(cmdExec instanceof LocalCommandExecutor)
               throw new PipelineTestAbort("Would execute: $cmd")
           else {

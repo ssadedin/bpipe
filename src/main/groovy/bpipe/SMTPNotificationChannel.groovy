@@ -94,7 +94,7 @@ class SMTPNotificationChannel implements NotificationChannel {
 		String text = "Pipeline event: $event occured at " + (new Date()) + "\n\nFull path: " + (new File(".").absolutePath)
         
         if(event == PipelineEvent.SEND) {
-            sendEmail(subject, model["send.content"], new File(model["send.file"]), model["send.contentType"])
+            sendEmail(subject, model["send.content"], model["send.file"]?new File(model["send.file"]):null, model["send.contentType"])
         }
         else
         if(event == PipelineEvent.REPORT_GENERATED) { // For a report event, attach the actual report

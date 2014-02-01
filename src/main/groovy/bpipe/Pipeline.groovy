@@ -167,6 +167,11 @@ public class Pipeline {
     boolean failed = false
     
     /**
+     * Set to true if the user aborted this branch using 'succeed'
+     */
+    boolean aborted = false
+    
+    /**
      * If a pipeline failed with an exception, it sets the exception(s) here
      */
     List<Throwable> failExceptions = []
@@ -454,6 +459,7 @@ public class Pipeline {
                 log.info "Pipeline segment ${this.branch} has terminated by 'succeed' in user script: $e.message"
                 
                 println "${new Date()} MSG: Branch ${branch=='all'?'':branch} completed: $e.message"
+                aborted = true
             }
             catch(PipelineError e) {
                 log.info "Pipeline segment failed (2): " + e.message

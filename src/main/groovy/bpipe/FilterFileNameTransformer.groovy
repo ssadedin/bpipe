@@ -41,6 +41,10 @@ class FilterFileNameTransformer implements FileNameTransformer {
      */
     List<String> exts = []
     
+    /**
+     * Whether the name of the current pipeline branch has been incorporated into the 
+     * output files of the branch yet.
+     */
     boolean nameApplied = false
 
     @Override
@@ -64,7 +68,7 @@ class FilterFileNameTransformer implements FileNameTransformer {
                
             log.info "Filtering based on input $inp"
             
-             typeCounts[type]++
+            typeCounts[type]++
             String oldExt = (inp =~ '\\.[^\\.]*$')[0]
             if(applyName) {
                 // Arguably, we should add the filter type to the name here as well.

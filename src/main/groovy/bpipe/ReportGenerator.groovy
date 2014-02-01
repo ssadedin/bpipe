@@ -32,13 +32,18 @@ class ReportGenerator {
     }
     
     /**
+     * Binding for the generator to use. If null,
+     * a default binding containing information about the pipeline is generated
+     */
+    Map reportBinding = null
+    
+    /**
      * Instantiates the specified template and generates it from the given pipeline
      *
      * @param templateFile
      */
     void generateFromTemplate(Pipeline pipeline, String templateFileName, String outputDir, String outputFileName) {
         
-        // Now make a graph
         File docDir = new File(outputDir)
         if(!docDir.exists()) {
             docDir.mkdirs()
@@ -47,35 +52,49 @@ class ReportGenerator {
         def docStages = [ [] ]
         pipeline.fillDocStages(docStages)
         
-        Map docBinding = [
-            stages: docStages,
-            pipeline: pipeline
-        ]
+        if(reportBinding == null) {
+            reportBinding = [
+                stages: docStages,
+                pipeline: pipeline
+            ]
+        }
          
         if(docStages.any { it.stageName == null })
             throw new IllegalStateException("Should NEVER have a null stage name here")
 
-        // Use HTML templates to generate documentation
-        InputStream templateStream
-        File srcTemplateDir = new File(System.getProperty("bpipe.home") + "/src/main/html/bpipe")
-        File templateFile = srcTemplateDir.exists() ?
-              new File(srcTemplateDir, templateFileName)
-            :
-              new File(System.getProperty("bpipe.home") + "/html", templateFileName)
-              
+        // First priority is an absolute path or relative directly to a template file
+        File templateFile = new File(templateFileName)
+        
+        // Look for templates relative to the pipeline script as well
+        if(!templateFile.exists()) 
+          templateFile = new File(new File(Config.config.script).parentFile, templateFileName)
+        
+        // Look in default template locations (such as the stock reports shipped with Bpipe)
         if(!templateFile.exists()) {
-            throw new PipelineError("""
-                The documentation template you specified (${templateFileName.replaceAll(".html","")}) could not be located. Valid report templates are:
-            """.stripIndent() + "\n\t" + templateFile.parentFile.listFiles()*.name.collect{it.replaceAll(".html","")}.join("\n\t"))
+            
+            File srcTemplateDir = new File(System.getProperty("bpipe.home") + "/src/main/html/bpipe")
+            
+            templateFile = srcTemplateDir.exists() ?
+                  new File(srcTemplateDir, templateFileName)
+                :
+                  new File(System.getProperty("bpipe.home") + "/html", templateFileName)
+                  
+    
+            if(!templateFile.exists()) {
+                throw new PipelineError("""
+                    The documentation template you specified (${templateFileName.replaceAll(".html","")}) could not be located. Valid report templates are:
+                """.stripIndent() + "\n\t" + templateFile.parentFile.listFiles()*.name.collect{it.replaceAll(".html","")}.join("\n\t"))
+            }
         }
-        templateStream = new FileInputStream(templateFile)
+            
+        InputStream templateStream = new FileInputStream(templateFile)
         GStringTemplateEngine e = new GStringTemplateEngine()
         File outputFile = new File(docDir, outputFileName)
         templateStream.withReader { r ->
-            def template = e.createTemplate(r).make(docBinding)
+            def template = e.createTemplate(r).make(reportBinding)
             outputFile.text = template.toString()
         }
         templateStream.close()
-        println "Generated documentation "+ outputFile.absolutePath
+        println "MSG: Generated report "+ outputFile.absolutePath
     }
 }

@@ -197,6 +197,7 @@ class Runner {
                  l longOpt:'resource', 'place limit on named resource', args:1, argName: 'resource=value'
                  v longOpt:'verbose', 'print internal logging to standard error'
                  y longOpt:'yes', 'answer yes to any prompts or questions'
+                 u longOpt:'until', 'run until stage given',args:1
                  p longOpt: 'param', 'defines a pipeline parameter', args: 1, argName: 'param=value', valueSeparator: ',' as char
                  'L' longOpt: 'interval', 'the default genomic interval to execute pipeline for (samtools format)',args: 1
             }
@@ -308,6 +309,10 @@ class Runner {
         if(!opts.t) {
             Config.config.eraseLogsOnExit = false
             appendCommandToHistoryFile(mode, args, pid)
+        }
+        
+        if(opts.u) {
+            Config.config.breakAt = opts.u.split(",")
         }
 
         def gcl = new GroovyClassLoader()

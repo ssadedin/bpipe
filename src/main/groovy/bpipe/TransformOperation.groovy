@@ -171,7 +171,11 @@ class TransformOperation {
         
         // If the pipeline branched, we need to add a segment to the new files name
         // to differentiate it from other parallel branches
-        String additionalSegment = ctx.applyName ? '.'+pipeline.name : ''
+        String additionalSegment = ""
+        if(ctx.applyName) {
+            additionalSegment = '.'+pipeline.name 
+            log.info "Applying branch name $pipeline.name to pipeline segment because name is yet to be applied"
+        }
         
         int count = 0
         def outFiles = exts.collect { String extension ->
@@ -191,10 +195,20 @@ class TransformOperation {
                if(!toPattern.startsWith('.'))
                    toPattern = '.' + toPattern
             }
-            String txed = inp.contains(".") ?
-                    inp.replaceAll(fromPattern, FastUtils.dotJoin(additionalSegment,toPattern))
-                :
-                    FastUtils.dotJoin(inp,additionalSegment,extension)
+            String txed = null
+            if(inp.contains(".")) {
+                def startPortion = inp.replaceAll(fromPattern, "")
+//                txed = FastUtils.dotJoin(startPortion,additionalSegment,toPattern)
+                txed = inp.replaceAll(fromPattern,FastUtils.dotJoin(additionalSegment,toPattern))
+                
+                // There are still some situations that can result in consecutive periods appearing in
+                // a file name (when the branch name is inserted automatically). So it's a bit of a hack,
+                // but we simply remove them
+                txed = txed.replaceAll(/\.\./,/\./)
+            }
+            else {
+                FastUtils.dotJoin(inp,additionalSegment,extension)
+            }
             
             // A small hack that is designed to avoid a situation where an output 
             // receives the same name as an input file

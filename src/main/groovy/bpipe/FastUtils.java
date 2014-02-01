@@ -71,7 +71,15 @@ public class FastUtils {
      */
     static String dotJoin(String... values) {
         StringBuilder result = new StringBuilder(128);
+        boolean first = true;
         for(String value : values) {
+            
+            if(first) {
+                first = false;
+                if(value.startsWith("."))
+                    value = value.substring(1);
+            }
+            
             if(value.endsWith(".")) {
                 value = value.substring(0, value.length()-1);
             }
@@ -86,6 +94,6 @@ public class FastUtils {
               result.append(value);
             }
         }
-        return result.toString();
+        return result.toString(); 
     }    
 }
