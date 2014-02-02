@@ -67,7 +67,7 @@ class ReportGenerator {
         
         // Look for templates relative to the pipeline script as well
         if(!templateFile.exists()) 
-          templateFile = new File(new File(Config.config.script).parentFile, templateFileName)
+          templateFile = new File(new File(Config.config.script).canonicalFile.parentFile, templateFileName)
         
         // Look in default template locations (such as the stock reports shipped with Bpipe)
         if(!templateFile.exists()) {
