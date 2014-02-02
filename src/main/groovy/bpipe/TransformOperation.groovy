@@ -207,7 +207,7 @@ class TransformOperation {
                 txed = txed.replaceAll(/\.\./,/\./)
             }
             else {
-                FastUtils.dotJoin(inp,additionalSegment,extension)
+                txed = FastUtils.dotJoin(inp,additionalSegment,extension)
             }
             
             // A small hack that is designed to avoid a situation where an output 
