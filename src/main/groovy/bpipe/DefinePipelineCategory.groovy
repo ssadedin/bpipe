@@ -58,11 +58,22 @@ class DefinePipelineCategory {
     /**
      * List stages found
      */
-    static Node inputStage = new Node(null, "input", []) 
+    static Node inputStage = null
     
-    static List<Node> currentStage = [inputStage]
+    static List<Node> currentStage = null
 	
     static def joiners = []
+    
+    
+    static void reset() {
+      inputStage = new Node(null, "input", []) 
+      currentStage = [inputStage]
+      joiners = []
+    }
+    
+    static {
+        reset()
+    }
     
     static Object plus(Closure c, Closure other) {
         def result  = { 

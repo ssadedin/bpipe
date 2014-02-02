@@ -547,7 +547,7 @@ public class Pipeline {
             }
         }
 
-        Node pipelineStructure = diagram(host, pipeline)
+        Node pipelineStructure = launch ? diagram(host, pipeline) : null
 //        
 //        println "Executing pipeline: "
 //        use(NodeListCategory) {
@@ -901,6 +901,7 @@ public class Pipeline {
         if(host)
             pipeline.setDelegate(host)
             
+        DefinePipelineCategory.reset()
         use(DefinePipelineCategory) {
             def realizedPipeline = pipeline()
             Utils.box(realizedPipeline).each { realizedBranch ->
