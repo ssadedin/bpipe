@@ -43,6 +43,16 @@ import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.SwingConstants;
 
+import org.apache.batik.dom.svg.SVGDOMImplementation;
+import org.apache.batik.svggen.CachedImageHandlerBase64Encoder;
+import org.apache.batik.svggen.GenericImageHandler;
+import org.apache.batik.svggen.SVGGeneratorContext;
+import org.apache.batik.svggen.SVGGraphics2D
+import org.apache.batik.svggen.SVGGraphics2DIOException;
+import org.w3c.dom.DOMImplementation
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
 @Log
 class Graph extends JFrame {
 
@@ -72,7 +82,6 @@ class Graph extends JFrame {
 		this.defaultStageBoxWidth = stageNames.max { it.size() }.size() * 9 + 10
 		this.defaultStageWidth = Math.max(defaultStageWidth, defaultStageBoxWidth+20)
 		this.stages = stages
-		this.createFlowDiagram(stages)
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	}
 
@@ -110,6 +119,9 @@ class Graph extends JFrame {
 	}
 
 	void display() {
+        
+		this.createFlowDiagram(stages)
+        
 		// For the editor we actually make the window a little bigger so there is
 		// more margine, otherwise the diagram is flush with the bottom of the window
 		setSize((stages.children().size()+1) * defaultStageWidth + 40, 280);
@@ -120,7 +132,9 @@ class Graph extends JFrame {
 	 * Render to the specified file name
 	 * @param fileName
 	 */
-	void render(String fileName) {
+	void renderPNG(String fileName) {
+        
+		this.createFlowDiagram(stages)
         
 		log.info "Size = ${this.width} x ${this.height}"
         
@@ -179,7 +193,7 @@ class Graph extends JFrame {
             
 		layout.execute(graph.getDefaultParent());
         
-		// Find the "highest" vertext
+		// Find the "highest" vertex
 		def highestCell = vertices.values().max {  it.geometry.y + it.geometry.height }
         double maxY = highestCell.geometry.y + highestCell.geometry.height
         
@@ -190,8 +204,45 @@ class Graph extends JFrame {
         
 		setSize((int)maxX + 40, (int)maxY+ 40);
 		this.graphComponent.setSize(this.width, this.height)
-
-		
+	}
+    
+	void renderSVG(String outputFileName) {
+        
+        this.createFlowDiagram(stages)
+        
+        println "Drawing SVG graph ..."
+        String svgNS = SVGDOMImplementation.SVG_NAMESPACE_URI;
+        DOMImplementation domImpl = SVGDOMImplementation.getDOMImplementation();
+        Document document = domImpl.createDocument(svgNS, "svg", null);
+         
+        // Create an instance of the SVG Generator
+        SVGGeneratorContext ctx = SVGGeneratorContext.createDefault(document);
+     
+        // Reuse our embedded base64-encoded image data.
+        GenericImageHandler ihandler = new CachedImageHandlerBase64Encoder();
+        ctx.setGenericImageHandler(ihandler);
+         
+        //Create SVG graphics2d Generator similar to the Graphich2d
+        SVGGraphics2D svgGenerator = new SVGGraphics2D(ctx, false);
+     
+        //First draw Graph to the SVGGrapgics2D object using graphcomponent objects draw method
+        graphComponent.getGraphControl().drawGraph(svgGenerator, true);
+     
+        //Once every thing is drawn on graphics find root element and update this by adding additional values for the required fields.
+        Element root = svgGenerator.getRoot();
+        root.setAttributeNS(null, "width", graphComponent.getGraphControl().getPreferredSize().width + "");
+        root.setAttributeNS(null, "height", graphComponent.getGraphControl().getPreferredSize().height + "");
+        root.setAttributeNS(null, "viewBox", "0 0 " + graphComponent.getGraphControl().getPreferredSize().width + " " + graphComponent.getGraphControl().getPreferredSize().height);
+     
+        // Print to the SVG Graphics2D object
+        boolean useCSS = true; // we want to use CSS style attributes
+        Writer out = new FileWriter(new File(outputFileName));
+        try {
+          svgGenerator.stream(root, out, useCSS, false);
+        }
+        catch (SVGGraphics2DIOException e) {
+           e.printStackTrace();
+        }
 	}
 
 	def vertices = [:]

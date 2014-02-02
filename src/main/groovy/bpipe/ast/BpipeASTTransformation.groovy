@@ -69,7 +69,7 @@ class BpipeASTTransformation implements ASTTransformation {
         
         String closureUpper = closureName.substring(0,1).toUpperCase() + closureName[1..-1]
         
-        String transformExtension = getAnnotationValue(closureUpper, ann)
+        String annotationValue = getAnnotationValue(closureUpper, ann)
         
         BlockStatement block = sourceUnit.getAST()?.getStatementBlock()
         if(!block) {
@@ -103,11 +103,35 @@ class BpipeASTTransformation implements ASTTransformation {
             return
         } 
         
+        executeTransformation(stageName, expr, annotationValue)
+    }
+    
+    /**
+     * Synthesises an outer closure that invokes the closure that is the right hand side of the 
+     * given expression. Essentially we are turning this:
+     * <code>
+     *   foo = {
+     *   }
+     * </code>
+     *into this:
+     *  <code>
+     *      foo = {
+     *          transform {
+     *              [original closure]
+     *          }
+     *      }
+     *  </code>
+     * 
+     * @param stageName
+     * @param expr
+     * @param annotationValue
+     */
+    protected void executeTransformation(String stageName, Expression expr, String annotationValue) {
         // println "================ AST PROCESSING : $closureName ============="
         
         ClosureExpression cls = expr.rightExpression
         if(cls.code?.class != BlockStatement)  {
-            println "ERROR: $closureUpper annotates closure without block (?!)"
+            println "ERROR: $closureName annotates closure without block (?!)"
             
             return
         } 
@@ -129,7 +153,7 @@ class BpipeASTTransformation implements ASTTransformation {
                 new MethodCallExpression(new VariableExpression("this"), 
                          new ConstantExpression(this.closureName), 
                          new ArgumentListExpression(
-                             new ConstantExpression(transformExtension),
+                             new ConstantExpression(annotationValue),
                              innerClosure
                          )
                      )
@@ -139,6 +163,7 @@ class BpipeASTTransformation implements ASTTransformation {
         cls.code = transformStatement
 
         expr.rightExpression = createStageDeclaration(stageName, expr.rightExpression)
+        
     }
 
 	protected String getAnnotationValue(String closureUpper, AnnotationNode ann) {

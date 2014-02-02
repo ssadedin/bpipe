@@ -927,9 +927,19 @@ public class Pipeline {
             g.display()
         }
         else {
-            String outputFileName = fileName+".png"
-           println "Creating diagram $outputFileName"
-            g.render(outputFileName)
+            
+            def opts = Runner.opts
+            
+            String outputExtension = opts.f ? "."+opts.f : ".png"
+            String outputFileName = fileName+outputExtension
+            println "Creating diagram $outputFileName"
+            if(opts.f == "svg") 
+                g.renderSVG(outputFileName)
+            else
+            if(opts.f == "png" || !opts.f) 
+                g.renderPNG(outputFileName)
+            else
+                throw new PipelineError("Output format of ${opts.f} is not recognized / supported")
         } 
     }
     

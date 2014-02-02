@@ -66,8 +66,18 @@ class Config {
         breakAt: [],
         
         // Whether a break has been triggered
-        breakTriggered : false
+        breakTriggered : false,
     ]
+        
+    /**
+     * Configured plugins
+     */
+    static Map<String,BpipePlugin> plugins = [:]
+    
+    /**
+     * A list of pipeline stages that should not be included in diagrams
+     */
+    static Set<String> noDiagram = new HashSet()
     
     /**
      * Configuration loaded from the local directory
@@ -172,5 +182,25 @@ class Config {
                config[k] = v
            }
        }
+       
+       if(userConfig.containsKey("noDiagram")) {
+           def noDiagramStages = userConfig.noDiagram.split(",")
+           log.info "The following stages are configured to be ignored in diagrams: $noDiagramStages"
+           Config.noDiagram.addAll(noDiagramStages)
+       }
+    }
+    
+    static void initializePlugins() {
+        // Check for plugins
+        File pluginsDir = new File(System.properties["user.dir"]+"/.bpipe/plugins")
+        if(!pluginsDir.exists()) {
+            log.info "No plugins directory found: $pluginsDir"
+            return
+        }
+        
+        // For each subdirectory found, add and initialize the plugin
+        pluginsDir.eachDir { File pluginDir ->
+            Config.plugins[pluginDir.name] = new BpipePlugin(pluginDir.name, pluginDir)
+        }
     }
 }

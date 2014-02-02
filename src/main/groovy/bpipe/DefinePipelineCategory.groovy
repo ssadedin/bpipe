@@ -87,7 +87,7 @@ class DefinePipelineCategory {
             if(c in joiners)
                 c()
             
-            if(PipelineCategory.closureNames.containsKey(other) /* && PipelineCategory.closureNames[other] != "index_bam" */) {
+            if(PipelineCategory.closureNames.containsKey(other) && !Config.noDiagram.contains(PipelineCategory.closureNames[other])) {
 	            def newStage = new Node(null, PipelineCategory.closureNames[other])
 	            currentStage*.append(newStage)
                 currentStage = [newStage]

@@ -16,8 +16,21 @@ repositories {
 dependencies {
     groovy group: 'org.codehaus.groovy', name: 'groovy', version: '1.8.2'
     compile files(fileTree(dir:'local-lib', includes:['*.jar']))
+
+    // In case GridGain ever revive their Maven repo ...
     // compile ('org.gridgain:gridgain:4.0.2c') { transitive = false }
+
     compile ('javax.mail:mail:1.4.5')
+    compile ('javax.mail:mail:1.4.5')
+
+    // Batik
+    compile 'org.apache.xmlgraphics:batik-util:1.7@jar'
+    compile 'org.apache.xmlgraphics:batik-css:1.7@jar'
+    compile 'org.apache.xmlgraphics:batik-dom:1.7'
+    compile 'org.apache.xmlgraphics:batik-svg-dom:1.7@jar'
+    compile 'org.apache.xmlgraphics:batik-svggen:1.7@jar'
+    compile 'org.apache.xmlgraphics:batik-awt-util:1.7@jar'
+
     compile ('com.hazelcast:hazelcast-all:2.1.2') { transitive = false }
     testCompile group: 'junit', name: 'junit', version: '4.8.2'
 

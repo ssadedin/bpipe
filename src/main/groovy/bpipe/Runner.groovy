@@ -71,11 +71,13 @@ class Runner {
               diagrameditor <pipeline> <in1> <in2>...
     """.stripIndent().trim()
     
+    static Map<String,BpipePlugin> plugins = [:]
+    
     static CliBuilder runCli = new CliBuilder(usage: DEFAULT_HELP, posix: true)
           
     static CliBuilder stopCommandsCli = new CliBuilder(usage: "bpipe stopcommands\n", posix: true)
     
-    static CliBuilder diagramCli = new CliBuilder(usage: "bpipe diagram [-e] <pipeline> <input1> <input2> ...\n", posix: true)
+    static CliBuilder diagramCli = new CliBuilder(usage: "bpipe diagram [-e] [-f <format>] <pipeline> <input1> <input2> ...\n", posix: true)
     
     public static OptionAccessor opts = runCli.parse([])
     
@@ -124,11 +126,16 @@ class Runner {
                 
         def parentLog = initializeLogging(pid)
         
+        Config.initializePlugins()
+        
         def cli 
         String mode = System.getProperty("bpipe.mode")
         if(mode == "diagram")  {
             log.info("Mode is diagram")
             cli = diagramCli
+            cli.with {
+                f "Set output format to 'png' or 'svg'", args:1
+            }
             Config.config["mode"] = "diagram"
         }
         else
@@ -201,6 +208,8 @@ class Runner {
                  p longOpt: 'param', 'defines a pipeline parameter', args: 1, argName: 'param=value', valueSeparator: ',' as char
                  'L' longOpt: 'interval', 'the default genomic interval to execute pipeline for (samtools format)',args: 1
             }
+            
+            Config.plugins.each { name, plugin -> plugin.configureCli() }
         }
         
         String versionInfo = "\nBpipe Version $version   Built on ${new Date(Long.parseLong(builddate))}\n"
@@ -648,6 +657,7 @@ class Runner {
            new ReportStatisticsListener(reportName, reportConfig.fileName?:reportName + ".html", reportConfig.dir?:"doc", reportConfig.notification?:false)
         }
     }
+    
 }
 
 /**
