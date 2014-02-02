@@ -199,7 +199,8 @@ class TransformOperation {
             if(inp.contains(".")) {
                 def startPortion = inp.replaceAll(fromPattern, "")
 //                txed = FastUtils.dotJoin(startPortion,additionalSegment,toPattern)
-                txed = inp.replaceAll(fromPattern,"."+FastUtils.dotJoin(additionalSegment,toPattern))
+                String dot = fromPattern.startsWith(".") ?"":"."
+                txed = inp.replaceAll(fromPattern,dot+FastUtils.dotJoin(additionalSegment,toPattern))
                 
                 // There are still some situations that can result in consecutive periods appearing in
                 // a file name (when the branch name is inserted automatically). So it's a bit of a hack,
