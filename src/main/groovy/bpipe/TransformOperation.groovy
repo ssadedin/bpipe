@@ -201,15 +201,15 @@ class TransformOperation {
 //                txed = FastUtils.dotJoin(startPortion,additionalSegment,toPattern)
                 String dot = fromPattern.startsWith(".") ?"":"."
                 txed = inp.replaceAll(fromPattern,dot+FastUtils.dotJoin(additionalSegment,toPattern))
-                
-                // There are still some situations that can result in consecutive periods appearing in
-                // a file name (when the branch name is inserted automatically). So it's a bit of a hack,
-                // but we simply remove them
-                txed = txed.replaceAll(/\.\./,/\./)
             }
             else {
                 txed = FastUtils.dotJoin(inp,additionalSegment,extension)
             }
+            
+            // There are still some situations that can result in consecutive periods appearing in
+            // a file name (when the branch name is inserted automatically). So it's a bit of a hack,
+            // but we simply remove them
+            txed = txed.replaceAll(/\.\.*/,/\./)
             
             // A small hack that is designed to avoid a situation where an output 
             // receives the same name as an input file

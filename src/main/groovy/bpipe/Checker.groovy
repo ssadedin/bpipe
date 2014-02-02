@@ -69,6 +69,7 @@ class Checker {
             // A check can modify the outputs even if it doesn't reference any
             ctx.setRawOutput(oldOutputs)
             
+            passed = true
         }
         catch(CommandFailedException e) {
             log.info "Check $checkName was executed and failed ($e)"
@@ -79,8 +80,7 @@ class Checker {
         // re-checking it each time
         // Don't store it in test mode - in that case the command didn't really run
         if(!Runner.opts.t && !ctx.probeMode) {
-            checkFile.text = "true"
-            passed = true
+            checkFile.text = String.valueOf(passed)
         }
         
         // Execute result of check

@@ -116,7 +116,7 @@ class Sender {
             try {
               this.defaultSubject = Utils.collectText(new XmlParser().parseText(this.content)) { it }[0]
             }
-            catch(Exception e) {
+            catch(Throwable t) {
                // .. Ignore .. 
             }
         } 
