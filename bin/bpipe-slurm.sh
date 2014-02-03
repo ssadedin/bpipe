@@ -144,8 +144,8 @@ make_slurm_script () {
              fi
              # the SMP queue never requests cores (it gets a single node), and has --exclusive flag
              # (this may be VLSCI specific)
-             procs_request="#SBATCH --nodes=1;#SBATCH --exclusive";;
              command_prefix="" # used in mpi only
+             procs_request="#SBATCH --nodes=1;#SBATCH --exclusive";;
 
       mpi) if [[ -z $MEMORY ]]; then
                 memory_request="#SBATCH --mem-per-cpu=${DEFAULT_BATCH_MEM}"
@@ -170,6 +170,9 @@ $memory_request
 #SBATCH --time=$WALLTIME
 $procs_request
 #SBATCH -p $QUEUE
+
+set -o errexit
+
 $command_prefix $COMMAND
 HERE
 
@@ -237,7 +240,8 @@ status () {
                case "$job_state" in
                   CONFIGURING|PENDING|SUSPENDED) echo WAITING;; 
                   COMPLETING|RUNNING) echo RUNNING;;    
-                  CANCELLED|COMPLETED|FAILED|NODE_FAIL|PREEMPTED|TIMEOUT) 
+                  CANCELLED) echo COMPLETE 999;; # Artificial exit code because Slurm does not provide one    
+                  COMPLETED|FAILED|NODE_FAIL|PREEMPTED|TIMEOUT) 
                   # scontrol will include ExitCode=N:M, where the N is exit code and M is signal (ignored)
                   #        command_exit_status=`echo $scontrol_output |grep Exit|sed 's/.*ExitCode=\([0-9]*\):[0-9]*/\1/'`
                   command_exit_status=`echo $scontrol_output|tr ' ' '\n' |awk -vk="ExitCode" -F"=" '$1~k{ print $2}'|awk -F":" '{print $1}'`
