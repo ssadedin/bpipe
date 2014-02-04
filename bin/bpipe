@@ -486,6 +486,10 @@ then
     # Clean all commands considered to be currently executing
     rm -rf .bpipe/commands
     exit 
+elif [ "$COMMAND" == "checks" ];
+then
+    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=showchecks bpipe.ChecksCommand
+    exit
 elif [ "$COMMAND" == "jobs" ];
 then
     print_jobs
