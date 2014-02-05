@@ -50,20 +50,18 @@ class ChecksCommand {
               overrideChecks = checks.grep { it.stage == parts[0] }
             }
             else {
-              overrideChecks = checks.find { it.stage == parts[0] && it.branch == parts[1] }
+              overrideChecks = checks.grep { it.stage == parts[0] && it.branch == parts[1] }
             }
-        }
-        
-        if(opts.o) {
+            
             if(overrideChecks) {
-                overrideChecks.each { it.override = true; it.save() }
-          }
-          else {
-              System.err.println ""
-              System.err.println "Unable to find any checks matching name $opts.o"
-              System.err.println ""
-              System.exit(1)
-          }
+                  overrideChecks.each { it.override = true; it.save() }
+            }
+            else {
+                System.err.println ""
+                System.err.println "Unable to find any checks matching name $opts.o"
+                System.err.println ""
+                System.exit(1)
+            }
         }
        
         println "=" * Config.config.columns
@@ -72,14 +70,14 @@ class ChecksCommand {
         println ""
         int count = 1
         
-        println "Check".padRight(20) + "Branch".padRight(15) + "Status".padRight(15) + "Details".padRight(40)
+        println "Check".padRight(20) + " Branch".padRight(15) + " Status".padRight(15) + " Details".padRight(40)
         println "-" * 90
         
         println checks.collect { 
                ((count++) + ". " + it.stage).padRight(20) + 
                (" " + (it.branch!="all"?it.branch:"")).padRight(15) + 
-               (it.override?"Overridden":(it.passed?"Passed":"Failed")).padRight(15) + 
-               (it.message?Utils.truncnl(it.message,30):"").padLeft(40)
+               (" " + (it.override?"Overridden":(it.passed?"Passed":"Failed"))).padRight(15) + 
+               (" " + (it.message?Utils.truncnl(it.message,30):"")).padRight(40)
         }*.plus('\n').join("")
         
         println ""
