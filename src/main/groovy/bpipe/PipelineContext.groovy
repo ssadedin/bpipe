@@ -1900,6 +1900,8 @@ class PipelineContext {
     
     def currentBuilder = null
     
+    Check currentCheck = null
+    
     Sender succeed(Sender s) {
         s.onSend = { details ->
             throw new UserTerminateBranchException(details.subject)

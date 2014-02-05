@@ -187,6 +187,11 @@ class Sender {
             "send.file" : this.details.file
         ]) 
        
+       if(ctx.currentCheck && ctx.currentCheck.message != details.subject) {
+           ctx.currentCheck.message = details.subject
+           ctx.currentCheck.save()
+       }
+       
        if(onSend != null) {
            onSend(details)
        }

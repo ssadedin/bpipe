@@ -36,55 +36,61 @@ class Checker {
         CHECK_DIR.mkdirs()
     }
     
-    Closure check
+    Closure checkClosure
+    
+    Check check = null
     
     PipelineContext ctx
 
     public Checker(PipelineContext ctx, Closure check) {
-        this.check = check
+        this.checkClosure = check
         this.ctx = ctx
     }
     
     void otherwise(Closure otherwiseClause) {
         log.info("Evaluating otherwise clause")
-        def checkName = ctx.branch + "." + ctx.stageName
-        File checkFile = new File(CHECK_DIR, checkName) 
-        boolean passed = false
+        Check check = Check.getCheck(ctx.stageName, ctx.branch.toString())
         
         // If the check is up-to-date then simply read its result from the check file
         def inputs = Utils.box(ctx.@input) + ctx.resolvedInputs
-        if(checkFile.exists() && Dependencies.instance.checkUpToDate(checkFile.absolutePath, inputs)) {
-            log.info "Check $checkName was already executed and is up to date with inputs $inputs"
-            passed = Boolean.parseBoolean(checkFile.text)
-            log.info "Cached result of $checkName was $passed"
+        if(check.isUpToDate(inputs)) {
+            log.info "Check ${check.toString()} was already executed and is up to date with inputs $inputs"
+            log.info "Cached result of ${check} was Passed: ${check.passed} Overridden: ${check.override}"
         }
         else
         try { // Check either had not executed, or was not up-to-date
-            log.info "Executing check: checkFile=$checkFile.absolutePath, exists=${checkFile.exists()}"
+            log.info "Executing check: $check"
             
             List oldOutputs = ctx.@output
             
-            check()
+            check.executed = new Date()
+            
+            checkClosure()
             
             // A check can modify the outputs even if it doesn't reference any
+            // Make sure it doesn't affect what gets passed on to next stage
             ctx.setRawOutput(oldOutputs)
             
-            passed = true
+            check.passed = true
+            if(!Runner.opts.t && !ctx.probeMode) {
+                check.save()
+            }
         }
         catch(CommandFailedException e) {
-            log.info "Check $checkName was executed and failed ($e)"
-            passed = false
-        }
-        
-        // Store the result of the check in the check file so we can read it back and not keep
-        // re-checking it each time
-        // Don't store it in test mode - in that case the command didn't really run
-        if(!Runner.opts.t && !ctx.probeMode) {
-            checkFile.text = String.valueOf(passed)
+            log.info "Check $check was executed and failed ($e)"
+            check.passed = false
+            check.save()
         }
         
         // Execute result of check
-        if(!passed)
-          otherwiseClause()
+        if(!check.passed && !check.override) {
+            ctx.currentCheck = check
+            try {
+              otherwiseClause()
+            }
+            finally {
+                ctx.currentCheck = null
+            }
+        }
     }
 }

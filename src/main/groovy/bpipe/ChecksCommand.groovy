@@ -1,44 +1,116 @@
+/*
+ * Copyright (c) 2014 MCRI, authors
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
+ * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package bpipe
 
 class ChecksCommand {
     
     static void main(args) {
         
-        // List all the checks for the user
-        def allFiles = Checker.CHECK_DIR.listFiles()
-        
-        def checks = allFiles.grep { !it.name.endsWith(".properties") }
-        def props = checks.collectEntries { File checkFile -> 
-            [ checkFile.name, allFiles.find { it.name == checkFile.name + ".properties" } ] 
+        if(!new File(".bpipe").exists()) {
+            println ""
+            println "Could not find a Bpipe pipeline in this folder: has Bpipe been run here?"
+            println ""
+            System.exit(1)
         }
         
+        CliBuilder cli = new CliBuilder(usage: "bpipe override | bpipe checks", posix:true)
+        cli.with {
+            o "override specified check to force it to pass", args:1
+        }
+        
+        List<Check> checks = Check.loadAll()
+        List<Check> overrideChecks = null
+        
+        def opts = cli.parse(args)
+        if(opts.o) {
+            def parts = opts.o.split(/\./)
+            if(parts.size() == 1) {
+              overrideChecks = checks.grep { it.stage == parts[0] }
+            }
+            else {
+              overrideChecks = checks.find { it.stage == parts[0] && it.branch == parts[1] }
+            }
+        }
+        
+        if(opts.o) {
+            if(overrideChecks) {
+                overrideChecks.each { it.override = true; it.save() }
+          }
+          else {
+              System.err.println ""
+              System.err.println "Unable to find any checks matching name $opts.o"
+              System.err.println ""
+              System.exit(1)
+          }
+        }
+       
+        println "=" * Config.config.columns
+        println "|" + " Checks ".center(Config.config.columns-2) + "|"
         println "=" * Config.config.columns
         println ""
-        println " Checks ".center(Config.config.columns)
-        println ""
         int count = 1
-        println checks.collect { "  " + (count++) + ". " + it.name.split(/\./)[1] + " " + (Boolean.parseBoolean(it.text.trim())?"Failed":"Passed").padLeft(20)  }*.plus('\n').join("")
+        
+        println "Check".padRight(20) + "Branch".padRight(15) + "Status".padRight(15) + "Details".padRight(40)
+        println "-" * 90
+        
+        println checks.collect { 
+               ((count++) + ". " + it.stage).padRight(20) + 
+               (" " + (it.branch!="all"?it.branch:"")).padRight(15) + 
+               (it.override?"Overridden":(it.passed?"Passed":"Failed")).padRight(15) + 
+               (it.message?Utils.truncnl(it.message,30):"").padLeft(40)
+        }*.plus('\n').join("")
+        
         println ""
+        
+        if(overrideChecks) {
+            System.exit(0)
+        }
         
         System.in.withReader { r ->
             while(true) {
-                print "Enter a number of a check to override: "
+                print "Enter a number of a check to override / Ctrl-C to exit: "
                 String answer = r.readLine()
                 if(!answer.isNumber()) {
-                    println "Please enter a number, or Ctrl-C to exit."
+                    println "Please enter a number, or Ctrl-C to exit.\n"
                     continue
                 }
                 
                 int index = answer.toInteger()-1
                 
-                Map checkInfo = [ ["branch","name"], checks[index].name.split(/\./) ].transpose().collectEntries()
+                if(index >= checks.size()) {
+                    println "Please choose a number between 1 and ${checks.size()}\n"
+                    continue
+                }
+                
+                Check check = checks[index]
+                
                 println ""
-                println "Overriding check ${checkInfo}"
-                print "OK (y/n)? "
+                print "Overriding check ${check.stage} in branch ${check.branch}, OK (y/n)? "
                 if(r.readLine() == "y") {
-                    Properties p = new Properties()
-                    p.override = "true"
-                    p.store(new File(Checker.CHECK_DIR, checks[index].name + ".properties").newWriter(), "Bpipe Check Properties")
+                    check.override = true
+                    check.save()
                 }
                 println ""
             }
