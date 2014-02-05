@@ -1,3 +1,102 @@
+========== Changes for Bpipe Version 0.9.8.6_beta_2 ============
+
+   - fix relative symbolic link to Bpipe not resolving properly 
+     under Mac/OSX 
+
+   - fix possibility of commands sometimes
+     not being cleaned up (add pause before terminating Bpipe,
+     after terminating child processes) 
+
+   - Fix Slurm not returning failure exit code when
+     job cancelled via bpipe stop (causing outputs not to be
+     cleaned up)
+
+   - Added "checks" command and "override" command to display and 
+     override checks respectively
+
+   - Fix transforms sometimes applying in such a way
+     as to add branch name with no period separating them from
+     the rest of the file name (regression)
+     
+   - fix transforms producing null outputs when no period in 
+     input file name  (regression)
+     
+   - support for rendering pipeline diagrams as SVG 
+
+   - support for specifying pipeline stages to ignore 
+     in diagrams via noDiagram="..." in bpipe.config (annotations to 
+     come in the future) 
+
+   - fix diagrams generated incorrectly if 'segment'
+     command used 
+
+   - fix documentation failing to generate unless script has a
+     relative or absolute path prefixing it 
+
+   - some tweaks to avoid rare cases double
+     dots appearing in file names with transform 
+
+   - 'succeed' should terminate parent branch when all child
+     branches terminated via succeed 
+
+   - support for running a pipeline "until" a specified stage
+     ( -u)  
+
+   - support for send to use HTML templates instead of
+     inline HTML 
+     
+   - support for 'succeed' and 'fail' to share
+     'send' syntax to generate an email or IM along with the
+     termination of the branch 
+
+   - fix slurm executor sometimes
+     treating slurm stdout and stderr temp files 
+     as real outputs of pipeline 
+
+   - Fix space inserted when withFlag used with flags 
+     ending with "=" 
+     
+   - fix variables and functions loaded via 'load' not available until 
+     pipeline launched (inside run { } ) 
+     
+   - allow global resource limits (as supported by -l flag 
+     to bpipe) to be specified in bpipe.config as well 
+   - 
+   - support for sending emails and
+     instant message notifications explicitly 
+     from script, using syntax: send text 'hello' to gtalk, 
+     and more advanced forms (documentation to come) 
+
+   - support for using
+     explicit regex pattern to split files to parallel 
+     paths (as opposed to simplified pattern syntax) 
+     just add ~ to pattern 
+     
+   - fix (very rare) possibility for duplicate file
+     names when referencing 'inputs' 
+     variable 
+     
+   - added support for matching numbers
+     in input splitting patterns ('#') 
+
+   - added support for gradle wrapper 
+     
+   - added gradle wrapper for easier building
+     (now just use gradlew instead - of gradle, and it
+     self downloads) 
+     
+   - fix custom resources not enforced when
+     provided as map 
+
+   - fix default build to autodetect Gridgain
+     jars and compile without if not 
+     found 
+
+   - get mail.jar from Maven so default checkout compiles 
+     
+   - changes to allow "single" queue to handle
+     multiple tasks (vlsci) 
+     
 ========== Changes for Bpipe Version 0.9.8.6_beta_1 ============
 
    - fixed file(...) function sometimes returning file object
