@@ -94,8 +94,12 @@ class NotificationManager {
 	
 	void sendNotification(String channelName, PipelineEvent evt, String desc, Map detail) {
         
-        if(!this.cfg.notifications.containsKey(channelName))
-            throw new PipelineError("An unknown communication recipient / channel was specified")
+        if(!this.cfg.notifications.containsKey(channelName)) {
+            String msg = "An unknown communication recipient / channel was specified: $channelName for message: $desc"
+            log.warning(msg)
+            println "WARNING: $msg\nWARNING: To fix this, please edit bpipe.config and add a 'gmail' entry."
+            return
+        }
         
         // Find the correct configuration
         sendNotification(this.cfg.notifications[channelName], evt, desc, detail)
