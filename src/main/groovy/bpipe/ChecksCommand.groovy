@@ -68,19 +68,8 @@ class ChecksCommand {
         println "|" + " Checks ".center(Config.config.columns-2) + "|"
         println "=" * Config.config.columns
         println ""
-        int count = 1
         
-        println "Check".padRight(20) + " Branch".padRight(15) + " Status".padRight(15) + " Details".padRight(40)
-        println "-" * 90
-        
-        println checks.collect { 
-               ((count++) + ". " + it.stage).padRight(20) + 
-               (" " + (it.branch!="all"?it.branch:"")).padRight(15) + 
-               (" " + (it.override?"Overridden":(it.passed?"Passed":"Failed"))).padRight(15) + 
-               (" " + (it.message?Utils.truncnl(it.message,30):"")).padRight(40)
-        }*.plus('\n').join("")
-        
-        println ""
+        printChecks(checks)
         
         if(overrideChecks) {
             System.exit(0)
@@ -88,8 +77,19 @@ class ChecksCommand {
         
         System.in.withReader { r ->
             while(true) {
-                print "Enter a number of a check to override / Ctrl-C to exit: "
+                print "Enter a number of a check to override, * for all, Ctrl-C to exit: "
                 String answer = r.readLine()
+                
+                if(answer == "*") {
+                    print "\nOverriding ALL checks, OK (y/n)? "
+                    if(r.readLine() == "y") {
+                        checks.each { it.override = true; it.save()  }
+                        println ""
+                        printChecks(checks)
+                    }
+                    continue
+                }
+                
                 if(!answer.isNumber()) {
                     println "Please enter a number, or Ctrl-C to exit.\n"
                     continue
@@ -113,5 +113,22 @@ class ChecksCommand {
                 println ""
             }
         }
+    }
+    
+    static printChecks(List<Check> checks) {
+        
+        int count = 1
+        
+        println "Check".padRight(20) + " Branch".padRight(15) + " Status".padRight(15) + " Details".padRight(40)
+        println "-" * 90
+        
+        println checks.collect {
+               ((count++) + ". " + it.stage).padRight(20) +
+               (" " + (it.branch!="all"?it.branch:"")).padRight(15) +
+               (" " + (it.override?"Overridden":(it.passed?"Passed":"Failed"))).padRight(15) +
+               (" " + (it.message?Utils.truncnl(it.message,30):"")).padRight(40)
+        }*.plus('\n').join("")
+        
+        println ""
     }
 }
