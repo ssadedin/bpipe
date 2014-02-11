@@ -83,7 +83,7 @@ class ChecksCommand {
                 if(answer == "*") {
                     print "\nOverriding ALL checks, OK (y/n)? "
                     if(r.readLine() == "y") {
-                        checks.each { it.override = true; it.save()  }
+                        checks.each { if(!it.passed) it.override = true; it.save()  }
                         println ""
                         printChecks(checks)
                     }
