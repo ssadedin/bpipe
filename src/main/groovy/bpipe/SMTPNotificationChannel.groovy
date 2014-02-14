@@ -93,6 +93,12 @@ class SMTPNotificationChannel implements NotificationChannel {
 		String subjectLine = "Pipeline " + event.name().toLowerCase() + ": " + subject + " in directory " + (new File(".").absoluteFile.parentFile.name)
 		String text = "Pipeline event: $event occured at " + (new Date()) + "\n\nFull path: " + (new File(".").absolutePath)
         
+        if(model.checks) {
+            StringWriter w = new StringWriter()
+            ChecksCommand.printChecks(model.checks, out:w, columns:60)
+            text += "\n" + w.toString()
+        }
+        
         if(event == PipelineEvent.SEND) {
             sendEmail(subject, model["send.content"], model["send.file"]?new File(model["send.file"]):null, model["send.contentType"])
         }

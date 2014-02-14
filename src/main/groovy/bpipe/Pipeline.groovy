@@ -603,9 +603,17 @@ public class Pipeline {
                 println("\n"+" Pipeline Finished ".center(Config.config.columns,"="))
                 if(rootContext)
                   rootContext.msg "Finished at " + (new Date())
+                  
                 about(finishedAt: new Date())
                 
-                EventManager.instance.signal(PipelineEvent.FINISHED, failed?"Failed":"Succeeded", [pipeline:this])
+                // See if any checks failed
+                List<Check> allChecks = Check.loadAll()
+                List<Check> failedChecks = allChecks.grep { !it.passed && !it.override }
+                if(failedChecks) {
+                    println "\nWARNING: ${failedChecks.size()} check(s) failed. Use 'bpipe checks' to see details.\n"
+                }
+                
+                EventManager.instance.signal(PipelineEvent.FINISHED, "Pipeline " + failed?"Failed":"Succeeded", [pipeline:this, checks:allChecks])
                 if(!failed) {
                     summarizeOutputs(stages)
                 }

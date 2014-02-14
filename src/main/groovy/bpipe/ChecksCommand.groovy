@@ -64,11 +64,6 @@ class ChecksCommand {
             }
         }
        
-        println "=" * Config.config.columns
-        println "|" + " Checks ".center(Config.config.columns-2) + "|"
-        println "=" * Config.config.columns
-        println ""
-        
         printChecks(checks)
         
         if(overrideChecks) {
@@ -116,19 +111,38 @@ class ChecksCommand {
     }
     
     static printChecks(List<Check> checks) {
+        printChecks([:],checks)
+    }
+    
+    static printChecks(Map options, List<Check> checks) {
         
+        def out = System.out
+        if(options && options.out)
+            out = options.out
+        
+        int columns = Config.config.columns
+        if(options && options.columns)
+            columns = options.columns
+         
         int count = 1
+        out.println "=" * columns
+        out.println "|" + " Check Report ".center(columns-2) + "|"
+        out.println "=" * columns
         
-        println "Check".padRight(20) + " Branch".padRight(15) + " Status".padRight(15) + " Details".padRight(40)
-        println "-" * 90
+        def widths = [20,15,15]
+        widths += columns - widths.sum()
         
-        println checks.collect {
-               ((count++) + ". " + it.stage).padRight(20) +
-               (" " + (it.branch!="all"?it.branch:"")).padRight(15) +
-               (" " + (it.override?"Overridden":(it.passed?"Passed":"Failed"))).padRight(15) +
-               (" " + (it.message?Utils.truncnl(it.message,30):"")).padRight(40)
+        out.println "Check".padRight(widths[0]) + " Branch".padRight(widths[1]) + " Status".padRight(widths[2]) + " Details".padRight(widths[3])
+        out.println "-" * columns
+        
+        out.println checks.collect {
+               ((count++) + ". " + it.stage).padRight(widths[0]) +
+               (" " + (it.branch!="all"?it.branch:"")).padRight(widths[1]) +
+               (" " + (it.override?"Overridden":(it.passed?"Passed":"Failed"))).padRight(widths[2]) +
+               (" " + (it.message?Utils.truncnl(it.message,widths[3]-4):"")).padRight(widths[3])
         }*.plus('\n').join("")
         
-        println ""
+        out.println "-" * columns
+        out.println ""
     }
 }
