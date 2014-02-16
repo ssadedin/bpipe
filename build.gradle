@@ -1,8 +1,10 @@
 apply plugin: 'eclipse'
 apply plugin: 'groovy'
 
-VERSION="0.9.8.6_beta_2"
-STAGE="build/stage/bpipe-$VERSION"
+project.ext {
+    VERSION="0.9.8.6_beta_2"
+    STAGE="build/stage/bpipe-$VERSION"
+}
 
 repositories {
     flatDir(dirs: file('local-lib'))
