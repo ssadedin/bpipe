@@ -1,4 +1,23 @@
+
 ========== Changes for Bpipe Version 0.9.8.6_beta_2 ============
+
+   - avoid warnings due to project properties (thanks Davide) 
+
+   - refactored email functionality to use user configurable
+     templates 
+
+   - fix notifications for pipeline finished saying
+     pipeline failed when it didn't 
+
+   - support for displaying information about checks at end of pipeline 
+
+   - more information in SMTP notifications, including checks 
+     
+   - Added option to override all checks for cases where there are 
+     very many that have failed 
+     
+   - changed unknown communication provider to be a warning instead 
+     of a pipeline terminating exception.
 
    - fix relative symbolic link to Bpipe not resolving properly 
      under Mac/OSX 
@@ -96,6 +115,9 @@
      
    - changes to allow "single" queue to handle
      multiple tasks (vlsci) 
+
+   - fix 'bpipe status' displaying incorrect command for SLURM, PBS
+     possibly others
      
 ========== Changes for Bpipe Version 0.9.8.6_beta_1 ============
 
