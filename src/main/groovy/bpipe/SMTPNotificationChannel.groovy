@@ -24,6 +24,8 @@
  */
 package bpipe
 
+import groovy.text.SimpleTemplateEngine
+import groovy.text.Template
 import groovy.util.logging.Log;
 
 import java.util.Map
@@ -63,7 +65,7 @@ class SMTPNotificationChannel implements NotificationChannel {
 	String password
 	
 	String recipients
-	
+    
 	SMTPNotificationChannel(ConfigObject cfg) {
 		host = cfg.host
 		ssl = cfg.secure?:false
@@ -89,15 +91,10 @@ class SMTPNotificationChannel implements NotificationChannel {
 	}
 	
 	@Override
-	public void notify(PipelineEvent event, String subject, Map<String, Object> model) {
+	public void notify(PipelineEvent event, String subject, Template template, Map<String, Object> model) {
 		String subjectLine = "Pipeline " + event.name().toLowerCase() + ": " + subject + " in directory " + (new File(".").absoluteFile.parentFile.name)
-		String text = "Pipeline event: $event occured at " + (new Date()) + "\n\nFull path: " + (new File(".").absolutePath)
         
-        if(model.checks) {
-            StringWriter w = new StringWriter()
-            ChecksCommand.printChecks(model.checks, out:w, columns:60)
-            text += "\n" + w.toString()
-        }
+        String text = template.make(model).toString()
         
         if(event == PipelineEvent.SEND) {
             sendEmail(subject, model["send.content"], model["send.file"]?new File(model["send.file"]):null, model["send.contentType"])
@@ -106,8 +103,9 @@ class SMTPNotificationChannel implements NotificationChannel {
         if(event == PipelineEvent.REPORT_GENERATED) { // For a report event, attach the actual report
             sendEmail(subject,text, new File(new File(model.reportListener.outputDir), model.reportListener.outputFileName))
         }
-        else
-            sendEmail(subject,text)
+        else {
+            sendEmail(subject,text, null, model['send.contentType'])
+        }
 	}
     
     public void sendEmail(String subjectLine, String text, File attachment = null, String contentType = null) {
@@ -172,6 +170,10 @@ class SMTPNotificationChannel implements NotificationChannel {
         
         log.info "Sending email message to $recipients [subject=$subjectLine]"
 		Transport.send(message);
+    }
+    
+    String getDefaultTemplate() {
+        "email.template.txt"
     }
 }
 

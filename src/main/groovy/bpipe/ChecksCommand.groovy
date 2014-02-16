@@ -129,14 +129,18 @@ class ChecksCommand {
         out.println "|" + " Check Report ".center(columns-2) + "|"
         out.println "=" * columns
         
-        def widths = [20,15,15]
+        def widths = [25,15,15]
         widths += columns - widths.sum()
         
         out.println "Check".padRight(widths[0]) + " Branch".padRight(widths[1]) + " Status".padRight(widths[2]) + " Details".padRight(widths[3])
         out.println "-" * columns
         
+        
         out.println checks.collect {
-               ((count++) + ". " + it.stage).padRight(widths[0]) +
+               String checkName = it.stage
+               if(it.name)
+                   checkName += "/" + it.name
+               ((count++) + ". " + Utils.truncnl(checkName,widths[0]-6)).padRight(widths[0]) +
                (" " + (it.branch!="all"?it.branch:"")).padRight(widths[1]) +
                (" " + (it.override?"Overridden":(it.passed?"Passed":"Failed"))).padRight(widths[2]) +
                (" " + (it.message?Utils.truncnl(it.message,widths[3]-4):"")).padRight(widths[3])

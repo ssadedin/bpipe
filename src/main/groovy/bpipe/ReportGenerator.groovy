@@ -25,7 +25,9 @@
 package bpipe
 
 import groovy.text.GStringTemplateEngine;
+import groovy.util.logging.Log;
 
+@Log
 class ReportGenerator {
 
     public ReportGenerator() {
@@ -62,31 +64,8 @@ class ReportGenerator {
         if(docStages.any { it.stageName == null })
             throw new IllegalStateException("Should NEVER have a null stage name here")
 
-        // First priority is an absolute path or relative directly to a template file
-        File templateFile = new File(templateFileName)
-        
-        // Look for templates relative to the pipeline script as well
-        if(!templateFile.exists()) 
-          templateFile = new File(new File(Config.config.script).canonicalFile.parentFile, templateFileName)
-        
-        // Look in default template locations (such as the stock reports shipped with Bpipe)
-        if(!templateFile.exists()) {
-            
-            File srcTemplateDir = new File(System.getProperty("bpipe.home") + "/src/main/html/bpipe")
-            
-            templateFile = srcTemplateDir.exists() ?
-                  new File(srcTemplateDir, templateFileName)
-                :
-                  new File(System.getProperty("bpipe.home") + "/html", templateFileName)
-                  
-    
-            if(!templateFile.exists()) {
-                throw new PipelineError("""
-                    The documentation template you specified (${templateFileName.replaceAll(".html","")}) could not be located. Valid report templates are:
-                """.stripIndent() + "\n\t" + templateFile.parentFile.listFiles()*.name.collect{it.replaceAll(".html","")}.join("\n\t"))
-            }
-        }
-            
+        File templateFile = resolveTemplateFile(templateFileName)
+           
         InputStream templateStream = new FileInputStream(templateFile)
         GStringTemplateEngine e = new GStringTemplateEngine()
         File outputFile = new File(docDir, outputFileName)
@@ -96,5 +75,41 @@ class ReportGenerator {
         }
         templateStream.close()
         println "MSG: Generated report "+ outputFile.absolutePath
+    }
+    
+    static File resolveTemplateFile(String templateFileName) {
+        
+        // First priority is an absolute path or relative directly to a template file
+        File templateFile = new File(templateFileName)
+        
+        // Look for templates relative to the pipeline script as well
+        if(!templateFile.exists()) 
+          templateFile = new File(new File(Config.config.script).canonicalFile.parentFile, templateFileName)
+        
+        // Look in default template locations (such as the stock reports shipped with Bpipe)
+        if(!templateFile.exists()) {
+                
+            for(srcDirName in ["html","templates"]) {
+                    
+                File srcTemplateDir = new File(System.getProperty("bpipe.home") + "/src/main/$srcDirName/bpipe")
+                
+                log.info "Searching for template in $srcTemplateDir.canonicalPath"
+                    
+                templateFile = srcTemplateDir.exists() ?
+                      new File(srcTemplateDir, templateFileName)
+                    :
+                      new File(System.getProperty("bpipe.home") + "/$srcDirName", templateFileName)
+                      
+                if(templateFile.exists())
+                    break
+            }
+        }
+                
+        if(!templateFile.exists()) {
+            throw new PipelineError("""
+                The documentation template you specified (${templateFileName.replaceAll(".html","")}) could not be located. Valid report templates are:
+            """.stripIndent() + "\n\t" + templateFile.parentFile.listFiles()*.name.collect{it.replaceAll(".html","")}.join("\n\t"))
+        }
+        return templateFile
     }
 }

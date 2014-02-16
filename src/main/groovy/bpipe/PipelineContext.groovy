@@ -1925,6 +1925,10 @@ class PipelineContext {
         return s
     }
     
+    Checker check(String name, Closure c) {
+        return new Checker(this,name, c)
+    }
+    
     Checker check(Closure c) {
         return new Checker(this,c)
     }

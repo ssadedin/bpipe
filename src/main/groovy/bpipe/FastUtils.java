@@ -67,12 +67,17 @@ public class FastUtils {
     /**
      * @return Return a string consisting of given values concatenated with dots,
      *         trimming any leading or trailing dots to ensure there are no 
-     *         "double dots" in the resulting string.
+     *         "double dots" in the resulting string. The list of values
+     *         can contain nulls, which are skipped in forming the 
+     *         output value.
      */
     static String dotJoin(String... values) {
         StringBuilder result = new StringBuilder(128);
         boolean first = true;
         for(String value : values) {
+            
+            if(value == null)
+                continue;
             
             if(first) {
                 first = false;

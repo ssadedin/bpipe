@@ -41,15 +41,26 @@ class Checker {
     Check check = null
     
     PipelineContext ctx
+    
+    String name
 
     public Checker(PipelineContext ctx, Closure check) {
         this.checkClosure = check
         this.ctx = ctx
     }
     
+    public Checker(PipelineContext ctx, String name, Closure check) {
+        this.checkClosure = check
+        this.ctx = ctx
+        this.name = name
+    }
+    
     void otherwise(Closure otherwiseClause) {
-        log.info("Evaluating otherwise clause")
-        Check check = Check.getCheck(ctx.stageName, ctx.branch.toString())
+        log.info("Evaluating otherwise clause for Check $ctx.stageName / $name")
+        
+        Check check = Check.getCheck(ctx.stageName, this.name, ctx.branch.toString())
+        
+        log.info "Check name = $check.name"
         
         // If the check is up-to-date then simply read its result from the check file
         def inputs = Utils.box(ctx.@input) + ctx.resolvedInputs

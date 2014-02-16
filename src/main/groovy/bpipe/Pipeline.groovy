@@ -613,7 +613,7 @@ public class Pipeline {
                     println "\nWARNING: ${failedChecks.size()} check(s) failed. Use 'bpipe checks' to see details.\n"
                 }
                 
-                EventManager.instance.signal(PipelineEvent.FINISHED, "Pipeline " + failed?"Failed":"Succeeded", [pipeline:this, checks:allChecks])
+                EventManager.instance.signal(PipelineEvent.FINISHED, "Pipeline " + (failed?"Failed":"Succeeded"), [pipeline:this, checks:allChecks])
                 if(!failed) {
                     summarizeOutputs(stages)
                 }

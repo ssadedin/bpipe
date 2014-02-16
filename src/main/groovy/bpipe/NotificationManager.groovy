@@ -26,6 +26,7 @@ package bpipe
 
 import java.lang.reflect.Constructor;
 
+import groovy.text.SimpleTemplateEngine
 import groovy.util.ConfigObject;
 import groovy.util.logging.Log;
 
@@ -127,11 +128,58 @@ class NotificationManager {
 				return
 			}
 		}
-		
+        
+        // Figure out the right template name from the channel configuration
+        String templateName = channel.defaultTemplate
+        if(cfg.containsKey("template")) {
+            templateName = cfg.template
+        }
+        
+        // Is it customized for this event?
+        if(cfg.containsKey("templates")) {
+            if(cfg.templates.containsKey(evt.name())) {
+                templateName = cfg.templates[evt.name()]
+            }
+        }
+        
+        File templateFile = ReportGenerator.resolveTemplateFile(templateName)
+        if(!templateFile.exists()) {
+            def msg = "WARNING: unable to send notification: template $templateName mapped to file $templateFile.absolutePath, but this file does not exist!"
+            log.error msg
+            println msg
+            return
+        }
+        
+        if(detail.checks) {
+            StringWriter w = new StringWriter()
+            ChecksCommand.printChecks(model.checks, out:w, columns:60)
+            detail.checkReport = w.toString()
+        }
+        
+        String contentType = 'text/plain'
+        
+        // Default content type to HTML when extension is HTML
+        if(templateName.endsWith('.html'))
+            contentType = 'text/html'
+            
+        // Let config override for ultimate control
+        if(cfg.containsKey('contentType'))
+            contentType = cfg.contentType
+        
+        def engine = new SimpleTemplateEngine()
+        detail += [
+            date      : (new Date()),
+            full_path : (new File(".").absolutePath),
+            event : evt,
+            description: desc,
+            'send.contentType' : contentType
+        ]
+        def template = engine.createTemplate(templateFile.getText())
+	
 		sendTimestamps[category] = System.currentTimeMillis()
 		
 		try {
-			channel.notify(evt, desc, detail)
+			channel.notify(evt, desc, template, detail)
 		}
 		catch(Throwable t) {
 			log.warning("Failed to send notification via channel "+ channel + " with configuration " + cfg + ": " + t)
@@ -164,8 +212,10 @@ class NotificationManager {
        // We try a few different permutations to allow a natural an easy specification
        // of the class name rather than making the user use the fully qualified one.
        // For example, "xmpp" =>  bpipe.XMPPNotificationChannel, etc.
-       for(String fullClazz in [clazz, "bpipe."+clazz.toUpperCase()+"NotificationChannel", "bpipe." + clazz]) {
+       String upperFirst = clazz[0].toUpperCase() + clazz.substring(1)
+       for(String fullClazz in [clazz, "bpipe."+clazz.toUpperCase()+"NotificationChannel", "bpipe." + clazz, "bpipe."+upperFirst+"NotificationChannel"]) {
            try {
+               log.info "Trying class name $fullClazz for notification channel $clazz"
                Class [] args = [ ConfigObject.class ] as Class[]
                Constructor c = Class.forName(fullClazz).getConstructor(args)
                NotificationChannel nc = c.newInstance( [ channelCfg ] as Object[] )
@@ -173,6 +223,10 @@ class NotificationManager {
                return nc
            }
            catch(ClassNotFoundException e) {
+               // This is expected
+               log.info("Unable to create notification channel using class " + fullClazz + ": " + e)
+           }
+           catch(NoClassDefFoundError e) {
                // This is expected
                log.info("Unable to create notification channel using class " + fullClazz + ": " + e)
            }

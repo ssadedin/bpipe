@@ -24,10 +24,13 @@
  */
 package bpipe;
 
+import groovy.text.Template;
+
 import java.util.Map;
 
 public interface NotificationChannel {
 	
-	void notify(PipelineEvent event, String subject, Map<String,Object> model);
-
+	void notify(PipelineEvent event, String subject, Template template, Map<String,Object> model);
+    
+	String getDefaultTemplate();
 }

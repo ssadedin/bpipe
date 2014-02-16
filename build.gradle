@@ -1,7 +1,7 @@
 apply plugin: 'eclipse'
 apply plugin: 'groovy'
 
-VERSION="0.9.8.6_beta_1"
+VERSION="0.9.8.6_beta_2"
 STAGE="build/stage/bpipe-$VERSION"
 
 repositories {
@@ -20,7 +20,6 @@ dependencies {
     // In case GridGain ever revive their Maven repo ...
     // compile ('org.gridgain:gridgain:4.0.2c') { transitive = false }
 
-    compile ('javax.mail:mail:1.4.5')
     compile ('javax.mail:mail:1.4.5')
 
     // Batik
@@ -65,10 +64,14 @@ task stage(dependsOn: jar) << {
     ant.fileset(dir: 'local-lib', includes: "*.jar", excludes: "mail.jar,gridgain-*.jar,hazelcast-*.jar")
     ant.fileset(dir: 'build/libs', includes: "bpipe.jar")
   }
-  ant.mkdir(dir: "$STAGE/html")
-  ant.copy(todir: "$STAGE/html") {
-    ant.fileset(dir: 'src/main/html/bpipe', includes: "*")
+
+  ["templates","html"].each { type ->
+      ant.mkdir(dir: "$STAGE/$type")
+      ant.copy(todir: "$STAGE/$type") {
+        ant.fileset(dir: "src/main/$type/bpipe", includes: "*")
+      }
   }
+
   ant.copy(todir: "$STAGE") {
     ant.fileset(dir: 'src/main/config', includes: "bpipe.config")
   }
@@ -79,6 +82,7 @@ task dist(dependsOn: stage) << {
     ant.fileset(dir: "build/stage", includes: "bpipe-${VERSION}/lib/**", excludes:"**/*.swp")
     ant.fileset(dir: "build/stage", includes: "bpipe-${VERSION}/bpipe.config", excludes:"**/*.swp")
     ant.fileset(dir: "build/stage", includes: "bpipe-${VERSION}/html/**", excludes:"**/*.swp")
+    ant.fileset(dir: "build/stage", includes: "bpipe-${VERSION}/templates/**", excludes:"**/*.swp")
     ant.tarfileset(dir: "build/stage", filemode:"755", includes: "bpipe-${VERSION}/bin/**", excludes:"**/*.swp")
   }
   ant.gzip(destfile:"build/bpipe-${VERSION}.tar.gz", src: "build/bpipe-${VERSION}.tar")

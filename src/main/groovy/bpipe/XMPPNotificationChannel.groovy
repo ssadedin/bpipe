@@ -25,6 +25,8 @@
 package bpipe
 
 import java.util.Map
+
+import groovy.text.Template;
 import groovy.util.logging.Log;
 import java.util.regex.Pattern.LastNode;
 
@@ -90,7 +92,7 @@ class XMPPNotificationChannel implements NotificationChannel {
 	}
 
 	@Override
-	public void notify(PipelineEvent event, String subject, Map<String, Object> model) {
+	public void notify(PipelineEvent event, String subject, Template template,  Map<String, Object> model) {
 		
 		synchronized(XMPPNotificationChannel.class) {
 		
@@ -116,12 +118,16 @@ class XMPPNotificationChannel implements NotificationChannel {
 			boolean failed = false
 			
 			String eventDescr = Utils.upperCaseWords(event.name().toLowerCase().replaceAll("_"," "))
+            
+            model.description = eventDescr
+            model.subject = subject
 			
             String content
             if(event == PipelineEvent.SEND)
                 content = subject
             else
-    			content = eventDescr + ": " + subject + " (" + (new File(".").absoluteFile.parentFile.name) + ")"
+//    			content = eventDescr + ": " + subject + " (" + (new File(".").absoluteFile.parentFile.name) + ")"
+                content = template.make(model).toString()
                 
 			recipients.split(",").each {
 				try {
@@ -138,6 +144,10 @@ class XMPPNotificationChannel implements NotificationChannel {
 			connection.disconnect()
 		}
 	}
+    
+    String getDefaultTemplate() {
+        "xmpp.template.txt"
+    }
 }
 
 /**
