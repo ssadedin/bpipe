@@ -253,6 +253,26 @@ public class Pipeline {
         Pipeline.requiredInputs += requiredInputs
     }
     
+    static requires(Map<String,Object> requiredInputs) {
+        requiredInputs.each { k, v ->
+            if(!Runner.binding.variables.containsKey(k)) {
+                throw new ValueMissingError(
+                """
+                Variable or parameter '$k' was not specified but is required to run this pipeline.
+
+                You can specify it in the following ways:
+
+                           1. define the variable in your pipeline script: $k="<value>"
+                           2. provide it from the command line by adding a flag:  -p $k=<value>
+
+                The parameter $k is described as follows:
+
+                               $v
+                """.stripIndent().trim()) 
+            }
+        }
+    }
+    
     void checkRequiredInputs(def providedInputs) {
         requiredInputs.each { key, details ->
             log.info "Checking if input matching $key is provided"

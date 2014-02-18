@@ -484,9 +484,11 @@ class PipelineContext {
                """
                        Pipeline stage ${this.stageName} requires a parameter $k but this parameter was not specified
 
-                       You can specify it by adding 'using' to your pipeline. For example:
+                       You can specify it in the following ways:
 
-                               ${this.stageName}.using($k:<value>)
+                               1. add 'using' to the pipeline definition: ${this.stageName}.using($k:<value>)
+                               2. define the variable in your pipeline script: $k="<value>"
+                               3. provide it from the command line by adding a flag:  -p $k=<value>
 
                        The parameter $k is described as follows:
 
