@@ -69,6 +69,7 @@ class ReportGenerator {
         InputStream templateStream = new FileInputStream(templateFile)
         GStringTemplateEngine e = new GStringTemplateEngine()
         File outputFile = new File(docDir, outputFileName)
+        log.info "Generating report to $outputFile.absolutePath"
         templateStream.withReader { r ->
             def template = e.createTemplate(r).make(reportBinding)
             outputFile.text = template.toString()

@@ -21,13 +21,22 @@ class FileNotificationChannel implements NotificationChannel {
 
     public FileNotificationChannel(ConfigObject cfg) {
         this.cfg = cfg
-       dir.mkdirs() 
     }
 
     @Override
     public void notify(PipelineEvent event, String subject, Template template, Map<String, Object> model) {
         log.info "Saving file for event $event (subject = $subject)"
-        new File(dir, "${count}_${event.name()}.txt").text = template.make(model).toString()
+        File targetFile = new File(dir, "${count}_${event.name()}.txt")
+        if(event == PipelineEvent.SEND) {
+            if(model.containsKey("send.file"))
+                targetFile = new File(model["send.file"])
+            targetFile.text = model["send.content"]
+        }
+        else {
+            if(!dir.exists())
+                dir.mkdirs() 
+            targetFile.text = template.make(model).toString()
+        }
     }
 
     @Override

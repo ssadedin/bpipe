@@ -64,6 +64,12 @@ class NotificationManager {
     void configure(ConfigObject obj) {
         this.cfg = obj
         
+        // Add a default FileNotificationChannel if one does not already exist
+        if(!cfg.notifications.containsKey('file')) {
+            cfg.notifications.file = new ConfigObject()
+            cfg.notifications.file.events="SEND"
+        }
+            
         cfg.notifications.each { String name, ConfigObject channelCfg -> 
             channelCfg.type = channelCfg.type?:name
 			
@@ -152,7 +158,7 @@ class NotificationManager {
         
         if(detail.checks) {
             StringWriter w = new StringWriter()
-            ChecksCommand.printChecks(model.checks, out:w, columns:60)
+            ChecksCommand.printChecks(detail.checks, out:w, columns:60)
             detail.checkReport = w.toString()
         }
         

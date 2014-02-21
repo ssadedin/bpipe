@@ -139,6 +139,9 @@ class Sender {
         
         // Find the config object
         String cfgName = details.channel
+        if(cfgName == null && details.containsKey("file")) {
+            cfgName = "file"
+        }
         
         if(cfgName.startsWith('$'))
             cfgName = cfgName.substring(1)

@@ -184,6 +184,9 @@ class PipelineDelegate {
             return ctx.localVariables.region
         }
         else
+        if(name in Runner.binding.variables) {
+            return Runner.binding.variables[name]
+        }
         if(name != "input" && ctx.echoWhenNotFound) {
             try {
                 def result = ctx.getProperty(name)
