@@ -275,8 +275,8 @@ public class Pipeline {
     
     void checkRequiredInputs(def providedInputs) {
         requiredInputs.each { key, details ->
-            log.info "Checking if input matching $key is provided"
-            if(!providedInputs.any { it.equals(it) || it.endsWith('.' + key)}) {
+            log.info "Checking if input matching $key is provided in $providedInputs"
+            if(!providedInputs.any { key.equals(it) || it.endsWith('.' + key)}) {
                 throw new InputMissingError(key,details)
             }
             else
@@ -785,7 +785,7 @@ public class Pipeline {
         if(!f.exists()) {
             // Attempt to resolve the file relative to the main script location if
             // it cannot be resolved directly
-            f = new File(new File(Config.config.script).parentFile, path)
+            f = new File(new File(Config.config.script).canonicalFile.parentFile, path)
         }
         
         if(!f.exists()) 

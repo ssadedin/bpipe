@@ -352,7 +352,7 @@ class Runner {
             script.run()
         }
         catch(MissingPropertyException e)  {
-            if(e.type.name.startsWith("script")) {
+            if(e.type?.name?.startsWith("script")) {
                 // Handle this as a user error in defining their script
                 // print a nicer error message than what comes out of groovy by default
                 handleMissingPropertyFromPipelineScript(e)
@@ -372,14 +372,18 @@ class Runner {
         String msg = e.message?:"Unknown Error (Null message)"
 
         System.err.println(" Bpipe Error ".center(Config.config.columns,"="))
-        System.err.println("\nAn error occurred executing your pipeline:\n\n${msg.center(Config.config.columns,' ')}\n\nPlease see the details below for more information.\n")
-        System.err.println(" Error Details ".center(Config.config.columns, "="))
-        System.err.println()
-        Throwable sanitized = StackTraceUtils.deepSanitize(e)
-        sanitized.printStackTrace()
-        System.err.println()
-        System.err.println "=" * Config.config.columns
-        System.err.println("\nMore details about why this error occurred may be available in the full log file .bpipe/bpipe.log\n")
+        
+            System.err.println("\nAn error occurred executing your pipeline:\n\n${msg.center(Config.config.columns,' ')}\n")
+        if(!(e instanceof ValueMissingError)) {
+            System.err.println("\nPlease see the details below for more information.\n")
+            System.err.println(" Error Details ".center(Config.config.columns, "="))
+            System.err.println()
+            Throwable sanitized = StackTraceUtils.deepSanitize(e)
+            sanitized.printStackTrace()
+            System.err.println()
+            System.err.println "=" * Config.config.columns
+            System.err.println("\nMore details about why this error occurred may be available in the full log file .bpipe/bpipe.log\n")
+        }
         System.exit(1)
     }
 
