@@ -97,14 +97,14 @@ class SMTPNotificationChannel implements NotificationChannel {
         String text = template.make(model).toString()
         
         if(event == PipelineEvent.SEND) {
-            sendEmail(subject, model["send.content"], model["send.file"]?new File(model["send.file"]):null, model["send.contentType"])
+            sendEmail(subjectLine, model["send.content"], model["send.file"]?new File(model["send.file"]):null, model["send.contentType"])
         }
         else
         if(event == PipelineEvent.REPORT_GENERATED) { // For a report event, attach the actual report
-            sendEmail(subject,text, new File(new File(model.reportListener.outputDir), model.reportListener.outputFileName))
+            sendEmail(subjectLine,text, new File(new File(model.reportListener.outputDir), model.reportListener.outputFileName))
         }
         else {
-            sendEmail(subject,text, null, model['send.contentType'])
+            sendEmail(subjectLine,text, null, model['send.contentType'])
         }
 	}
     
