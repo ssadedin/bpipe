@@ -64,6 +64,8 @@ class Runner {
               history 
               log
               jobs
+              checks
+              status
               cleanup
               query
               preserve
