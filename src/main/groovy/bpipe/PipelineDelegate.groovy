@@ -96,7 +96,14 @@ class PipelineDelegate {
             def actualArgs = args[0..-2] as List
             def body = args[-1]
             
-            def result = context.get().invokeMethod(name+"Impl", [actualArgs, body] as Object[])
+            def result 
+            
+            if(name == "produce") {
+                result = context.get().invokeMethod(name+"Impl", [actualArgs, body, false] as Object[])
+            }
+            else {
+                result = context.get().invokeMethod(name+"Impl", [actualArgs, body] as Object[])
+            }
             
 //            if(name == "produce") {
             if(false) {

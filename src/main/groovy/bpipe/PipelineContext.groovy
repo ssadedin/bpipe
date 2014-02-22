@@ -846,6 +846,10 @@ class PipelineContext {
         this.currentFilter = []
         this.currentFileNameTransform = null
     }
+    
+    Object produceImpl(Object out, Closure body) { 
+      produceImpl(out,body,true)  
+    }
    
     /**
      * Specifies that the given output(s) (out) will be produced
@@ -876,7 +880,7 @@ class PipelineContext {
      *       properly handled in the glob matching
      *       
      */
-    Object produceImpl(Object out, Closure body) { 
+    Object produceImpl(Object out, Closure body, boolean coerceToOutputFolder) { 
         
         log.info "Producing $out from $this"
         
@@ -886,7 +890,8 @@ class PipelineContext {
         List globOutputs = Utils.box(toOutputFolder(Utils.box(out).grep { it.contains("*") }))
         
         // Coerce so that files go to the right output folder
-        out = toOutputFolder(out)
+        if(coerceToOutputFolder)
+            out = toOutputFolder(out)
         
         def lastInputs = this.@input
         boolean doExecute = true
