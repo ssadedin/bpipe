@@ -94,7 +94,7 @@ class PipelineDelegate {
                 throw new IllegalArgumentException("$name requires an argument: please supply a file name or wild card expression matching files to be produced")
                 
             def actualArgs = args[0..-2] as List
-            if(actualArgs.size() == 1 && actualArgs instanceof List) {
+            if(actualArgs.size() == 1 && actualArgs[0] instanceof List) {
                 actualArgs = actualArgs[0]
             }
             def body = args[-1]
