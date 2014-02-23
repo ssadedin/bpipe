@@ -97,9 +97,11 @@ class Checker {
         if(!check.passed && !check.override) {
             ctx.currentCheck = check
             try {
+              ctx.currentCheck.autoSave = true
               otherwiseClause()
             }
             finally {
+                ctx.currentCheck.autoSave = false
                 ctx.currentCheck = null
             }
         }

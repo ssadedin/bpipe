@@ -1,0 +1,41 @@
+<!doctype html>
+<% /* NOTE: inlined styles so that this works as HTML email */ %>
+<% checks = bpipe.Check.loadAll(); %>
+<html style='padding: 0; margin: 0;'>
+    <%def title; if(pipeline.documentation?.title && pipeline.documentation?.title != "Pipeline Report" ) {
+        title = "Check Report : $pipeline.documentation.title"
+    } else { 
+        title = "Pipeline Check Report : " + new File(".").canonicalFile.name 
+    }  %>
+
+    <head>
+        <title>${title}</title>
+    </head>
+
+    <body style='font-family: verdana, arial; color: #333; padding:0; margin:0;'>
+        <div style='padding: 0.5em 1em 1em 1em; background-color: #f0f0f0;'>
+            <h1 style='padding-top: 0.5em; margin-top:0; font-size: 18pt;'>$title</h1>
+        </div>
+        <div style='padding: 0 1.5em 1.5em 1.5em;'>
+            <% if(checks.any { !it.passed && !it.override }) { %>
+                <h3 style='color: #c00'>One or more checks failed</h3>
+            <% } else { %>
+                <h3 style='color: green'>All checks passed</h3>
+            <% } %>
+            <table style='border-collapse: collapse;' border=1 cellpadding=4 bordercolor='#444'>
+                <tr><th>Check</th><th>Branch</th><th>Status</th><th>Details</th></tr>
+                <%checks.each { check -> %>
+                <tr>
+                    <td><%=check.name ? "$check.stage / $check.Name" : check.stage%></td>
+                    <td><%=check.branch!="all"?check.branch:""%></td>
+                    <td style='color: ${(!check.override && !check.passed) ? "red":"green"}'><%=check.override?"Overridden":(check.passed?"Passed":"Failed")%></td>
+                    <td><%=check.message?utils.escape(check.message):""%></td>
+                </tr>
+                <%}%>
+            </table>
+
+            <div style='font-size: 85%; font-style:italic; color: #999; margin-top: 1em;'>Report generated ${new Date()}</div>
+        </div>
+    </body>
+</html>
+    

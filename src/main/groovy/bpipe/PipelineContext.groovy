@@ -1891,6 +1891,9 @@ class PipelineContext {
      * @param message
      */
     void fail(String message) {
+        if(currentCheck) {
+            currentCheck.message = message
+        }
         throw new PipelineError("Pipeline stage ${stageName} aborted with the following message:\n\n$message\n")
     }
     
@@ -1908,6 +1911,9 @@ class PipelineContext {
      * @param message   message or reason for success (displayed to end user)
      */
     void succeed(String message) {
+        if(currentCheck) {
+            currentCheck.message = message
+        }
         throw new UserTerminateBranchException(message)
     }
     

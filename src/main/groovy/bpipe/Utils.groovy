@@ -26,6 +26,7 @@ package bpipe
 
 import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;
+import groovy.xml.XmlUtil;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
@@ -578,5 +579,9 @@ class Utils {
             }
         }
         return results
+    }
+    
+    static escape(Object value) {
+        return XmlUtil.escapeXml(String.valueOf(value))
     }
 }

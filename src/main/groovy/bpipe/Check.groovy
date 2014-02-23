@@ -39,6 +39,8 @@ class Check {
     String message
     
     boolean override = false
+    
+    boolean autoSave = false
 
     public Check() {
     }
@@ -113,6 +115,14 @@ class Check {
         if(p.containsKey("name"))
             this.name = p.name
         return this
+    }
+    
+    void setMessage(String value) {
+        boolean modified = (value != this.message)
+        this.message = value
+        if(autoSave && modified) {
+            this.save()
+        }
     }
     
     void setBranch(String value) {

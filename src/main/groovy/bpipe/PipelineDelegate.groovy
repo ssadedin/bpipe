@@ -197,6 +197,10 @@ class PipelineDelegate {
         if(name in Runner.binding.variables) {
             return Runner.binding.variables[name]
         }
+        else
+        if(name == "check" && ctx.currentCheck) {
+            return ctx.currentCheck
+        }
         if(name != "input" && ctx.echoWhenNotFound) {
             try {
                 def result = ctx.getProperty(name)

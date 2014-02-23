@@ -26,6 +26,7 @@ package bpipe
 
 import groovy.text.GStringTemplateEngine;
 import groovy.util.logging.Log;
+import groovy.xml.XmlUtil;
 
 @Log
 class ReportGenerator {
@@ -60,6 +61,18 @@ class ReportGenerator {
                 pipeline: pipeline
             ]
         }
+        else {
+            reportBinding.pipeline = pipeline
+            reportBinding.docStages = docStages
+        }
+        
+        // Utility to escape basic HTML entities
+//        reportBinding.escape = { String obj ->
+//            return XmlUtil.escapeXml(String.valueOf(obj))
+//        }
+        
+        reportBinding.escape = Utils.&escape
+        reportBinding.utils = new Utils()
          
         if(docStages.any { it.stageName == null })
             throw new IllegalStateException("Should NEVER have a null stage name here")
