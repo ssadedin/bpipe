@@ -30,6 +30,8 @@ import groovy.xml.MarkupBuilder
 import java.util.regex.Matcher
 import java.util.regex.Pattern;
 
+import org.codehaus.groovy.runtime.ExceptionUtils;
+
 import static Utils.*
 import bpipe.executor.CommandExecutor
 import bpipe.executor.ProbeCommandExecutor
@@ -1872,10 +1874,14 @@ class PipelineContext {
             return myDelegate.methodMissing(name,args)
         else {
             try {
-              throw new PipelineError("An unknown function '$name' was invoked (arguments = ${args.grep {!it.class.name.startsWith('script') }}).\n\nPlease check your script to ensure this function is correct.")
+              msg ="An unknown function '$name' was invoked (arguments = ${args.grep {!it.class.name.startsWith('script') }}).\n\nPlease check your script to ensure this function is correct."
+              log.severe(msg + ":\n" + Thread.currentThread().stackTrace*.toString().collect { '\t'+it}.join('\n'))
+              throw new PipelineError(msg)
             }
             catch(Exception e) {
-              throw new PipelineError("An unknown function '$name' was invoked.\n\nPlease check your script to ensure this function is correct.")
+              def msg = "An unknown function '$name' was invoked.\n\nPlease check your script to ensure this function is correct."
+              log.severe(msg + ":\n" + Thread.currentThread().stackTrace*.toString().collect { '\t'+it}.join('\n'))
+              throw new PipelineError(msg)
             }
         }    
     }
