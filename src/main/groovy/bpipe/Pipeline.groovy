@@ -276,7 +276,7 @@ public class Pipeline {
     void checkRequiredInputs(def providedInputs) {
         requiredInputs.each { key, details ->
             log.info "Checking if input matching $key is provided in $providedInputs"
-            if(!providedInputs.any { key.equals(it) || it.endsWith('.' + key)}) {
+            if(!providedInputs.any { key.equals(file(it).name) || it.endsWith('.' + key)}) {
                 throw new InputMissingError(key,details)
             }
             else
