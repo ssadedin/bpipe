@@ -1289,17 +1289,6 @@ class PipelineContext {
             this.commandManager.cleanup(c.executor)
     }
     
-    
-    /**
-     * Due to bugs in R with concurrent R sessions being launched simultaneously
-     * we actually block using this object
-     */
-    static Object rLock = new Object()
-    
-    static long lastRSessionMs = -1L
-    
-    static final long RSESSION_SEPARATION_MS = 2000
-    
     /**
      * Executes the specified script as R code 
      * @param scr
@@ -1309,7 +1298,6 @@ class PipelineContext {
     }
     
     void R(Closure c, String config) {
-        log.info("Running some R code")
         
         // When probing, just evaluate the string and return
         if(probeMode) {
@@ -1320,15 +1308,6 @@ class PipelineContext {
         if(!inputWrapper)
            inputWrapper = new PipelineInput(this.@input, pipelineStages)
 
-       synchronized(rLock) {
-           long now = System.currentTimeMillis()
-           if(now - lastRSessionMs < RSESSION_SEPARATION_MS) {
-               log.info "Waiting $RSESSION_SEPARATION_MS due to prior R session started in conflict with this one"
-               Thread.sleep(RSESSION_SEPARATION_MS)
-           }
-           lastRSessionMs = System.currentTimeMillis()
-       }
-       
        boolean oldEchoFlag = this.echoWhenNotFound
        try {
             this.echoWhenNotFound = true
