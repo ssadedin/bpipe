@@ -102,7 +102,7 @@ class PipelineDelegate {
             def result 
             
             if(name == "produce") {
-                result = context.get().invokeMethod(name+"Impl", [actualArgs, body, false] as Object[])
+                result = context.get().invokeMethod(name+"Impl", [actualArgs, body, !actualArgs.any {it.contains("/")}] as Object[])
             }
             else {
                 result = context.get().invokeMethod(name+"Impl", [actualArgs, body] as Object[])
@@ -194,7 +194,7 @@ class PipelineDelegate {
             return ctx.localVariables.region
         }
         else
-        if(name in Runner.binding.variables) {
+        if(Runner.binding.variables.containsKey(name)) {
             return Runner.binding.variables[name]
         }
         else
