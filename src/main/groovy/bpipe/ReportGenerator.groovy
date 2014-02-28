@@ -25,6 +25,7 @@
 package bpipe
 
 import groovy.text.GStringTemplateEngine;
+import groovy.text.SimpleTemplateEngine;
 import groovy.util.logging.Log;
 import groovy.xml.XmlUtil;
 
@@ -78,9 +79,20 @@ class ReportGenerator {
             throw new IllegalStateException("Should NEVER have a null stage name here")
 
         File templateFile = resolveTemplateFile(templateFileName)
+        
+        reportBinding.templatePath = templateFile.canonicalPath
            
         InputStream templateStream = new FileInputStream(templateFile)
-        GStringTemplateEngine e = new GStringTemplateEngine()
+        
+        // Sadly GStringTemplateEngine is not able to resolve classes
+        // that are in the classpath. I am not sure why. However SimpleTemplateEngine
+        // does. The advantage of GStringTemplateEngine would be that it can 
+        // generate templates that don't fit into memory. It is not really a 
+        // problem right now, but perhaps in the long term it would be nice to
+        // sort this out.
+//        GStringTemplateEngine e = new GStringTemplateEngine()
+        SimpleTemplateEngine e  = new SimpleTemplateEngine()
+        
         File outputFile = new File(docDir, outputFileName)
         log.info "Generating report to $outputFile.absolutePath"
         templateStream.withReader { r ->
