@@ -1,4 +1,55 @@
 
+========== Changes for Bpipe Version 0.9.8.6_beta_3 ============
+
+   - support for setting check message without failing or succeeding 
+   - explicitly (check.message = "...." in otherwise clause) 
+
+   - new check report to send / write a summary of all checks 
+     as HTML (bpipe run -R checks ..., 
+     send report('checks.html') ...)
+    
+   - documentation now available to reports based on user
+     templates 
+
+   - "utils" now provided to templates for generic
+     utilities (escape, todo: documentation) 
+     
+   - Ensure full stack trace is
+     logged in bpipe log when missing function encountered 
+     
+   - make produce() with directory use that directory rather 
+     than coerce to default output dir 
+
+   - added new supported commands to default help display 
+     
+   - fix parameters passed in by command line not resolvable in
+     templates 
+
+   - support 'send report(...) to file: <file name>'
+     syntax 
+     
+   - fix subject line used incorrect in SMTP notifications
+     
+   - inputs not being correctly checked to be provided when specified 
+     at root level 
+
+   - don't display exception info when failure is due to
+     value missing from specified inputs via 'inputs ...' statement
+     
+   - support for 'requires' at top level outside of pipeline 
+     definition 
+     
+   - improve wording and display of error when required value is
+     missing 
+
+   - fix templates not able to see all classes available on
+     classpath
+
+   - removed all forms of throttling of R sessions (should now be
+     unnecessary) as it can form a bottleneck in certain
+     scenarios 
+
+
 ========== Changes for Bpipe Version 0.9.8.6_beta_2 ============
 
    - avoid warnings due to project properties (thanks Davide) 
