@@ -110,6 +110,15 @@ class LsfCommandExecutor implements CommandExecutor {
 			exit \$result
 			"""
 			.stripIndent()
+            
+            
+        // Allow user to override (or eliminate) the -cwd option. This sets the current
+        // working directory, but is apparently not supported on OpenLava, 
+        // which is an open source version of Platform LSF.
+        String cwdOption="-cwd \$PWD"
+        if(config?.cwdOption) {
+            cwdOption = config.cwdOption
+        }
 		
 		/*
 		 * Prepare the 'bsub' cmdline. The following options are used:
@@ -122,7 +131,8 @@ class LsfCommandExecutor implements CommandExecutor {
 		 * Note: since LSF append a noise report information to the standard out
 		 * we suppress it, and save the 'cmd' output in the above script
 		 */
-		def startCmd = "bsub -cwd \$PWD -o /dev/null -eo $jobDir/$CMD_ERR_FILENAME "
+		def startCmd = "bsub $cwdOption -o /dev/null -eo $jobDir/$CMD_ERR_FILENAME "
+        
 		// add other parameters (if any)
 		if(config?.queue) {
 			startCmd += "-q ${config.queue} "
