@@ -75,6 +75,19 @@ class PipelineInput {
     List<PipelineStage> stages 
     
     /**
+     * A prefix to be applied to all attempts to resolve properties by this pipeline input.
+     * This is applied to child PipelineInput objects when multiple input extensions are 
+     * used: $input.foo.bar.csv
+     */
+    String extensionPrefix
+    
+    /**
+     * Error suggested by parent PipelineInput to be thrown if resolution fails for
+     * a property on this PipelineInput object. Used in the case of multiple input extensions.
+     */
+    InputMissingError parentError
+    
+    /**
      * If a filter is in operation, the current list of file extensions
      * that it is allowing. This list is shared with PipelineOutput
      * and may be modified if new input extensions are discovered.
@@ -87,6 +100,8 @@ class PipelineInput {
     }
     
     String toString() {
+        if(parentError)
+            throw parentError
         List boxed = Utils.box(input)
         if(defaultValueIndex>=boxed.size())
            throw new PipelineError("Expected ${defaultValueIndex+1} or more inputs but fewer provided")
@@ -133,17 +148,29 @@ class PipelineInput {
     def propertyMissing(String name) {
 		log.info "Searching for missing Property: $name"
         def resolved
-        if(name =="dir") {
-            log.info "Trying to resolve input as directory ...."
-            resolved = resolveInputAsDirectory()
-            if(!resolved) 
-                throw new PipelineError("Expected a directory as input, but no current input to this stage was a directory: \n" + Utils.box(input).join("\n"))
+        try {
+            if(name =="dir") {
+                log.info "Trying to resolve input as directory ...."
+                resolved = resolveInputAsDirectory()
+                if(!resolved) 
+                    throw new PipelineError("Expected a directory as input, but no current input to this stage was a directory: \n" + Utils.box(input).join("\n"))
+            }
+            else {
+              def exts = [name]
+              resolved = resolveInputsEndingWith(exts)
+              if(resolved.size() <= defaultValueIndex)
+                  throw new PipelineError("Insufficient inputs: at least ${defaultValueIndex+1} inputs are expected with extension .${name} but only ${resolved.size()} are available")
+            }
+            parentError=null
         }
-        else {
-          def exts = [name]
-          resolved = resolveInputsEndingWith(exts)
-          if(resolved.size() <= defaultValueIndex)
-              throw new PipelineError("Insufficient inputs: at least ${defaultValueIndex+1} inputs are expected with extension .${name} but only ${resolved.size()} are available")
+        catch(InputMissingError e) {
+            PipelineInput childInp = new PipelineInput(this.resolvedInputs.clone(), stages)
+            childInp.parent = this
+            childInp.resolvedInputs = this.resolvedInputs
+            childInp.currentFilter = this.currentFilter
+            childInp.extensionPrefix = name
+            log.info("No input resolved for property $name: returning child PipelineInput for possible double extension resolution")
+            return childInp;
         }
 		return mapToCommandValue(resolved)
      }
@@ -242,7 +269,7 @@ class PipelineInput {
 	        }
             
 	        if(missingExts)
-	            throw new PipelineError("Unable to locate one or more specified inputs from pipeline with the following extension(s):\n\n" + missingExts*.padLeft(15," ").join("\n"))
+	            throw new InputMissingError("Unable to locate one or more specified inputs from pipeline with the following extension(s):\n\n" + missingExts*.padLeft(15," ").join("\n"))
 	            
 			log.info "Found files with exts $exts : $filesWithExts"
 	        return filesWithExts.flatten().unique()
