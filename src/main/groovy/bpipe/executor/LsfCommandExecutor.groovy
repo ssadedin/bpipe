@@ -116,8 +116,8 @@ class LsfCommandExecutor implements CommandExecutor {
         // working directory, but is apparently not supported on OpenLava, 
         // which is an open source version of Platform LSF.
         String cwdOption="-cwd \$PWD"
-        if(config?.cwdOption) {
-            cwdOption = config.cwdOption
+        if(config?.lsf_cwd_option) {
+            cwdOption = config.lsf_cwd_option
         }
 		
 		/*
