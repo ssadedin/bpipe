@@ -124,14 +124,18 @@ class LsfCommandExecutor implements CommandExecutor {
 		 * Prepare the 'bsub' cmdline. The following options are used:
 		 * - cwd: defines the job working directory
 		 * - o: redirect the standard output to the specified file
-		 * - eo: redirect the error output to the specified file
+		 * - e: redirect the error output to the specified file
+         *      NOTE: used to be -eo, but this is not compatible with OpenLava,
+         *      so for cross compatibility, we stick with -e. This means in LSF
+         *      it will write in append mode, but that should be OK because it is
+         *      a newly created file for each command in any case.
 		 * - J: defines the job name
 		 * - q: declares the queue to use
 		 *
 		 * Note: since LSF append a noise report information to the standard out
 		 * we suppress it, and save the 'cmd' output in the above script
 		 */
-		def startCmd = "bsub $cwdOption -o /dev/null -eo $jobDir/$CMD_ERR_FILENAME "
+		def startCmd = "bsub $cwdOption -o /dev/null -e $jobDir/$CMD_ERR_FILENAME "
         
 		// add other parameters (if any)
 		if(config?.queue) {
