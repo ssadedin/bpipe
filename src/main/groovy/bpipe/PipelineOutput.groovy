@@ -205,7 +205,7 @@ class PipelineOutput {
                 String baseInput = this.resolvedInputs.find {it.endsWith(name)}
                 if(!baseInput) {
                     baseInput = this.overrideOutputs[0]
-                  result = baseInput.replaceAll('\\.[^.]*$',"." + name)
+                    result = baseInput.replaceAll('\\.[^.]*$',"." + name)
                 }
                 else {
                     log.info "Recomputing filter on base input $baseInput to achieve match with output extension $name"
@@ -243,29 +243,7 @@ class PipelineOutput {
             this.outputUsed = this.defaultOutput.replaceAll("[.]{0,1}"+name+"\\."+stageName, '.' + segments)
         }
         else { // more like a transform: keep the old extension in there (foo.csv.bar => foo.csv.bar.xml)
-            
-            // First remove the stage name, if it is at the end
-            outputUsed = this.defaultOutput.replaceAll('\\.'+stageName+'$', '')
-            
-            // If the branch name is now at the end and there is a suffix we can remove the suffix
-            // eg: produce test.chr1.hello.csv rather than test.txt.chr1.hello.csv
-            // (see param_chr_override test)
-            outputUsed = outputUsed.replaceAll(/(\.[^.]*)\./+branchName,'.'+branchName)
-            
-            // Then replace the extension on the file with the requested one
-            if(this.transformMode == "replace") {
-                if(outputUsed.contains("."))
-                    // Here we allow a potential match on a number in the base output, since that can 
-                    // occur when the use uses multiple outputs ($output1.csv, $output2.csv) and 
-                    // the same output file is generated for the outputs - such file names get 
-                    // a numeric index inserted. eg: test1.txt, test1.txt.2
-                    outputUsed = outputUsed.replaceAll('\\.[^\\.]*(\\.[0-9]*){0,1}$', '$1.'+segments)
-                else
-                    outputUsed = outputUsed + "." + segments
-            }
-            else {
-                outputUsed = outputUsed + "." + name
-            }
+            this.outputUsed = computeOutputUsedAsTransform(name, segments)
         }
         
         if(this.outputUsed.startsWith(".") && !this.outputUsed.startsWith("./")) // occurs when no inputs given to script and output extension used
@@ -275,6 +253,42 @@ class PipelineOutput {
             this.outputChangeListener(this.outputUsed,null)
         }
         return this.outputUsed
+    }
+    
+    /**
+     * Compute a name for the output based on the assumption it is 
+     * doing something like a 'transform' operation.
+     * 
+     * ie: the new extension is appended to the output.
+     * 
+     * @return  the transformed output name
+     */
+    String computeOutputUsedAsTransform(String extension, String segments) {
+        
+        // First remove the stage name, if it is at the end
+        String result = this.defaultOutput.replaceAll('\\.'+stageName+'$', '')
+            
+        // If the branch name is now at the end and there is a suffix we can remove the suffix
+        // eg: from test.chr1.txt produce test.chr1.hello.csv rather than test.txt.chr1.hello.csv
+        // (see param_chr_override test)
+        
+        result = result.replaceAll(/(\.[^.]*)\./+branchName,'.'+branchName)
+            
+        // Then replace the extension on the file with the requested one
+        if(this.transformMode == "replace") {
+            if(result.contains("."))
+                // Here we allow a potential match on a number in the base output, since that can 
+                // occur when the use uses multiple outputs ($output1.csv, $output2.csv) and 
+                // the same output file is generated for the outputs - such file names get 
+                // a numeric index inserted. eg: test1.txt, test1.txt.2
+                result = result.replaceAll('\\.[^\\.]*(\\.[0-9]*){0,1}$', '$1.'+segments)
+            else
+                result = result + "." + segments
+        }
+        else {
+            result = result + "." + extension
+        } 
+        return result
     }
     
     def methodMissing(String name, args) {
