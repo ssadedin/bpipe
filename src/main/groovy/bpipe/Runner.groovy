@@ -94,6 +94,8 @@ class Runner {
         
         Config.config.pid = pid
         Config.config.outputLogPath = ".bpipe/logs/${pid}.log"
+        
+        // println "Starting Runner at ${new Date()}..."
             
         // PID of shell that launched Bpipe
         String parentPid = System.getProperty("bpipe.pid")
@@ -126,8 +128,10 @@ class Runner {
             }
         }
                 
+//        log.info "Initializing logging ..."
         def parentLog = initializeLogging(pid)
         
+        log.info "Initializing plugins ..."
         Config.initializePlugins()
         
         def cli 
@@ -232,6 +236,7 @@ class Runner {
         Config.config.script = opt.arguments()[0]
         
         // read the configuration file, if available
+        log.info "Reading user config ... "
         try {
             Config.readUserConfig()
         }
@@ -303,17 +308,14 @@ class Runner {
             pipelineArgs = opt.arguments()[1..-1]
                 
 
-        ToolDatabase.instance.init(Config.userConfig)
-        
-        // Add event listeners that come directly from configuration
-        EventManager.instance.configure(Config.userConfig)
-        
-        Concurrency.instance.initFromConfig()
-		
-		if(!opts.t) {
-			NotificationManager.instance.configure(Config.userConfig)
-            configureReportsFromUserConfig()
-		}
+        log.info "Loading tool database ... "
+        def initThreads = [
+                           { ToolDatabase.instance.init(Config.userConfig) },
+                           { /* Add event listeners that come directly from configuration */ EventManager.instance.configure(Config.userConfig) },
+                           { Concurrency.instance.initFromConfig() },
+                           { if(!opts.t) { NotificationManager.instance.configure(Config.userConfig); configureReportsFromUserConfig() } }
+                           ].collect{new Thread(it)}
+        initThreads*.start()
 
         // If we got this far and are not in test mode, then it's time to 
         // make the logs stick around
@@ -343,7 +345,13 @@ class Runner {
             binding.setParam("region", Config.userConfig.region)
         }
 
+        initThreads*.join(20000)
+        
         // create the pipeline script instance and set the binding obj
+        log.info "Parsing script ... "
+        
+        loadExternalLibs()
+        
         Script script = gcl.parseClass(pipelineSrc).newInstance()
         script.setBinding(binding)
         // set the pipeline arguments
@@ -351,6 +359,7 @@ class Runner {
 
         // RUN it
         try {
+            log.info "Run ... "
             script.run()
         }
         catch(MissingPropertyException e)  {
@@ -478,6 +487,29 @@ class Runner {
             }
         }
         return pid
+    }
+    
+    static void loadExternalLibs() {
+       if(Config.userConfig.containsKey("libs")) {
+            if(Config.userConfig.libs instanceof String) {
+                def jars = (Config.userConfig.libs.split(":") as List)
+                for(jar in jars) {
+                    try {
+                        File f = new File(jar)
+                        if(!f.exists()) {
+                            // Attempt to resolve the file relative to the main script location if
+                            // it cannot be resolved directly
+                            f = new File(new File(Config.config.script).canonicalFile.parentFile, jar)
+                        }
+                        Runner.class.classLoader.rootLoader.addURL(f.toURL())
+                    }
+                    catch(Exception e) {
+                        log.severe("Failed to add jar $jar to classpath: " + e)
+                        System.err.println("WARN: Error adding jar $jar to classpath: " + e.getMessage())
+                    }                    
+                }
+            }
+        }
     }
                     
     /**

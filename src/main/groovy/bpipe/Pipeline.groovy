@@ -253,22 +253,34 @@ public class Pipeline {
         Pipeline.requiredInputs += requiredInputs
     }
     
+    /**
+     * The current context of the pipeline executing in this thread,
+     * or null if there is no context.
+     */
+   static ThreadLocal<PipelineContext> currentContext = new ThreadLocal()
+    
     static requires(Map<String,Object> requiredInputs) {
-        requiredInputs.each { k, v ->
-            if(!Runner.binding.variables.containsKey(k)) {
-                throw new ValueMissingError(
-                """
-                Variable or parameter '$k' was not specified but is required to run this pipeline.
-
-                You can specify it in the following ways:
-
-                           1. define the variable in your pipeline script: $k="<value>"
-                           2. provide it from the command line by adding a flag:  -p $k=<value>
-
-                The parameter $k is described as follows:
-
-                               $v
-                """.stripIndent().trim()) 
+        
+        if(currentContext.get()) { // called from within pipeline stage
+            currentContext.get().requires(requiredInputs)
+        }
+        else {
+            requiredInputs.each { k, v ->
+                if(!Runner.binding.variables.containsKey(k)) {
+                    throw new ValueMissingError(
+                    """
+                    Variable or parameter '$k' was not specified but is required to run this pipeline.
+    
+                    You can specify it in the following ways:
+    
+                               1. define the variable in your pipeline script: $k="<value>"
+                               2. provide it from the command line by adding a flag:  -p $k=<value>
+    
+                    The parameter $k is described as follows:
+    
+                                   $v
+                    """.stripIndent().trim()) 
+                }
             }
         }
     }
@@ -687,7 +699,6 @@ public class Pipeline {
             pipeFolders = System.getenv("BPIPE_LIB").split(Utils.isWindows()?";":":").collect { new File(it) }
         }
         
-        
         while(true) {
           pipeFolders.addAll(loadedPaths)
           loadedPaths = []
@@ -699,6 +710,8 @@ public class Pipeline {
         }
     }
     
+    static Set allLoadedPaths = new HashSet()
+    
     private static void loadExternalStagesFromPaths(GroovyShell shell, List<File> paths) {
         for(File pipeFolder in paths) {
             List<File> libPaths = []
@@ -707,7 +720,7 @@ public class Pipeline {
             }
             else
             if(pipeFolder.isFile()) {
-                libPaths = [pipeFolder]
+                libPaths += [pipeFolder]
             }
             else
             if(pipeFolder.isDirectory()) {
@@ -721,7 +734,12 @@ public class Pipeline {
             libPaths.sort()
                 
             // Load all the scripts from this path / folder
-            libPaths.each { scriptFile ->
+            libPaths.each { File scriptFile ->
+                if(allLoadedPaths.contains(scriptFile.canonicalPath)) {
+                    log.info "Skip loading $scriptFile.canonicalPath (already loaded)"
+                    return
+                }
+                
                 log.info("Evaluating library file $scriptFile")
                 try {
                     Script script = shell.evaluate(PIPELINE_IMPORTS+" binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true; " + scriptFile.text + "\nthis")
@@ -731,6 +749,7 @@ public class Pipeline {
                         }
                     }
                     log.fine "Binding now has variables: " + shell.context.variables
+                    allLoadedPaths.add(scriptFile.canonicalPath)
                 }
                 catch(Exception ex) {
                     log.severe("Failed to evaluate script $scriptFile: "+ ex)

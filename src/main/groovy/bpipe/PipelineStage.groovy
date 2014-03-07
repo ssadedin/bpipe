@@ -273,6 +273,7 @@ class PipelineStage {
 		PipelineDelegate.setDelegateOn(context,body)
 		this.startDateTimeMs = System.currentTimeMillis()
 		try {
+            Pipeline.currentContext.set(context)
 			if(PipelineCategory.wrappers.containsKey(stageName)) {
 				log.info("Executing stage $stageName inside wrapper")
 				PipelineCategory.wrappers[stageName](body, context.@input)
@@ -287,6 +288,7 @@ class PipelineStage {
 			}
 		}
 		finally {
+            Pipeline.currentContext.set(null)
 			this.running = false
 			this.endDateTimeMs = System.currentTimeMillis()
 		}

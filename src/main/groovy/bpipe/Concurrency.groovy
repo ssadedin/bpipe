@@ -142,6 +142,7 @@ class Concurrency {
         }               
         
         if(Config.config.maxMemoryMB) {
+            log.info "Setting maximum memory to $maxMemoryMB from configuration / command line"
             resourceAllocations["memory"] = new Semaphore(Config.config.maxMemoryMB)
         }               
     }

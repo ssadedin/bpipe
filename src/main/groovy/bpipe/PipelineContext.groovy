@@ -412,7 +412,7 @@ class PipelineContext {
            allInferredOutputs << o; 
        if(!inferredOutputs.contains(o)) 
            inferredOutputs << o;  
-       if(applyName) { 
+       if(applyName && pipeline) { 
            pipeline.nameApplied=true
         } 
        if(replaced) 
@@ -1929,6 +1929,12 @@ class PipelineContext {
     
     Checker check(Closure c) {
         return new Checker(this,c)
+    }
+    
+    String output(String value) {
+        // setOutput(value)
+        this.onNewOutputReferenced(null, value)
+        return value
     }
 }
 
