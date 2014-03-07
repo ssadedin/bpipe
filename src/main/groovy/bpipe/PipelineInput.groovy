@@ -156,7 +156,7 @@ class PipelineInput {
                     throw new PipelineError("Expected a directory as input, but no current input to this stage was a directory: \n" + Utils.box(input).join("\n"))
             }
             else {
-              def exts = [name]
+              def exts = this.extensionPrefix?[extensionPrefix+"."+name]:[name]
               resolved = resolveInputsEndingWith(exts)
               if(resolved.size() <= defaultValueIndex)
                   throw new PipelineError("Insufficient inputs: at least ${defaultValueIndex+1} inputs are expected with extension .${name} but only ${resolved.size()} are available")
@@ -168,7 +168,7 @@ class PipelineInput {
             childInp.parent = this
             childInp.resolvedInputs = this.resolvedInputs
             childInp.currentFilter = this.currentFilter
-            childInp.extensionPrefix = name
+            childInp.extensionPrefix = this.extensionPrefix ? this.extensionPrefix+"."+name : name
             childInp.parentError = e
             log.info("No input resolved for property $name: returning child PipelineInput for possible double extension resolution")
             return childInp;
@@ -255,8 +255,14 @@ class PipelineInput {
 	            String pattern = extsAndOrigs[0]
 	            String origName = extsAndOrigs[1]
                 
-	            if(!pattern.startsWith("\\."))
-	                pattern = "." + pattern
+                // Special case: treat a leading dot as a literal dot.
+                // ie: if the user specifies ".xml", they probably mean
+                // literally ".xml" and not "any character" + "xml"
+                if(pattern.startsWith("."))
+                    pattern = "\\." + pattern.substring(1)
+                    
+	            if(!pattern.startsWith("\\.") )
+	                pattern = "\\." + pattern
 	            
                 pattern = '^.*' + pattern
 	            for(s in reverseOutputs) {
