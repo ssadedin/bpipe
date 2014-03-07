@@ -62,6 +62,9 @@ class NotificationManager {
      * @param obj    configuration
      */
     void configure(ConfigObject obj) {
+        
+        log.info "Configuring notifications"
+        
         this.cfg = obj
         
         // Add a default FileNotificationChannel if one does not already exist
@@ -100,6 +103,12 @@ class NotificationManager {
     }
 	
 	void sendNotification(String channelName, PipelineEvent evt, String desc, Map detail) {
+        
+        // When run in test mode, notifications are not configured
+        // However sending can now be invoked explicitly by the user, so
+        // need to be aware of that
+        if(this.cfg == null)
+            return
         
         if(!this.cfg.notifications.containsKey(channelName)) {
             String msg = "An unknown communication recipient / channel was specified: $channelName for message: $desc"
