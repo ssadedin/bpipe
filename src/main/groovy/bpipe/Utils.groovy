@@ -143,7 +143,7 @@ class Utils {
      * array, false otherwise.
      */
     static boolean isContainer(def obj) {
-        return (obj != null) && (obj instanceof Collection || obj.class.isArray())
+        return (obj != null) && (obj instanceof Collection || ((obj.class != null) && obj.class.isArray()))
     }
     
     /**
