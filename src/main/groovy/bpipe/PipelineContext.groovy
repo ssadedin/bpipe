@@ -1947,8 +1947,15 @@ class PipelineContext {
     }
     
     String output(String value) {
+        
+        // If the user did not specify a directory then 
+        // redirect to whatever the current output folder is
+        if(new File(value).parentFile == null) 
+            value = toOutputFolder(value)
+        
         // setOutput(value)
         this.onNewOutputReferenced(null, value)
+        this.@output = Utils.box(this.@output) + value
         return value
     }
 }
