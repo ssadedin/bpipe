@@ -24,6 +24,7 @@
  */
 package bpipe
 
+import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;
 import groovy.xml.XmlUtil;
@@ -594,4 +595,15 @@ class Utils {
     static String quote(String value) {
         '"' + value.replaceAll('"','\\"') + '"'        
     }    
+    
+    static time(String desc, Closure c) {
+        Date startTime = new Date()
+        try {
+            c()
+        }
+        finally {
+            Date endTime = new Date()
+            log.info "$desc executed in " + TimeCategory.minus(endTime,startTime) 
+        }
+    }
 }
