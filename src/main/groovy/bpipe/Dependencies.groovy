@@ -27,6 +27,8 @@ package bpipe
 
 import groovy.util.logging.Log;
 
+import groovyx.gpars.GParsPool
+
 /**
  * A node in the dependency graph representing a set of outputs
  * sharing a common set of child nodes (who depend on the outputs) and
@@ -797,7 +799,17 @@ class Dependencies {
      * @return
      */
     List<Properties> scanOutputFolder() {
-        new File(PipelineContext.OUTPUT_METADATA_DIR).listFiles().collect { readOutputPropertyFile(it) }.sort { it.timestamp }
+        int concurrency = Config.userConfig.outputScanConcurrency?:5
+        List result = []
+        Utils.time("Output folder scan (concurrency=$concurrency)") {
+            GParsPool.withPool(concurrency) { 
+                List<File> files = new File(PipelineContext.OUTPUT_METADATA_DIR).listFiles()?.toList()
+                if(!files)
+                    return []
+                result.addAll(files.collectParallel { readOutputPropertyFile(it) }.sort { it.timestamp })
+            }
+        }
+        return result
     }
     
     /**

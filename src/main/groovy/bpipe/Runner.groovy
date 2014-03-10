@@ -85,6 +85,8 @@ class Runner {
     
     public static void main(String [] args) {
         
+//        log.info "Starting in main"
+        
         def db = new File(".bpipe")
         if(!db.exists())
             if(!db.mkdir())
@@ -237,16 +239,18 @@ class Runner {
         
         // read the configuration file, if available
         log.info "Reading user config ... "
-        try {
-            Config.readUserConfig()
+        Utils.time ("Read user config") {
+            try {
+                Config.readUserConfig()
+            }
+            catch( Exception e ) {
+                def cause = e.getCause() ?: e
+                println("\nError parsing 'bpipe.config' file. Cause: ${cause.getMessage() ?: cause}\n")
+                reportExceptionToUser(e)
+                System.exit(1)
+            }
         }
-        catch( Exception e ) {
-            def cause = e.getCause() ?: e
-            println("\nError parsing 'bpipe.config' file. Cause: ${cause.getMessage() ?: cause}\n")
-            reportExceptionToUser(e)
-            System.exit(1)
-        }
-        
+            
         opts = opt
         if(opts.v) {
             ConsoleHandler console = new ConsoleHandler()

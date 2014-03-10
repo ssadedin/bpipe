@@ -35,6 +35,14 @@ BUILDDATE=0
 # Pattern used to parse log files when tailing
 TAIL_PATTERN='s/\[[*.0-9a-zA-Z_-]*\(\.\{0,1\}[0-9]*\)\{1,\}\]'$'\t//g' 
 
+
+#----------------------------------------------------------
+# Print a timing message (for debug)
+#----------------------------------------------------------
+tmsg() {
+    [ ! -z "$BPIPE_SHOW_TIMINGS" ] && { echo `date +'%M:%S.%N'`" $1" }
+}
+
 #----------------------------------------------------------
 # Kill a whole tree of processes in a cross platform way.
 # Note, in some situations killing the parent process is 
@@ -393,14 +401,21 @@ fi
 # Default directory for pipes - user can override by setting BPIPE_LIB themselves
 : ${BPIPE_LIB:="$HOME/bpipes"}
 
-# Make sure needed directories exist
-mkdir -p .bpipe/launch .bpipe/logs
+tmsg " Creating launch and log directories"
+
+if [ ! -e .bpipe/launch ] || [ ! -e .bpipe/logs ];
+then
+    # Make sure needed directories exist
+    mkdir -p .bpipe/launch .bpipe/logs
+fi
 
 COMMAND="$1"
 TESTMODE=""
 MODEFLAG=""
 
+tmsg " Determining class path"
 get_classpath
+
 
 : ${SHOWDEBUG:=false}
 
@@ -547,12 +562,13 @@ else
 fi
 
 ################# Default Command => Run ################
+tmsg " Starting"
 
 
 # Don't keep history if no arguments provided
 if [ ! -z "$*" ] && [ "$COMMAND" != "retry" ];
 then
-    echo "$0 $COMMAND $*" > .bpipe/lastcmd
+    echo "$0 $COMMAND $*" > .bpipe/lastcmd &
     
     # Used to append to history here, but now the Java code does it
     # so that it can happen only when a pipeline actually launches
@@ -579,10 +595,12 @@ done
 # This complicated way of launching Java is about trying to
 # have java launch with its standard output captured to a log
 # file that contains its own PID.  
-nohup echo 'printf $$ > .bpipe.'$LAUNCHER_PID'.run.pid; 
+tmsg " Launching Java"
+nohup echo 'printf $$ > .bpipe.'$LAUNCHER_PID'.run.pid &
       exec java -Xmx'${MAX_JAVA_MEM}' -classpath "'"$CP"'" '$BPIPEDEBUG' '$MODEFLAG' -Dbpipe.pid='$LAUNCHER_PID' -Dbpipe.home='"$JVM_BPIPE_HOME"' -Dbpipe.version='$VERSION' -Dbpipe.builddate='$BUILDDATE' org.codehaus.groovy.tools.GroovyStarter --classpath "'"$CP"'" --main bpipe.Runner '$TESTMODE' '$BPIPE_ARGS' > .bpipe/logs/$$.log 2>&1' \
      2>&1 | bash - > /dev/null 2>&1 &
 
+tmsg " Waiting for pid to be created"
 while [ ! -e .bpipe.$LAUNCHER_PID.run.pid ];
 do
   if type usleep > /dev/null 2>&1 ;
@@ -597,7 +615,8 @@ done
 
 BPIPE_PID=`cat .bpipe.$LAUNCHER_PID.run.pid`
 
-rm .bpipe.$LAUNCHER_PID.run.pid
+tmsg " Removing PID file"
+rm .bpipe.$LAUNCHER_PID.run.pid &
 
 $SHOWDEBUG && { 
   echo "DEBUG:  Launched Java with PID $BPIPE_PID"
@@ -606,20 +625,29 @@ $SHOWDEBUG && {
 create_pid_file $BPIPE_PID
 
 # Save the job in the local folder, linked to its PID
-mkdir -p .bpipe/jobs
+tmsg " Creating jobs dir"
+if [ ! -e .bpipe/jobs ];
+then
+    mkdir -p .bpipe/jobs
+fi
+
 echo "$0 $COMMAND $*" >> .bpipe/jobs/$BPIPE_PID
 
 # Save the job in the user's home .bpipe folder - this allows the user to query
 # what jobs they have running from anywhere
 # Note that it is up to the Java code to remove this when it shuts down
-mkdir -p ~/.bpipedb/jobs
-
-JOBDB_FILE=~/.bpipedb/jobs/$BPIPE_PID
-if [ -e $JOBDB_FILE ];
-then
-  rm $JOBDB_FILE;
-fi
-ln -s `pwd`/.bpipe/jobs/$BPIPE_PID  $JOBDB_FILE
+(
+    if [ ! -e .bpipedb/jobs ];
+    then
+        mkdir -p ~/.bpipedb/jobs
+    fi
+    JOBDB_FILE=~/.bpipedb/jobs/$BPIPE_PID
+    if [ -e $JOBDB_FILE ];
+    then
+      rm $JOBDB_FILE;
+    fi
+    ln -s `pwd`/.bpipe/jobs/$BPIPE_PID  $JOBDB_FILE
+) &
 
 # Set up signal handler to trap Ctrl-C so that we can cleanly abort the job
 trap handle_sigint SIGINT
@@ -629,6 +657,7 @@ LOGFILE=.bpipe/logs/$BPIPE_PID.log
 
 # Very rarely we can find that nohup takes longer to launch in the background than this process takes to get here
 # so we wait for the file to become available
+tmsg " Waiting for log file"
 count=0
 while [ ! -e $LOGFILE ];
 do
@@ -648,6 +677,7 @@ then
 # but on Macs we have to emaulate that (grrr)
 elif uname | grep -iq cygwin || uname | grep -iq Linux; 
 then
+    tmsg " Tailing log file"
     # echo "DEBUG:  tailing log $LOGFILE using native pid tracking RUNPID=$BPIPE_PID"
     if kill -0 $BPIPE_PID  ;
     then

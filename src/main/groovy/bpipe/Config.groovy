@@ -3,6 +3,7 @@ package bpipe
 import groovy.util.ConfigObject;
 
 import groovy.util.logging.Log;
+import groovyx.gpars.GParsPool;
 
 /**
  * Global configuration properties for Bpipe.
@@ -99,69 +100,74 @@ class Config {
 		
         ConfigSlurper slurper = new ConfigSlurper()
         
-		
 		File builtInConfigFile = new File(System.getProperty("bpipe.home") +"/bpipe.config")
 		
 		// Allows running in-situ in project source distro root dir to work
 		if(!builtInConfigFile.exists()) {
 			builtInConfigFile = new File(System.getProperty("bpipe.home") + "/src/main/config", "bpipe.config")
 		}
-		
-		ConfigObject builtInConfig = slurper.parse(builtInConfigFile.toURI().toURL())
+        
+        Map configFiles = [builtInConfig: builtInConfigFile]
         
         // The default way to prompt user for information is to ask at the console
-        builtInConfig.prompts.handler = { msg ->
-            print msg
-            return System.in.withReader { it.readLine() }
-        }
-		
         // Configuration in user home directory
 		File homeConfigFile = new File(System.getProperty("user.home"), ".bpipeconfig")
-		ConfigObject homeConfig
 		if(homeConfigFile.exists()) {
-            homeConfig = slurper.parse(homeConfigFile.toURI().toURL())
+            configFiles.homeConfig = homeConfigFile
 		}
         
         File configFile = new File("bpipe.config")
         
         // Configuration in directory next to main pipeline script
-        
-		ConfigObject pipelineConfig
         if(config.script) {
             File pipelineConfigFile = new File(new File(config.script).absoluteFile.parentFile, "bpipe.config")
             if(pipelineConfigFile.exists() && (pipelineConfigFile.absolutePath != configFile.absolutePath)) {
                 log.info "Reading Bpipe configuration from ${pipelineConfigFile.absolutePath}"
-                pipelineConfig = slurper.parse(pipelineConfigFile.toURI().toURL())
+                configFiles.pipelineConfig = pipelineConfigFile
             }
             else {
                 log.info "No configuration file found in same dir as pipeline file"
             }
         }
-  		
+        
+//        builtInConfig.prompts.handler = { msg ->
+//            print msg
+//            return System.in.withReader { it.readLine() }
+//        }
+        
+        
         // Configuration in local directory (where pipeline is running)
-		ConfigObject localConfig
         if(configFile.exists()) {
             log.info "Reading Bpipe configuration from ${configFile.absolutePath}"
-            localConfig = slurper.parse(configFile.toURI().toURL())
+            configFiles.localConfig = configFile
         }
         else {
             log.info "No local configuration file found"
         }
+        
+        Map<String,ConfigObject> configs
+        GParsPool.withPool(configFiles.size()) {
+            configs = configFiles.collectParallel { name, file ->
+                Utils.time("Read config from $file") {
+                    [name, slurper.parse(file.toURI().toURL())]
+                }
+            }.collectEntries()
+        }
 		
-        userConfig = builtInConfig ? builtInConfig : new ConfigObject()
-		if(homeConfig) {
+        userConfig = configs.builtInConfig ?: new ConfigObject()
+		if(configs.homeConfig) {
 			log.info "Merging home config file"
-			userConfig.merge(homeConfig)
+			userConfig.merge(configs.homeConfig)
 		}
         
-        if(pipelineConfig) {
+        if(configs.pipelineConfig) {
             log.info "Merging pipeline config file"
-			userConfig.merge(pipelineConfig)
+			userConfig.merge(configs.pipelineConfig)
         }
         
-		if(localConfig) {
+		if(configs.localConfig) {
 			log.info "Merging local config file"
-			userConfig.merge(localConfig)
+			userConfig.merge(configs.localConfig)
 		}
 		
         if(!userConfig.executor) {

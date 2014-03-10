@@ -2,7 +2,7 @@ apply plugin: 'eclipse'
 apply plugin: 'groovy'
 
 project.ext {
-    VERSION="0.9.8.6_beta_3"
+    VERSION="0.9.8.6_beta_4"
     STAGE="build/stage/bpipe-$VERSION"
 }
 
@@ -16,7 +16,9 @@ repositories {
 }
 
 dependencies {
-    groovy group: 'org.codehaus.groovy', name: 'groovy', version: '1.8.2'
+    groovy group: 'org.codehaus.groovy', name: 'groovy', version: '2.1.1'
+    compile 'org.codehaus.gpars:gpars:0.12'
+
     compile files(fileTree(dir:'local-lib', includes:['*.jar']))
 
     // In case GridGain ever revive their Maven repo ...
@@ -51,6 +53,14 @@ if(!new File("local-lib").listFiles().find { it.name =~ /gridgain.*.jar/ }) {
     } } }
 }
 
+jar {
+    from configurations.compile.grep {
+        !(it.name in ["mail.jar"]) && !it.name.startsWith("gridgain") && !it.name.startsWith("hazelcast")
+    }.collect { 
+        it.isDirectory() ? it : zipTree(it) 
+    }
+}
+
 task stage(dependsOn: jar) << {
   ant.mkdir(dir: STAGE)
   ant.mkdir(dir: "$STAGE/bin")
@@ -63,7 +73,8 @@ task stage(dependsOn: jar) << {
 
   ant.copy(todir: "$STAGE/lib") {
     // do not distribute mail.jar due to license
-    ant.fileset(dir: 'local-lib', includes: "*.jar", excludes: "mail.jar,gridgain-*.jar,hazelcast-*.jar")
+    ant.fileset(dir: 'local-lib', includes: "*.jar", 
+        excludes: "mail.jar,gridgain-*.jar,hazelcast-*.jar,batik*.jar,commons-cli*.jar,jgraphx.jar,smack-*.jar,xml-*.jar,gpars*.jar,jsr*.jar,extra166y*.jar,groovy-all-*.jar")
     ant.fileset(dir: 'build/libs', includes: "bpipe.jar")
   }
 
