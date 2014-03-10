@@ -799,7 +799,7 @@ class Dependencies {
      * @return
      */
     List<Properties> scanOutputFolder() {
-        int concurrency = Config.userConfig.outputScanConcurrency?:5
+        int concurrency = (Config.userConfig?.outputScanConcurrency)?:5
         List result = []
         Utils.time("Output folder scan (concurrency=$concurrency)") {
             GParsPool.withPool(concurrency) { 
