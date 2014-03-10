@@ -140,7 +140,12 @@ class PipelineOutput {
      * @return  canonical absolute path to parent directory of default (first) output
      */
     Object getDir() {
-        List boxed = Utils.box(this.overrideOutputs) + Utils.box(this.outputUsed)
+        
+        // Consider in order: 
+        //   - outputs enforced by transform, etc ("override outputs")
+        //   - outputs referenced by output file name extensions (output.txt)
+        //   - the default output set for this stage
+        List boxed = Utils.box(this.overrideOutputs) + Utils.box(this.outputUsed) + [defaultOutput]
         
         String baseOutput = boxed[0]
 

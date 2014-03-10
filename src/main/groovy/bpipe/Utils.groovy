@@ -425,6 +425,8 @@ class Utils {
      * @author Karol Bucek
      */
     static List<String> glob(pattern) {
+        
+        
         if ( pattern == null ) throw new IllegalArgumentException('null pattern')
         if ( pattern instanceof Collection
             || pattern instanceof Object[] ) {
@@ -441,7 +443,11 @@ class Utils {
             // 4. {p,q}
             if ( path[i] ==~ /.*[^\\]?[\*|\?|\[|\]|\{|\}].*/ ) break
         }
-        base = path[0..<i].join('/'); pattern = path[i..<s].join('/')
+        base = path[0..<i].join('/'); 
+        if(pattern.startsWith("/"))
+            base = "/" + base
+        pattern = path[i..<s].join('/') 
+        
         // a char loop over the pattern - instead of a bunch of replace() calls :
         char c; boolean curling = false; // (c) Vancouver 2010 :)
         final Closure notEscaped = { j -> // todo handling 2 escapes is enought !
@@ -584,4 +590,8 @@ class Utils {
     static escape(Object value) {
         return XmlUtil.escapeXml(String.valueOf(value))
     }
+    
+    static String quote(String value) {
+        '"' + value.replaceAll('"','\\"') + '"'        
+    }    
 }

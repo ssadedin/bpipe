@@ -901,7 +901,11 @@ class PipelineContext {
         List fixedOutputs = Utils.box(out).grep { !it.contains("*") }
         
         // Check for all existing files that match the globs
-        List globExistingFiles = globOutputs.collect { Utils.glob(it) }.flatten()
+        List globExistingFiles = globOutputs.collect { 
+            def result = Utils.glob(it) 
+            log.info "Files matching glob $it = $result"
+            return result
+        }.flatten()
         if((!globOutputs || globExistingFiles)) {
 
           // No inputs were newer than outputs, 
@@ -1834,10 +1838,21 @@ class PipelineContext {
         return modified
     }
     
+    /**
+     * Change the default output directory for this pipeline stage.
+     * Will rebase any outputs declared by transform / filter, etc
+     * to the new output directory.
+     * 
+     * @param directoryName
+     */
     void outputTo(String directoryName) {
         this.outputDirectory = directoryName
         if(this.@output)
             this.@output = toOutputFolder(this.@output)
+            
+        this.setDefaultOutput(this.@defaultOutput)
+        
+        log.info "Output set to $directoryName (new default output = ${this.@defaultOutput})"
     }
     
     PipelineDelegate myDelegate = null
