@@ -27,6 +27,9 @@ package bpipe.executor
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Future
+
+import bpipe.Command;
+import bpipe.CommandStatus;
 import groovy.util.logging.Log;
 
 /**
@@ -44,6 +47,8 @@ abstract class AbstractGridBashExecutor implements CommandExecutor {
     def String name;
 
     def String cmd;
+    
+    transient Command command
 
     transient protected ExecutorService executor
 
@@ -61,12 +66,12 @@ abstract class AbstractGridBashExecutor implements CommandExecutor {
 
 
     @Override
-    void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
+    void start(Map cfg, Command command, File outputDirectory) {
 
         this.cfg = cfg
-        this.id = id
-        this.name = name
-        this.cmd = cmd ?. trim()
+        this.id = command.id
+        this.name = command.name
+        this.cmd = command.command ?. trim()
 
         /*
          * submit to the grid for command execution
@@ -92,6 +97,11 @@ abstract class AbstractGridBashExecutor implements CommandExecutor {
 
     @Override
     String status() {
+        String result = statusImpl()
+        return this.command.status = result
+    }
+    
+    String statusImpl() {
 
         if( task && result ) {
             return CommandStatus.COMPLETE
@@ -116,6 +126,10 @@ abstract class AbstractGridBashExecutor implements CommandExecutor {
         * display the produced output
         */
         result = task.get()
+        
+        if(command) {
+            command.status = CommandStatus.COMPLETE.name()
+        }
 
         if( result?.stdOutput ) { System.out.println(result.stdOutput) }
         if( result?.stdError ) { System.out.println(result.stdError) }

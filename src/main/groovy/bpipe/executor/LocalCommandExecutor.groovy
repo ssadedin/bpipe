@@ -26,6 +26,7 @@
 package bpipe.executor
 
 import groovy.util.logging.Log
+import bpipe.Command;
 import bpipe.OutputLog;
 import bpipe.Utils
 import bpipe.CommandStatus;
@@ -69,10 +70,15 @@ class LocalCommandExecutor implements CommandExecutor {
      */
     boolean destroyed = false
     
+    transient Command command
+    
 	LocalCommandExecutor() {
 	}
     
-    void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
+    void start(Map cfg, Command command, File outputDirectory) {
+        
+      this.command = command
+      String cmd = command.command
       new Thread({
           
           // Special case for Windows / Cygwin
@@ -94,10 +100,9 @@ class LocalCommandExecutor implements CommandExecutor {
           this.startedAt = new Date()
           
 	      process = Runtime.getRuntime().exec((String[])(['bash','-e','-c',"$cmd"].toArray()))
+          this.command.status = CommandStatus.RUNNING.name()
 	      process.consumeProcessOutput(outputLog, errorLog)
           exitValue = process.waitFor()
-//          process.outputStream.close()
-//          process.inputStream.close()
           synchronized(this) {
 	          this.notifyAll()
           }
@@ -107,6 +112,12 @@ class LocalCommandExecutor implements CommandExecutor {
     }
     
     String status() {
+        String result = statusImpl()
+        this.command.status = result
+        return result  
+    }
+    
+    String statusImpl() {
         if(!this.process)
             return CommandStatus.UNKNOWN
         else
@@ -136,7 +147,12 @@ class LocalCommandExecutor implements CommandExecutor {
     }
     
     void stop() {
-        // Not implemented.  Java is too stupid to stop a process it previously started
+        // Not implemented.  Java is too stupid to stop a process it previously started.
+        // So how do commands get stopped then? Well, the 'bpipe stop' first calls the 
+        // Java way (necessary for other executors), then it scans the processes
+        // that are a child of the Bpipe process and kills them too. This means
+        // if the Bpipe process dies another way, it's possible that we can't stop
+        // the children any more (a bug)
     }
     
     void cleanup() {

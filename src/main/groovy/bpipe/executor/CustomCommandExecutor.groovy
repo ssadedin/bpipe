@@ -25,6 +25,7 @@
 
 package bpipe.executor
 
+import bpipe.Command;
 import bpipe.CommandStatus
 import bpipe.Config;
 import bpipe.OSResourceThrottle;
@@ -59,10 +60,10 @@ class CustomCommandExecutor implements CommandExecutor {
     String managementScript
     
     /**
-     * The id assigned to this command
+     * The id assigned to this command by the queuing system.
+     * This is NOT the Bpipe id for the command
      */
     String commandId
-    
     
     /**
      * The job folder used for storing intermediate files 
@@ -97,6 +98,12 @@ class CustomCommandExecutor implements CommandExecutor {
     boolean cleanedUp
     
     /**
+     * The command that we are executing - only available in the live
+     * Bpipe instance running the command, not when restored via serialization
+     */
+    transient Command command
+    
+    /**
      * Create a custom command with the specified script as its
      * management script.  The script must exist and be an 
      * executable file that conforms to the defined protocol for 
@@ -123,12 +130,13 @@ class CustomCommandExecutor implements CommandExecutor {
      * launching the specified command.
      */
     @Override
-    public void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
+    public void start(Map cfg, Command command, File outputDirectory) {
 		
+        this.command = command
 		this.config = cfg
-        this.name = name
+        this.name = command.name
         
-        log.info "Executing command using custom command runner ${managementScript}:  ${Utils.truncnl(cmd,100)}"
+        log.info "Executing command using custom command runner ${managementScript}:  ${Utils.truncnl(command.command,100)}"
         ProcessBuilder pb = new ProcessBuilder("bash", managementScript, "start")
         Map env = pb.environment()
         
@@ -136,35 +144,22 @@ class CustomCommandExecutor implements CommandExecutor {
         // essential information
         env.NAME = name
         
+        String id = command.id
+        
         this.jobDir = ".bpipe/commandtmp/$id"
 		File jobDirFile = new File(this.jobDir)
         if(!jobDirFile.exists())
 		    jobDirFile.mkdirs()
         env.JOBDIR = jobDirFile.absolutePath
         
-        env.COMMAND = '('+ cmd + ') > .bpipe/commandtmp/'+id+'/'+id+'.out 2>  .bpipe/commandtmp/'+id+'/'+id+'.err'
-        
-        // If an account is specified by the config then use that
-        log.info "Using account: $config?.account"
-        if(config?.account)
-            env.ACCOUNT = config.account
-        
-        if(config?.walltime) 
-            env.WALLTIME = config.walltime
-       
-        if(config?.memory) 
-            env.MEMORY = config.memory
-			 
-        if(config?.procs) 
-            env.PROCS = config.procs.toString()
+        this.setEnvironment(env)
             
-        if(config?.queue) 
-            env.QUEUE = config.queue
-            
-         String startCmd = pb.command().join(' ')
+        log.info "Using account: $env?.account"
+        
+        String startCmd = pb.command().join(' ')
         log.info "Starting command: " + startCmd
         
-        this.runningCommand = cmd
+        this.runningCommand = command.command
         this.startedAt = new Date()
 		
 		withLock(cfg) {
@@ -176,7 +171,7 @@ class CustomCommandExecutor implements CommandExecutor {
     	        int exitValue = p.waitFor()
     	        if(exitValue != 0) {
     	            reportStartError(startCmd, out,err,exitValue)
-    	            throw new PipelineError("Failed to start command:\n\n$cmd")
+    	            throw new PipelineError("Failed to start command:\n\n$command.command")
     	        }
     	        this.commandId = out.toString().trim()
     	        if(this.commandId.isEmpty())
@@ -185,6 +180,35 @@ class CustomCommandExecutor implements CommandExecutor {
     	        log.info "Started command with id $commandId"
 	        }
 		}
+    }
+    
+    /**
+     * Child classes can make adjustments to the environment that is passed to the 
+     * command by overriding this method. Generally they should still call super()
+     * to ensure any global environment is correctly set.
+     * 
+     * @param env   Map containing values of environment variables. 
+     *              the standard set.
+     */
+    void setEnvironment(Map env) {
+        
+        env.COMMAND = '('+ command.command + ') > .bpipe/commandtmp/'+command.id+'/'+command.id+'.out 2>  .bpipe/commandtmp/'+command.id+'/'+command.id+'.err'
+            
+        // If an account is specified by the config then use that
+        if(config?.account)
+            env.ACCOUNT = config.account
+        
+        if(config?.walltime)
+            env.WALLTIME = config.walltime
+       
+        if(config?.memory)
+            env.MEMORY = config.memory
+             
+        if(config?.procs)
+            env.PROCS = config.procs.toString()
+            
+        if(config?.queue)
+            env.QUEUE = config.queue
     }
 	
 	static synchronized acquireLock(Map cfg) {
@@ -210,6 +234,14 @@ class CustomCommandExecutor implements CommandExecutor {
     	            return CommandStatus.UNKNOWN.name()
     	        result = out.toString()
 	        }
+        }
+        if(this.cmd) {
+            try {
+                this.cmd.setStatus(CommandStatus.forName(result))
+            }
+            catch(Exception e) {
+                log.warning("Failed to update status for result $result: $e")
+            }
         }
         return result.split()[0]
     }
@@ -287,6 +319,9 @@ class CustomCommandExecutor implements CommandExecutor {
             if(status != lastStatus)
                 log.info "Poll returned new status for command $commandId: $status"
                 
+            if(this.command)
+                this.command.status = status
+                
             lastStatus = status
             
             if(status == CommandStatus.COMPLETE.name()) {
@@ -318,8 +353,6 @@ class CustomCommandExecutor implements CommandExecutor {
 			
 			currentSleep = minSleep + Math.min(maxSleep, Math.exp(factor * (System.currentTimeMillis() - startTimeMillis)))
         }
-        
-        
     }
     
     List<String> getIgnorableOutputs() {

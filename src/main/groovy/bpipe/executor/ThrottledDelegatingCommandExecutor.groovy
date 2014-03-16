@@ -1,6 +1,7 @@
 package bpipe.executor
 
 import groovy.util.logging.Log;
+import bpipe.Command;
 import bpipe.Concurrency;
 import bpipe.PipelineContext;
 import bpipe.ResourceUnit;
@@ -33,9 +34,7 @@ class ThrottledDelegatingCommandExecutor {
     // Stored parameters that are cached from the original "start" command
     // and used when "waitFor" is called
     Map cfg
-    String id
-    String name
-    String cmd
+    Command command
     File outputDirectory
     
     ThrottledDelegatingCommandExecutor(CommandExecutor delegateTo, Map resources) {
@@ -51,17 +50,15 @@ class ThrottledDelegatingCommandExecutor {
      * the delegate {@link CommandExecutor#start(java.util.Map, String, String, String, java.io.File)}
      */
     @Override
-    void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
+    void start(Map cfg, Command cmd, File outputDirectory) {
+        this.command = cmd
         if(deferred) {
           this.cfg = cfg
-          this.id = id
-          this.name = name
-          this.cmd = cmd
           this.outputDirectory = outputDirectory
         }
         else {
           resources.each { Concurrency.instance.acquire(it) }
-          commandExecutor.start(cfg, id, name, cmd, outputDirectory)
+          commandExecutor.start(cfg, this.command, outputDirectory)
         }
     }
     
@@ -73,7 +70,7 @@ class ThrottledDelegatingCommandExecutor {
     int waitFor() {
         if(deferred) {
           resources.each { Concurrency.instance.acquire(it) }
-          commandExecutor.start(cfg, id, name, cmd, outputDirectory)
+          commandExecutor.start(cfg, this.command, outputDirectory)
         }
         
         try {

@@ -25,6 +25,7 @@
 package bpipe.executor
 
 import groovy.util.logging.Log
+import bpipe.Command;
 import bpipe.ForwardHost;
 
 /**
@@ -50,15 +51,19 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
     TorqueCommandExecutor() {
         super(new File(System.getProperty("bpipe.home") + "/bin/bpipe-torque.sh"))
     }
+    
+    TorqueCommandExecutor(File executorScript) {
+        super(executorScript)
+    }
 
     /**
      * Adds forwarding of standard err & out for processes started using Torque.
      * These appear as files in the local directory.
      */
     @Override
-    public void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
+    public void start(Map cfg, Command command, File outputDirectory) {
         
-        super.start(cfg, id, name, cmd, outputDirectory);
+        super.start(cfg, command, outputDirectory);
         
         // After starting the process, we launch a background thread that waits for the error
         // and output files to appear and then forward those inputs
