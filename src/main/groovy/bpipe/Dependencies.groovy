@@ -385,9 +385,9 @@ class Dependencies {
                 if(context.accompanyingOutputs.containsKey(o))
                     p.accompanies = context.accompanyingOutputs[o]
                     
-                p.startTimeMs = cmd.startTimeMs
-                p.createTimeMs = cmd.createTimeMs
-                p.stopTimeMs = cmd.stopTimeMs
+                p.startTimeMs = command.startTimeMs
+                p.createTimeMs = command.createTimeMs
+                p.stopTimeMs = command.stopTimeMs
                 
                 saveOutputMetaData(p)
             }
@@ -421,9 +421,9 @@ class Dependencies {
         else
             p.timestamp = String.valueOf(p.timestamp)
             
-        p.preserve = String.valueOf(p.preserve)
-        p.intermediate = String.valueOf(p.intermediate)
-        
+        p.createTimeMs = p.createTimeMs ? String.valueOf(p.createTimeMs) : "0"
+        p.stopTimeMs = p.stopTimeMs ? String.valueOf(p.stopTimeMs) : "0"
+            
         // upToDate and maxTimestamp are "virtual" properties, computed at load time
         // they should not be stored
         if(p.containsKey('upToDate'))
@@ -433,6 +433,10 @@ class Dependencies {
             p.remove('maxTimestamp')
             
         log.info "Saving output file details to file $file for command " + Utils.truncnl(p.command, 20)
+        
+        for(k in p.keySet()) {
+            p[k] = String.valueOf(p[k])
+        }
         
         file.withOutputStream { ofs ->
             p.save(ofs, "Bpipe Output File Meta Data")
