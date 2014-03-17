@@ -24,20 +24,22 @@
  */
 package bpipe.executor;
 
+import groovy.lang.Closure;
+
 import java.io.File;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
+import bpipe.Command;
+
 /**
  * Abstract class that represents a shell command to be executed
  * by Bpipe.  How the command is executed is implementation dependent.
  * <p>
- * Note: the stop() command is not part of this interface because
- * it is not possible to reliably stop a local process job using Java.  
- * This is because Java doesn't give access to the process hierarchy so that 'child'
- * processes can be chased down.  Implementations still need to provide a 
- * "stop" command.
+ * Note: the stop() command is not implemented by the LocalCommandExecutor
+ * because is not possible to reliably stop a local process job using Java.  
+ * Other implementations still need to provide a "stop" command.
  * <p>
  * Implementations need to properly implement the serializable interface as 
  * Bpipe ensures recovery of state by serializing running commands to the file
@@ -48,7 +50,7 @@ import java.util.Map;
  */
 public interface CommandExecutor extends Serializable {
     
-    void start(Map cfg, String id, String name, String cmd, File outputDirectory);
+    void start(Map cfg, Command cmd, File outputDirectory);
     
     String status();
     

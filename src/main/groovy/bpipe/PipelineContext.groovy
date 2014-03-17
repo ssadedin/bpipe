@@ -42,9 +42,10 @@ import bpipe.executor.ProbeCommandExecutor
 * only available inside the context of a Bpipe stage, when it is
 * executed by Bpipe (ie. they are introduced at runtime).
 * <p>
-* Note: currently other functions are also made available by the
-* PipelineCategory, however I hope to migrate these eventually
-* to all use this context.
+* Note: currently other functions are also made available in two
+* other places: 
+* <li>PipelineCategory
+* <li>PipelineDelegate
 */
 @Log
 class PipelineContext {
@@ -158,6 +159,13 @@ class PipelineContext {
    
     private List<PipelineStage> pipelineStages
    
+    /**
+     * Pipeline joiners are closures that are introduced by Bpipe for 
+     * joining stages together. The context needs to know them (or
+     * pass them on to others who need them) mainly to exclude
+     * them from certain functions (eg: they shouldn't be displayed
+     * to the user in diagrams, etc.)
+     */
     private List<Closure> pipelineJoiners
     
     /**
@@ -166,10 +174,10 @@ class PipelineContext {
     CommandManager commandManager = new CommandManager()
       
    /**
-    * All outputs from this stage, mapped by command 
-    * that created them
+    * All outputs from this stage. The key to this map 
+    * is the Bpipe command id (different to process id).
     */
-   Map<String,List<String> > trackedOutputs = [:]
+   Map<String,List<Command> > trackedOutputs = [:]
    
    /**
     * When a command is run, output variables that are referenced in 
@@ -1284,13 +1292,13 @@ class PipelineContext {
         Thread.sleep(200)
         
         if(!this.probeMode)
-            this.commandManager.cleanup(c.executor)
+            this.commandManager.cleanup(c)
             
         throw new CommandFailedException("Command failed with exit status = $exitResult : \n\n$c.command")
       }
       
       if(!this.probeMode)
-            this.commandManager.cleanup(c.executor)
+            this.commandManager.cleanup(c)
     }
     
     /**

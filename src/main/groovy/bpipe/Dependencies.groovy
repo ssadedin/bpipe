@@ -250,7 +250,6 @@ class Dependencies {
             log.info "Not up to date because these files exist and are older than inputs: " + older.grep { it.exists() }
             return false
         }
-  
         else {
             log.info "Found these missing / older files: " + older
         }
@@ -385,6 +384,10 @@ class Dependencies {
                 p.intermediate = String.valueOf(context.intermediateOutputs.contains(o))
                 if(context.accompanyingOutputs.containsKey(o))
                     p.accompanies = context.accompanyingOutputs[o]
+                    
+                p.startTimeMs = cmd.startTimeMs
+                p.createTimeMs = cmd.createTimeMs
+                p.stopTimeMs = cmd.stopTimeMs
                 
                 saveOutputMetaData(p)
             }
@@ -846,6 +849,9 @@ class Dependencies {
         p.preserve = Boolean.parseBoolean(p.preserve)
         p.intermediate = Boolean.parseBoolean(p.intermediate)
         p.commandId = (p.commandId!=null)?p.commandId:"-1"
+        p.startTimeMs = (p.startTimeMs?:0).toLong()
+        p.createTimeMs = (p.createTimeMs?:0).toLong()
+        p.stopTimeMs = (p.stopTimeMs?:0).toLong()
         return p
     }
     

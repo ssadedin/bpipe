@@ -92,6 +92,11 @@ class CommandManager {
         
         String cmd = command.command
         Map cfg = command.getConfig(inputs)
+        
+        // Record this as the time the command is "created" (which is
+        // really relevant to queuing systems - we wish to be able to see
+        // later how much time the command waited in the queue)
+        command.createTimeMs = System.currentTimeMillis()
 
         String executor = cfg.executor
         
@@ -170,7 +175,8 @@ class CommandManager {
         if(deferred)
             wrapped.deferred = true
         
-        wrapped.start(cfg, command.id, name, command.command, outputDirectory)
+        command.name = name
+        wrapped.start(cfg, command, outputDirectory)
     		
 		this.commandIds[cmdExec] = command.id
 		this.commandIds[wrapped] = command.id
@@ -210,20 +216,23 @@ class CommandManager {
         return count
     }
     
-    public void cleanup(CommandExecutor cmd) {
+    public void cleanup(Command cmd) {
+        
+        CommandExecutor e = cmd.executor
+        cmd.stopTimeMs = System.currentTimeMillis()
         
         // Ignore these as they do not need cleaning up and are sometimes created
         // spontaneously if commands are skipped (see PipelineContext#async)
-        if(cmd instanceof bpipe.executor.ProbeCommandExecutor)
+        if(e instanceof bpipe.executor.ProbeCommandExecutor)
             return
             
-        if(cmd instanceof ThrottledDelegatingCommandExecutor)
-            cmd = cmd.commandExecutor
+        if(e instanceof ThrottledDelegatingCommandExecutor)
+            e = e.commandExecutor
         
-		if(!commandIds.containsKey(cmd))
-			throw new IllegalStateException("Attempt to clean up commmand $cmd that was not launched by this command manager / context")
+		if(!commandIds.containsKey(e))
+			throw new IllegalStateException("Attempt to clean up commmand $e that was not launched by this command manager / context")
 			
-		this.cleanup(this.commandIds[cmd])
+		this.cleanup(this.commandIds[e])
 	}
 	
     /**

@@ -25,6 +25,7 @@
 package bpipe.executor
 
 import groovy.util.logging.Log
+import bpipe.Command;
 import bpipe.ForwardHost
 import bpipe.Utils
 import bpipe.PipelineError
@@ -55,6 +56,9 @@ class SgeCommandExecutor implements CommandExecutor {
 
     /* The ID of the job as returned by the JOB scheduler */
 	private String commandId;
+    
+    /** Command object - only used for updating status */
+    Command command
 	
 	private static String CMD_EXIT_FILENAME = "cmd.exit"
 	
@@ -76,12 +80,13 @@ class SgeCommandExecutor implements CommandExecutor {
 	 *   the job exit code. To monitor for job termination will will wait for that file to exist
 	 */
     @Override
-    void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
+    void start(Map cfg, Command command, File outputDirectory) {
         this.config = cfg
-        this.id = id
-        this.name = name;
-        this.cmd = cmd?.trim();
-
+        this.id = command.id
+        this.name = command.name;
+        this.cmd = command.command?.trim();
+        this.command = command
+        
         this.jobDir = ".bpipe/commandtmp/$id"
         File jobDirFile = new File(this.jobDir)
         if(!jobDirFile.exists()) {
@@ -183,11 +188,16 @@ class SgeCommandExecutor implements CommandExecutor {
 		System.err << "\nFailed to execute command using command line: $cmd\n\nReturned exit value $exitValue\n\nOutput:\n\n$out\n\n$err"
 	}
 
+    @Override
+    String status() {
+        String result = statusImpl()
+        return this.command.status = result
+    }
+    
     /**
      * @return The current status as defined by {@link bpipe.CommandStatus}
      */
-    @Override
-    String status() {
+    String statusImpl() {
 		
 		if( !new File(jobDir, CMD_SCRIPT_FILENAME).exists() ) {
 			return CommandStatus.UNKNOWN
@@ -203,7 +213,6 @@ class SgeCommandExecutor implements CommandExecutor {
 		}  
 		
 		return CommandStatus.COMPLETE
-		
     }
 
     /**
@@ -221,6 +230,7 @@ class SgeCommandExecutor implements CommandExecutor {
 				def val = exitFile.text?.trim()
 				if( val.isInteger() ) {
 					// ok. we get the value as integer
+                    command.status = CommandStatus.COMPLETE.name()
 					return new Integer(val)	
 				}	
 				

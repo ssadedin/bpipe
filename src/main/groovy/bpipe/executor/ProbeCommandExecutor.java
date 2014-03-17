@@ -29,12 +29,22 @@ import java.io.File;
 import java.util.List;
 import java.util.Map;
 
+import bpipe.Command;
+
+/**
+ * In certain situations, Bpipe needs to "probe" a command to see what would be the actual
+ * final outputs and inputs that are referenced by the command. In these situations,
+ * it sends it through to execution, but using this dummy executor that does not really execute
+ * the command.
+ * 
+ * @author Simon
+ */
 public class ProbeCommandExecutor implements CommandExecutor {
 
     private static final long serialVersionUID = 1L;
 
     @Override
-    public void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
+    public void start(Map cfg, Command command, File outputDirectory) {
 
     }
 

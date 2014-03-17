@@ -30,8 +30,22 @@ import bpipe.executor.CommandExecutor;
 @Log
 class Command {
     
+    /**
+     * Bpipe id for the command - can be used by a {@link CommandExecutor} to
+     * create unique files as it is guaranteed to be unique to this command
+     */
     String id
     
+    /**
+     * Human readable short name for the command. Usually this is set to just
+     * the stage name of the pipeline executing the command (so not guaranteed to
+     * be unique!)
+     */
+    String name
+    
+    /**
+     * Actual command to be executed.
+     */
     String command
     
     List outputs = []
@@ -39,6 +53,27 @@ class Command {
     CommandExecutor executor
     
     String configName
+    
+    /**
+     * When the command was initiated (eg: queued in a queuing system)
+     */
+    long createTimeMs
+    
+    /**
+     * When the command started running
+     */
+    long startTimeMs = -1
+    
+    /**
+     * When the command finished running (if we know)
+     */
+    long stopTimeMs
+    
+    /**
+     * The last observed status for the command. This is 
+     * set optionally by the executor
+     */
+    CommandStatus status
     
     /**
      * Internal configuration = accessed via getConfig()
@@ -95,5 +130,22 @@ class Command {
        int minutes = (int)Math.floor((walltime - hours*3600)/60)
        int seconds = walltime % 60
        return String.format('%02d:%02d:%02d', hours, minutes, seconds )
+    }
+    
+    public void setStatus(String statusValue) {
+        
+        log.info "Command $id changing state from ${this.status} to $statusValue"
+        try {
+            CommandStatus statusEnum = CommandStatus.valueOf(statusValue)
+            if(statusEnum != this.status) {
+                if(statusEnum == CommandStatus.RUNNING)
+                    this.startTimeMs = System.currentTimeMillis()
+            }
+            this.status = statusEnum
+                
+        }
+        catch(Exception e) {
+            log.warning("Failed to update status for result $statusValue: $e")
+        }
     }
 }
