@@ -145,6 +145,10 @@ class LsfCommandExecutor implements CommandExecutor {
         if(config?.jobname) {
             startCmd += "-J ${config.jobname} "
         }
+        
+        if(config?.procs) {
+            startCmd += "-n $config.procs"
+        }
 
         if( config?.lsf_request_options ) {
             startCmd += config.lsf_request_options + ' '
