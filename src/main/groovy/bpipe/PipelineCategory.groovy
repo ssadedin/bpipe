@@ -103,6 +103,10 @@ class PipelineCategory {
     static Closure bitwiseNegate(Closure c, Object... args) {
         cfg(c,args)
     }
+    
+    static String quote(String value) {
+        Utils.quote(value)
+    }
 	
      /**
      * Joins two closures representing pipeline stages together by
