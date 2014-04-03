@@ -28,6 +28,7 @@ package bpipe
 import groovy.util.logging.Log;
 
 import groovyx.gpars.GParsPool
+import groovy.time.TimeCategory;
 
 /**
  * A node in the dependency graph representing a set of outputs
@@ -572,16 +573,30 @@ class Dependencies {
                 println "\n" + " $arg ".center(Config.config.columns, "=")  + "\n"
                 println "\n" + filtered.dump()
                 
+                
                Properties p = graph.propertiesFor(arg)
+               
+               
+               String duration = "Unknown"
+               String pendingDuration = "Unknown"
+               
+               if(p.stopTimeMs > 0) {
+                   duration = TimeCategory.minus(new Date(p.stopTimeMs),new Date(p.startTimeMs)).toString()
+                   pendingDuration = TimeCategory.minus(new Date(p.startTimeMs),new Date(p.createTimeMs)).toString()
+               }
+               
                println """
                    Created:             ${new Date(p.timestamp)}
+                   Pending Time:        ${pendingDuration}
+                   Running Time:        ${duration}
                    Inputs used:         ${p.inputs.join(',')}
                    Command:             ${p.command}
                    Preserved:           ${p.preserved?'yes':'no'}
                    Intermediate output: ${p.intermediate?'yes':'no'}
                """.stripIndent()
-           }
-            println("\n" + ("=" * Config.config.columns))
+               
+               println("\n" + ("=" * Config.config.columns))
+            }
         }
         else {
                println "\nDependency graph is: \n\n" + graph.dump()
