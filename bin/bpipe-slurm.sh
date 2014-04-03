@@ -145,7 +145,7 @@ make_slurm_script () {
              # the SMP queue never requests cores (it gets a single node), and has --exclusive flag
              # (this may be VLSCI specific)
              command_prefix="" # used in mpi only
-             procs_request="#SBATCH --nodes=1;#SBATCH --exclusive";;
+             procs_request=$(printf "#SBATCH --nodes=1\n#SBATCH --exclusive");;
 
       mpi) if [[ -z $MEMORY ]]; then
                 memory_request="#SBATCH --mem-per-cpu=${DEFAULT_BATCH_MEM}"
