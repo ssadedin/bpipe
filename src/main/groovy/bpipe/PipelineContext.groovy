@@ -241,7 +241,7 @@ class PipelineContext {
    /**
     * A list of executable closures to be executed when the next produce statement completes
     */
-   List<Closure> fromCleanups = []
+   List<Closure> inputResets = []
    
    /**
     * The default output is set prior to the body of the a pipeline stage being run.
@@ -1018,8 +1018,8 @@ class PipelineContext {
         
         this.currentFileNameTransform = null
 
-        this.fromCleanups.each { it() }
-        this.fromCleanups = []
+        this.inputResets.each { it() }
+        this.inputResets = []
         
         return out
     }
@@ -1661,21 +1661,44 @@ class PipelineContext {
        this.@input  = resolvedInputs
        
        this.getInput().resolvedInputs.addAll(resolvedInputs)
+      
+       def result = withInputs(resolvedInputs,body)
+       if(body != null)
+           return this.nextInputs
+       else
+           return this // Allows chaining of the next command
+   }
+   
+   /**
+    * Executes the given closure with the inputs replaced with the specified
+    * inputs, and then restores them afterwards. If the closure passed is null,
+    * sets the 
+    * 
+    * @param newInputs
+    * @param body
+    * @return
+    */
+   def withInputs(List newInputs, Closure body) {
        
-       def fromCleanup = {
+       def oldInputs = this.@input
+       this.@input  = newInputs
+       
+       this.getInput().resolvedInputs.addAll(newInputs)
+       
+       def resetInputs = {
            allResolvedInputs.addAll(this.getInput().resolvedInputs)
            this.@input  = oldInputs
            this.@inputWrapper = null 
        }
        
        if(body != null) {
-         this.nextInputs = body()
-         fromCleanup()
-         return this.nextInputs
+         def result = body()
+         resetInputs()
+         return result
        }
        else {
-         this.fromCleanups << fromCleanup
-         return this 
+         this.inputResets << resetInputs
+         return null
        }
    }
  

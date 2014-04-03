@@ -195,10 +195,10 @@ class TransformOperation {
                if(!toPattern.startsWith('.'))
                    toPattern = '.' + toPattern
             }
+            
             String txed = null
             if(inp.contains(".")) {
                 def startPortion = inp.replaceAll(fromPattern, "")
-//                txed = FastUtils.dotJoin(startPortion,additionalSegment,toPattern)
                 String dot = fromPattern.startsWith(".") ?"":"."
                 txed = inp.replaceAll(fromPattern,dot+FastUtils.dotJoin(additionalSegment,toPattern))
             }
@@ -216,6 +216,10 @@ class TransformOperation {
             if(txed in files) {
                 txed = txed.replaceAll('\\.'+extension+'$', '.'+FastUtils.dotJoin(ctx.stageName,extension))
             }
+            
+            if(txed.startsWith("."))
+                txed = txed.substring(1)
+                
             ++count
             return txed
         }
@@ -225,12 +229,13 @@ class TransformOperation {
         if(ctx.applyName)
             pipeline.nameApplied = true
             
-            
         ctx.checkAccompaniedOutputs(files)
             
         // Coerce any inputs coming from different folders to the correct output folder
         outFiles = ctx.toOutputFolder(outFiles)
         
-        ctx.produceImpl(outFiles, body)
+        ctx.withInputs(this.files) {
+            ctx.produceImpl(outFiles, body)
+        }
     }
 }

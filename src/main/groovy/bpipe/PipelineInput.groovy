@@ -255,6 +255,8 @@ class PipelineInput {
 	            String pattern = extsAndOrigs[0]
 	            String origName = extsAndOrigs[1]
                 
+                String wholeMatch = '^' + pattern + '$'
+                
                 // Special case: treat a leading dot as a literal dot.
                 // ie: if the user specifies ".xml", they probably mean
                 // literally ".xml" and not "any character" + "xml"
@@ -263,13 +265,19 @@ class PipelineInput {
                     
 	            if(!pattern.startsWith("\\.") )
 	                pattern = "\\." + pattern
-	            
+                    
                 pattern = '^.*' + pattern
 	            for(s in reverseOutputs) {
 	                log.info("Checking outputs ${s}")
-	                def o = s.find { it?.matches(pattern) }
-	                if(o)
-	                    return s.grep { it?.matches(pattern) }
+	                def o = s.find { it?.matches(wholeMatch) }
+                    if(o)
+	                    return s.grep { it?.matches(wholeMatch) }
+                        
+                    if(!o) {
+    	                o = s.find { it?.matches(pattern) }
+    	                if(o)
+    	                    return s.grep { it?.matches(pattern) }
+                    }
 //	                    return o
 	            }
                 missingExts << origName
