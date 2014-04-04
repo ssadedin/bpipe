@@ -234,8 +234,12 @@ class TransformOperation {
         // Coerce any inputs coming from different folders to the correct output folder
         outFiles = ctx.toOutputFolder(outFiles)
         
-        ctx.withInputs(this.files) {
-            ctx.produceImpl(outFiles, body)
+        if(providedToPatterns) {
+            ctx.withInputs(this.files) {
+                ctx.produceImpl(outFiles, body)
+            }
         }
+        else 
+            ctx.produceImpl(outFiles, body)
     }
 }
