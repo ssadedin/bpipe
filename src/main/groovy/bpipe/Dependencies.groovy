@@ -397,6 +397,8 @@ class Dependencies {
                 p.outputFile = o
                 p.fingerprint = hash
                 
+                p.tools = context.documentation["tools"].collect { name, Tool tool -> name + ":"+tool.version }.join(",")
+                
                 if(!p.containsKey("cleaned"))
                     p.cleaned = false
                 
