@@ -892,6 +892,11 @@ class Dependencies {
         p.startTimeMs = (p.startTimeMs?:0).toLong()
         p.createTimeMs = (p.createTimeMs?:0).toLong()
         p.stopTimeMs = (p.stopTimeMs?:0).toLong()
+        
+        if(!p.containsKey("tools")) {
+            p.tools = ""
+        }
+        
         if(!p.containsKey("branchPath")) {
             p.branchPath = ""
         }
