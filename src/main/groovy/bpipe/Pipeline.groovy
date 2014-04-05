@@ -1047,4 +1047,28 @@ public class Pipeline {
             
         return f
     }
+    
+    List<String> getBranchPath() {
+        Pipeline current = this
+        List branches = this.name ? [this.name] : []
+        while(current.parent != null && current.parent != current) {
+            if(current.parent.name)
+                branches.add(current.parent.name)
+            current = current.parent
+        }
+        return branches
+    }
+    
+    List<String> getUnappliedBranchNames() {
+        if(nameApplied)
+            return []
+        Pipeline current = this
+        List branches = this.name ? [this.name] : []
+        while(current.parent != null && current.parent != current && !current.nameApplied) {
+            if(current.parent.name)
+                branches.add(current.parent.name)
+            current = current.parent
+        }
+        return branches
+    }
 }

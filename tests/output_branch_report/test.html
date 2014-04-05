@@ -1,0 +1,16 @@
+<html>
+    <body>
+    <h1>Outputs and their branches are:</h1>
+    <ul>
+        <% outputGraph.children*.values*.each { o -> %>
+            <li><%=o.outputFile%>
+        <%}%>
+    </ul>
+
+    <h2>Here are all the XML files:</h2>
+    <ul>
+        <% outputGraph.findAllOutputsBy { it.outputFile.name.endsWith(".xml") && it.branchPath.split("/").contains("bar") }.each { o -> %>
+            <li><%=o.outputFile%>
+        <%}%>
+    </body>
+</html>

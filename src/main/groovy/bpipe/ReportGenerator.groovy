@@ -72,6 +72,7 @@ class ReportGenerator {
 //            return XmlUtil.escapeXml(String.valueOf(obj))
 //        }
         
+        reportBinding.outputGraph =  Dependencies.instance.computeOutputGraph(Dependencies.instance.scanOutputFolder()) 
         reportBinding.escape = Utils.&escape
         reportBinding.utils = new Utils()
          

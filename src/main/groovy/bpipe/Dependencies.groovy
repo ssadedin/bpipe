@@ -54,6 +54,22 @@ class GraphEntry {
         }
     }
     
+    List<Properties> findAllOutputsBy(Closure c) {
+        
+        
+        List<Properties> results = []
+        
+        if(this.values != null)
+            results.addAll(this.values.grep { c(it)})
+            
+        for(GraphEntry child in children) {
+           results.addAll(child.findAllOutputsBy(c))
+        }
+        
+        return results
+    }
+  
+    
     /**
      * Search the graph for entry with given outputfile
      */
@@ -326,6 +342,11 @@ class Dependencies {
      */
     synchronized void saveOutputs(PipelineContext context, List<File> oldFiles, Map<File,Long> timestamps, List<String> inputs) {
         GraphEntry root = getOutputGraph()
+        
+        // Get the full branch path of this pipeline stage
+        def pipeline = Pipeline.currentRuntimePipeline.get()
+        String branchPath = pipeline.branchPath.join("/")
+        
         context.trackedOutputs.each { String id, Command command ->
             
             String cmd = command.command
@@ -348,7 +369,6 @@ class Dependencies {
                     // An exception to the rule: if the met data file didn't exist at all then
                     // we DO create the meta data because it's probably missing (as in, user copied their files
                     // to new directory, upgraded Bpipe, something similar).
-//                    if(file.exists() || this.outputFilesGenerated.contains(o)) {
                     if(file.exists() || this.outputFilesGenerated.contains(o) || Utils.box(context.@input).contains(o)) {
                         log.info "Ignoring output $o because it was not created or modified by stage ${context.stageName}"
                         continue
@@ -356,7 +376,6 @@ class Dependencies {
                 }
                 
                 this.outputFilesGenerated << o
-                    
                 
                 Properties p = new Properties()
                 if(file.exists()) {
@@ -367,7 +386,7 @@ class Dependencies {
 
                 p.command = cmd
                 p.commandId = command.id
-                
+                p.branchPath = branchPath
                 
                 def allInputs = context.getResolvedInputs()
                 
@@ -871,6 +890,9 @@ class Dependencies {
         p.startTimeMs = (p.startTimeMs?:0).toLong()
         p.createTimeMs = (p.createTimeMs?:0).toLong()
         p.stopTimeMs = (p.stopTimeMs?:0).toLong()
+        if(!p.containsKey("branchPath")) {
+            p.branchPath = ""
+        }
         return p
     }
     

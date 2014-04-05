@@ -375,7 +375,7 @@ class PipelineContext {
        out = toOutputFolder(out)
        
        def pipeline = Pipeline.currentRuntimePipeline.get()
-       String branchName = applyName  ? pipeline.name : null
+       String branchName = applyName  ? pipeline.unappliedBranchNames.join(".") : null
        
        
        def po = new PipelineOutput(out,
