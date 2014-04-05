@@ -80,9 +80,27 @@ class ReportGenerator {
             throw new IllegalStateException("Should NEVER have a null stage name here")
 
         File templateFile = resolveTemplateFile(templateFileName)
+        File outputFile = new File(docDir, outputFileName)
         
         reportBinding.templatePath = templateFile.canonicalPath
-           
+        
+        if(templateFileName.endsWith(".groovy")) {
+            try {
+                reportBinding.outputFile = outputFile
+                GroovyShell shell = new GroovyShell(new Binding(reportBinding))
+                shell.evaluate(templateFile.text)
+            }
+            catch(Exception e) {
+                e.printStackTrace()
+            }
+        }
+        else {
+            generateFromGStringTemplate(pipeline,templateFileName,outputDir,outputFile)
+        }
+    }
+    
+    void generateFromGStringTemplate(Pipeline pipeline, File templateFile, String outputDir, File outputFile) {
+        
         InputStream templateStream = new FileInputStream(templateFile)
         
         // Sadly GStringTemplateEngine is not able to resolve classes
@@ -94,7 +112,6 @@ class ReportGenerator {
 //        GStringTemplateEngine e = new GStringTemplateEngine()
         SimpleTemplateEngine e  = new SimpleTemplateEngine()
         
-        File outputFile = new File(docDir, outputFileName)
         log.info "Generating report to $outputFile.absolutePath"
         templateStream.withReader { r ->
             def template = e.createTemplate(r).make(reportBinding)
