@@ -94,6 +94,6 @@ class SlurmCommandExecutor extends TorqueCommandExecutor implements CommandExecu
     }
 
     String toString() {
-        return "Slurm Job [" + super.toString() + "]"
+        "Slurm Job [" + "Command Id: $commandId " + (config?"Configuration: $config":"") + "]"
     }
 }
