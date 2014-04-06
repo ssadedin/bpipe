@@ -81,7 +81,7 @@ killtree() {
         sleep $2
     fi
     
-    kill -TERM ${ppid}
+    kill -TERM ${ppid} > /dev/null 2>&1
 }
 
 #----------------------------------------------------------
@@ -372,31 +372,39 @@ function python_readlink() {
     python -c 'import os,sys; print os.path.realpath(sys.argv[1])' "$1"
 }
 
-# Locate Bpipe's home directory
-# In case readlink is not there we fall back to basename on its
-# own (will break in case of symbolic link)
-# Note: the first test below is necessary for Cygwin
+#----------------------------------------------------------
+# Work out the real full file system path that Bpipe is 
+# installed in (resolving any symbolic links, etc), and set it 
+# in BPIPE_HOME and JVM_BPIPE_HOME
+#----------------------------------------------------------
+function set_bpipe_home() {
 
-
-if uname | grep -iq cygwin || uname | grep -iq Linux; 
-then
-    if readlink $0 > /dev/null && type readlink > /dev/null 2>&1 ; 
+    # In case readlink is not there we fall back to basename on its
+    # own (will break in case of symbolic link)
+    # Note: the first test below is necessary for Cygwin
+    if uname | grep -iq cygwin || uname | grep -iq Linux; 
     then
-        BPIPE_HOME=$(dirname $(readlink -f $0))/..
-    else
-        BPIPE_HOME=`dirname $0`/..
+        if readlink $0 > /dev/null && type readlink > /dev/null 2>&1 ; 
+        then
+            BPIPE_HOME=$(dirname $(readlink -f $0))/..
+        else
+            BPIPE_HOME=`dirname $0`/..
+        fi
+    else # OSX : readlink doesn't work for us here, use Python
+       resolved_link=$(python_readlink "$0")
+       BPIPE_HOME=$(dirname "$resolved_link")/..
     fi
-else
-   resolved_link=$(python_readlink "$0")
-   BPIPE_HOME=$(dirname "$resolved_link")/..
-fi
 
-# For Cygwin, we need windows compatible version of path for JVM to use
-JVM_BPIPE_HOME="$BPIPE_HOME"
-if uname | grep -iq cygwin;
-then
-    JVM_BPIPE_HOME=`cygpath -ma "$BPIPE_HOME"`
-fi
+    # For Cygwin, we need windows compatible version of path for JVM to use
+    JVM_BPIPE_HOME="$BPIPE_HOME"
+    if uname | grep -iq cygwin;
+    then
+        JVM_BPIPE_HOME=`cygpath -ma "$BPIPE_HOME"`
+    fi
+}
+
+# Resolve the home directory for Bpipe
+set_bpipe_home
 
 # Default directory for pipes - user can override by setting BPIPE_LIB themselves
 : ${BPIPE_LIB:="$HOME/bpipes"}
@@ -686,19 +694,16 @@ then
       tail $LOGFILE | sed "$TAIL_PATTERN"
     fi
 else
-    #echo "DEBUG:  tailing log using MacOSX pid tracking emulation RUNPID=$RUNPID"
-    tail -f $LOGFILE | sed -l "$TAIL_PATTERN" &
+    (tail -f $LOGFILE | sed -l "$TAIL_PATTERN") &
     TAIL_PID="$!"
+    #echo "DEBUG:  tailing log using MacOSX pid tracking emulation RUNPID=$$, BPIPE_PID=$BPIPE_PID TAILPID=$TAIL_PID"
 
     # Wait for the Java Bpipe process to finish naturally (not Ctrl-C, see above for that)
     wait $BPIPE_PID
 
     # Seems like The Java Bpipe process ended by itself: kill the background tail process 
     # started above
-    if kill -0 $TAIL_PID  ;
-    then
-        kill $TAIL_PID
-    fi
+    killtree $TAIL_PID
 fi
 
 if [ -e .bpipe/prompt_input_files.${BPIPE_PID} ];
