@@ -95,7 +95,7 @@ class ReportGenerator {
             }
         }
         else {
-            generateFromGStringTemplate(pipeline,templateFileName,outputDir,outputFile)
+            generateFromGStringTemplate(pipeline,templateFile,outputDir,outputFile)
         }
     }
     
