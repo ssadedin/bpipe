@@ -606,4 +606,12 @@ class Utils {
             log.info "$desc executed in " + TimeCategory.minus(endTime,startTime) 
         }
     }
+    
+    @CompileStatic
+    static String ext(String fileName) {
+        int index = fileName.lastIndexOf('.')
+        if(index < 0 || index >= fileName.size()-1)
+            return ""
+        return fileName.substring(index+1)
+    }
 }

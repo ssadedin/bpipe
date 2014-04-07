@@ -115,9 +115,22 @@ class PipelineOutput {
     }
     
     String toString() {
+        
+        String firstOutput = Utils.first(output)
+        String replaceOutput = null
+        
+        // If $output is referenced without extension, we may have to reset the outputs 
+        // if the output is based on an alternative input to the default one that was set
+        // when the filter() was executed
+        if(this.overrideOutputs && this.currentFilter != null && !(firstOutput in overrideOutputs)) {
+            if(Utils.ext(firstOutput) in currentFilter.exts) {
+                replaceOutput = this.overrideOutputs[0]
+            }
+        }
+        
         if(this.outputChangeListener)
-          this.outputChangeListener(Utils.first(output),null)
-        return String.valueOf(Utils.first(output)) 
+          this.outputChangeListener(firstOutput,replaceOutput)
+        return String.valueOf(firstOutput) 
     }
    
     /**
