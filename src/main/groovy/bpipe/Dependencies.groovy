@@ -387,6 +387,7 @@ class Dependencies {
                 p.command = cmd
                 p.commandId = command.id
                 p.branchPath = branchPath
+                p.stageName = context.stageName
                 
                 def allInputs = context.getResolvedInputs()
                 
@@ -899,6 +900,10 @@ class Dependencies {
         
         if(!p.containsKey("branchPath")) {
             p.branchPath = ""
+        }
+        
+        if(!p.containsKey("stageName")) {
+            p.stageName = ""
         }
         return p
     }
