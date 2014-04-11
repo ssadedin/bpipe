@@ -44,7 +44,8 @@ class Sender {
     String contentType
     
     /**
-     * Content may be a string or it may be a closure that returns a string
+     * Content may be a string or it may be a closure that returns a string, or it may
+     * be a raw File
      */
     def content
     
@@ -103,7 +104,7 @@ class Sender {
           new ReportGenerator(reportBinding:binding).generateFromTemplate(Pipeline.currentRuntimePipeline.get(), reportName, reportDir.absolutePath, outFile.name) 
           contentType = outFile.name.endsWith("html") ? "text/html" : "text/plain"
           extractSubjectFromHTML()
-          return outFile.text
+          return outFile
         }
         
         return this    
@@ -164,6 +165,8 @@ class Sender {
        File sentFolder = new File(".bpipe/sent/")
        sentFolder.mkdirs()
        
+       String contentHash = content instanceof String ? content : content.absolutePath + content.length()
+       
        File sentFile = new File(sentFolder, cfgName + "." + ctx.stageName + "." + Utils.sha1(this.details.subject + content))
        if(sentFile.exists() && Dependencies.instance.checkUpToDate(sentFile.absolutePath, ctx.@input)) {
            log.info "Sent file $sentFile.absolutePath already exists - skipping send of this message"
@@ -172,7 +175,13 @@ class Sender {
            } 
            return
        }
-       sentFile.text = content
+       
+       if(content instanceof String)
+           sentFile.text = content
+       else
+       if(sentFile instanceof File) {
+           sentFile << content.bytes
+       }
        
        if(Runner.opts.t) {
            log.info "Would send $content to $cfgName, but we are in test mode"

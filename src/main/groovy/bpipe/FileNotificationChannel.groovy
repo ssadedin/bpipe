@@ -30,7 +30,12 @@ class FileNotificationChannel implements NotificationChannel {
         if(event == PipelineEvent.SEND) {
             if(model.containsKey("send.file"))
                 targetFile = new File(model["send.file"])
-            targetFile.text = model["send.content"]
+                
+            if(model["send.content"] instanceof String)
+                targetFile.text = model["send.content"]
+            else
+            if(model["send.content"] instanceof File)
+                targetFile << model["send.content"].bytes
         }
         else {
             if(!dir.exists())
