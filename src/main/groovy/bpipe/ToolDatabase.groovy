@@ -46,6 +46,12 @@ class Tool {
 	 * Name of this tool as mentioned in the config file
 	 */
 	String name
+    
+    /**
+     * The module to which this tool belongs. Multiple tools can belong to
+     * the same module. Generally, they would have the same version in that case
+     */
+    String module
 	
 	/**
 	 * Version of the tool as determined by probe command.
@@ -75,7 +81,7 @@ class Tool {
 	Map<String,Object> meta = [:]
 	
 	/**
-	 * Executes the probe command to determin
+	 * Executes the probe command to determine the version of the given tool
 	 * 
 	 * @param hostCommand
 	 */
@@ -196,6 +202,14 @@ class Tool {
 		}
 		return -1
 	}
+    
+    String getFullName() {
+        if(module)
+            return "$module/$name"
+        else
+            return "$name"
+    }
+    
 }
 
 /**
