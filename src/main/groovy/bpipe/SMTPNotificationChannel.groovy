@@ -97,6 +97,7 @@ class SMTPNotificationChannel implements NotificationChannel {
         String text = template.make(model).toString()
         
         if(event == PipelineEvent.SEND) {
+            // sendEmail(String subjectLine, String text, File attachment = null, String contentType = null) {
             sendEmail(subjectLine, model["send.content"], model["send.file"]?new File(model["send.file"]):null, model["send.contentType"])
         }
         else

@@ -177,7 +177,11 @@ class NotificationManager {
         if(templateName.endsWith('.html'))
             contentType = 'text/html'
             
-        // Let config override for ultimate control
+        // In case the content type is explicitly specified for the message
+        if(detail.containsKey('send.contentType'))
+            contentType = detail['send.contentType']
+        else
+        // Or let config override for ultimate control
         if(cfg.containsKey('contentType'))
             contentType = cfg.contentType
         
