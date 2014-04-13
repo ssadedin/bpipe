@@ -104,7 +104,10 @@ class Sender {
           new ReportGenerator(reportBinding:binding).generateFromTemplate(Pipeline.currentRuntimePipeline.get(), reportName, reportDir.absolutePath, outFile.name) 
           contentType = outFile.name.endsWith("html") ? "text/html" : "text/plain"
           extractSubjectFromHTML()
-          return outFile
+          if(reportName.endsWith(".groovy"))
+              return outFile
+          else
+              return outFile.text
         }
         
         return this    
@@ -165,7 +168,7 @@ class Sender {
        File sentFolder = new File(".bpipe/sent/")
        sentFolder.mkdirs()
        
-       String contentHash = content instanceof String ? content : content.absolutePath + content.length()
+       String contentHash = (content instanceof File) ? content.absolutePath + content.length() : content
        
        File sentFile = new File(sentFolder, cfgName + "." + ctx.stageName + "." + Utils.sha1(this.details.subject + content))
        if(sentFile.exists() && Dependencies.instance.checkUpToDate(sentFile.absolutePath, ctx.@input)) {
