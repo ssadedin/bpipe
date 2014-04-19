@@ -531,7 +531,7 @@ class Dependencies {
         else {
             // Print out each leaf
             println "\nThe following intermediate files will be removed:\n"
-            println '\t' + internalNodeFileNames*.plus('\n\t').sum() + accompanyingOutputFileNames*.plus(' (*)\n\t').sum()
+            println '\t' + internalNodeFileNames.grep{it!=null}*.plus('\n\t').sum() + accompanyingOutputFileNames*.plus(' (*)\n\t').sum()
             
             if(accompanyingOutputFileNames)
                 println "(*) These files were specified to accompany other files to be deleted\n"
@@ -539,7 +539,9 @@ class Dependencies {
             println "To retain files, cancel this command and use 'bpipe preserve' to preserve the files you wish to keep"
             print "\n"
             
-            def answer = Config.userConfig.prompts.handler("Remove/trash these files? (y/t/n): ")
+            print("Remove/trash these files? (y/t/n): ")
+            
+            def answer = System.in.withReader { it.readLine() } 
             int removedCount = 0
             long removedSize = 0
             if(answer == "y") {
@@ -613,7 +615,7 @@ class Dependencies {
                    Running Time:        ${duration}
                    Inputs used:         ${p.inputs.join(',')}
                    Command:             ${p.command}
-                   Preserved:           ${p.preserved?'yes':'no'}
+                   Preserved:           ${p.preserve?'yes':'no'}
                    Intermediate output: ${p.intermediate?'yes':'no'}
                """.stripIndent()
                

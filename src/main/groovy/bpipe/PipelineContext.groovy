@@ -1039,13 +1039,14 @@ class PipelineContext {
      * given pattern to be preserved.
      * @param pattern
      */
-    void preserve(String pattern, Closure c) {
+    void preserveImpl(List patterns, Closure c) {
         def oldFiles = getAllTrackedOutputs()
         c()
-        List<String> matchingOutputs = Utils.glob(pattern) - oldFiles
+        List<String> matchingOutputs = patterns.collect { Utils.glob(it) }.flatten();
+        matchingOutputs.removeAll(oldFiles)
         for(def entry in trackedOutputs) {
             def preserved = entry.value.outputs.grep { matchingOutputs.contains(it) }
-            log.info "Outputs $preserved marked as preserved from stage $stageName by pattern $pattern"
+            log.info "Outputs $preserved marked as preserved from stage $stageName by patterns $patterns"
             this.preservedOutputs += preserved
         }
     }
