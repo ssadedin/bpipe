@@ -336,6 +336,12 @@ class PipelineStage {
             context.nextInputs = Utils.box(this.context.@output).collect { it.toString() }
         }
 
+        // No output OR forward inputs were specified by the pipeline stage?!
+        // well, we have one last, very special case resort: if a file was created
+        // that exactly matches the unique file name we WOULD have generated IF the 
+        // user had referenced $output - then we accept this
+        // @TODO: review possibly remove this if it does not break any obvious
+        //        useful functionality.
         def nextInputs = context.nextInputs
         if(nextInputs == null || Utils.isContainer(nextInputs) && !nextInputs) {
             log.info "Removing inferred outputs matching $context.outputMask"
@@ -349,14 +355,6 @@ class PipelineStage {
                     nextInputs = context.defaultOutput
                     log.info("Found default output $context.defaultOutput among detected new files:  using it")
                 }
-                else {
-                    // Use the oldest created file.  This means if the
-                    // body actually executed a series of steps we'll use the
-                    // last file it made
-                    // nextInputs = newFiles.iterator().next()
-                    nextInputs = newFiles.sort { new File(it).lastModified() }.reverse().iterator().next()
-                }
-                log.info "Using next input inferred from created files $newFiles : ${nextInputs}"
             }
         }
 
