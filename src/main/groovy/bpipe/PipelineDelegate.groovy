@@ -85,7 +85,7 @@ class PipelineDelegate {
             context.get().invokeMethod("fromImpl", [actualArgs, body] as Object[])
         }
         else
-        if(name in ["produce","transform","filter"]) {
+        if(name in ["produce","transform","filter","preserve"]) {
             if(name == "transform" && !(args[-1] instanceof Closure)) {
                 args = args.clone() + [null]
             }
