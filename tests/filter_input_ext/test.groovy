@@ -3,7 +3,9 @@
  * (regression test for bug where output file is found as input)
  */
 hello = {
-    exec "echo foo > test.vcf"
+    produce("test.vcf") {
+      exec "echo foo > test.vcf"
+    }
 }
 
 filter_with_ext = {
