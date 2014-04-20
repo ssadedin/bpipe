@@ -539,9 +539,15 @@ class Dependencies {
             println "To retain files, cancel this command and use 'bpipe preserve' to preserve the files you wish to keep"
             print "\n"
             
-            print("Remove/trash these files? (y/t/n): ")
-            
-            def answer = System.in.withReader { it.readLine() } 
+            def answer 
+            def msg = "Remove/trash these files? (y/t/n): "
+            if(Config.userConfig.prompts.containsKey("handler")) {
+                answer = Config.userConfig.prompts.handler(msg)
+            }
+            else {
+                print(msg)
+                answer = System.in.withReader { it.readLine() } 
+            }
             int removedCount = 0
             long removedSize = 0
             if(answer == "y") {
