@@ -28,7 +28,9 @@ import groovy.util.logging.Log;
 import bpipe.executor.CommandExecutor;
 
 @Log
-class Command {
+class Command implements Serializable {
+    
+    public static final long serialVersionUID = 0L
     
     /**
      * Bpipe id for the command - can be used by a {@link CommandExecutor} to
