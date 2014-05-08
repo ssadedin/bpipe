@@ -475,6 +475,8 @@ class Dependencies {
      */
     void cleanup(List arguments) {
         
+        log.info "Executing cleanup with arguments $arguments"
+        
         List<Properties> outputs = scanOutputFolder() 
         
         // Start by scanning the output folder for dependency files

@@ -1044,6 +1044,7 @@ class PipelineContext {
         c()
         List<String> matchingOutputs = patterns.collect { Utils.glob(it) }.flatten();
         matchingOutputs.removeAll(oldFiles)
+        log.info "Files not in previously created outputs but matching preserve patterns $patterns are: $matchingOutputs"
         for(def entry in trackedOutputs) {
             def preserved = entry.value.outputs.grep { matchingOutputs.contains(it) }
             log.info "Outputs $preserved marked as preserved from stage $stageName by patterns $patterns"
@@ -1060,6 +1061,7 @@ class PipelineContext {
         def oldFiles = getAllTrackedOutputs()
         c()
         List<String> matchingOutputs = Utils.glob(pattern) - oldFiles
+        log.info "Files not in previously created outputs but matching intermediate patterns $pattern are: $matchingOutputs"
         for(def entry in trackedOutputs) {
             def intermediates = entry.value.outputs.grep { matchingOutputs.contains(it) }
             log.info "Outputs $intermediates marked as intermediate files from stage $stageName by pattern $pattern"
