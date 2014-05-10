@@ -1042,13 +1042,13 @@ class PipelineContext {
     void preserveImpl(List patterns, Closure c) {
         def oldFiles = getAllTrackedOutputs()
         c()
-        List<String> matchingOutputs = patterns.collect { Utils.glob(it) }.flatten();
+        List<String> matchingOutputs = patterns.collect { Utils.glob(it).collect { new File(it).canonicalPath }}.flatten();
         matchingOutputs.removeAll(oldFiles)
         log.info "Files not in previously created outputs but matching preserve patterns $patterns are: $matchingOutputs"
         for(def entry in trackedOutputs) {
-            def preserved = entry.value.outputs.grep { matchingOutputs.contains(it) }
+            def preserved = entry.value.outputs.grep { matchingOutputs.contains(new File(it).canonicalPath) }
             log.info "Outputs $preserved marked as preserved from stage $stageName by patterns $patterns"
-            this.preservedOutputs += preserved
+            this.preservedOutputs += preserved 
         }
     }
     

@@ -533,7 +533,7 @@ class Dependencies {
         else {
             // Print out each leaf
             println "\nThe following intermediate files will be removed:\n"
-            println '\t' + internalNodeFileNames.grep{it!=null}*.plus('\n\t').sum() + accompanyingOutputFileNames*.plus(' (*)\n\t').sum()
+            println '\t' + internalNodeFileNames.grep{it!=null}*.plus('\n\t').join("") + accompanyingOutputFileNames*.plus(' (*)\n\t').join("")
             
             if(accompanyingOutputFileNames)
                 println "(*) These files were specified to accompany other files to be deleted\n"
