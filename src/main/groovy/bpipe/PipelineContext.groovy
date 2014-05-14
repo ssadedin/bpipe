@@ -514,24 +514,7 @@ class PipelineContext {
     * This method is (and must remain) side-effect free
     */
    def toOutputFolder(outputs) {
-       
-       String outDir = this.outputDirectory
-       
-       File outputFolder = new File(outDir)
-       if(!outputFolder.exists())
-           outputFolder.mkdirs()
-           
-       String outPrefix = outDir == "." ? "" : outDir + "/" 
-       def newOutputs = Utils.box(outputs).collect { 
-           if(it.toString().contains("/") && it.toString().contains("*")) 
-               return it
-           else
-           if(it.toString().contains("/") && new File(it).exists()) 
-               return it
-           else
-             return outPrefix + new File(it.toString()).name 
-       }
-       return Utils.unbox(newOutputs)
+       Utils.toDir(outputs, outputDirectory)
    }
    
    void checkAccompaniedOutputs(List<String> inputsToCheck) {
@@ -843,7 +826,11 @@ class PipelineContext {
         
         def boxed = Utils.box(this.@input)
             
-        this.currentFilter = (boxed + Utils.box(this.pipelineStages[-1].originalInputs)).grep { it.indexOf('.')>0 }.collect { it.substring(it.lastIndexOf('.')+1) }
+        this.currentFilter = (boxed + Utils.box(this.pipelineStages[-1].originalInputs)).grep {
+             it.indexOf('.')>=0  // only consider file names that actually contain periods
+        }.collect { 
+            Utils.ext(it) // For each such file, return the file extension
+        }
         
         this.currentFileNameTransform = new FilterFileNameTransformer(types: types, exts: currentFilter)
         

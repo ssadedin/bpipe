@@ -25,6 +25,7 @@
  */
 package bpipe
 
+import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;
 
 /**
@@ -152,7 +153,7 @@ class PipelineOutput {
      * 
      * @return  canonical absolute path to parent directory of default (first) output
      */
-    Object getDir() {
+    String getDir() {
         
         // Consider in order: 
         //   - outputs enforced by transform, etc ("override outputs")
@@ -229,6 +230,8 @@ class PipelineOutput {
                     log.info "Recomputing filter on base input $baseInput to achieve match with output extension $name"
                     result = this.currentFilter.transform([baseInput], this.currentFilter.nameApplied)[0]
                 }
+                
+                result = Utils.toDir(result, this.getDir())
             }
         }
         

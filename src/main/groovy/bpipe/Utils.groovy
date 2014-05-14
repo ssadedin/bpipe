@@ -607,6 +607,30 @@ class Utils {
         }
     }
     
+   /**
+    * Coerce all of the arguments (which may be an array of Strings or a single String) to
+    * point to files in the specified directory.
+    */
+    static toDir(def outputs, dir) {
+       
+       String targetDir = dir
+       File targetDirFile = new File(targetDir)
+       if(!targetDirFile.exists())
+           targetDirFile.mkdirs()
+           
+       String outPrefix = targetDir == "." ? "" : targetDir + "/" 
+       def newOutputs = Utils.box(outputs).collect { 
+           if(it.toString().contains("/") && it.toString().contains("*")) 
+               return it
+           else
+           if(it.toString().contains("/") && new File(it).exists()) 
+               return it
+           else
+             return outPrefix + new File(it.toString()).name 
+       }
+       return Utils.unbox(newOutputs)
+    }
+    
     @CompileStatic
     static String ext(String fileName) {
         int index = fileName.lastIndexOf('.')
