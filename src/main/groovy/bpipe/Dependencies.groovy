@@ -505,9 +505,26 @@ class Dependencies {
         leaves.removeAll { it.values.every { it.intermediate } }
         
         // Find all the nodes that exist and match the users specs (or, if no specs, treat as wildcard)
-        List internalNodes = (outputs - leaves*.values.flatten()).grep { 
-            it.outputFile.exists() && !it.preserve &&  
-                (arguments.isEmpty() || arguments.contains(it.outputFile.name) || arguments.contains(it.outputPath))  
+        List internalNodes = (outputs - leaves*.values.flatten()).grep { p ->
+            if(!p.outputFile.exists()) {
+                log.info "File $p.outputFile doesn't exist so can't be cleaned up"
+                return false
+            }
+             
+            if(p.preserve) {
+                log.info "File $p.outputFile is preserved, so can't be cleaned up"
+                return false
+            }
+            
+            if(arguments.isEmpty())
+                return true 
+                
+            if(arguments.contains(p.outputFile.name) || arguments.contains(p.outputPath))  
+                return true
+            else {
+                log.info "File $p.outputFile doesn't match the arguments $arguments, so can't be cleaned up"
+                return false
+            }
         }
         
         List<String> internalNodeFileNames = internalNodes*.outputFile*.name
