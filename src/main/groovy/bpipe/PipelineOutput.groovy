@@ -95,6 +95,23 @@ class PipelineOutput {
     String transformMode = "replace"
     
     /**
+     * The value to return from toString() when this value is predetermined
+     * by propertyMissing()
+     */
+    String stringValue = null
+    
+    /**
+     * If this output is created as part of a chain of outputs then the
+     * segments implied by the parents will be in here
+     */
+    List<String> extraSegments = []
+    
+    /**
+     * Parent of this output, used when output extensions are chained together
+     */
+    PipelineOutput parentOutput = null
+    
+    /**
      * Create a pipeline output wrapper
      * 
      * @param output            the output to be returned if this object is directly converted to a string
@@ -116,6 +133,13 @@ class PipelineOutput {
     }
     
     String toString() {
+        
+        // Value set by parent, and we have not resolved
+        // any different value ourselves
+        if(stringValue != null) {
+            this.outputChangeListener(stringValue, parentOutput?.stringValue)
+            return stringValue
+        }
         
         String firstOutput = Utils.first(output)
         String replaceOutput = null
@@ -201,14 +225,37 @@ class PipelineOutput {
      */
     def propertyMissing(String name) {
         
+        String result = null
+        
         // When "produce", "transform" or "filter" is used, they specify
         // the outputs,  so the output extension acts as a selector from
         // those rather than a synthesis of a new name
         if(this.overrideOutputs) {
-           return selectFromOverrides(name)  
+           result = selectFromOverrides(name)  
         }
         else 
-           return synthesiseFromName(name)
+           result = synthesiseFromName(name)
+        
+        return this.createChildOutput(result, name)
+    }
+    
+    PipelineOutput createChildOutput(String result, String extraSegment) {
+        def po = new PipelineOutput(result,
+            this.stageName,
+            this.defaultOutput,
+            this.overrideOutputs,
+            this.outputChangeListener)
+
+        po.branchName = this.branchName
+        po.currentFilter = this.currentFilter
+            
+        po.resolvedInputs = this.resolvedInputs
+        po.outputDirChangeListener = this.outputDirChangeListener
+        po.transformMode = this.transformMode
+        po.stringValue = result
+        po.extraSegments = this.extraSegments + [extraSegment]
+        po.parentOutput = this
+        return po
     }
     
     def selectFromOverrides(String name) {
@@ -254,7 +301,7 @@ class PipelineOutput {
         // input then this is more like a filter; remove the previous output extension from the path
         // eg: foo.csv.bar => foo.baz.csv
         List branchSegment = branchName ? ['.' + branchName] : [] 
-        String segments = (branchSegment + [stageName,name]).collect { it.replaceAll("^\\.","").replaceAll("\\.\$","") }.join(".")
+        String segments = (branchSegment + [stageName] + extraSegments + [name]).collect { it.replaceAll("^\\.","").replaceAll("\\.\$","") }.join(".")
         if(stageName.equals(this.output)) {
            this.outputUsed = this.defaultOutput + '.' + name 
         }

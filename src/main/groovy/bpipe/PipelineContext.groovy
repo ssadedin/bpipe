@@ -294,13 +294,13 @@ class PipelineContext {
     * since the last exec command.  The occurrence of an exec
     * clears this property.
     */
-   def inferredOutputs = []
+   List inferredOutputs = []
    
    /**
     * All outputs referenced through output property extensions during the 
     * execution of the pipeline stage
     */
-   def allInferredOutputs = []
+   List allInferredOutputs = []
    
    /**
     * A list of inputs resolved directly by references to $input
@@ -420,6 +420,12 @@ class PipelineContext {
            allInferredOutputs << o; 
        if(!inferredOutputs.contains(o)) 
            inferredOutputs << o;  
+       
+       if(replaced) {
+           allInferredOutputs.remove(replaced)
+           inferredOutputs.remove(replaced)
+       } 
+       
        if(applyName && pipeline) { 
            pipeline.nameApplied=true
         } 
