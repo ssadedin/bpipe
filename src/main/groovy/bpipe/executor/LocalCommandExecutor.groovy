@@ -101,8 +101,10 @@ class LocalCommandExecutor implements CommandExecutor {
           
 	      process = Runtime.getRuntime().exec((String[])(['bash','-e','-c',"$cmd"].toArray()))
           this.command.status = CommandStatus.RUNNING.name()
+          this.command.startTimeMs = System.currentTimeMillis()
 	      process.consumeProcessOutput(outputLog, errorLog)
           exitValue = process.waitFor()
+          this.command.stopTimeMs = System.currentTimeMillis()
           synchronized(this) {
 	          this.notifyAll()
           }
