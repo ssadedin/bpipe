@@ -1043,7 +1043,7 @@ public class Pipeline {
     static File file(String fileName) {
         File f = new File(fileName)
         if(!f.parentFile)
-            f = new File(new File("."),fileName)
+            f = new File(new File("."),fileName).canonicalFile
             
         return f
     }
