@@ -636,6 +636,7 @@ class Dependencies {
                
                println """
                    Created:             ${new Date(p.timestamp)}
+                   Pipeline Stage:      ${p.stageName?:'Unknown'}
                    Pending Time:        ${pendingDuration}
                    Running Time:        ${duration}
                    Inputs used:         ${p.inputs.join(',')}
