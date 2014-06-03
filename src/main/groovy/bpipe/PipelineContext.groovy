@@ -495,22 +495,30 @@ class PipelineContext {
    
    void requires(Map values) {
        values.each { k,v ->
-           if(!this.localVariables.containsKey(k) && !this.extraBinding.variables.containsKey(k) && !Runner.binding.variables.containsKey(k)) {
-               throw new PipelineError(
-               """
-                       Pipeline stage ${this.stageName} requires a parameter $k but this parameter was not specified
-
-                       You can specify it in the following ways:
-
-                               1. add 'using' to the pipeline definition: ${this.stageName}.using($k:<value>)
-                               2. define the variable in your pipeline script: $k="<value>"
-                               3. provide it from the command line by adding a flag:  -p $k=<value>
-
-                       The parameter $k is described as follows:
-
-                               $v
-               """.stripIndent())
+           
+           if([localVariables, 
+               extraBinding.variables, 
+               Runner.binding.variables, 
+               Pipeline.currentRuntimePipeline.get().variables].any { it.containsKey(k) }) 
+           {
+               // Variable found, OK
+               return
            }
+           
+           throw new PipelineError(
+           """
+                   Pipeline stage ${this.stageName} requires a parameter $k but this parameter was not specified
+
+                   You can specify it in the following ways:
+
+                           1. add 'using' to the pipeline definition: ${this.stageName}.using($k:<value>)
+                           2. define the variable in your pipeline script: $k="<value>"
+                           3. provide it from the command line by adding a flag:  -p $k=<value>
+
+                   The parameter $k is described as follows:
+
+                           $v
+           """.stripIndent())
        }
    }
     
