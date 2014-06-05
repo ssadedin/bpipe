@@ -231,12 +231,13 @@ class PipelineCategory {
                             
                             def filterInputs = chr instanceof Chr ? chr.config?.filterInputs : "auto"
                             
-                            if((filterInputs == "auto") && (Config.userConfig.autoFilter!="false")) {
-                                log.info "Checking for auto filter - inputs matching chr pattern are: " + Utils.box(input).grep { it.matches(/.*\.chr[1-9A-Z_]*\..*$/) }
-                                filterInputs = Utils.box(input).any { it.matches(/.*\.chr[1-9A-Z_]*\..*$/) }
-                            }
-                            else {
-                                filterInputs = false
+                            if(filterInputs == "auto") { 
+                                if(Config.userConfig.autoFilter!="false") {
+//                                    log.info "Checking for auto filter - inputs matching chr pattern are: " + Utils.box(input).grep { it.matches(/.*\.chr[1-9A-Z_]*\..*$/) }
+                                    filterInputs = Utils.box(input).any { it.matches(/.*\.chr[1-9A-Z_]*\..*$/) }
+                                }
+                                else
+                                    filterInputs = false
                             }
                             
                             if(filterInputs && (chr instanceof Chr)) {
