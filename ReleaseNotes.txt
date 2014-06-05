@@ -1,4 +1,125 @@
+=========== Changes for Bpipe Version 0.9.8.6_rc ============
 
+   - support for 'load' to work with URLs for loading 
+     scripts remotely
+
+   - fix chr variable created by chr() not considered as satisfying 
+     requires chr:...  
+     
+   - start and stop time not set by local command
+     exector 
+     
+   - restrict use of auto filter to cases where chr actually 
+     in operation 
+     
+   - file() construct sometimes returning paths with .. in them
+     
+   - Add pipeline stage name to printout in bpipe query 
+     
+   - support for multiple file extensions when using $output variable
+     ($output.foo.bar.gz, etc) 
+   
+   - fix incorrect outputs resolved for filter when inputs are 
+     resolved from a relative path leading with "." character 
+     
+   - fix preserve not resolving files specified by different absolute /
+     relative paths to Bpipe's form, (thx Anthony)
+     
+   - Not serializable exception on legacy directories 
+     
+   - Remove legacy feature where output may
+     be inferred from created files: does not behave reliably in
+     parallelized pipelines 
+     
+   - support for multiple "preserve" patterns 
+
+   - fix preserved status not displayed
+     correctly by bpipe query 
+     
+   - support for grouping commands in tool database
+     into 'modules' 
+     
+   - fix syntax errors in tool database 
+     
+   - added igv tools, fix GATK probe, add VEP to tools database 
+
+   - fix binary report files copied as text causing corruption
+     
+   - add stage name to meta data properties saved for each
+     output file 
+    
+   - fix filter sometimes expecting wrong input when
+     file extension supplied 
+     
+   - fix "bpipe run" leaking a tail process each time on OSX 
+
+   - support for generating reports using arbitrary groovy
+     code in a separate script 
+     
+   - add tools and versions to meta data stored in 
+     output properties 
+     
+   - fix status for SLURM displaying Torque in output 
+     
+   - fix possible conflicting output names on multiple branches 
+     when nested branches cascade without intervening stages 
+
+   - add support for referencing output graph in reports 
+     
+   - transform should be able to
+     match whole file name, fix incorrect input can be resolved
+     inside transform() to() construct 
+    
+   - display running time and pending output in response to 
+     bpipe query 
+   
+   - Add procs to LSF executor 
+     
+   - refactored a lot of executor stuff to remove duplicated
+     code, plus to allow for recording start of execution time
+     separate to start of queuing time 
+
+   - fix GB ignored as key for memory 
+
+   - support to use ${output(...)} in commands instead of produce  
+
+   - support for adding jars to classpath via bpipe.config 
+     (libs="foo.jar:bar.jar...")
+
+   - fix requires at pipeline stage level no longer working because 
+     overriden by top level requires function 
+
+   - experimental: multithread startup to ammeliorate long delays 
+     when file system is slow
+
+   - make it possible to remove the cwd option from lsf
+     executor (see google group)
+
+   - use -e instead of -eo for LSF since it is compatible with OpenLava 
+     
+   - ability to use multiple extensions for 'input' variable file 
+     extensions, eg: $input.foo.bar.csv returns files ending in 
+     '.foo.bar.csv'
+
+   - fix input with file extension not requiring match on first 
+     character in some cases 
+     
+   - fix problem in some weird cases where object has null class 
+     
+   - prevent errors when running in test mode with explicit 
+     notifications sent in pipeline to 'file' channel
+     
+   - switch to SimpleTemplateEngine because GStringTemplateEngine is not
+     observing classpath of added libraries, only core groovy
+     libraries 
+     
+   - fix output directory set by command line
+     resulting in inputs not correctly recognised in 2nd and
+     later stages of pipeline 
+     
+   - fix required inputs using exact path instead of file name 
+     
+  
 ========== Changes for Bpipe Version 0.9.8.6_beta_3 ============
 
    - support for setting check message without failing or succeeding 
