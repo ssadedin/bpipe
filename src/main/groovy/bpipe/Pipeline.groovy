@@ -807,6 +807,13 @@ public class Pipeline {
             f = new File(new File(Config.config.script).canonicalFile.parentFile, path)
         }
         
+        if(!f.exists() && (path ==~ 'http(s){0,1}://.*$')) {
+            new File(".bpipe/scripts").mkdirs()
+            f = new File(".bpipe/scripts/" + Utils.urlToFileName(path, "groovy"))
+            if(!f.exists())
+                f.text = new URI(path).toURL().text
+        }
+        
         if(!f.exists()) 
             throw new PipelineError("A script, requested to be loaded from file '$path', could not be accessed.")
             

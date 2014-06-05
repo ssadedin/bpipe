@@ -631,6 +631,19 @@ class Utils {
        return Utils.unbox(newOutputs)
     }
     
+    static String urlToFileName(String url, String defaultExt) {
+        String result = url.replaceAll('^.*/','')
+
+        if(result.isEmpty())
+            result = new URI(url).getHost().replaceAll("^www\\.","") + ".${defaultExt}"
+            
+        if(!result.contains(".")) {
+            result += "." + defaultExt
+        }   
+        
+        return result
+    }
+    
     @CompileStatic
     static String ext(String fileName) {
         int index = fileName.lastIndexOf('.')
