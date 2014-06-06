@@ -24,20 +24,21 @@
 */
 package bpipe.executor
 
-import groovy.util.logging.Log
+import groovy.util.logging.Log;
 import bpipe.ForwardHost;
-import bpipe.PipelineError
-import bpipe.Utils
+import bpipe.Command;
+import bpipe.PipelineError;
+import bpipe.Utils;
 
 /**
  * Implementation of support for PBS Professional resource manager.
  * <p>
- * The actual implementation is a shell script written by 
- * Davide Rambaldi <davide.rambaldi@gmail.com>.  This is just a 
+ * The actual implementation is a shell script written by
+ * Davide Rambaldi <davide.rambaldi@gmail.com>.  This is just a
  * wrapper class that provides access to it via the
  * CustomJob parent class support for shell script job
  * managers.
- * 
+ *
  * @author davide.rambaldi@gmail.com
  */
 @Mixin(ForwardHost)
@@ -58,54 +59,47 @@ class PbsproCommandExecutor extends CustomCommandExecutor implements CommandExec
      * These appear as files in the local directory.
      */
     @Override
-    public void start(Map cfg, String id, String name, String cmd, File outputDirectory) {
-        
-        // super.start(cfg, id, name, cmd, outputDirectory);
+    void start(Map cfg, Command command, File outputDirectory) {
 
+        this.command = command
         this.config = cfg
-        this.name = name
-        
-        log.info "Executing command using custom command runner ${managementScript}:  ${Utils.truncnl(cmd,100)}"
+        this.name = command.name
+
+        log.info "Executing command using custom command runner ${managementScript}:  ${Utils.truncnl(command.command,100)}"
         ProcessBuilder pb = new ProcessBuilder("bash", managementScript, "start")
         Map env = pb.environment()
-        
-        // Environment variables that can be used to transmit 
+
+        // Environment variables that can be used to transmit
         // essential information
         env.NAME = name
-        
+
+        String id = command.id
+
         this.jobDir = ".bpipe/commandtmp/$id"
         File jobDirFile = new File(this.jobDir)
         if(!jobDirFile.exists())
             jobDirFile.mkdirs()
         env.JOBDIR = jobDirFile.absolutePath
-        
-        env.COMMAND = '('+ cmd + ') > .bpipe/commandtmp/'+id+'/'+id+'.out 2>  .bpipe/commandtmp/'+id+'/'+id+'.err'
-        
+
+        super.setEnvironment(env)
+
         // Davide Rambaldi: write to env the positon of PBS log files
         env.PBSOUTPUT = jobDirFile.absolutePath + "/${id}.pbs.log"
         env.PBSERROR = jobDirFile.absolutePath + "/${id}.pbs.err.log"
 
-        // If an account is specified by the config then use that
-        log.info "Using account: $config?.account"
-        if(config?.account)
-            env.ACCOUNT = config.account
-        
-        if(config?.walltime) 
-            env.WALLTIME = config.walltime
-            
-        if(config?.queue) 
-            env.QUEUE = config.queue
-        
-        if(config?.project)
-            env.PROJECT = config.project
+        if(config?.project) {env.PROJECT = config.project}
 
         // instead of resources we have a select statement
-        if(config?.select_statement)
-            env.SELECT_STATEMENT = config.select_statement
+        if(config?.select_statement) {env.SELECT_STATEMENT = config.select_statement}
+
+        log.info "Using account: $env?.account"
 
         String startCmd = pb.command().join(' ')
         log.info "Starting command: " + startCmd
-        
+
+        this.runningCommand = command.command
+        this.startedAt = new Date()
+
         withLock(cfg) {
             Process p = pb.start()
             Utils.withStreams(p) {
@@ -115,12 +109,12 @@ class PbsproCommandExecutor extends CustomCommandExecutor implements CommandExec
                 int exitValue = p.waitFor()
                 if(exitValue != 0) {
                     reportStartError(startCmd, out,err,exitValue)
-                    throw new PipelineError("Failed to start command:\n\n$cmd")
+                    throw new PipelineError("Failed to start command:\n\n$command.command")
                 }
                 this.commandId = out.toString().trim()
                 if(this.commandId.isEmpty())
                     throw new PipelineError("Job runner ${this.class.name} failed to return a job id despite reporting success exit code for command:\n\n$startCmd\n\nRaw output was:[" + out.toString() + "]")
-                    
+
                 log.info "Started command with id $commandId"
             }
         }
@@ -129,7 +123,7 @@ class PbsproCommandExecutor extends CustomCommandExecutor implements CommandExec
         // and output files to appear and then forward those inputs
 
         // FIXME; I don't see any forward to stderr and stdout
-        // Seems due to Forwarder.groovy class that at line 90 can't find the files ... 
+        // Seems due to Forwarder.groovy class that at line 90 can't find the files ...
         // let's try to force file creation
         new File(jobDirFile.absolutePath+"/${id}.out").createNewFile()
         new File(jobDirFile.absolutePath+"/${id}.err").createNewFile()
@@ -139,7 +133,7 @@ class PbsproCommandExecutor extends CustomCommandExecutor implements CommandExec
     }
 
     /**
-     * Adds custom cleanup of pbspro created files and stop any threads forwarding output 
+     * Adds custom cleanup of pbspro created files and stop any threads forwarding output
      */
     @Override
     public void stop() {
@@ -158,13 +152,13 @@ class PbsproCommandExecutor extends CustomCommandExecutor implements CommandExec
 	}
 
     /**
-     * The pbspro script / system produces files like BpipeJob.o133722 and 
+     * The pbspro script / system produces files like BpipeJob.o133722 and
      * BpipeJob.e133722 that contain standard output and error.  We don't want
      * these to be considered as result files from jobs so return a mask
      * that screens them out.
      * Note that:
      * PBS pro -N name have the following specs:
-     * Format: string, up to 15  characters  in  length.   
+     * Format: string, up to 15  characters  in  length.
      * We trim in bpipe-pbspro.sh the job name to first 15 chars then we must trim also here
      */
     List<String> getIgnorableOutputs() {
