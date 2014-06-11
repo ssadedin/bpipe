@@ -57,6 +57,10 @@ class ListBouncer {
     // Note: invoked when diagram is created
     void call() {
     }
+    
+    String toString() {
+        "LB:[" + elements.collect {PipelineCategory.closureNames[it]?:String.valueOf(it)}.join(",")+"]"
+    }
 }
 
 /**
@@ -559,6 +563,7 @@ public class Pipeline {
         }
         
         ArrayList.metaClass.plus = { x ->
+            log.info "Interception list plus(" + delegate?.class?.name + "," + x?.class?.name + ")"
             if(x instanceof Closure) {
                 if(delegate && (delegate[-1] instanceof ListBouncer)) {
                     delegate[-1].elements.add(x)
@@ -594,7 +599,6 @@ public class Pipeline {
             // Build the actual pipeline
             Pipeline.withCurrentUnderConstructionPipeline(this) {
                 
-                
                 constructedPipeline = pipeline()
                 
 				// See bug #60
@@ -602,9 +606,17 @@ public class Pipeline {
                     
                     // If ListBouncer at the end ...
                     ListBouncer bouncer = null
-                    if(constructedPipeline[-1] instanceof ListBouncer) {
-                        bouncer = constructedPipeline[-1]
-                        constructedPipeline = constructedPipeline[0..-2]
+                    log.info("Constructed pipeline is list: " + constructedPipeline)
+                    
+                    int bouncerIndex = constructedPipeline.findIndexOf { it instanceof ListBouncer }
+                    if(bouncerIndex>=0) {
+                        log.info "Found list bouncer at $bouncerIndex: bouncing it out ...."
+                        bouncer = constructedPipeline[bouncerIndex]
+                        for(int i=bouncerIndex+1;i<constructedPipeline.size();++i) {
+                            bouncer.elements.add(constructedPipeline[i])
+                        }
+                        constructedPipeline = constructedPipeline[0..(bouncerIndex-1)]
+                        log.info("Constructed pipeline after bouncing is : " + constructedPipeline)
                     }
                     
                     currentRuntimePipeline.set(this)
