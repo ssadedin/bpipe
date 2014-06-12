@@ -341,6 +341,14 @@ class Utils {
        return (os.indexOf("win") >= 0);
    }
     
+    /**
+     * Return true if the underlying operating system is Windows
+     */
+   public static boolean isLinux() {
+       String os = System.getProperty("os.name").toLowerCase();
+       return (os.indexOf("linux") >= 0);
+   }
+    
    public static String sha1(String message) {
        
        MessageDigest digest = MessageDigest.getInstance("SHA1")

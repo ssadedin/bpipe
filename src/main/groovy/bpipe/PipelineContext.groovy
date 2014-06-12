@@ -1323,6 +1323,17 @@ class PipelineContext {
         
         if(!inputWrapper)
            inputWrapper = new PipelineInput(this.@input, pipelineStages)
+           
+           
+       // On OSX and Linux, R actively attaches to and listens to signals on the
+       // whole process group. This means that any SIGINT gets intercepted
+       // by R and it halts execution - even the user just using Ctrl-C on the
+       // command line to break after launching Bpipe.
+       // See http://stackoverflow.com/questions/6803395/child-process-receives-parents-sigint
+       // for a little more information. I do not yet have a good answer for OSX
+       // but see here: 
+       // http://stackoverflow.com/questions/20338162/how-can-i-launch-a-new-process-that-is-not-a-child-of-the-original-process
+       String setSid = Utils.isLinux() ? " setsid " : ""
 
        boolean oldEchoFlag = this.echoWhenNotFound
        try {
@@ -1330,7 +1341,7 @@ class PipelineContext {
             log.info("Entering echo mode on context " + this.hashCode())
             String rTempDir = Utils.createTempDir().absolutePath
             String scr = c()
-            exec("""unset TMP; unset TEMP; TEMPDIR="$rTempDir" Rscript - <<'!'
+            exec("""unset TMP; unset TEMP; TEMPDIR="$rTempDir" $setSid Rscript - <<'!'
             $scr
 !
 """,false, config)
