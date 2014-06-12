@@ -5,3 +5,4 @@ run
 exists hello.bar.txt hello.foo.txt
 notexists hello.txt
 
+true
