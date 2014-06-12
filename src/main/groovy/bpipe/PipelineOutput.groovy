@@ -303,7 +303,7 @@ class PipelineOutput {
         List branchSegment = branchName ? ['.' + branchName] : [] 
         String segments = (branchSegment + [stageName] + extraSegments + [name]).collect { it.replaceAll("^\\.","").replaceAll("\\.\$","") }.join(".")
         if(stageName.equals(this.output)) {
-           this.outputUsed = this.defaultOutput + '.' + name 
+           this.outputUsed = FastUtils.dotJoin(([this.defaultOutput] + branchSegment + [name]) as String[])
         }
         else
         if(this.output.endsWith(name+"."+stageName)) {

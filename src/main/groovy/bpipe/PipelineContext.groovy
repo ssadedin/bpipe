@@ -499,6 +499,7 @@ class PipelineContext {
            if([localVariables, 
                extraBinding.variables, 
                Runner.binding.variables, 
+               branch.properties,
                Pipeline.currentRuntimePipeline.get().variables].any { it.containsKey(k) }) 
            {
                // Variable found, OK
