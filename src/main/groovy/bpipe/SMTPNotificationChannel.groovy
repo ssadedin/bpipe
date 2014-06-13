@@ -44,58 +44,58 @@ import javax.mail.internet.MimeMultipart
 
 /**
  * Sends notifications using SMTP server
- * 
+ *
  * @author ssadedin
  */
 @Log
 class SMTPNotificationChannel implements NotificationChannel {
-	
+
 	String host
-	
+
 	Integer port
-	
+
 	boolean ssl = false
-	
+
 	boolean auth = false
-	
+
 	String username
-	
+
 	String from
-	
+
 	String password
-	
+
 	String recipients
-    
+
 	SMTPNotificationChannel(ConfigObject cfg) {
 		host = cfg.host
 		ssl = cfg.secure?:false
 		if(!cfg.port) {
 			port = ssl ? 465  :  -1
 		}
-		else 
+		else
 			port = cfg.port
-			
+
 		username = cfg.username
-		
+
 		// Turn on authentication automatically if a password is provided
 		if(cfg.password) {
 			password = cfg.password
 			auth = true
 		}
-		
+
 		recipients = cfg.to
 		from = cfg.from?:username
 	}
 
 	protected SMTPNotificationChannel() {
 	}
-	
+
 	@Override
 	public void notify(PipelineEvent event, String subject, Template template, Map<String, Object> model) {
 		String subjectLine = "Pipeline " + event.name().toLowerCase() + ": " + subject + " in directory " + (new File(".").absoluteFile.parentFile.name)
-        
+
         String text = template.make(model).toString()
-        
+
         if(event == PipelineEvent.SEND) {
             // sendEmail(String subjectLine, String text, File attachment = null, String contentType = null) {
             sendEmail(subjectLine, model["send.content"], model["send.file"]?new File(model["send.file"]):null, model["send.contentType"])
@@ -108,7 +108,7 @@ class SMTPNotificationChannel implements NotificationChannel {
             sendEmail(subjectLine,text, null, model['send.contentType'])
         }
 	}
-    
+
     public void sendEmail(String subjectLine, String text, File attachment = null, String contentType = null) {
 		Properties props = new Properties();
 		props.put("mail.smtp.host", host);
@@ -118,11 +118,11 @@ class SMTPNotificationChannel implements NotificationChannel {
 				"javax.net.ssl.SSLSocketFactory");
 		}
 		props.put("mail.smtp.auth", "true");
-		
+
 		if(port != -1)
 			props.put("mail.smtp.port", String.valueOf(port));
-			
-		Session session 
+
+		Session session
 		if(auth) {
 			session = Session.getDefaultInstance(props,
 				new javax.mail.Authenticator() {
@@ -131,27 +131,29 @@ class SMTPNotificationChannel implements NotificationChannel {
 					}
 				});
 		}
-		else 
+		else
 			session = Session.getDefaultInstance(props)
- 
+
 		Message message = new MimeMessage(session);
 		message.setFrom(new InternetAddress(from));
-		recipients.split(",").collect { it.trim() }.each { message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(it)) }
-        
+     // Davide R see also: https://stackoverflow.com/questions/13854037/send-mail-to-multiple-recipients-in-java
+    // No need for splitting in Mail.jar 1.4.5
+    message.setRecipients(Message.RecipientType.TO, recipients)
+
 		message.setSubject(Utils.truncnl(subjectLine, 80));
-        
+
         if(attachment) {
             Multipart multipart = new MimeMultipart();
-            
+
             // Add the first part: the text content
             MimeBodyPart messageBodyPart = new MimeBodyPart();
             if(contentType)
         		messageBodyPart.setContent(text, contentType + "; charset=utf-8")
             else
                 messageBodyPart.setText(text)
-                
+
             multipart.addBodyPart(messageBodyPart)
-            
+
             // Add the second part: the attachment
             log.info "Adding attachment to notification email: $attachment.absolutePath"
             MimeBodyPart attachBodyPart = new MimeBodyPart();
@@ -168,11 +170,11 @@ class SMTPNotificationChannel implements NotificationChannel {
             else
         		message.setText(text);
         }
-        
+
         log.info "Sending email message to $recipients [subject=$subjectLine]"
 		Transport.send(message);
     }
-    
+
     String getDefaultTemplate() {
         "email.template.txt"
     }
@@ -190,5 +192,5 @@ class GMAILNotificationChannel extends SMTPNotificationChannel {
 		recipients = cfg.to
 		from = cfg.from?:username
 	}
-	
+
 }
