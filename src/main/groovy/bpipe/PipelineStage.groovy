@@ -420,8 +420,8 @@ class PipelineStage {
         
         // Out of caution we don't remove output files if they existed before this stage ran.
         // Otherwise we might destroy existing data
-        if(this.context.output != null) {
-            def newOutputFiles = Utils.box(this.context.output).collect { it.toString() }
+        if(this.context.@output != null) {
+            def newOutputFiles = Utils.box(this.context.@output).collect { it.toString() }.unique()
             newOutputFiles.removeAll { fn ->
                 def canonical = new File(fn).canonicalPath
                 keepFiles.any {
