@@ -72,8 +72,9 @@ class FilterFileNameTransformer implements FileNameTransformer {
             String oldExt = (inp =~ '\\.[^\\.]*$')[0]
             if(applyName) {
                 // Arguably, we should add the filter type to the name here as well.
-                // However we're already adding the chromosome, so the filename is already
+                // However we're already adding the branch name, so the filename is already
                 // unique at this point, and we'd like to keep it short
+                // TODO: perhaps only leave out filter when it's chromosome ? not sure
                 return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+/*'.'+ type+*/oldExt)
             }
             else
