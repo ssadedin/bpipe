@@ -430,7 +430,27 @@ class PipelineStage {
                 }
             }
             log.info("Cleaning up: $newOutputFiles")
-            Utils.cleanup(newOutputFiles)
+            List<String> failed = Utils.cleanup(newOutputFiles)
+            if(failed) {
+                markDirty(failed)
+            }
+        }
+    }
+    
+    /**
+     * Record the given file as dirty - ie: should be cleaned up
+     * @param file
+     * @return
+     */
+    synchronized static markDirty(List<String> files) {
+        files.collect { new File(it).canonicalFile }.each { File file ->
+            File dirtyFile = new File(".bpipe/dirty.txt")
+            List<String> dirtyFiles = []
+            if(dirtyFile.exists()) {
+                dirtyFiles = dirtyFile.readLines() 
+            }
+            dirtyFiles.add(file.absolutePath)
+            dirtyFile.text = dirtyFiles.join("\n")
         }
     }
     
