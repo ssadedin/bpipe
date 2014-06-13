@@ -1,0 +1,13 @@
+# Ignore gradle build files
+.gradle
+build/
+
+# Ignore Gradle GUI config
+gradle-app.setting
+
+# Ignore local-lib optional libraries
+local-lib/gridgain-hpc-5.1.2.jar
+local-lib/mail.jar
+
+# Ignore .bpipe dir
+.bpipe
