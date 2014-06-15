@@ -1059,11 +1059,11 @@ public class Pipeline {
      * @param fileName
      * @return
      */
-    static File file(String fileName) {
+    static File file(def fileName) {
+        fileName = fileName.toString()
         File f = new File(fileName)
         if(!f.parentFile)
             f = new File(new File("."),fileName).canonicalFile
-            
         return f
     }
     
