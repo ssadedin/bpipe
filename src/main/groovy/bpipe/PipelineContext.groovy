@@ -370,7 +370,7 @@ class PipelineContext {
        }
       
        if(!out)
-              return null
+              out = getDefaultOutput()
                          
        out = toOutputFolder(out)
        
