@@ -363,7 +363,7 @@ class PipelineCategory {
                 else
                     throw new PatternInputMissingError("An input pattern was specified '$pattern' but no inputs were given when Bpipe was run.")
                     
-            return splitOnMap(input, samples,segments)
+            return splitOnMap(input, samples, segments, pattern instanceof String && pattern.contains("/"))
         }
 					
         
@@ -373,7 +373,7 @@ class PipelineCategory {
         return multiplyImplementation
     }
     
-    static Object splitOnMap(def input, Map<String, List> samples, List segments) {
+    static Object splitOnMap(def input, Map<String, List> samples, List segments, boolean applyName=false) {
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
         segments = segments.collect { 
             if(it instanceof List) {
@@ -427,7 +427,7 @@ class PipelineCategory {
                                 childName = id + "." + segmentNumber
                         }
                         child.branch = new Branch(name:childName)
-                        child.nameApplied = true
+                        child.nameApplied = !applyName
                         child.runSegment(files, segmentClosure)
                     }
                     catch(Exception e) {
