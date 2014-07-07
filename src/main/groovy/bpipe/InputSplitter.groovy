@@ -47,18 +47,18 @@ class InputSplitter {
         String regex = splitMap.pattern
         List<Integer> splitGroups = splitMap.splits
         
-        split(~regex, splitGroups, input)
+        split(~regex, splitGroups, input, pattern.contains("/"))
 	}
     
 	Map split(Pattern pattern, input) {
-        split(pattern,[0],input)
+        split(pattern,[0],input,false)
     }
     
-	Map split(Pattern pattern, List<Integer> splitGroups, input) {
+	Map split(Pattern pattern, List<Integer> splitGroups, input, boolean withDir=false) {
         def unsortedResult = [:]
         for(String inp in Utils.box(input)) {
             def fileName 
-            if(pattern.pattern. contains("/"))  {
+            if(withDir)  {
                 // When the pattern explicitly contains a directory, we match on the
                 // full file name
                 fileName = new File(inp).canonicalPath.replaceAll("\\\\","/")
