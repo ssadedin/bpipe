@@ -362,6 +362,13 @@ class PipelineStage {
             log.info("Inferring nextInputs from inputs $context.@input")
             nextInputs = this.context.@input
         }
+        
+        if(nextInputs instanceof PipelineOutput) {
+            nextInputs = nextInputs.toString()
+            if(nextInputs == "null")
+                nextInputs = null
+        }
+            
         return nextInputs
     }
     
