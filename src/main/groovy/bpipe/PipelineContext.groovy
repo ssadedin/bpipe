@@ -1605,7 +1605,7 @@ class PipelineContext {
        
        log.info "Input list to check:  $reverseOutputs"
        
-       exts = Utils.box(exts)
+       exts = Utils.box(exts).collect { (it instanceof PipelineOutput || it instanceof PipelineInput) ? it.toString() : it }
        
        Map extTotals = exts.countBy { it }
        
