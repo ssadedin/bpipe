@@ -1718,10 +1718,16 @@ class PipelineContext {
        }
    }
  
-   public void forward(nextInputOverride) {
-       this.nextInputs = nextInputOverride
-       if(this.nextInputs instanceof PipelineInput)
-               this.nextInputs = this.nextInputs.@input
+   /**
+    * Implementation of "magic" forward method. See {@link PipelineDelegate#methodMissing} for
+    * where this gets called.
+    * 
+    * @param values
+    */
+    void forwardImpl(List values) {
+       this.nextInputs = values.flatten().collect {
+           String.valueOf(it)
+       }
    }
    
    /**

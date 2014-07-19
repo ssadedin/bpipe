@@ -124,6 +124,10 @@ class PipelineDelegate {
             context.get().invokeMethod("multiExec", [args as List] as Object[])
         }
         else
+        if(name == "forward") {
+            context.get().invokeMethod("forwardImpl", [args as List] as Object[])
+        }
+        else
         if(context.get().currentBuilder) {
             context.get().currentBuilder.invokeMethod(name, args)
         }
