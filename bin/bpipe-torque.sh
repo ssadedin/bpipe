@@ -65,7 +65,7 @@ usage () {
 # PBS torque.
 #
 set_procs() {
-    if [ -z "$USE_PPN" ];
+    if [ -z "$PROC_MODE" ];
     then
         procs_request="#PBS -l nodes=1:ppn=$1"
     else
