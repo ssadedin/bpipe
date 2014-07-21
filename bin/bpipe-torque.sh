@@ -144,6 +144,7 @@ $memory_request
 #PBS -l walltime=$WALLTIME
 $procs_request
 #PBS -q $QUEUE
+$CUSTOM
 cd \$PBS_O_WORKDIR
 $COMMAND
 HERE
