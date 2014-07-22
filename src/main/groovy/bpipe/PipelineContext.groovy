@@ -1165,7 +1165,7 @@ class PipelineContext {
                 if(r.amount<1) 
                     throw new PipelineError("Resource amount $r.amount of type $key < 1 declared in stage $stageName")
                     
-                // TODO: extend tyhese checks to memory / other resources
+                // TODO: extend these checks to memory / other resources
                 if(key == "threads" && r.amount > Config.config.maxThreads)
                     throw new PipelineError("Concurrency required to execute stage $stageName is $r.amount, which is greater than the maximum configured for this pipeline ($Config.config.maxThreads). Use the -n flag to allow higher concurrency.")
                     
@@ -1493,6 +1493,11 @@ class PipelineContext {
                  // Allow range of integers
                  procs = procs.replaceAll(" *-.*\$","")
               }
+              else
+              if(procs instanceof IntRange) {
+                  procs = procs.to
+              }
+              log.info "Found procs value $procs to override computed threads value of $actualThreads"
               actualThreads = String.valueOf(Math.min(procs.toInteger(), actualThreads.toInteger()))
           }
       }
@@ -1804,7 +1809,13 @@ class PipelineContext {
         // When the user has specified custom resources
         if(!this.customThreadResources) {
             
-            int childCount = pipeline.parent?.childCount?:1
+            int childCount = 1
+            while(pipeline.parent) {
+                if(pipeline.parent.childCount) {
+                    childCount *= pipeline.parent.childCount
+                }
+                pipeline = pipeline.parent
+            }
             
             log.info "Computing threads based on parallel branch count of $childCount"
             
