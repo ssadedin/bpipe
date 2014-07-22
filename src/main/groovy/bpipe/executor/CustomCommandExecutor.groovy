@@ -214,7 +214,10 @@ class CustomCommandExecutor implements CommandExecutor {
             env.QUEUE = config.queue
             
         if(config?.custom)
-            env.CUSTOM = config.custom
+            env.CUSTOM = String.valueOf(config.custom)
+            
+        if(config?.nodes)
+            env.NODES = String.valueOf(config.nodes)
     }
 	
 	static synchronized acquireLock(Map cfg) {
