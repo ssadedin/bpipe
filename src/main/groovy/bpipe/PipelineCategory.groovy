@@ -509,9 +509,11 @@ class PipelineCategory {
         // Fill in shorter stages with nulls
         stagesList = stagesList.collect { it + ([null] * (maxLen - it.size())) }
         
+        log.info "###### Merging results of parallel split in parent branch ${parent.branch?.name} #####"
+        
         def transposed = stagesList.transpose()
         transposed.eachWithIndex { List<PipelineStage> stagesAtIndex, int i ->
-            log.info "Grouping stages ${stagesAtIndex*.stageName} for merging"
+            log.info "Grouping stages at index $i ${stagesAtIndex*.stageName} for merging"
             
             if(stagesAtIndex.size() == 0)
                 throw new IllegalStateException("Encountered pipeline segment with zero parallel stages?")
@@ -554,7 +556,8 @@ class PipelineCategory {
         log.info "Last merged outputs are $mergedOutputs"
         mergedContext.setRawOutput(mergedOutputs)
         PipelineStage mergedStage = new PipelineStage(mergedContext, finalStages.find { it != null }.body)
-        mergedStage.stageName = finalStages*.stageName.join("_")+"_bpipe_merge"
+        mergedStage.stageName = Utils.removeRuns(finalStages*.stageName).join("_")+"_bpipe_merge"
+        log.info "Merged stage name is $mergedStage.stageName"
         parent.stages.add(mergedStage)
         
         return mergedOutputs

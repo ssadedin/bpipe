@@ -663,4 +663,20 @@ class Utils {
             return ""
         return fileName.substring(index+1)
     }
+    
+    /**
+     * Reduce continuous runs of the same value down to a single instance.
+     * 
+     * @param values    List of strings to reduce
+     * @return          List containing all the values in values, but with
+     *                  sequential recurrent values reduced to single instance
+     */
+    static List removeRuns(List<String> values) {
+        def last = new Object()
+        values.grep {
+          def result = (last == null) || (last != it)
+          last = it
+          return result
+        }
+    }
 }
