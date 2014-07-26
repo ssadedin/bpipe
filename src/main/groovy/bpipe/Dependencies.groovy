@@ -301,10 +301,10 @@ class Dependencies {
      */
     void checkFiles(def fileNames, type="input") {
         
-        log.info "Checking " + fileNames
+        log.info "Checking $type (s) " + fileNames
         
         GraphEntry graph = this.getOutputGraph()
-        List missing = Utils.box(fileNames).collect { new File(it.toString()) }.grep { File f ->
+        List missing = Utils.box(fileNames).grep { String.valueOf(it) != "null" }.collect { new File(it.toString()) }.grep { File f ->
             
             log.info " Checking file $f"
             if(f.exists())
