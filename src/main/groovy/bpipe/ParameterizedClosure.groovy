@@ -80,4 +80,9 @@ class ParameterizedClosure extends Closure {
 			
         super.setDelegate(delegate);
     }
+    
+    @Override
+    public Object getDelegate() {
+        return body.getDelegate()
+    }
 }
