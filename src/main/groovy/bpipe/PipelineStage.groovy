@@ -237,7 +237,7 @@ class PipelineStage {
         catch(PipelineTestAbort e) {
             throw e
         }
-        catch(Exception e) {
+        catch(Throwable e) {
             
             if(!succeeded && !joiner) 
                 EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")

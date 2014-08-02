@@ -490,6 +490,7 @@ public class Pipeline {
             }
             try {
                 currentStage.run()
+                log.info "Pipeline segment ${this.branch} in thread ${Thread.currentThread().id} has finished normally"
             }
             catch(UserTerminateBranchException e) {
                 log.info "Pipeline segment ${this.branch} has terminated by 'succeed' in user script: $e.message"
@@ -510,6 +511,14 @@ public class Pipeline {
                 println "\n\nAbort due to Test Mode!\n\n" + Utils.indent(e.message) + "\n"
                 failReason = "Pipeline was run in test mode and was stopped before performing an action. See earlier messages for details."
                 failed = true
+            }
+            catch(Error e) {
+                // This is important to prevent the parent from allowing the pipeline to continue
+                // in the face of things like OutOfMemoryError etc.
+                failed = true 
+                log.severe "Internal error: " + e.toString()
+                System.err.println "Internal error: " + e.toString()
+                throw e
             }
         }
         finally {
