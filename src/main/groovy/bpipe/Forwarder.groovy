@@ -46,6 +46,12 @@ class Forwarder extends TimerTask {
      * Timer that schedules polling of files that are forwarded from Torque jobs
      */
     static Timer forwardingTimer
+    
+    /**
+     * Longest amount of time we will wait for an expected file that does not exist
+     * to appear
+     */
+    static long MAX_FLUSH_WAIT = 10000
    
     /**
      * The list of files that are being 'tailed'
@@ -82,6 +88,30 @@ class Forwarder extends TimerTask {
         }
     }
     
+    /**
+     * Attempt to wait until all the expected files exist, then run forwarding
+     */
+    public void flush() {
+        synchronized(files) {
+            long startTimeMs = System.currentTimeMillis()
+            long now = startTimeMs
+            while(now - startTimeMs < MAX_FLUSH_WAIT) {
+                if(this.files.every { it.exists() })
+                    break
+                now = System.currentTimeMillis()
+            }
+            if(now - startTimeMs > MAX_FLUSH_WAIT) {
+                def msg = "Exceeded $MAX_FLUSH_WAIT ms waiting for one or more output files [${files*.absolutePath}] to appear: output may be incomplete"
+                System.err.println  msg
+                log.warn msg
+            }
+            else {
+                log.info "All files ${files*.absolutePath} exist"
+            }
+        }
+        this.run()
+    }
+    
     @Override
     public void run() {
         List<File> scanFiles
@@ -89,14 +119,17 @@ class Forwarder extends TimerTask {
             try {
                 scanFiles = files.clone().grep { it.exists() }
                 byte [] buffer = new byte[8096]
+                log.info "Scanning ${scanFiles.size()} / ${files.size()} files "
                 for(File f in scanFiles) {
                     try {
                         f.withInputStream { ifs ->
                             long skip = filePositions[f]
                             ifs.skip(skip)
                             int count = ifs.read(buffer)
-                            if(count < 0)
+                            if(count < 0) {
+                                log.info "No chars to read from ${f.absolutePath} (size=${f.length()})"
                                 return
+                            }
                             
                             log.info "Read " + count + " chars from $f starting with " + Utils.truncnl(new String(buffer, 0, Math.min(count,30)),25)
                             
