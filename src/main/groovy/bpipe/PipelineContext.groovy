@@ -917,10 +917,14 @@ class PipelineContext {
             return result
         }.flatten()
         if((!globOutputs || globExistingFiles)) {
-
           // No inputs were newer than outputs, 
           // but were the commands that created the outputs modified?
           this.output = fixedOutputs
+          
+          // Probing can be nested: ie, an outer function can initiate probe mode
+          // and then call this one, so we need to ensure that we restore
+          // the state  upon exit
+          boolean oldProbeMode = this.probeMode
           this.probeMode = true
           this.trackedOutputs = [:]
           try {
@@ -949,7 +953,7 @@ class PipelineContext {
             }
           }
           finally {
-              this.probeMode = false
+              this.probeMode = oldProbeMode
           }
         }
         
