@@ -95,15 +95,19 @@ class Forwarder extends TimerTask {
         synchronized(files) {
             long startTimeMs = System.currentTimeMillis()
             long now = startTimeMs
+            
+            this.files.collect { it.parentFile }.unique { it.canonicalFile.absolutePath }*.listFiles()
+            
             while(now - startTimeMs < MAX_FLUSH_WAIT) {
                 if(this.files.every { it.exists() })
                     break
                 now = System.currentTimeMillis()
+                Thread.sleep(1000)
             }
-            if(now - startTimeMs > MAX_FLUSH_WAIT) {
-                def msg = "Exceeded $MAX_FLUSH_WAIT ms waiting for one or more output files [${files*.absolutePath}] to appear: output may be incomplete"
+            if(now - startTimeMs >= MAX_FLUSH_WAIT) {
+                def msg = "Exceeded $MAX_FLUSH_WAIT ms waiting for one or more output files ${files*.absolutePath} to appear: output may be incomplete"
                 System.err.println  msg
-                log.warn msg
+                log.warning msg
             }
             else {
                 log.info "All files ${files*.absolutePath} exist"
