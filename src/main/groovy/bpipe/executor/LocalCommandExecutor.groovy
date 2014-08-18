@@ -30,6 +30,7 @@ import bpipe.Command;
 import bpipe.OutputLog;
 import bpipe.Utils
 import bpipe.CommandStatus;
+import bpipe.CommandManager;
 
 /**
  * Implementation of a command executor that executes 
@@ -60,6 +61,10 @@ class LocalCommandExecutor implements CommandExecutor {
      * status() or waitFor() has been called.
      */
     Integer exitValue = null
+    
+    Integer pid = -1L
+    
+    Integer id
     
     String runningCommand
     
@@ -98,13 +103,13 @@ class LocalCommandExecutor implements CommandExecutor {
           
           this.runningCommand = cmd
           this.startedAt = new Date()
-          
-	      process = Runtime.getRuntime().exec((String[])(['bash','-e','-c',"$cmd"].toArray()))
+	      process = Runtime.getRuntime().exec((String[])(['bash','-e','-c',"echo \$\$ > ${CommandManager.DEFAULT_COMMAND_DIR}/${command.id}.pid;\n$cmd"].toArray()))
           this.command.status = CommandStatus.RUNNING.name()
           this.command.startTimeMs = System.currentTimeMillis()
 	      process.consumeProcessOutput(outputLog, errorLog)
           exitValue = process.waitFor()
           this.command.stopTimeMs = System.currentTimeMillis()
+          this.id = command.id.toInteger()
           synchronized(this) {
 	          this.notifyAll()
           }
@@ -120,8 +125,35 @@ class LocalCommandExecutor implements CommandExecutor {
     }
     
     String statusImpl() {
-        if(!this.process)
+        
+        // Try to read PID
+        if(pid == -1L && id != null) {
+            File pidFile = new File("${CommandManager.DEFAULT_COMMAND_DIR}/${id}.pid")
+            if(pidFile.exists()) {
+                pid = pidFile.text.trim().toInteger()
+                
+                // Update the serialized file object so that it contains the PID
+                File pidCommandFile = new File(CommandManager.DEFAULT_COMMAND_DIR, String.valueOf(id)) 
+                pidCommandFile.withObjectOutputStream { it << this }
+            }
+        }
+        
+        if(!this.process && this.pid != -1L) {
+            try {
+                String info = "ps -o ppid,ruser --pid ${this.pid}".execute().text
+                def lines = info.split("\n")*.trim()
+                if(lines.size()>1)  {
+                    processInfo = lines[1].split(" ")[1]; 
+                    if(processInfo[1] == System.properties["user.name"]) {
+                        return CommandStatus.RUNNING
+                    }
+                }
+            }
+            catch(Exception e) {
+                
+            }
             return CommandStatus.UNKNOWN
+        }
         else
         if(exitValue != null)
             return CommandStatus.COMPLETE
@@ -161,6 +193,6 @@ class LocalCommandExecutor implements CommandExecutor {
     }
     
     String statusMessage() {
-        "$runningCommand, running since $startedAt (local command)"
+        "$runningCommand, running since $startedAt (local command, pid=$pid)"
     }
 }

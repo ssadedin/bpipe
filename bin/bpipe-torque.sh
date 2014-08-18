@@ -58,6 +58,21 @@ usage () {
    echo "start will use these variables if defined: $OPTIONAL_ENV_VARS"
 }
 
+#
+# How procs are set depends on PROC_MODE environment variable
+# If set to PPN then we use the form ppn attribute, otherwise
+# default to procs. Note that procs is not supported in raw
+# PBS torque.
+#
+set_procs() {
+    if [ -z "$PROC_MODE" ];
+    then
+        procs_request="#PBS -l nodes=1:ppn=$1"
+    else
+        procs_request="#PBS -l procs=$1"
+    fi
+}
+
 # Generate a PBS script from parameters found in environment variables.
 make_pbs_script () {
    # check that all the essential environment variables are defined
@@ -110,9 +125,9 @@ make_pbs_script () {
                 memory_request="#PBS -l pvmem=${MEMORY}gb"
              fi
              if [[ -z $PROCS ]]; then
-                procs_request="#PBS -l procs=$DEFAULT_BATCH_PROCS"
+                set_procs $DEFAULT_BATCH_PROCS
              else
-                procs_request="#PBS -l procs=$PROCS"
+                set_procs $PROCS
              fi;;
       smp)   if [[ -z $MEMORY ]]; then
                 memory_request=""
@@ -128,9 +143,11 @@ make_pbs_script () {
                 memory_request="#PBS -l mem=${MEMORY}gb" 
              fi 
              if [[ -z $PROCS ]]; then
-                procs_request="#PBS -l procs=$DEFAULT_BATCH_PROCS"
+                #procs_request="#PBS -l procs=$DEFAULT_BATCH_PROCS"
+                set_procs $DEFAULT_BATCH_PROCS
              else
-                procs_request="#PBS -l procs=$PROCS"
+                #procs_request="#PBS -l procs=$PROCS"
+                set_procs $PROCS
              fi
              ;;
    esac
@@ -144,6 +161,7 @@ $memory_request
 #PBS -l walltime=$WALLTIME
 $procs_request
 #PBS -q $QUEUE
+$CUSTOM
 cd \$PBS_O_WORKDIR
 $COMMAND
 HERE

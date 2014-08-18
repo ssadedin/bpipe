@@ -136,7 +136,9 @@ class Command implements Serializable {
     
     public void setStatus(String statusValue) {
         
-        log.info "Command $id changing state from ${this.status} to $statusValue"
+        if(statusValue != this.status?.name())
+            log.info "Command $id changing state from ${this.status} to $statusValue"
+            
         try {
             CommandStatus statusEnum = CommandStatus.valueOf(statusValue)
             if(statusEnum != this.status) {

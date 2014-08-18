@@ -228,7 +228,7 @@ class InputSplitterTest {
 	@Test
 	public void testNoTrailing() {
         def pattern =  splitter.convertPattern("_%_*") 
-		assert pattern == [pattern:"_(.*?)_(.*)",splits:[0]]
+		assert pattern == [pattern:"_([^/]*?)_([^/]*)",splits:[0]]
         def matches = ("_foo_bar" =~ pattern.pattern)
         assert matches[0][1] == "foo"
         assert matches[0][2] == "bar"
@@ -238,7 +238,7 @@ class InputSplitterTest {
 	@Test
 	public void testTrailing() {
         def pattern =  splitter.convertPattern("_%_*_") 
-		assert pattern == [pattern:"_(.*?)_(.*?)_",splits:[0]]
+		assert pattern == [pattern:"_([^/]*?)_([^/]*?)_",splits:[0]]
         def matches = ("_foo_bar_" =~ pattern.pattern)
         assert matches[0][1] == "foo"
         assert matches[0][2] == "bar"
@@ -247,7 +247,7 @@ class InputSplitterTest {
 	@Test
 	public void testNoStar() {
         def pattern =  splitter.convertPattern("_%_") 
-		assert pattern == [pattern:"_(.*?)_",splits:[0]]
+		assert pattern == [pattern:"_([^/]*?)_",splits:[0]]
         def matches = ("_foo_bar_" =~ pattern.pattern)
         assert matches[0][1] == "foo"
 	}
@@ -255,7 +255,7 @@ class InputSplitterTest {
 	@Test
 	public void testTwoStar() {
         def pattern =  splitter.convertPattern("*_%_*") 
-		assert pattern == [pattern:"(.*?)_(.*?)_(.*)",splits:[1]]
+		assert pattern == [pattern:"([^/]*?)_([^/]*?)_([^/]*)",splits:[1]]
         def matches = ("cat_foo_bar" =~ pattern.pattern)
         assert matches[0][1] == "cat"
         assert matches[0][2] == "foo"
@@ -264,7 +264,7 @@ class InputSplitterTest {
 	@Test
 	public void testTwoStarTrailingUnderscore() {
         def pattern =  splitter.convertPattern("*_%_*_") 
-		assert pattern == [pattern:"(.*?)_(.*?)_(.*?)_",splits:[1]]
+		assert pattern == [pattern:"([^/]*?)_([^/]*?)_([^/]*?)_",splits:[1]]
         def matches = ("cat_foo_bar_" =~ pattern.pattern)
         assert matches[0][1] == "cat"
         assert matches[0][2] == "foo"
@@ -284,7 +284,7 @@ class InputSplitterTest {
 	@Test
 	public void testWithExtension() {
         def pattern =  splitter.convertPattern(/_%_*.txt/) 
-		assert pattern == [pattern:"_(.*?)_(.*?)\\.txt",splits:[0]]
+		assert pattern == [pattern:"_([^/]*?)_([^/]*?)\\.txt",splits:[0]]
 	}
     
     @Test 

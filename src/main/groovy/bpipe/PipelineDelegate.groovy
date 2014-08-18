@@ -1,5 +1,7 @@
 package bpipe
 
+import java.util.logging.Level;
+
 import groovy.util.logging.Log;
 
 /**
@@ -36,15 +38,16 @@ class PipelineDelegate {
         }
         
         synchronized(realBody) {
-            // log.fine "Setting or creating a delegate for context ${context.hashCode()} body ${body.hashCode()}/${body.delegate.class.name} in thread ${Thread.currentThread().id}"
+            log.info "Setting or creating a delegate for context ${context.hashCode()} body ${body.hashCode()}/${body.delegate.class.name} in thread ${Thread.currentThread().id}"
             if(body.getDelegate() == null || !(body.getDelegate() instanceof PipelineDelegate)) {
                 
-                log.fine "Existing delegate has type ${body.delegate.class.name} in thread ${Thread.currentThread().id}"
-        
                 def d = new PipelineDelegate(context)
+                log.info "Created new delegate $d overriding type ${body.delegate?.class?.name} in thread ${Thread.currentThread().id}"
+        
                 body.setDelegate(d)
             }
             else {
+                log.info "Existing delegate $body.delegate has type ${body.delegate.class.name} in thread ${Thread.currentThread().id}. Setting new context ${context.hashCode()}"
                 body.getDelegate().context.set(context)
             }
             
@@ -54,8 +57,18 @@ class PipelineDelegate {
                 ParameterizedClosure pc = body
                 def extras = pc.getExtraVariables()
                 if(extras instanceof Closure) {
+                    log.info "Parameterized stage has closure for argument: executing"
                     extras.setDelegate(context.myDelegate)
+                    context.myDelegate.context.set(context)
                     extras = extras()
+                    if(!(extras instanceof Map))
+                        throw new PipelineError("""
+                                Your pipeline included a 'using' statement, but the statement returned a variable 
+                                of type ${extras.class?.name} " which is not supported. Please make
+                                sure it returns a value that is convertible to a Map, for example:
+                                    
+                                    ${context.stageName}.using { foo : "bar" }
+                        """.stripIndent())
                 }
                 context.localVariables = extras
             }
@@ -124,6 +137,10 @@ class PipelineDelegate {
             context.get().invokeMethod("multiExec", [args as List] as Object[])
         }
         else
+        if(name == "forward") {
+            context.get().invokeMethod("forwardImpl", [args as List] as Object[])
+        }
+        else
         if(context.get().currentBuilder) {
             context.get().currentBuilder.invokeMethod(name, args)
         }
@@ -144,7 +161,8 @@ class PipelineDelegate {
         // ie.  $foo will produce value $foo.  This is used to preserve $'d values in 
         // R scripts while still allowing interpretation of the ones we want ($input, $output, etc)
         
-        log.fine "Query for $name on ${context.get()} via delegate ${this} in thread ${Thread.currentThread().id}"
+        if(log.isLoggable(Level.FINE))
+            log.fine "Query for $name on ${context.get()} via delegate ${this} in thread ${Thread.currentThread().id}"
         
         PipelineContext ctx = context.get()
         

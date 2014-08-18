@@ -47,20 +47,30 @@ class InputSplitter {
         String regex = splitMap.pattern
         List<Integer> splitGroups = splitMap.splits
         
-        split(~regex, splitGroups, input)
+        split(~regex, splitGroups, input, pattern.contains("/"))
 	}
     
 	Map split(Pattern pattern, input) {
-        split(pattern,[0],input)
+        split(pattern,[0],input,false)
     }
     
-	Map split(Pattern pattern, List<Integer> splitGroups, input) {
+	Map split(Pattern pattern, List<Integer> splitGroups, input, boolean withDir=false) {
         def unsortedResult = [:]
         for(String inp in Utils.box(input)) {
-            // Note that we need to split on the name of the file
-            // without directory since it may have come from another directory
-            // and we do not want to include that in the branch name
-            Matcher m = (pattern.matcher(new File(inp).name))
+            def fileName 
+            if(withDir)  {
+                // When the pattern explicitly contains a directory, we match on the
+                // full file name
+                fileName = new File(inp).canonicalPath.replaceAll("\\\\","/")
+            }
+            else {
+                // If no directory (ie. / ) in pattern, 
+                // split on the name of the file without directory since it may have 
+                // come from another directory and we do not want to include that 
+                // in the branch name
+                fileName = new File(inp).name
+            }
+            Matcher m = (pattern.matcher(fileName))
             if(!m)
 			    continue
                 
@@ -208,7 +218,7 @@ class InputSplitter {
 			// any exclusion in the pattern.  If there is one,
 			// exclude characters matching the right flanking character
 //            def wildcard = rightFlank ? "[^"+rightFlank+"]*" : ".*" 
-            String matchChar = (c in hashPos) ? '[0-9]' : '.'
+            String matchChar = (c in hashPos) ? '[0-9]' : '[^/]'
             def wildcard = matchChar + (rightFlank ? "*?" : "*")
             def group = "($wildcard)"
             result << leftFlank + group + rightFlank

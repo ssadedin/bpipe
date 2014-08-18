@@ -370,7 +370,7 @@ class PipelineContext {
        }
       
        if(!out)
-              return null
+              out = getDefaultOutput()
                          
        out = toOutputFolder(out)
        
@@ -917,10 +917,14 @@ class PipelineContext {
             return result
         }.flatten()
         if((!globOutputs || globExistingFiles)) {
-
           // No inputs were newer than outputs, 
           // but were the commands that created the outputs modified?
           this.output = fixedOutputs
+          
+          // Probing can be nested: ie, an outer function can initiate probe mode
+          // and then call this one, so we need to ensure that we restore
+          // the state  upon exit
+          boolean oldProbeMode = this.probeMode
           this.probeMode = true
           this.trackedOutputs = [:]
           try {
@@ -949,7 +953,7 @@ class PipelineContext {
             }
           }
           finally {
-              this.probeMode = false
+              this.probeMode = oldProbeMode
           }
         }
         
@@ -1165,7 +1169,7 @@ class PipelineContext {
                 if(r.amount<1) 
                     throw new PipelineError("Resource amount $r.amount of type $key < 1 declared in stage $stageName")
                     
-                // TODO: extend tyhese checks to memory / other resources
+                // TODO: extend these checks to memory / other resources
                 if(key == "threads" && r.amount > Config.config.maxThreads)
                     throw new PipelineError("Concurrency required to execute stage $stageName is $r.amount, which is greater than the maximum configured for this pipeline ($Config.config.maxThreads). Use the -n flag to allow higher concurrency.")
                     
@@ -1335,14 +1339,21 @@ class PipelineContext {
        // but see here: 
        // http://stackoverflow.com/questions/20338162/how-can-i-launch-a-new-process-that-is-not-a-child-of-the-original-process
        String setSid = Utils.isLinux() ? " setsid " : ""
-
+       
+       String rscriptExe = "Rscript"
+       if(Config.userConfig.containsKey("R") && Config.userConfig.R.containsKey("executable")) {
+           rscriptExe = Config.userConfig.R.executable
+           log.info "Using custom R executable: $rscriptExe"
+       }
+           
+       
        boolean oldEchoFlag = this.echoWhenNotFound
        try {
             this.echoWhenNotFound = true
             log.info("Entering echo mode on context " + this.hashCode())
             String rTempDir = Utils.createTempDir().absolutePath
             String scr = c()
-            exec("""unset TMP; unset TEMP; TEMPDIR="$rTempDir" $setSid Rscript - <<'!'
+            exec("""unset TMP; unset TEMP; TEMPDIR="$rTempDir" $setSid $rscriptExe - <<'!'
             $scr
 !
 """,false, config)
@@ -1493,6 +1504,11 @@ class PipelineContext {
                  // Allow range of integers
                  procs = procs.replaceAll(" *-.*\$","")
               }
+              else
+              if(procs instanceof IntRange) {
+                  procs = procs.to
+              }
+              log.info "Found procs value $procs to override computed threads value of $actualThreads"
               actualThreads = String.valueOf(Math.min(procs.toInteger(), actualThreads.toInteger()))
           }
       }
@@ -1605,7 +1621,7 @@ class PipelineContext {
        
        log.info "Input list to check:  $reverseOutputs"
        
-       exts = Utils.box(exts)
+       exts = Utils.box(exts).collect { (it instanceof PipelineOutput || it instanceof PipelineInput) ? it.toString() : it }
        
        Map extTotals = exts.countBy { it }
        
@@ -1718,10 +1734,16 @@ class PipelineContext {
        }
    }
  
-   public void forward(nextInputOverride) {
-       this.nextInputs = nextInputOverride
-       if(this.nextInputs instanceof PipelineInput)
-               this.nextInputs = this.nextInputs.@input
+   /**
+    * Implementation of "magic" forward method. See {@link PipelineDelegate#methodMissing} for
+    * where this gets called.
+    * 
+    * @param values
+    */
+    void forwardImpl(List values) {
+       this.nextInputs = values.flatten().collect {
+           String.valueOf(it)
+       }
    }
    
    /**
@@ -1798,7 +1820,13 @@ class PipelineContext {
         // When the user has specified custom resources
         if(!this.customThreadResources) {
             
-            int childCount = pipeline.parent?.childCount?:1
+            int childCount = 1
+            while(pipeline.parent) {
+                if(pipeline.parent.childCount) {
+                    childCount *= pipeline.parent.childCount
+                }
+                pipeline = pipeline.parent
+            }
             
             log.info "Computing threads based on parallel branch count of $childCount"
             

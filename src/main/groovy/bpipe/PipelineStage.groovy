@@ -237,7 +237,7 @@ class PipelineStage {
         catch(PipelineTestAbort e) {
             throw e
         }
-        catch(Exception e) {
+        catch(Throwable e) {
             
             if(!succeeded && !joiner) 
                 EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")
@@ -362,6 +362,13 @@ class PipelineStage {
             log.info("Inferring nextInputs from inputs $context.@input")
             nextInputs = this.context.@input
         }
+        
+        if(nextInputs instanceof PipelineOutput) {
+            nextInputs = nextInputs.toString()
+            if(nextInputs == "null")
+                nextInputs = null
+        }
+            
         return nextInputs
     }
     

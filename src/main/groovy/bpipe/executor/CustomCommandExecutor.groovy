@@ -207,8 +207,17 @@ class CustomCommandExecutor implements CommandExecutor {
         if(config?.procs)
             env.PROCS = config.procs.toString()
             
-        if(config?.queue)
+        if(config?.proc_mode)
+            env.PROC_MODE = config.proc_mode.toString()
+            
+         if(config?.queue)
             env.QUEUE = config.queue
+            
+        if(config?.custom)
+            env.CUSTOM = String.valueOf(config.custom)
+            
+        if(config?.nodes)
+            env.NODES = String.valueOf(config.nodes)
     }
 	
 	static synchronized acquireLock(Map cfg) {
