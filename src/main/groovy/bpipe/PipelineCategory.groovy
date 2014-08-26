@@ -211,7 +211,7 @@ class PipelineCategory {
                 log.info "Processing segment ${s.hashCode()}"
                 chrs.each { chr ->
                     log.info "Creating pipeline to run on chromosome $chr"
-                    Pipeline child = Pipeline.currentRuntimePipeline.get().fork(chr)
+                    Pipeline child = Pipeline.currentRuntimePipeline.get().fork(chr.toString())
                     currentStage.children << child
                     Closure segmentClosure = s
                     threads << {
