@@ -61,7 +61,7 @@ class Utils {
             
         // Remove any directories appearing as inputs - their timestamps change whenever
         // any file in the dir changes
-        inputs = inputs.grep { !(new File(it).isDirectory())}
+        inputs = inputs.grep { (it != null) && !(new File(it).isDirectory())}
 
         // Box into a collection for simplicity
         outputs = box(outputs)
