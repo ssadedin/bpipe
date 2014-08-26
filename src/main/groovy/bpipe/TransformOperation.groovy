@@ -198,7 +198,6 @@ class TransformOperation {
             
             String txed = null
             if(inp.contains(".")) {
-                def startPortion = inp.replaceAll(fromPattern, "")
                 String dot = fromPattern.startsWith(".") ?"":"."
                 txed = inp.replaceAll(fromPattern,dot+FastUtils.dotJoin(additionalSegment,toPattern))
             }
