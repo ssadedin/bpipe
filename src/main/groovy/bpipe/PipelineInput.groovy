@@ -267,6 +267,7 @@ class PipelineInput {
 	                pattern = "\\." + pattern
                     
                 pattern = '^.*' + pattern
+                log.info "Resolving inputs matching pattern $pattern"
 	            for(s in reverseOutputs) {
 	                log.info("Checking outputs ${s}")
 	                def o = s.find { it?.matches(wholeMatch) }

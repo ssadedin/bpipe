@@ -33,6 +33,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicInteger;
 import groovy.util.logging.Log;
+
+import java.util.logging.Level;
 import java.util.regex.Pattern;
 
 import org.codehaus.groovy.reflection.CachedMethod;
@@ -125,6 +127,12 @@ public class Pipeline {
      * A list of "dummy" stages that are actually used to link other stages together
      */
     def joiners = []
+    
+    /**
+     * A node representing the graph structure of the pipeline underneath this 
+     * pipeline
+     */
+    Node node = new Node(null, "root", [type:"pipeline"])
     
     /**
      * If this pipeline was spawned as a child of another pipeline, then
@@ -476,6 +484,7 @@ public class Pipeline {
             this.threadId = Thread.currentThread().id
             
             def currentStage = new PipelineStage(rootContext, s)
+            currentStage.synthetic = true
             log.info "Running segment with inputs $inputs"
             this.addStage(currentStage)
             if(inputs instanceof List) {
@@ -594,7 +603,7 @@ public class Pipeline {
         }
 
         Node pipelineStructure = launch ? diagram(host, pipeline) : null
-//        
+        
 //        println "Executing pipeline: "
 //        use(NodeListCategory) {
 //            println groovy.json.JsonOutput.prettyPrint(pipelineStructure.toJson())
@@ -659,6 +668,11 @@ public class Pipeline {
                   
                 about(finishedAt: new Date())
                 
+//                def w =new StringWriter()
+//                this.dump(w)
+//                w.flush()
+//                println w
+//                
                 // See if any checks failed
                 List<Check> allChecks = Check.loadAll()
                 List<Check> failedChecks = allChecks.grep { !it.passed && !it.override }
@@ -692,7 +706,11 @@ public class Pipeline {
     
     PipelineContext createContext() {
        def ctx = new PipelineContext(this.externalBinding, this.stages, this.joiners, this.branch) 
-       ctx.outputDirectory = Config.config.defaultOutputDirectory
+        if(branch.properties.containsKey("dir")) {
+            ctx.outputDirectory = branch.dir
+        }
+        else
+            ctx.outputDirectory = Config.config.defaultOutputDirectory
        return ctx
     }
     
@@ -704,11 +722,13 @@ public class Pipeline {
      * Note:  the new pipeline is not run by this method; instead you have to
      *        call one of the {@link #run(Closure)} methods on the returned pipeline
      */
-    Pipeline fork() {
+    Pipeline fork(String childName) {
         Pipeline p = new Pipeline()
+        p.node = new Node(this.node, childName, [type:'pipeline',pipeline:p])
         p.stages = [] + this.stages
         p.joiners = [] + this.joiners
         p.parent = this
+        this.node.appendNode(p.node)
         ++this.childCount
         return p
     }
@@ -773,7 +793,7 @@ public class Pipeline {
                     allLoadedPaths.add(scriptFile.canonicalPath)
                 }
                 catch(Exception ex) {
-                    log.severe("Failed to evaluate script $scriptFile: "+ ex)
+                    log.log(Level.SEVERE,"Failed to evaluate script $scriptFile: "+ ex, ex)
                     System.err.println("WARN: Error evaluating script $scriptFile: " + ex.getMessage())
                 }
             }
@@ -928,7 +948,7 @@ public class Pipeline {
                     continue
                     
                 if(!s.children && s?.context?.stageName != null) {
-                    log.fine "adding stage $s.context.stageName from pipeline $this"
+                    log.info "adding stage $s.context.stageName from pipeline $this"
                     pipelines.each { it << s }
                 }
                     
@@ -990,6 +1010,24 @@ public class Pipeline {
         return DefinePipelineCategory.inputStage
     }
     
+    void dump(Writer w, int indentLevel=0) {
+        
+        String indent = " " * (indentLevel+8)
+        w.println((" "*indentLevel) + this.node.name() + ":")
+        this.node.children().each { Node n ->
+            
+            if(n.attributes().type == 'stage') {
+                PipelineStage stage = n.attributes().stage
+                if(!stage.synthetic)
+                    w.println indent + stage.stageName
+            }
+            else
+            if(n.attributes().type == 'pipeline') {
+                n.attributes().pipeline.dump(w,indentLevel+8)
+            }
+        }
+    }
+    
     /**
      * This method creates a diagram of the pipeline instead of running it
      */
@@ -1021,6 +1059,7 @@ public class Pipeline {
     void addStage(PipelineStage stage) {
         synchronized(this.stages) {
             this.stages << stage
+            node.appendNode(stage.stageName, [type:'stage','stage' : stage])
         }
     }
     

@@ -211,7 +211,7 @@ class PipelineCategory {
                 log.info "Processing segment ${s.hashCode()}"
                 chrs.each { chr ->
                     log.info "Creating pipeline to run on chromosome $chr"
-                    Pipeline child = Pipeline.currentRuntimePipeline.get().fork()
+                    Pipeline child = Pipeline.currentRuntimePipeline.get().fork(chr)
                     currentStage.children << child
                     Closure segmentClosure = s
                     threads << {
@@ -399,13 +399,20 @@ class PipelineCategory {
                     
                 log.info "Creating pipeline to run parallel segment $id with files $files"
                    
-                Pipeline child = Pipeline.currentRuntimePipeline.get().fork()
-                currentStage.children << child
+ 
                 Closure segmentClosure = s
+                String childName = id
+                int segmentNumber = segments.indexOf(segmentClosure) + 1
+                if(segments.size()>1) {
+                    if(id == "all")
+                        childName = segmentNumber.toString()
+                    else
+                        childName = id + "." + segmentNumber
+                }
+                Pipeline child = Pipeline.currentRuntimePipeline.get().fork(childName)
+                currentStage.children << child
                 threads << {
                     try {
-                        int segmentNumber = segments.indexOf(segmentClosure) + 1
-                            
                         // First we make a "dummy" stage that contains the inputs
                         // to the next stage as outputs.  This allows later logic
                         // to find these "inputs" correctly when it expects to see
@@ -419,13 +426,6 @@ class PipelineCategory {
                                 
                         log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
                         child.addStage(dummyPriorStage)
-                        String childName = id
-                        if(segments.size()>1) {
-                            if(id == "all")
-                                childName = segmentNumber.toString()
-                            else
-                                childName = id + "." + segmentNumber
-                        }
                         child.branch = new Branch(name:childName)
                         child.nameApplied = !applyName
                         child.runSegment(files, segmentClosure)
@@ -538,7 +538,7 @@ class PipelineCategory {
                   
                 PipelineStage mergedStage = new PipelineStage(mergedContext, stages[0].body)
                 mergedStage.stageName = stages[0].stageName
-                parent.stages.add(mergedStage)
+                parent.addStage(mergedStage)
             }
         }
         
