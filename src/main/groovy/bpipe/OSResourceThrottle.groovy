@@ -54,9 +54,6 @@ class OSResourceThrottle {
      */
     Semaphore concurrencyCounter;
     
-    public OSResourceThrottle() {
-    }
-   
     synchronized acquireLock(Map cfg) {
         if(concurrencyCounter == null) {
            // TODO: the concurrency is not implemented, should be removed

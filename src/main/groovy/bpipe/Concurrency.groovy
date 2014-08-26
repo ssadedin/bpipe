@@ -90,20 +90,20 @@ class Concurrency {
     /**
      * The thread pool to use for executing tasks.
      */
-    ThreadPoolExecutor pool 
+    ThreadPoolExecutor pool = initPool() 
     
     /**
      * Each resource allocation allocates resources for its resource type against
      * these resource allocations.
      */
-    Map<String,Semaphore> resourceAllocations = [ threads: new Semaphore(Config.config.maxThreads)]
-    
+    Map<String,Semaphore> resourceAllocations = initResourceAllocations()    
+	
     /**
      * Counts of threads running
      */
     Map<Runnable,AtomicInteger> counts = [:]
     
-    Concurrency() {
+    ThreadPoolExecutor initPool() {
         
         log.info "Creating thread pool with " + Config.config.maxThreads + " threads to execute parallel pipelines"
         
@@ -136,15 +136,22 @@ class Concurrency {
                   }
               }
         }
+    }
         
+
+    Map initResourceAllocations() {
+
+        Map res = [ threads: new Semaphore(Config.config.maxThreads)]
+
         if(Config.userConfig.maxMemoryMB) {
-            resourceAllocations["memory"] = new Semaphore(Integer.parseInt(Config.userConfig.maxMemoryMB))
+            res["memory"] = new Semaphore(Integer.parseInt(Config.userConfig.maxMemoryMB))
         }               
         
         if(Config.config.maxMemoryMB) {
             log.info "Setting maximum memory to $Config.config.maxMemoryMB from configuration / command line"
-            resourceAllocations["memory"] = new Semaphore(Config.config.maxMemoryMB)
+            res["memory"] = new Semaphore(Config.config.maxMemoryMB)
         }               
+		return res
     }
     
     /**
