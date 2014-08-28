@@ -959,7 +959,7 @@ class PipelineContext {
         
         if(doExecute) {
             if(Utils.box(this.@output)) {
-                this.output = Utils.box(fixedOutputs) +  Utils.box(this.@output).grep { ! it in fixedOutputs }
+                this.output = Utils.box(fixedOutputs) +  Utils.box(this.@output).grep { ! (it in fixedOutputs) }
                 this.output.removeAll { it in replacedOutputs  || toOutputFolder(it) in replacedOutputs}
             }
             else {
