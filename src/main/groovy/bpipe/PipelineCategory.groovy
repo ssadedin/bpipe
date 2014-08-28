@@ -156,7 +156,7 @@ class PipelineCategory {
      */
     static Object plus(Closure other, List segments) {
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
-        Closure mul = splitOnFiles("*", segments, false)
+        Closure mul = splitOnFiles("*", segments, false, false)
         def plusImplementation =  { input1 ->
             
             def currentStage = new PipelineStage(Pipeline.currentRuntimePipeline.get().createContext(), other)
@@ -331,7 +331,7 @@ class PipelineCategory {
      * @param requireMatch  if true, the pipeline will fail if there are 
      *                      no matches to the pattern
      */
-    static Object splitOnFiles(def pattern, List segments, boolean requireMatch) {
+    static Object splitOnFiles(def pattern, List segments, boolean requireMatch, boolean sortResults=true) {
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
         
         def multiplyImplementation = { input ->
@@ -339,7 +339,7 @@ class PipelineCategory {
             log.info "multiply on input $input with pattern $pattern"
             
             // Match the input
-            InputSplitter splitter = new InputSplitter()
+            InputSplitter splitter = new InputSplitter(sortResults:sortResults)
             Map samples = splitter.split(pattern, input)
             
             if(samples.isEmpty() && !requireMatch && pattern == "*")        
