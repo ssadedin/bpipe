@@ -56,10 +56,26 @@ class ReportGenerator {
         def docStages = [ [] ]
         pipeline.fillDocStages(docStages)
         
+        GraphEntry outputGraph = Dependencies.instance.computeOutputGraph(Dependencies.instance.scanOutputFolder())  
+        
+        // We fill in the outputs for each node that is a pipeline stage
+        pipeline.node.breadthFirst().each { Node n ->
+            if(n.attributes().type != 'stage')
+                return
+                
+            if(n.attributes().stage.synthetic)
+                return
+            
+            PipelineContext ctx = n.attributes().stage.context
+            List<String> outputs = (Utils.box(ctx.@output) + ctx.inferredOutputs).unique()
+            n.attributes().outputs = outputs.collect { outputGraph.propertiesFor(it) }
+        }
+        
         if(reportBinding == null) {
             reportBinding = [
                 stages: docStages,
-                pipeline: pipeline
+                pipeline: pipeline,
+                nodes : pipeline.node
             ]
         }
         else {
@@ -72,7 +88,7 @@ class ReportGenerator {
 //            return XmlUtil.escapeXml(String.valueOf(obj))
 //        }
         
-        reportBinding.outputGraph =  Dependencies.instance.computeOutputGraph(Dependencies.instance.scanOutputFolder()) 
+        reportBinding.outputGraph =  outputGraph
         reportBinding.escape = Utils.&escape
         reportBinding.utils = new Utils()
          

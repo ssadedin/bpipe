@@ -1,8 +1,11 @@
 package bpipe
 
 import groovy.util.logging.Log;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.naming.ldap.SortResponseControl;
 
 /**
  * Implements logic for splitting input files into groups by sample using simple
@@ -26,6 +29,8 @@ import java.util.regex.Pattern;
  */
 @Log
 class InputSplitter {
+	
+	boolean sortResults = true
 
     /**
      * Splits the given inputs up according to the specified pattern 
@@ -85,11 +90,17 @@ class InputSplitter {
             unsortedResult[group] << inp
 		}
         
-		// We now have all the inputs keyed on the part matching the split char, 
-		// however we want to also sort them 
-        Map sortedResult = [:]
-        unsortedResult.each {  k,v ->
-            sortedResult[k] = this.sortNumericThenLexically(pattern, splitGroups, v)
+		if(sortResults) {
+			// We now have all the inputs keyed on the part matching the split char, 
+			// however we want to also sort them 
+	        Map sortedResult = [:]
+	        unsortedResult.each {  k,v ->
+	            sortedResult[k] = this.sortNumericThenLexically(pattern, splitGroups, v)
+			}
+			return sortedResult
+		}
+		else {
+			return unsortedResult
 		}
     }
     

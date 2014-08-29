@@ -13,5 +13,5 @@ import org.codehaus.groovy.transform.GroovyASTTransformationClass;
 @Target(ElementType.LOCAL_VARIABLE)
 @GroovyASTTransformationClass("bpipe.ast.BpipeTransformASTTransformation")
 public @interface Transform {
-    String value
+    String value()
 }

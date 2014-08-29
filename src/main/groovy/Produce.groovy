@@ -38,5 +38,5 @@ import java.lang.annotation.Target
 @Target(ElementType.LOCAL_VARIABLE)
 @GroovyASTTransformationClass( "bpipe.ast.BpipeProduceASTTransformation" )
 public @interface Produce {
-    String value
+    String value()
 }

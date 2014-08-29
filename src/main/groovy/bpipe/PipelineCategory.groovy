@@ -156,7 +156,7 @@ class PipelineCategory {
      */
     static Object plus(Closure other, List segments) {
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
-        Closure mul = splitOnFiles("*", segments, false)
+        Closure mul = splitOnFiles("*", segments, false, false)
         def plusImplementation =  { input1 ->
             
             def currentStage = new PipelineStage(Pipeline.currentRuntimePipeline.get().createContext(), other)
@@ -211,7 +211,7 @@ class PipelineCategory {
                 log.info "Processing segment ${s.hashCode()}"
                 chrs.each { chr ->
                     log.info "Creating pipeline to run on chromosome $chr"
-                    Pipeline child = Pipeline.currentRuntimePipeline.get().fork()
+                    Pipeline child = Pipeline.currentRuntimePipeline.get().fork(chr.toString())
                     currentStage.children << child
                     Closure segmentClosure = s
                     threads << {
@@ -331,7 +331,7 @@ class PipelineCategory {
      * @param requireMatch  if true, the pipeline will fail if there are 
      *                      no matches to the pattern
      */
-    static Object splitOnFiles(def pattern, List segments, boolean requireMatch) {
+    static Object splitOnFiles(def pattern, List segments, boolean requireMatch, boolean sortResults=true) {
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
         
         def multiplyImplementation = { input ->
@@ -339,7 +339,7 @@ class PipelineCategory {
             log.info "multiply on input $input with pattern $pattern"
             
             // Match the input
-            InputSplitter splitter = new InputSplitter()
+            InputSplitter splitter = new InputSplitter(sortResults:sortResults)
             Map samples = splitter.split(pattern, input)
             
             if(samples.isEmpty() && !requireMatch && pattern == "*")        
@@ -399,13 +399,20 @@ class PipelineCategory {
                     
                 log.info "Creating pipeline to run parallel segment $id with files $files"
                    
-                Pipeline child = Pipeline.currentRuntimePipeline.get().fork()
-                currentStage.children << child
+ 
                 Closure segmentClosure = s
+                String childName = id
+                int segmentNumber = segments.indexOf(segmentClosure) + 1
+                if(segments.size()>1) {
+                    if(id == "all")
+                        childName = segmentNumber.toString()
+                    else
+                        childName = id + "." + segmentNumber
+                }
+                Pipeline child = Pipeline.currentRuntimePipeline.get().fork(childName)
+                currentStage.children << child
                 threads << {
                     try {
-                        int segmentNumber = segments.indexOf(segmentClosure) + 1
-                            
                         // First we make a "dummy" stage that contains the inputs
                         // to the next stage as outputs.  This allows later logic
                         // to find these "inputs" correctly when it expects to see
@@ -419,13 +426,6 @@ class PipelineCategory {
                                 
                         log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
                         child.addStage(dummyPriorStage)
-                        String childName = id
-                        if(segments.size()>1) {
-                            if(id == "all")
-                                childName = segmentNumber.toString()
-                            else
-                                childName = id + "." + segmentNumber
-                        }
                         child.branch = new Branch(name:childName)
                         child.nameApplied = !applyName
                         child.runSegment(files, segmentClosure)
@@ -538,7 +538,7 @@ class PipelineCategory {
                   
                 PipelineStage mergedStage = new PipelineStage(mergedContext, stages[0].body)
                 mergedStage.stageName = stages[0].stageName
-                parent.stages.add(mergedStage)
+                parent.addStage(mergedStage)
             }
         }
         

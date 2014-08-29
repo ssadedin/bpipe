@@ -13,5 +13,5 @@ import org.codehaus.groovy.transform.GroovyASTTransformationClass;
 @Target(ElementType.LOCAL_VARIABLE)
 @GroovyASTTransformationClass("bpipe.ast.BpipeFilterASTTransformation")
 public @interface Filter {
-    String value
+    String value()
 }
