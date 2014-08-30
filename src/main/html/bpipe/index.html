@@ -291,7 +291,6 @@
                                childDepth+=1
                        }
                        childWidths.add(branchWidths.max())
-                       def oldUsedWidth = usedWidth
                        usedWidth+=branchWidths.max()
                    }
                    else
@@ -306,7 +305,15 @@
                        List<Properties> outputs = attr.outputs
                        def maxStopTime = outputs*.stopTimeMs.max()
                        def minStartTime = outputs*.startTimeMs.min()
-                       def timeMs = maxStopTime - minStartTime
+                       def timeMs = 0
+                       if(maxStopTime && minStartTime) {
+                         timeMs = maxStopTime - minStartTime
+                       }
+                       else {
+                         timeMs = stage?.context?.documentation?.elapsedMs?:0
+                         maxStopTime = timeMs;
+                         minStartTime = 0;
+                       }
                        float width = timeMs
                        def duration = groovy.time.TimeCategory.minus(new Date(maxStopTime), new Date(minStartTime)).toString().replaceAll("seconds","s")
                        levels[depth].add( [label: stage.stageName, width: width, type: 'block', anno: duration, stage: stage ])
