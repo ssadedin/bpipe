@@ -668,11 +668,13 @@ public class Pipeline {
                   
                 about(finishedAt: new Date())
                 
-//                def w =new StringWriter()
-//                this.dump(w)
-//                w.flush()
-//                println w
-//                
+				/*
+                def w =new StringWriter()
+                this.dump(w)
+                w.flush()
+                println w
+                */
+                
                 // See if any checks failed
                 List<Check> allChecks = Check.loadAll()
                 List<Check> failedChecks = allChecks.grep { !it.passed && !it.override }
@@ -722,13 +724,16 @@ public class Pipeline {
      * Note:  the new pipeline is not run by this method; instead you have to
      *        call one of the {@link #run(Closure)} methods on the returned pipeline
      */
-    Pipeline fork(String childName) {
+    Pipeline fork(Node branchPoint, String childName) {
+		
+		assert branchPoint in this.node.children()
+		
         Pipeline p = new Pipeline()
-        p.node = new Node(this.node, childName, [type:'pipeline',pipeline:p])
+        p.node = new Node(branchPoint, childName, [type:'pipeline',pipeline:p])
         p.stages = [] + this.stages
         p.joiners = [] + this.joiners
         p.parent = this
-        this.node.appendNode(p.node)
+//        branchPoint.appendNode(p.node)
         ++this.childCount
         return p
     }
@@ -1009,10 +1014,12 @@ public class Pipeline {
         }
         return DefinePipelineCategory.inputStage
     }
+	
+	final int dumpTabWidth = 8
     
     void dump(Writer w, int indentLevel=0) {
         
-        String indent = " " * (indentLevel+8)
+        String indent = " " * (indentLevel+dumpTabWidth)
         w.println((" "*indentLevel) + this.node.name() + ":")
         this.node.children().each { Node n ->
             
@@ -1023,7 +1030,16 @@ public class Pipeline {
             }
             else
             if(n.attributes().type == 'pipeline') {
-                n.attributes().pipeline.dump(w,indentLevel+8)
+                n.attributes().pipeline.dump(w,indentLevel+dumpTabWidth)
+            }
+            else
+            if(n.attributes().type == 'branchpoint') {
+				w.println indent + "o------>"
+                for(Node childPipelineNode in n.children()) {
+					def atts = childPipelineNode.attributes()
+					Pipeline p = atts.pipeline
+					p.dump(w,indentLevel+dumpTabWidth*2)
+				}
             }
         }
     }
@@ -1056,12 +1072,23 @@ public class Pipeline {
         } 
     }
     
+	/**
+	 * Stores the given stage as part of the execution of this pipeline
+	 */
     void addStage(PipelineStage stage) {
         synchronized(this.stages) {
             this.stages << stage
             node.appendNode(stage.stageName, [type:'stage','stage' : stage])
         }
     }
+	
+	/**
+	 * Stores a branching of the pipeline as a node on the pipeline structure
+	 * definition. 
+	 */
+	Node addBranchPoint(String name) {
+        this.node.appendNode(name, [type:'branchpoint'])
+	}
     
     void summarizeOutputs(List stages) {
         
