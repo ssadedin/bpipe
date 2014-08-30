@@ -30,7 +30,6 @@ function run() {
 
 	bpipe run -r test.groovy $* > test.out 2>&1
 
-    echo "checking for report ..."
     if [ ! -e doc/index.html ];
     then
         err "No HTML report was generated for test. All tests are expected to generate a report."
