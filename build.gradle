@@ -2,7 +2,7 @@ apply plugin: 'eclipse'
 apply plugin: 'groovy'
 
 project.ext {
-    VERSION="0.9.8.6_rc"
+    VERSION="0.9.8.6_rc2"
     STAGE="build/stage/bpipe-$VERSION"
 }
 
@@ -16,7 +16,7 @@ repositories {
 }
 
 dependencies {
-    groovy group: 'org.codehaus.groovy', name: 'groovy', version: '2.3.4'
+    compile group: 'org.codehaus.groovy', name: 'groovy', version: '2.3.4'
     compile 'org.codehaus.gpars:gpars:0.12'
 
     compile files(fileTree(dir:'local-lib', includes:['*.jar']))
