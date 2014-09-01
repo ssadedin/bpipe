@@ -1,6 +1,6 @@
 source ../testsupport.sh
 
-run 
+bpipe run test.groovy > test.out 
 
 grep -q "Variable or parameter 'planet' was not specified" test.out || err "Failed to find expected error message when parameter not specified"
 

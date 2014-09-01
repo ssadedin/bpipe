@@ -1,3 +1,79 @@
+=========== Changes for Bpipe Version 0.9.8.6_rc2 ============
+
+   - Issue 100: report does not accurately reflect repeated and
+     parallel stages 
+    
+   - fix: inputs passed in wrong order to parallel stage after 'produce' when 
+     lexical sorting differs to input order 
+    
+   - enhance: migrated all of Bpipe to use groovy 2.3.4 for JDK1.8 compatibility
+    
+   - Refactoring of basis for pipeline diagrams to solve longstanding bugs 
+    
+   - fix: commands not appearing in html report 
+    
+   - fix: bad log statement causing error if log
+     file fails to appear, better behavior for distributed
+     file systems where command may finish before output file becomes
+     visible on remote node
+
+   - fix: transform() from() to() form can result in Bpipe not detecting 
+     command failure 
+    
+   - fix: pipeline fails if pipeline stage is referenced both with and without
+     'using' 
+    
+   - fix: internal errors (eg: outofmemeory) possibly leaving the Pipeline in 
+     corrupted internal state 
+   
+   - enhance: Make it possible to set custom R executable via
+     bpipe.config 
+    
+   - fix: some status codes from PBS/torque occasionally causing errors in 
+     logs 
+    
+   - fix: local commands don't show pid with bpipe status 
+    
+   - fix: status command showing old jobs and /
+     or failing in situations where command objects are missing /
+     corrupt 
+    
+   - enhance: add thread id to log file (debug)
+    
+   - fix: not all outputs from branches split by file pattern forwarded to
+     downstream stage when number of files differs in each branch 
+    
+   - fix: take into account whole parent hierarchy in calculating
+     total parallelism for computing variable 
+    
+   - enhance: support for sending proc_mode config param to custom executors and
+     CUSTOM executor config attribute 
+    
+   - enhance: Torque/PBS: support for sending procs request using nodes/ppn attribute 
+     instead of procs 
+    
+   - fix: 'forward' failing with cryptic errors when attempting to
+     forward multiple files 
+    
+   - enhance: enabled matching of directory name in split pattern when
+     directory present in pattern 
+
+   - fix: second and later outputs possibly not cleaned up in some 
+     situations of command failure 
+    
+   - fix: branch variables not accepted as required parameters 
+
+   - fix: output does not include branch if no input as base and output 
+     extension syntax used 
+    
+   - fix: R aborting when user hits control-c in some situations 
+    
+   - fix: some complex pipelines starting with list failing with errors 
+    
+   - fix: fixes for PBS Pro executor from Davide 
+   
+   - enhance: support for PBS Pro thanks to Davide Rambaldi 
+
 =========== Changes for Bpipe Version 0.9.8.6_rc ============
 
    - support for 'load' to work with URLs for loading 

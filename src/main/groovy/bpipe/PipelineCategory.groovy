@@ -207,11 +207,13 @@ class PipelineCategory {
             // separate pipeline for each one, and execute each parallel segment
             List<Pipeline> childPipelines = []
             List<Runnable> threads = []
+			Pipeline parent = Pipeline.currentRuntimePipeline.get()
+			Node branchPoint = parent.addBranchPoint("split")
             for(Closure s in segments) {
                 log.info "Processing segment ${s.hashCode()}"
                 chrs.each { chr ->
                     log.info "Creating pipeline to run on chromosome $chr"
-                    Pipeline child = Pipeline.currentRuntimePipeline.get().fork(chr.toString())
+                    Pipeline child = Pipeline.currentRuntimePipeline.get().fork(branchPoint, chr.toString())
                     currentStage.children << child
                     Closure segmentClosure = s
                     threads << {
@@ -393,6 +395,8 @@ class PipelineCategory {
         // separate pipeline for each one, and for each parallel stage
         List<Pipeline> childPipelines = []
         List<Runnable> threads = []
+		Pipeline parent = Pipeline.currentRuntimePipeline.get()
+		Node branchPoint = parent.addBranchPoint("split")
         for(Closure s in segments) {
             log.info "Processing segment ${s.hashCode()}"
             samples.each { id, files ->
@@ -409,7 +413,8 @@ class PipelineCategory {
                     else
                         childName = id + "." + segmentNumber
                 }
-                Pipeline child = Pipeline.currentRuntimePipeline.get().fork(childName)
+				
+                Pipeline child = parent.fork(branchPoint,childName)
                 currentStage.children << child
                 threads << {
                     try {
@@ -551,7 +556,7 @@ class PipelineCategory {
         PipelineContext mergedContext = 
             new PipelineContext(null, parent.stages, joiners, new Branch(name:'all'))
         def mergedOutputs = finalStages.collect { s ->
-            Utils.box(s.context.nextInputs ?: s.context.@output) 
+            Utils.box(s?.context?.nextInputs ?: s?.context?.@output) 
         }.sum().unique { new File(it).canonicalPath }
         log.info "Last merged outputs are $mergedOutputs"
         mergedContext.setRawOutput(mergedOutputs)
