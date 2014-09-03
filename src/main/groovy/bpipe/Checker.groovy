@@ -70,17 +70,25 @@ class Checker {
         }
         else
         try { // Check either had not executed, or was not up-to-date
-            log.info "Executing check: $check"
             
+	        File checkFile = check.getFile(check.stage, check.name, check.branch)
+            log.info "Executing check: $check with status in file: $checkFile"
+			
             List oldOutputs = ctx.@output
-            
+			ctx.internalOutputs = [checkFile.path]
+			ctx.internalInputs = Utils.box(ctx.@output)
             check.executed = new Date()
             
-            checkClosure()
-            
-            // A check can modify the outputs even if it doesn't reference any
-            // Make sure it doesn't affect what gets passed on to next stage
-            ctx.setRawOutput(oldOutputs)
+			try {
+	            checkClosure()
+			}
+			finally {
+	            // A check can modify the outputs even if it doesn't reference any
+	            // Make sure it doesn't affect what gets passed on to next stage
+	            ctx.setRawOutput(oldOutputs)
+				ctx.internalOutputs = []
+				ctx.internalInputs = []
+			}
             
             check.passed = true
             if(!Runner.opts.t && !ctx.probeMode) {

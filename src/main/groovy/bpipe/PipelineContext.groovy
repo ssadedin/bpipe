@@ -190,6 +190,15 @@ class PipelineContext {
     */
    List<String> referencedOutputs = []
    
+   
+   /**
+    * A list of internally set inputs/outputs that are not visible to the user
+    * (see use in Checker)
+    */
+   List<String> internalOutputs = []
+   
+   List<String> internalInputs = []
+   
    /**
     * A list of outputs that are to be marked as preserved.
     * These will not be deleted automatically by user initiated
@@ -1519,16 +1528,21 @@ class PipelineContext {
       // $ouput.<ext> form in their commands. These are intercepted at string evaluation time
       // (prior to the async or exec command entry) and set as inferredOutputs until
       // the command is executed, and then we wipe them out
-      def checkOutputs = this.inferredOutputs + referencedOutputs
+      def checkOutputs = this.inferredOutputs + this.referencedOutputs + this.internalOutputs
       EventManager.instance.signal(PipelineEvent.COMMAND_CHECK, "Checking command", [ctx: this, command: cmd, joined: joined, outputs: checkOutputs])
 
       // We expect that the actual inputs will have been resolved by evaluation of the command to be executed 
       // before this method is invoked
-      def actualResolvedInputs = Utils.box(this.@inputWrapper?.resolvedInputs)
+      def actualResolvedInputs = Utils.box(this.@inputWrapper?.resolvedInputs) + internalInputs
 
       log.info "Checking actual resolved inputs $actualResolvedInputs"
       if(!probeMode && checkOutputs && Dependencies.instance.checkUpToDate(checkOutputs,actualResolvedInputs)) {
-          String message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " due to inferred outputs $checkOutputs newer than inputs ${this.@input}"
+		  String message
+		  if(this.@input)
+              message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " due to inferred outputs $checkOutputs newer than inputs ${this.@input}"
+		  else
+              message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " because outputs $checkOutputs already exist (no inputs referenced)"
+		  
           log.info message
           msg message
           
