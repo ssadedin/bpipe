@@ -793,8 +793,14 @@ class ParamsBinding extends Binding {
     def void addParams( List<String> listOfKeyValuePairs ) {
 
         if( !listOfKeyValuePairs ) return
-
-        listOfKeyValuePairs.each { pair ->
+		
+		// Expand any file references into their key value equivalents
+		def isFileReference = { it.startsWith("@") && !it.contains("=") }
+		
+        def parsePair = { pair ->
+			
+			if(isFileReference(pair)) return
+			
             MapEntry entry = parseParam(pair)
             if( !entry ) {
                 log.warning("The specified value is a valid parameter: '${pair}'. It must be in format 'key=value'")
@@ -807,6 +813,20 @@ class ParamsBinding extends Binding {
                   setParam(entry.key, entry.value)
             }
         }
+		
+		def fileReferences = listOfKeyValuePairs.grep(isFileReference)
+		fileReferences.each { fr ->
+			fr = new File(fr.substring(1))
+			if(!fr.exists())
+				throw new PipelineError("The file $fr was  as a parameter file but could not be found. Please ensure this file exists.")
+				
+		    fr.eachLine { line -> 
+				parsePair(line) 
+		        log.info "Parsed parameter $line from file $fr"
+			}
+		}
+		
+		listOfKeyValuePairs.each(parsePair)
     }
 
 
