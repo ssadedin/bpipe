@@ -821,7 +821,7 @@ class ParamsBinding extends Binding {
 				throw new PipelineError("The file $fr was  as a parameter file but could not be found. Please ensure this file exists.")
 				
 		    fr.eachLine { line -> 
-				parsePair(line) 
+				parsePair(line.trim()) 
 		        log.info "Parsed parameter $line from file $fr"
 			}
 		}
