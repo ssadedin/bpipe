@@ -95,7 +95,18 @@ public class Pipeline {
      * pipeline
      */
     static Long rootThreadId
-    
+	
+	/**
+	 * A map of script file names to internal Groovy class names. This is needed
+	 * because Bpipe loads and evaluates pipeline scripts itself, which results in
+	 * scripts being assigned random identifiers. When such identifiers appear
+	 * in error messages it is confusing for users since they can't tell which
+	 * actual file th error occurred in (or which line). This map is populated
+	 * as each script is loaded by code that is prepended to each script file
+	 * by Bpipe on the first line.
+	 */
+	static Map<String,String> scriptNames = Collections.synchronizedMap([:])
+	
     /**
      * Global binding - variables and functions (including pipeline stages)
      * that are available to all pipeline stages.  Don't put
@@ -788,7 +799,10 @@ public class Pipeline {
                 
                 log.info("Evaluating library file $scriptFile")
                 try {
-                    Script script = shell.evaluate(PIPELINE_IMPORTS+" binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true; " + scriptFile.text + "\nthis")
+                    Script script = shell.evaluate(PIPELINE_IMPORTS+
+						" binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true;" +
+						"bpipe.Pipeline.scriptNames['$scriptFile']=this.class.name;" +
+						 scriptFile.text + "\nthis")
                     script.getMetaClass().getMethods().each { CachedMethod m ->
                         if(m.declaringClass.name.matches("Script[0-9]*") && !["__\$swapInit","run","main"].contains(m.name)) {
                           shell.context.variables[m.name] = { Object[] args -> script.getMetaClass().invokeMethod(script,m.name,args) }

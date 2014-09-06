@@ -56,7 +56,7 @@ class Runner {
     final static String builddate = System.getProperty("bpipe.builddate")?:System.currentTimeMillis()
     
     final static ParamsBinding binding = new ParamsBinding()
-    
+	
     final static String DEFAULT_HELP = """
         bpipe [run|test|debug|execute] [options] <pipeline> <in1> <in2>...
               retry [test]
@@ -80,7 +80,7 @@ class Runner {
     static CliBuilder stopCommandsCli = new CliBuilder(usage: "bpipe stopcommands\n", posix: true)
     
     static CliBuilder diagramCli = new CliBuilder(usage: "bpipe diagram [-e] [-f <format>] <pipeline> <input1> <input2> ...\n", posix: true)
-    
+	
     public static OptionAccessor opts = runCli.parse([])
     
     public static void main(String [] args) {
@@ -215,7 +215,7 @@ class Runner {
                  v longOpt:'verbose', 'print internal logging to standard error'
                  y longOpt:'yes', 'answer yes to any prompts or questions'
                  u longOpt:'until', 'run until stage given',args:1
-                 p longOpt: 'param', 'defines a pipeline parameter', args: 1, argName: 'param=value', valueSeparator: ',' as char
+                 p longOpt: 'param', 'defines a pipeline parameter, or file of paramaters via @<file>', args: 1, argName: 'param=value', valueSeparator: ',' as char
                  'L' longOpt: 'interval', 'the default genomic interval to execute pipeline for (samtools format)',args: 1
             }
             
@@ -373,16 +373,20 @@ class Runner {
                 // Handle this as a user error in defining their script
                 // print a nicer error message than what comes out of groovy by default
                 handleMissingPropertyFromPipelineScript(e)
+		        System.exit(1)
             }
-            else
+            else {
                 reportExceptionToUser(e)
+		        System.exit(1)
+            }
         }
         catch(Throwable e) {
             reportExceptionToUser(e)
+	        System.exit(1)
         }
    }
     
-    private static reportExceptionToUser(Throwable e) {
+   synchronized static reportExceptionToUser(Throwable e) {
         log.severe "Reporting exception to user: "
         log.log(Level.SEVERE, "Reporting exception to user", e)
         
@@ -390,18 +394,22 @@ class Runner {
 
         System.err.println(" Bpipe Error ".center(Config.config.columns,"="))
         
-            System.err.println("\nAn error occurred executing your pipeline:\n\n${msg.center(Config.config.columns,' ')}\n")
+        System.err.println("\nAn error occurred executing your pipeline:\n\n${msg.center(Config.config.columns,' ')}\n")
+		
         if(!(e instanceof ValueMissingError)) {
             System.err.println("\nPlease see the details below for more information.\n")
             System.err.println(" Error Details ".center(Config.config.columns, "="))
             System.err.println()
             Throwable sanitized = StackTraceUtils.deepSanitize(e)
-            sanitized.printStackTrace()
+			StringWriter sw = new StringWriter()
+            sanitized.printStackTrace(new PrintWriter(sw))
+			String stackTrace = sw.toString()
+			Pipeline.scriptNames.each { fileName, internalName -> stackTrace = stackTrace.replaceAll(internalName, fileName) }
+			System.err.println(stackTrace)
             System.err.println()
             System.err.println "=" * Config.config.columns
             System.err.println("\nMore details about why this error occurred may be available in the full log file .bpipe/bpipe.log\n")
         }
-        System.exit(1)
     }
 
     private static handleMissingPropertyFromPipelineScript(MissingPropertyException e) {
@@ -539,7 +547,10 @@ class Runner {
         // Note that it is important to keep this on a single line because 
         // we want any errors in parsing the script to report the correct line number
         // matching what the user sees in their script
-        String pipelineSrc = Pipeline.PIPELINE_IMPORTS + pipelineFile.text
+        String pipelineSrc = Pipeline.PIPELINE_IMPORTS + 
+					"bpipe.Pipeline.scriptNames['$pipelineFile.name']=this.class.name;" +
+					 pipelineFile.text
+					 
         if(pipelineFile.text.indexOf("return null") >= 0) {
             println """
                        ================================================================================================================
