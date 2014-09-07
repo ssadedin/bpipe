@@ -939,6 +939,7 @@ class PipelineContext {
           try {
             PipelineDelegate.setDelegateOn(this, body)
             log.info("Probing command using inputs ${this.@input}")
+            List oldInferredOutputs = this.allInferredOutputs.clone()
             try {
               body() 
             }
@@ -948,7 +949,13 @@ class PipelineContext {
             log.info "Finished probe"
             
             def allInputs = (getResolvedInputs()  + Utils.box(lastInputs)).unique()
-            if(!Dependencies.instance.checkUpToDate(fixedOutputs + globExistingFiles,allInputs)) {
+            
+            def outputsToCheck = fixedOutputs.clone()
+            List newInferredOutputs = this.allInferredOutputs.clone()
+            newInferredOutputs.removeAll(oldInferredOutputs)
+            outputsToCheck.addAll(newInferredOutputs)
+            
+            if(!Dependencies.instance.checkUpToDate(outputsToCheck + globExistingFiles,allInputs)) {
                 log.info "Not up to date because input inferred by probe of body newer than outputs"
             }
             else
