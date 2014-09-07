@@ -216,6 +216,7 @@ class Runner {
                  y longOpt:'yes', 'answer yes to any prompts or questions'
                  u longOpt:'until', 'run until stage given',args:1
                  p longOpt: 'param', 'defines a pipeline parameter, or file of paramaters via @<file>', args: 1, argName: 'param=value', valueSeparator: ',' as char
+                 b longOpt: 'branch', 'Comma separated list of branches to limit execution to', args:1
                  'L' longOpt: 'interval', 'the default genomic interval to execute pipeline for (samtools format)',args: 1
             }
             
@@ -238,7 +239,7 @@ class Runner {
         // Note: configuration reading depends on the script, so this
         // needs to come first
         Config.config.script = opt.arguments()[0]
-        
+
         // read the configuration file, if available
         log.info "Reading user config ... "
         Utils.time ("Read user config") {
@@ -295,6 +296,11 @@ class Runner {
         if(opts.R) {
             log.info "Creating report $opts.R"
             def reportStats = new ReportStatisticsListener(opts.R, opts.f?:opts.R+".html")
+        }
+
+        if(opts.b) {
+            Config.config.branchFilter = opts.b.split(",").collect { it.trim() }
+            log.info "Set branch filter = ${Config.config.branchFilter}"
         }
         
         if(Config.userConfig.worx.enable) {
@@ -458,8 +464,6 @@ class Runner {
 		
         return parentLog
     }
-
-
     
     /**
      * Try to determine the process id of this Java process.

@@ -212,7 +212,13 @@ class PipelineCategory {
             for(Closure s in segments) {
                 log.info "Processing segment ${s.hashCode()}"
                 chrs.each { chr ->
-                    log.info "Creating pipeline to run on chromosome $chr"
+					
+					if(!Config.config.branchFilter.isEmpty() && !Config.config.branchFilter.contains(chr)) {
+						System.out.println "Skipping branch $chr because not in branch filter ${Config.config.branchFilter}"
+						return
+					}
+                    
+                    log.info "Creating pipeline to run on branch $chr"
                     Pipeline child = Pipeline.currentRuntimePipeline.get().fork(branchPoint, chr.toString())
                     currentStage.children << child
                     Closure segmentClosure = s
@@ -391,7 +397,7 @@ class PipelineCategory {
             
         log.info "Created pipeline stage ${currentStage.hashCode()} for parallel block"
         
-        // Now we have all our samples, make a 
+        // Now we have all our branches, make a 
         // separate pipeline for each one, and for each parallel stage
         List<Pipeline> childPipelines = []
         List<Runnable> threads = []
@@ -399,10 +405,15 @@ class PipelineCategory {
 		Node branchPoint = parent.addBranchPoint("split")
         for(Closure s in segments) {
             log.info "Processing segment ${s.hashCode()}"
+
             samples.each { id, files ->
                     
-                log.info "Creating pipeline to run parallel segment $id with files $files"
+                log.info "Creating pipeline to run parallel segment $id with files $files. Branch filter = ${Config.config.branchFilter}"
                    
+				if(!Config.config.branchFilter.isEmpty() && !Config.config.branchFilter.contains(id)) {
+					System.out.println "Skipping branch $id because not in branch filter ${Config.config.branchFilter}"
+					return
+				}
  
                 Closure segmentClosure = s
                 String childName = id
