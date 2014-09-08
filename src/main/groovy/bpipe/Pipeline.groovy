@@ -26,12 +26,13 @@ package bpipe
 
 import groovy.text.GStringTemplateEngine;
 import groovy.text.GStringTemplateEngine.GStringTemplate;
+import groovy.time.TimeCategory;
 
 import java.lang.annotation.Retention;
-
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import groovy.util.logging.Log;
 
 import java.util.logging.Level;
@@ -574,9 +575,10 @@ public class Pipeline {
         this.externalBinding.variables += pipeline.binding.variables
         
         def cmdlog = CommandLog.cmdLog
+        def startDate = new Date()
         if(launch) {
             cmdlog.write("")
-            String startDateTime = (new Date()).format("yyyy-MM-dd HH:mm") + " "
+            String startDateTime = startDate.format("yyyy-MM-dd HH:mm") + " "
             cmdlog << "#"*Config.config.columns 
             cmdlog << "# Starting pipeline at " + (new Date())
             cmdlog << "# Input files:  $inputFile"
@@ -588,7 +590,7 @@ public class Pipeline {
             startLog.bufferLine("="*Config.config.columns)
             startLog.flush()
             
-            about(startedAt: new Date())
+            about(startedAt: startDate)
         }
         
         ArrayList.metaClass.plus = { x ->
@@ -673,12 +675,15 @@ public class Pipeline {
                     failed = true
                 }
                 
+                Date finishDate = new Date()
+                
                 println("\n"+" Pipeline Finished ".center(Config.config.columns,"="))
                 if(rootContext)
-                  rootContext.msg "Finished at " + (new Date())
+                  rootContext.msg "Finished at " + finishDate
                   
-                about(finishedAt: new Date())
-                
+                about(finishedAt: finishDate)
+                cmdlog << "# " + (" Finished at " + finishDate + " Duration = " + TimeCategory.minus(finishDate,startDate) +" ").center(Config.config.columns,"#")
+               
 				/*
                 def w =new StringWriter()
                 this.dump(w)
