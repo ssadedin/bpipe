@@ -908,7 +908,7 @@ class PipelineContext {
         // Unwrap any files that may be wrapped in PipelineInput or PipelineOutput objects
         out = Utils.unwrap(out)      
         
-        List globOutputs = Utils.box(toOutputFolder(Utils.box(out).grep { it.contains("*") }))
+        List globOutputs = Utils.box(toOutputFolder(Utils.box(out).grep { it instanceof Pattern || it.contains("*") }))
         
         // Coerce so that files go to the right output folder
         if(coerceToOutputFolder)
@@ -917,14 +917,15 @@ class PipelineContext {
         def lastInputs = this.@input
         boolean doExecute = true
         
-        List fixedOutputs = Utils.box(out).grep { !it.contains("*") }
+        List fixedOutputs = Utils.box(out).grep { !(it instanceof Pattern) &&  !it.contains("*") }
         
         // Check for all existing files that match the globs
         List globExistingFiles = globOutputs.collect { 
-            def result = Utils.glob(it) 
+            def result = Utils.glob(it)  
             log.info "Files matching glob $it = $result"
             return result
         }.flatten()
+        
         if((!globOutputs || globExistingFiles)) {
           // No inputs were newer than outputs, 
           // but were the commands that created the outputs modified?
@@ -1002,6 +1003,7 @@ class PipelineContext {
                 // filterLines which doesn't trigger inferred inputs because
                 // it does not execute at all
                 if(!allResolvedInputs && !this.inputWrapper?.resolvedInputs) {
+                    
                     allResolvedInputs.addAll(Utils.box(this.@input))
                 }
                 
@@ -1018,7 +1020,7 @@ class PipelineContext {
         
         if(globOutputs) {
             def normalizedInputs = Utils.box(this.@input).collect { new File(it).absolutePath }
-            for(String pattern in globOutputs) {
+            for(pattern in globOutputs) {
                 def result = Utils.glob(pattern).grep {  !normalizedInputs.contains( new File(it).absolutePath) }
                 
                 log.info "Found outputs for glob $pattern: [$result]"
@@ -1069,6 +1071,8 @@ class PipelineContext {
         log.info "Files not in previously created outputs but matching preserve patterns $patterns are: $matchingOutputs"
         for(def entry in trackedOutputs) {
             def preserved = entry.value.outputs.grep { matchingOutputs.contains(new File(it).canonicalPath) }
+            
+            
             log.info "Outputs $preserved marked as preserved from stage $stageName by patterns $patterns"
             this.preservedOutputs += preserved 
         }
@@ -1544,12 +1548,12 @@ class PipelineContext {
 
       log.info "Checking actual resolved inputs $actualResolvedInputs"
       if(!probeMode && checkOutputs && Dependencies.instance.checkUpToDate(checkOutputs,actualResolvedInputs)) {
-		  String message
-		  if(this.@input)
+          String message
+          if(this.@input)
               message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " due to inferred outputs $checkOutputs newer than inputs ${this.@input}"
-		  else
+          else
               message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " because outputs $checkOutputs already exist (no inputs referenced)"
-		  
+          
           log.info message
           msg message
           
