@@ -56,7 +56,7 @@ class Runner {
     final static String builddate = System.getProperty("bpipe.builddate")?:System.currentTimeMillis()
     
     final static ParamsBinding binding = new ParamsBinding()
-    
+	
     final static String DEFAULT_HELP = """
         bpipe [run|test|debug|execute] [options] <pipeline> <in1> <in2>...
               retry [test]
@@ -80,7 +80,7 @@ class Runner {
     static CliBuilder stopCommandsCli = new CliBuilder(usage: "bpipe stopcommands\n", posix: true)
     
     static CliBuilder diagramCli = new CliBuilder(usage: "bpipe diagram [-e] [-f <format>] <pipeline> <input1> <input2> ...\n", posix: true)
-    
+	
     public static OptionAccessor opts = runCli.parse([])
     
     public static void main(String [] args) {
@@ -215,7 +215,8 @@ class Runner {
                  v longOpt:'verbose', 'print internal logging to standard error'
                  y longOpt:'yes', 'answer yes to any prompts or questions'
                  u longOpt:'until', 'run until stage given',args:1
-                 p longOpt: 'param', 'defines a pipeline parameter', args: 1, argName: 'param=value', valueSeparator: ',' as char
+                 p longOpt: 'param', 'defines a pipeline parameter, or file of paramaters via @<file>', args: 1, argName: 'param=value', valueSeparator: ',' as char
+                 b longOpt: 'branch', 'Comma separated list of branches to limit execution to', args:1
                  'L' longOpt: 'interval', 'the default genomic interval to execute pipeline for (samtools format)',args: 1
             }
             
@@ -238,7 +239,7 @@ class Runner {
         // Note: configuration reading depends on the script, so this
         // needs to come first
         Config.config.script = opt.arguments()[0]
-        
+
         // read the configuration file, if available
         log.info "Reading user config ... "
         Utils.time ("Read user config") {
@@ -295,6 +296,11 @@ class Runner {
         if(opts.R) {
             log.info "Creating report $opts.R"
             def reportStats = new ReportStatisticsListener(opts.R, opts.f?:opts.R+".html")
+        }
+
+        if(opts.b) {
+            Config.config.branchFilter = opts.b.split(",").collect { it.trim() }
+            log.info "Set branch filter = ${Config.config.branchFilter}"
         }
         
         if(Config.userConfig.worx.enable) {
@@ -373,16 +379,20 @@ class Runner {
                 // Handle this as a user error in defining their script
                 // print a nicer error message than what comes out of groovy by default
                 handleMissingPropertyFromPipelineScript(e)
+		        System.exit(1)
             }
-            else
+            else {
                 reportExceptionToUser(e)
+		        System.exit(1)
+            }
         }
         catch(Throwable e) {
             reportExceptionToUser(e)
+	        System.exit(1)
         }
    }
     
-    private static reportExceptionToUser(Throwable e) {
+   synchronized static reportExceptionToUser(Throwable e) {
         log.severe "Reporting exception to user: "
         log.log(Level.SEVERE, "Reporting exception to user", e)
         
@@ -390,18 +400,22 @@ class Runner {
 
         System.err.println(" Bpipe Error ".center(Config.config.columns,"="))
         
-            System.err.println("\nAn error occurred executing your pipeline:\n\n${msg.center(Config.config.columns,' ')}\n")
+        System.err.println("\nAn error occurred executing your pipeline:\n\n${msg.center(Config.config.columns,' ')}\n")
+		
         if(!(e instanceof ValueMissingError)) {
             System.err.println("\nPlease see the details below for more information.\n")
             System.err.println(" Error Details ".center(Config.config.columns, "="))
             System.err.println()
             Throwable sanitized = StackTraceUtils.deepSanitize(e)
-            sanitized.printStackTrace()
+			StringWriter sw = new StringWriter()
+            sanitized.printStackTrace(new PrintWriter(sw))
+			String stackTrace = sw.toString()
+			Pipeline.scriptNames.each { fileName, internalName -> stackTrace = stackTrace.replaceAll(internalName, fileName) }
+			System.err.println(stackTrace)
             System.err.println()
             System.err.println "=" * Config.config.columns
             System.err.println("\nMore details about why this error occurred may be available in the full log file .bpipe/bpipe.log\n")
         }
-        System.exit(1)
     }
 
     private static handleMissingPropertyFromPipelineScript(MissingPropertyException e) {
@@ -450,8 +464,6 @@ class Runner {
 		
         return parentLog
     }
-
-
     
     /**
      * Try to determine the process id of this Java process.
@@ -539,7 +551,10 @@ class Runner {
         // Note that it is important to keep this on a single line because 
         // we want any errors in parsing the script to report the correct line number
         // matching what the user sees in their script
-        String pipelineSrc = Pipeline.PIPELINE_IMPORTS + pipelineFile.text
+        String pipelineSrc = Pipeline.PIPELINE_IMPORTS + 
+					"bpipe.Pipeline.scriptNames['$pipelineFile.name']=this.class.name;" +
+					 pipelineFile.text
+					 
         if(pipelineFile.text.indexOf("return null") >= 0) {
             println """
                        ================================================================================================================
@@ -793,8 +808,14 @@ class ParamsBinding extends Binding {
     def void addParams( List<String> listOfKeyValuePairs ) {
 
         if( !listOfKeyValuePairs ) return
-
-        listOfKeyValuePairs.each { pair ->
+		
+		// Expand any file references into their key value equivalents
+		def isFileReference = { it.startsWith("@") && !it.contains("=") }
+		
+        def parsePair = { pair ->
+			
+			if(isFileReference(pair)) return
+			
             MapEntry entry = parseParam(pair)
             if( !entry ) {
                 log.warning("The specified value is a valid parameter: '${pair}'. It must be in format 'key=value'")
@@ -807,6 +828,20 @@ class ParamsBinding extends Binding {
                   setParam(entry.key, entry.value)
             }
         }
+		
+		def fileReferences = listOfKeyValuePairs.grep(isFileReference)
+		fileReferences.each { fr ->
+			fr = new File(fr.substring(1))
+			if(!fr.exists())
+				throw new PipelineError("The file $fr was  as a parameter file but could not be found. Please ensure this file exists.")
+				
+		    fr.eachLine { line -> 
+				parsePair(line.trim()) 
+		        log.info "Parsed parameter $line from file $fr"
+			}
+		}
+		
+		listOfKeyValuePairs.each(parsePair)
     }
 
 

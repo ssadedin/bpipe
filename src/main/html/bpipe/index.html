@@ -380,6 +380,7 @@
         	<hr>
             <h2 class='hr'>Pipeline Stages</h2>
             <br class='h2hr'>
+            <p style='position: relative; top: -1em;'>Total Runtime = <%=groovy.time.TimeCategory.minus(pipeline.documentation.finishedAt,pipeline.documentation.startedAt)%></p>
             <ol class='stageListOuter'>
             <%
             branchCount = 0;
