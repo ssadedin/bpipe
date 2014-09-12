@@ -902,6 +902,10 @@ class PipelineContext {
      *       
      */
     Object produceImpl(Object out, Closure body, boolean coerceToOutputFolder) { 
+        produceImpl(out,body,coerceToOutputFolder,false)
+    }
+    
+    Object produceImpl(Object out, Closure body, boolean coerceToOutputFolder, boolean explicit) { 
         
         log.info "Producing $out from $this"
         
@@ -955,6 +959,18 @@ class PipelineContext {
             List newInferredOutputs = this.allInferredOutputs.clone()
             newInferredOutputs.removeAll(oldInferredOutputs)
             outputsToCheck.addAll(newInferredOutputs)
+            
+            // In some cases the user may specify an output explicitly with a direct produce(...)
+            // but then not reference that output variable at all in any of their
+            // commands. In such a case the command should still execute, even though the command
+            // would seem not to create the output - if we can't see any other way the output
+            // is going to get created, we infer that the command is going to create it "magically"
+            // see produce_and_output_function_no_output_ref test.
+            for(def o in fixedOutputs) {
+                if(explicit && !trackedOutputs.containsKey(o) && !inferredOutputs.contains(o)) {
+                    this.internalOutputs.add(o)
+                }
+            }
             
             if(!Dependencies.instance.checkUpToDate(outputsToCheck + globExistingFiles,allInputs)) {
                 log.info "Not up to date because input inferred by probe of body newer than outputs"
