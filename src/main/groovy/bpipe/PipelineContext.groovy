@@ -276,6 +276,14 @@ class PipelineContext {
        this.@defaultOutput = toOutputFolder(defOut)
    }
    
+   /**
+    * The list of outputs that this pipeline stage is defined to produce. If specified, this
+    * list is enforced. That is, if the user then tries to reference an incompatible 
+    * output in one of their commands, they receive an error.
+    * <p>
+    * More flexible outputs are specified implicitly. These are 'inferred' outputs that
+    * are tracked using allInferredOutputs.
+    */
    def output
    
    void setOutput(o) {
@@ -2071,7 +2079,7 @@ class PipelineContext {
         
         // setOutput(value)
         this.onNewOutputReferenced(null, value)
-        this.@output = Utils.box(this.@output) + value
+//        this.@output = Utils.box(this.@output) + value
         return value
     }
 }
