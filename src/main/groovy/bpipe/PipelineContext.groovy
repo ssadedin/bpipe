@@ -2079,7 +2079,7 @@ class PipelineContext {
         
         // setOutput(value)
         this.onNewOutputReferenced(null, value)
-//        this.@output = Utils.box(this.@output) + value
+        this.@output = Utils.box(this.@output) + value
         return value
     }
 }
