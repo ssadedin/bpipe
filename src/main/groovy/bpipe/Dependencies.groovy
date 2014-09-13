@@ -312,12 +312,18 @@ class Dependencies {
                 
             Properties p = graph.propertiesFor(f.path)
             if(!p) {
-                log.info "File $f.path [$type] does not exist but has a valid properties file"
                 return true
             }
             
             // TODO: we could check that the "cleaned" flag has been set
-            return false
+            if(p.cleaned) {
+                log.info "File $f.path [$type] does not exist but has a properties file indicating it was cleaned up"
+                return false
+            }
+            else {
+                log.info "File $f.path [$type] does not exist, has a properties file indicating it is not cleaned up"
+                return true
+            }
         }
        
         if(missing)
