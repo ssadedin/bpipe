@@ -500,7 +500,7 @@ class PipelineContext {
    
    void var(Map values) {
        values.each { k,v ->
-           if(!this.localVariables.containsKey(k) && !this.extraBinding.variables.containsKey(k) && !Runner.binding.variables.containsKey(k)) {
+           if(!this.localVariables.containsKey(k) && !this.extraBinding.variables.containsKey(k) && !Runner.binding.variables.containsKey(k) && !branch.properties.containsKey(k)) {
                log.info "Using default value of variable $k = $v"
                if(v instanceof Closure)
                  this.localVariables[k] = v()
