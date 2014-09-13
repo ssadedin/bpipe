@@ -315,7 +315,6 @@ class Dependencies {
                 return true
             }
             
-            // TODO: we could check that the "cleaned" flag has been set
             if(p.cleaned) {
                 log.info "File $f.path [$type] does not exist but has a properties file indicating it was cleaned up"
                 return false
