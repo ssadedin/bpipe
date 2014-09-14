@@ -96,18 +96,18 @@ public class Pipeline {
      * pipeline
      */
     static Long rootThreadId
-	
-	/**
-	 * A map of script file names to internal Groovy class names. This is needed
-	 * because Bpipe loads and evaluates pipeline scripts itself, which results in
-	 * scripts being assigned random identifiers. When such identifiers appear
-	 * in error messages it is confusing for users since they can't tell which
-	 * actual file th error occurred in (or which line). This map is populated
-	 * as each script is loaded by code that is prepended to each script file
-	 * by Bpipe on the first line.
-	 */
-	static Map<String,String> scriptNames = Collections.synchronizedMap([:])
-	
+    
+    /**
+     * A map of script file names to internal Groovy class names. This is needed
+     * because Bpipe loads and evaluates pipeline scripts itself, which results in
+     * scripts being assigned random identifiers. When such identifiers appear
+     * in error messages it is confusing for users since they can't tell which
+     * actual file th error occurred in (or which line). This map is populated
+     * as each script is loaded by code that is prepended to each script file
+     * by Bpipe on the first line.
+     */
+    static Map<String,String> scriptNames = Collections.synchronizedMap([:])
+    
     /**
      * Global binding - variables and functions (including pipeline stages)
      * that are available to all pipeline stages.  Don't put
@@ -594,7 +594,7 @@ public class Pipeline {
         }
         
         ArrayList.metaClass.plus = { x ->
-            log.info "Interception list plus(" + delegate?.class?.name + "," + x?.class?.name + ")"
+//            log.info "Interception list plus(" + delegate?.class?.name + "," + x?.class?.name + ")"
             if(x instanceof Closure) {
                 if(delegate && (delegate[-1] instanceof ListBouncer)) {
                     delegate[-1].elements.add(x)
@@ -632,7 +632,7 @@ public class Pipeline {
                 
                 constructedPipeline = pipeline()
                 
-				// See bug #60
+                // See bug #60
                 if(constructedPipeline instanceof List) {
                     
                     // If ListBouncer at the end ...
@@ -684,7 +684,7 @@ public class Pipeline {
                 about(finishedAt: finishDate)
                 cmdlog << "# " + (" Finished at " + finishDate + " Duration = " + TimeCategory.minus(finishDate,startDate) +" ").center(Config.config.columns,"#")
                
-				/*
+                /*
                 def w =new StringWriter()
                 this.dump(w)
                 w.flush()
@@ -711,11 +711,11 @@ public class Pipeline {
         
         if(launch) {
             /*
-			if(Config.config.mode == "documentation" || Config.config.report) 
+            if(Config.config.mode == "documentation" || Config.config.report) 
                 documentation()
             else
             if(Config.config.customReport)
-            	generateCustomReport(Config.config.customReport)
+                generateCustomReport(Config.config.customReport)
               */
         }
         
@@ -741,9 +741,9 @@ public class Pipeline {
      *        call one of the {@link #run(Closure)} methods on the returned pipeline
      */
     Pipeline fork(Node branchPoint, String childName) {
-		
-		assert branchPoint in this.node.children()
-		
+        
+        assert branchPoint in this.node.children()
+        
         Pipeline p = new Pipeline()
         p.node = new Node(branchPoint, childName, [type:'pipeline',pipeline:p])
         p.stages = [] + this.stages
@@ -775,7 +775,9 @@ public class Pipeline {
     static Set allLoadedPaths = new HashSet()
     
     private static void loadExternalStagesFromPaths(GroovyShell shell, List<File> paths) {
+        
         for(File pipeFolder in paths) {
+            
             List<File> libPaths = []
             if(!pipeFolder.exists()) {
                 log.warning("Pipeline folder $pipeFolder could not be found")
@@ -804,10 +806,12 @@ public class Pipeline {
                 
                 log.info("Evaluating library file $scriptFile")
                 try {
+                    
                     Script script = shell.evaluate(PIPELINE_IMPORTS+
-						" binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true;" +
-						"bpipe.Pipeline.scriptNames['$scriptFile']=this.class.name;" +
-						 scriptFile.text + "\nthis")
+                        " binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true;" +
+                        "bpipe.Pipeline.scriptNames['$scriptFile']=this.class.name;" +
+                         scriptFile.text + "\nthis", scriptFile.name.replaceAll('.groovy$','_bpipe.groovy'))
+                    
                     script.getMetaClass().getMethods().each { CachedMethod m ->
                         if(m.declaringClass.name.matches("Script[0-9]*") && !["__\$swapInit","run","main"].contains(m.name)) {
                           shell.context.variables[m.name] = { Object[] args -> script.getMetaClass().invokeMethod(script,m.name,args) }
@@ -933,32 +937,32 @@ public class Pipeline {
         if(!documentation.title)
             documentation.title = "Pipeline Report"
 
-		def outFile = Config.config.defaultDocHtml
+        def outFile = Config.config.defaultDocHtml
         
         // We build up a list of pipeline stages
         // so the seed for that is a list with one empty list
         
-	    new ReportGenerator().generateFromTemplate(this,"index.html", outFile)
+        new ReportGenerator().generateFromTemplate(this,"index.html", outFile)
     }
     
-	def generateCustomReport(String reportName) {
+    def generateCustomReport(String reportName) {
         try {
-  		  def outFile = reportName + ".html"
+            def outFile = reportName + ".html"
           documentation.title = "Report"
-    	  new ReportGenerator().generateFromTemplate(this,reportName + ".html", outFile)
+          new ReportGenerator().generateFromTemplate(this,reportName + ".html", outFile)
         }
         catch(PipelineError e) {
             System.err.println "\nA problem occurred generating your report:"
             System.err.println e.message + "\n"
         }
-	}
-	
-	/**
-	 * Fills the given list with meta data about pipeline stages derived 
-	 * from the current pipeline's execution.  
-	 * 
-	 * @param pipelines
-	 */
+    }
+    
+    /**
+     * Fills the given list with meta data about pipeline stages derived 
+     * from the current pipeline's execution.  
+     * 
+     * @param pipelines
+     */
     void fillDocStages(List pipelines) {
         
         log.fine "Filling stages $stages"
@@ -1033,8 +1037,8 @@ public class Pipeline {
         }
         return DefinePipelineCategory.inputStage
     }
-	
-	final int dumpTabWidth = 8
+    
+    final int dumpTabWidth = 8
     
     void dump(Writer w, int indentLevel=0) {
         
@@ -1053,12 +1057,12 @@ public class Pipeline {
             }
             else
             if(n.attributes().type == 'branchpoint') {
-				w.println indent + "o------>"
+                w.println indent + "o------>"
                 for(Node childPipelineNode in n.children()) {
-					def atts = childPipelineNode.attributes()
-					Pipeline p = atts.pipeline
-					p.dump(w,indentLevel+dumpTabWidth*2)
-				}
+                    def atts = childPipelineNode.attributes()
+                    Pipeline p = atts.pipeline
+                    p.dump(w,indentLevel+dumpTabWidth*2)
+                }
             }
         }
     }
@@ -1091,23 +1095,23 @@ public class Pipeline {
         } 
     }
     
-	/**
-	 * Stores the given stage as part of the execution of this pipeline
-	 */
+    /**
+     * Stores the given stage as part of the execution of this pipeline
+     */
     void addStage(PipelineStage stage) {
         synchronized(this.stages) {
             this.stages << stage
             node.appendNode(stage.stageName, [type:'stage','stage' : stage])
         }
     }
-	
-	/**
-	 * Stores a branching of the pipeline as a node on the pipeline structure
-	 * definition. 
-	 */
-	Node addBranchPoint(String name) {
+    
+    /**
+     * Stores a branching of the pipeline as a node on the pipeline structure
+     * definition. 
+     */
+    Node addBranchPoint(String name) {
         this.node.appendNode(name, [type:'branchpoint'])
-	}
+    }
     
     void summarizeOutputs(List stages) {
         
