@@ -1,1 +1,1 @@
-rm -rf hello.* testoutput
+rm -rf hello* testoutput
