@@ -593,16 +593,21 @@ class Dependencies {
         File outputFile = outputFileProperties.outputFile
         long outputSize = outputFile.size()
         if(trash) {
+            File trashDir = new File(".bpipe/trash")
+            if(!trashDir.exists())
+                trashDir.mkdirs()
+            
             if(!outputFile.renameTo(new File(".bpipe/trash", outputFile.name))) {
               log.warning("Failed to move output file ${outputFile.absolutePath} to trash folder")
               System.err.println "Failed to move file ${outputFile.absolutePath} to trash folder"
+              return 0
             }
-                
         }
         else
         if(!outputFile.delete()) {
             log.warning("Failed to delete output file ${outputFile.absolutePath}")
             System.err.println "Failed to delete file ${outputFile.absolutePath}"
+            return 0
         }
         return outputSize
     }
