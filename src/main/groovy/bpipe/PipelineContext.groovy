@@ -876,10 +876,7 @@ class PipelineContext {
         this.currentFileNameTransform = null
     }
     
-    Object produceImpl(Object out, Closure body) { 
-      produceImpl(out,body,true)  
-    }
-   
+  
     /**
      * Specifies that the given output(s) (out) will be produced
      * by the given closure, and skips execution of the closure
@@ -909,11 +906,11 @@ class PipelineContext {
      *       properly handled in the glob matching
      *       
      */
-    Object produceImpl(Object out, Closure body, boolean coerceToOutputFolder) { 
-        produceImpl(out,body,coerceToOutputFolder,false)
+    Object produceImpl(Object out, Closure body) { 
+        produceImpl(out,body,false)
     }
     
-    Object produceImpl(Object out, Closure body, boolean coerceToOutputFolder, boolean explicit) { 
+    Object produceImpl(Object out, Closure body, boolean explicit /* the end user actually invoked produce themself */) { 
         
         log.info "Producing $out from $this"
         
@@ -923,8 +920,13 @@ class PipelineContext {
         List globOutputs = Utils.box(toOutputFolder(Utils.box(out).grep { it instanceof Pattern || it.contains("*") }))
         
         // Coerce so that files go to the right output folder
-        if(coerceToOutputFolder)
+        if(explicit) { // User invoked produce directly. In that case, if they put a directory into the produce
+                       // we should preserve it
+            out = Utils.box(out).collect { it.toString().contains("/") ? it : toOutputFolder(it)  }
+        }
+        else {
             out = toOutputFolder(out)
+        }
         
         def lastInputs = this.@input
         boolean doExecute = true

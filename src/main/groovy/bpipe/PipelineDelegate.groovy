@@ -115,7 +115,7 @@ class PipelineDelegate {
             def result 
             
             if(name == "produce") {
-                result = context.get().invokeMethod(name+"Impl", [actualArgs, body, !actualArgs.any {it.toString().contains("/")},true] as Object[])
+                result = context.get().invokeMethod(name+"Impl", [actualArgs, body, true] as Object[])
             }
             else {
                 result = context.get().invokeMethod(name+"Impl", [actualArgs, body] as Object[])
