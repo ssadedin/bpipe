@@ -183,7 +183,15 @@ class PipelineOutput {
         //   - outputs enforced by transform, etc ("override outputs")
         //   - outputs referenced by output file name extensions (output.txt)
         //   - the default output set for this stage
-        List boxed = Utils.box(this.overrideOutputs) + Utils.box(this.outputUsed) + [defaultOutput]
+        List boxed = Utils.box(this.overrideOutputs) + Utils.box(this.outputUsed) 
+        
+        // Used to add the default output here. The problem is, the default output 
+        // is just one made up by Bpipe - there's no indication from the user this output
+        // will ever be created. If we treat it as a referenced output here then it leads to
+        // spurious "output missing" errors or attempts to recreate the output because Bpipe
+        // thinks it should exist when it doesn't
+        //
+        //     + [defaultOutput]
         
         String baseOutput = boxed[0]
 
