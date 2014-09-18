@@ -40,6 +40,8 @@ class Branch extends Expando {
     @Delegate
     String name = ""
     
+    String dir = "."
+    
     Branch parent = null
     
     Branch getTop() { // Causes compile to fail :-(
