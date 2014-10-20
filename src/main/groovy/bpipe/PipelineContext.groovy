@@ -1649,6 +1649,10 @@ class PipelineContext {
    Object fromImpl(Object exts, Closure body) {
        
        log.info "From clause searching for inputs matching spec $exts"
+       
+       if(!exts)
+           throw new PipelineError("A call to 'from' was invoked with an empty or null argument. From requires a list of file patterns to match.")
+       
        def orig = exts
        
        // Find all the pipeline stages outputs that were created
