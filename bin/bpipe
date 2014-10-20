@@ -139,7 +139,10 @@ is_running() {
 # Check if the job files were flagged for cleanup
 # Files are flagged for cleanup when the Java process
 # is launched but aborts before doing anything useful
-# (for example, if it just prints help).
+# (for example, if it just prints help). Note this cleanup
+# is called even if the Bpipe java process keeps running, so it
+# should only cleanup things that are transiently related 
+# to the launch process, not related to the ongoing job.
 #----------------------------------------------------------
 function clean_job_files() {
     if [ -e .bpipe/logs/$$.erase.log ];
@@ -150,15 +153,10 @@ function clean_job_files() {
       then
          rm -f .bpipe/logs/$BPIPE_PID.log
          rm -f .bpipe/jobs/$BPIPE_PID
+         rm -f ~/.bpipedb/jobs/$BPIPE_PID
       fi
     fi
 
-    # Always clean up the job from the global job
-    # table
-    if [ ! -z $BPIPE_PID ] ;
-    then
-      rm -f ~/.bpipedb/jobs/$BPIPE_PID
-    fi
     rm -f .bpipe/prompt_input_files.*
 }
 
@@ -184,23 +182,24 @@ cleanup() {
           do
               if [ -e "$f" ];
               then
-              target=".bpipe/trash/$f"
-              if [ ! -d .bpipe/trash ];
-              then
-                  mkdir -p .bpipe/trash
+                  target=".bpipe/trash/$f"
+                  if [ ! -d .bpipe/trash ];
+                  then
+                      mkdir -p .bpipe/trash
+                  fi
+                  count=1
+                  realtarget="$target"
+                  while [ -e "$realtarget" ];
+                  do
+                    realtarget="${target}.${count}"
+                    let "count = count + 1"
+                  done
+                  target="$realtarget"
+                  echo "Moving unclean file $f to $target"
+                  echo
+                  mv "$f" ".bpipe/trash/$f"
               fi
-              count=1
-              realtarget="$target"
-              while [ -e "$realtarget" ];
-              do
-                realtarget="${target}.${count}"
-                let "count = count + 1"
-              done
-              target="$realtarget"
-              echo "Moving unclean file $f to $target"
-              echo
-              mv "$f" ".bpipe/trash/$f"
-              fi
+              rm $ip
           done
       done
     fi
