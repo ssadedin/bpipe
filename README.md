@@ -3,18 +3,18 @@ Welcome to Bpipe
 
 Bpipe provides a platform for running big bioinformatics jobs that consist of a series of processing stages - known as 'pipelines'.
 
-    * August 31st - New! Bpipe 0.9.8.6 Release Candidate 2 released!
-    * [http://download.bpipe.org/versions/bpipe-0.9.8.6_rc2.tar.gz Download]
-    * [http://code.google.com/p/bpipe/wiki/Reference Documentation]
+* August 31st - New! Bpipe 0.9.8.6 Release Candidate 2 released!
+* [Download](http://download.bpipe.org/versions/bpipe-0.9.8.6_rc2.tar.gz)
+* [Documentation](http://code.google.com/p/bpipe/wiki/Reference)
 
-Bpipe has been published in [http://bioinformatics.oxfordjournals.org/content/early/2012/04/11/bioinformatics.bts167.abstract Bioinformatics]! If you use Bpipe, please cite:
+Bpipe has been published in [Bioinformatics](http://bioinformatics.oxfordjournals.org/content/early/2012/04/11/bioinformatics.bts167.abstract)! If you use Bpipe, please cite:
 
   _Sadedin S, Pope B & Oshlack A, Bpipe: A Tool for Running and Managing Bioinformatics Pipelines, Bioinformatics_
 
 *New Download Site*
 
 Due to Google removing the download functionality from Google Code, downloads are now hosted at 
-[http://download.bpipe.org download.bpipe.org].
+http://download.bpipe.org download.bpipe.org.
 
 *Why Bpipe?*
 
@@ -30,6 +30,6 @@ By turning your shell scripts into Bpipe scripts, here are some of the features 
   * *Audit Trail* - Bpipe keeps a journal of exactly which commands executed and what their inputs and outputs were.
   * *Integration with Cluster Resource Managers* - if you use Torque PBS, Oracle Grid Engine or Platform LSF then Bpipe will make your life easier by allowing pure Bpipe scripts to run on your cluster virtually unchanged from how you run them locally.
   * *Notifications by Email or Instant Message* - Bpipe can send you alerts to tell you when your pipeline finishes or even as each stage completes.
-  * See how Bpipe compares to [ComparisonToWorkflowTools similar tools]
+  * See how Bpipe compares to [similar tools](http://code.google.com/p/bpipe/wiki/ComparisonToWorkflowTools)
 
-Take a look at the [Overview] to see Bpipe in action, work through the [GettingStarted Basic Tutorial] for simple first steps, see a step by step example of a [RealPipelineTutorial realistic pipeline] made using Bpipe, or take a look at the [Reference Reference] to see detailed documentation.
+Take a look at the [Overview] to see Bpipe in action, work through the [GettingStarted Basic Tutorial] for simple first steps, see a step by step example of a [realistic pipeline](http://code.google.com/p/bpipe/wiki/RealPipelineTutorial) made using Bpipe, or take a look at the [Reference Reference] to see detailed documentation.
