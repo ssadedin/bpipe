@@ -27,4 +27,4 @@ By turning your shell scripts into Bpipe scripts, here are some of the features 
   * **Notifications by Email or Instant Message** - Bpipe can send you alerts to tell you when your pipeline finishes or even as each stage completes.
   * See how Bpipe compares to [similar tools](http://code.google.com/p/bpipe/wiki/ComparisonToWorkflowTools)
 
-Take a look at the [Overview](http://code.google.com/p/bpipe/wiki/Overview) to see Bpipe in action, work through the [GettingStarted Basic Tutorial] for simple first steps, see a step by step example of a [realistic pipeline](http://code.google.com/p/bpipe/wiki/RealPipelineTutorial) made using Bpipe, or take a look at the [Reference Reference] to see detailed documentation.
+Take a look at the [Overview](http://code.google.com/p/bpipe/wiki/Overview) to see Bpipe in action, work through the [Basic Tutorial](http://code.google.com/p/bpipe/wiki/GettingStarted) for simple first steps, see a step by step example of a [realistic pipeline](http://code.google.com/p/bpipe/wiki/RealPipelineTutorial) made using Bpipe, or take a look at the [Reference](http://code.google.com/p/bpipe/wiki/Reference) to see detailed documentation.
