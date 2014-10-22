@@ -1,3 +1,74 @@
+=========== Changes for Bpipe Version 0.9.8.6 ============
+
+   - fix: errors may printed about files not existing when attempting 
+     to move to trash
+   
+   - fix bpipe jobs not printing jobs after user ctrl-c's out of 
+     run command
+
+   - fix incorrect default for procs_mode variable for torque 
+
+   - fix ugly stack trace error when transform called without arguments 
+
+   - fix failing to escape trailing . in split patterns 
+    
+   - branch.dir now ha a default value so that it is easier to put in reusable
+     pipeline stages 
+    
+   - Ensure walltime gets interpreted as
+     integer even if passed as String / BigDecimal / Long etc 
+    
+   - fix trash option not working in bpipe cleanup 
+    
+   - Fix default output directory not applied to second
+     produce argument if first specifies a directory 
+    
+   - fix produce() with reference only to output.dir causing
+     retry test to incorrectly indicate commands would run again
+    
+   - Fix incorrect file reported for errors when multiple
+     external files loaded, added some comments, removed hard
+     tabs 
+    
+   - fix branch variable not overriding default value of
+     variable specified with var 
+    
+   - Fix files not checked after 'produce' if previously output and then 
+     removed outside of bpipe 
+    
+   - Fix files not checked after 'produce' if
+     previously output and then removed outside of bpipe 
+    
+   - fix 'inputs' variable with double file extension not always resolving
+     only files matching both extensions     
+
+   - fix output() function causing spurious errors about incompatible inputs 
+     when combined with output variable extensions 
+    
+   - fix command not running when explicitly specified by produce() if another
+     implicit output referenced by command 
+    
+   - Support for produce using wildcard based on regex (via ~) 
+    
+   - Add information about total run time to report and command log 
+
+   - support to specify branch filter on command line, to limit
+     running to a specific branch (for testing, usually) 
+    
+   - fix explicit output() combined with produce(...) resulting in
+     inconsistent behavior 
+    
+   - Fix stack traces printed out when errors occur to use actual name of user 
+     scripts instead of groovy generated ones 
+
+   - fix build.gradle not working with existing gradle wrapper 
+    
+   - Implement default behavior for transform with
+     more to() values than from() values instead of failing 
+
+   - Fix output referenced inside check causing check to be
+     skipped / behave incorrectly 
+
 =========== Changes for Bpipe Version 0.9.8.6_rc2 ============
 
    - Issue 100: report does not accurately reflect repeated and
