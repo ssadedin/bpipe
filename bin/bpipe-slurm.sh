@@ -42,6 +42,29 @@
 # Torque commands with Slurm equivalents
 
 ################################################################################
+################################################################################
+# Modified 2014
+# Simon Gladman
+#
+# Added support for modules in Slurm. (Give the config file a space separated
+# list of required modules using the modules="module1 module2 ..." directive.)
+#
+# Example of required format in config file:
+#
+#   commands {
+#   
+#       //quick jobs 10 min and 4GB
+#       small {
+#           walltime="0:10:00"
+#           memory="4"
+#           modules="python-gcc/2.7.5 qiime-gcc/1.8.0"
+#       }
+#   }
+#       
+#   The modifications then alter the Slurm script produced by bpipe to add the 
+#   correct "module load XXXX/x.x.x" directives at the appropriate place.
+#
+################################################################################
 
 # This is what we call the program in user messages
 program_name=bpipe-slurm
@@ -160,6 +183,17 @@ make_slurm_script () {
              command_prefix="mpirun";;
    esac
 
+    mods_request = ""
+    #handle the module specifications. - Simon Gladman 2014
+    if [[  ! -z $MODULES ]]; then
+        for MOD in $MODULES
+        do
+            mods_request="${mods_request}
+module load $MOD"
+        done
+    fi
+
+
    # write out the job script to a file
    # Output masking unreliable at moment, stores the sbatch stdout and stderr in logs
    cat > $job_script_name << HERE
@@ -172,6 +206,8 @@ $procs_request
 #SBATCH -p $QUEUE
 
 set -o errexit
+
+$mods_request
 
 $command_prefix $COMMAND
 HERE
