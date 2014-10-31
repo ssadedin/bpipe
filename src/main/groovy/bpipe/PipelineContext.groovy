@@ -1601,7 +1601,8 @@ class PipelineContext {
             if(toolsDiscovered)
                 this.doc(["tools" : toolsDiscovered])
           }
-         
+
+          command.branch = this.branch
           command.executor = 
               commandManager.start(stageName, command, config, Utils.box(this.input), 
                                    new File(outputDirectory), this.usedResources,
