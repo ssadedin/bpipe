@@ -44,7 +44,12 @@ class Command implements Serializable {
      * be unique!)
      */
     String name
-    
+
+    /**
+     * This command's Branch
+     */
+    Branch branch
+
     /**
      * Actual command to be executed.
      */
