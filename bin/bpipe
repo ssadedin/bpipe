@@ -604,7 +604,7 @@ done
 # file that contains its own PID.  
 tmsg " Launching Java"
 nohup echo 'printf $$ > .bpipe.'$LAUNCHER_PID'.run.pid &
-      exec java -Xmx'${MAX_JAVA_MEM}' -classpath "'"$CP"'" '$BPIPEDEBUG' '$MODEFLAG' -Dbpipe.pid='$LAUNCHER_PID' -Dbpipe.home='"$JVM_BPIPE_HOME"' -Dbpipe.version='$VERSION' -Dbpipe.builddate='$BUILDDATE' org.codehaus.groovy.tools.GroovyStarter --classpath "'"$CP"'" --main bpipe.Runner '$TESTMODE' '$BPIPE_ARGS' > .bpipe/logs/$$.log 2>&1' \
+      exec java -Xmx'${MAX_JAVA_MEM}' -noverify -classpath "'"$CP"'" '$BPIPEDEBUG' '$MODEFLAG' -Dbpipe.pid='$LAUNCHER_PID' -Dbpipe.home='"$JVM_BPIPE_HOME"' -Dbpipe.version='$VERSION' -Dbpipe.builddate='$BUILDDATE' org.codehaus.groovy.tools.GroovyStarter --classpath "'"$CP"'" --main bpipe.Runner '$TESTMODE' '$BPIPE_ARGS' > .bpipe/logs/$$.log 2>&1' \
      2>&1 | bash - > /dev/null 2>&1 &
 
 tmsg " Waiting for pid to be created"
