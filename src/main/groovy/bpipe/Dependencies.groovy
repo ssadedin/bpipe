@@ -239,7 +239,8 @@ class Dependencies {
      * 
      * @param outputs
      * @param inputs
-     * @return
+     * @return  true iff file is newer than all inputs, but older than all 
+     *          non-up-to-date outputs
      */
     boolean checkUpToDate(def outputs, def inputs) {
         
@@ -271,14 +272,22 @@ class Dependencies {
             log.info "Found these missing / older files: " + older
         }
         
-        def graph = this.getOutputGraph()
+        GraphEntry graph = this.getOutputGraph()
         
-        def outDated = older.collect { it.name }.grep { out ->
+        def outDated = older.collect { it.canonicalPath }.grep { out ->
              def p = graph.propertiesFor(out); 
-             if(!p || !p.cleaned) 
+             if(!p || !p.cleaned)  {
+                 if(!p)
+                     log.info "Output properties file is not available for $out: assume NOT cleaned up"
+                 else
+                     log.info "Output properties are available, indicating file was NOT cleaned up"
+                     
                  return true 
-             else 
+             }
+             else {
+                 log.info "File $out has output properties available: upToDate=$p.upToDate"
                  return !p.upToDate
+             }
         }
         
         if(!outDated) {
@@ -885,7 +894,14 @@ class Dependencies {
         List result = []
         Utils.time("Output folder scan (concurrency=$concurrency)") {
             GParsPool.withPool(concurrency) { 
-                List<File> files = new File(PipelineContext.OUTPUT_METADATA_DIR).listFiles()?.toList()
+                List<File> files = 
+                               new File(PipelineContext.OUTPUT_METADATA_DIR).listFiles()
+                               ?.toList()
+                                .grep { !it.name.startsWith(".") } // ignore files starting with ., 
+                                                                   // added as a convenience because I occasionally
+                                                                   // edit files in output folder when debugging and it causes
+                                                                   // Bpipe to fail!
+                                
                 if(!files)
                     return []
                 result.addAll(files.collectParallel { readOutputPropertyFile(it) }.sort { it.timestamp })
