@@ -3,18 +3,13 @@ Welcome to Bpipe
 
 Bpipe provides a platform for running big bioinformatics jobs that consist of a series of processing stages - known as 'pipelines'.
 
-* August 31st - New! Bpipe 0.9.8.6 Release Candidate 2 released!
-* [Download](http://download.bpipe.org/versions/bpipe-0.9.8.6_rc2.tar.gz)
+* October 22nd - New! Bpipe 0.9.8.6 released!
+* Download [latest](http://download.bpipe.org/versions/bpipe-0.9.8.6.tar.gz), [all](http://download.bpipe.org)
 * [Documentation](http://code.google.com/p/bpipe/wiki/Reference)
 
 Bpipe has been published in [Bioinformatics](http://bioinformatics.oxfordjournals.org/content/early/2012/04/11/bioinformatics.bts167.abstract)! If you use Bpipe, please cite:
 
   _Sadedin S, Pope B & Oshlack A, Bpipe: A Tool for Running and Managing Bioinformatics Pipelines, Bioinformatics_
-
-**New Download Site**
-
-Due to Google removing the download functionality from Google Code, downloads are now hosted at 
-http://download.bpipe.org download.bpipe.org.
 
 **Why Bpipe?**
 
@@ -32,4 +27,4 @@ By turning your shell scripts into Bpipe scripts, here are some of the features 
   * **Notifications by Email or Instant Message** - Bpipe can send you alerts to tell you when your pipeline finishes or even as each stage completes.
   * See how Bpipe compares to [similar tools](http://code.google.com/p/bpipe/wiki/ComparisonToWorkflowTools)
 
-Take a look at the [Overview](http://code.google.com/p/bpipe/wiki/Overview) to see Bpipe in action, work through the [GettingStarted Basic Tutorial] for simple first steps, see a step by step example of a [realistic pipeline](http://code.google.com/p/bpipe/wiki/RealPipelineTutorial) made using Bpipe, or take a look at the [Reference Reference] to see detailed documentation.
+Take a look at the [Overview](http://code.google.com/p/bpipe/wiki/Overview) to see Bpipe in action, work through the [Basic Tutorial](http://code.google.com/p/bpipe/wiki/GettingStarted) for simple first steps, see a step by step example of a [realistic pipeline](http://code.google.com/p/bpipe/wiki/RealPipelineTutorial) made using Bpipe, or take a look at the [Reference](http://code.google.com/p/bpipe/wiki/Reference) to see detailed documentation.
