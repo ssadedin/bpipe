@@ -450,6 +450,13 @@ class Dependencies {
             p.outputFile = p.outputFile.path
             
         File outputFile = new File(p.outputFile)
+        
+        // Here it seems like it PREFERs to use the output file timestamp
+        // even though that is not necessarily accurate. It seems like
+        // the logic here should be different: if a more accurate timestamp 
+        // is already known then that should take precedence
+        
+        
         if(outputFile.exists())    
             p.timestamp = String.valueOf(outputFile.lastModified())
         else
@@ -838,15 +845,15 @@ class Dependencies {
 //                
 //                log.info "Values: " + entry.parents*.values
 //                
-                def newerInputs = inputValues.grep { 
-                    log.info "Input $it.outputPath? " + p.inputs.contains(it.outputPath)
-                    p.inputs.contains(it.outputPath) && it?.maxTimestamp >= p.timestamp
-                }
+                def newerInputs = findNewerInputs(p, inputValues)
+                
                 if(newerInputs) {
                     p.upToDate = false
-                    log.info "$p.outputFile is older than inputs " + (newerInputs.collect { it.outputFile.name + ' / ' + it.timestamp + ' / ' + it.maxTimestamp + ' vs ' + p.timestamp })
+                    log.info "$p.outputFile is older than inputs " +
+                       (newerInputs.collect { it.outputFile.name + ' / ' + it.timestamp + ' / ' + it.maxTimestamp + ' vs ' + p.timestamp })
                     continue
                 }
+                
                 log.info "$p.outputPath is newer than input files"
 
                 // The entry may still not be up to date if it
@@ -883,6 +890,40 @@ class Dependencies {
         log.info "Finished Output Graph".center(30,"=")
         
         return rootTree
+    }
+    
+    List<Properties> findNewerInputs(Properties p, List<Properties> inputValues) {
+        inputValues.grep { Properties inputProps ->
+                    
+            if(!p.inputs.contains(inputProps.outputPath)) // Not an input used to produce this output
+                return false
+                        
+            log.info "Checking timestamp of $p.outputFile vs input $inputProps.outputPath"
+            if(inputProps?.maxTimestamp < p.timestamp) // inputs unambiguously older than output
+                return false
+                    
+            if(inputProps?.maxTimestamp > p.timestamp) // inputs unambiguously newer than output
+                return true
+            
+            // Problem: many file systems only record timestamps at a very coarse level. 
+            // 1 second resolution is common, but even 1 minute is possible. In these cases
+            // commands that run fast enough produce output files that have equal timestamps
+            // To differentiate these cases we check the start and stop times of the 
+            // actual commands that produced the file
+            if(!inputProps.stopTimeMs)
+                return true // we don't know when the command that produced the input finished
+                            // so have to assume the input could have come after
+                
+            if(!p.createTimeMs) 
+                return false // don't know when the command that produced this output started,
+                             // so have to assume the command that made the input might have
+                             // done it after
+                
+            // Return true if the command that made the input stopped after the command that 
+            // created the output. ie: that means the input is newer, even though it has the
+            // same timestamp
+            return inputProps.stopTimeMs >= p.createTimeMs
+       } 
     }
     
     /**
