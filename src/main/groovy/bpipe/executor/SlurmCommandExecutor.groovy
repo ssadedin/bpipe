@@ -46,6 +46,7 @@ import bpipe.Utils
  * 
  * @author simon.sadedin@mcri.edu.au
  * @author andrew.lonsdale@lonsbio.com.au
+ * @author slugger70@gmail.com
  */
 @Mixin(ForwardHost)
 @Log
@@ -72,6 +73,14 @@ class SlurmCommandExecutor extends TorqueCommandExecutor implements CommandExecu
             log.info "Using jobtype: $config?.jobtype"
             env.JOBTYPE = config.jobtype
         }
+
+        //modules since we may need to load modules before the command... - Simon Gladman (slugger70) 2014
+        if(config?.modules) {
+            log.info "Using modules: $config?.modules"
+            env.MODULES = config.modules
+        }
+
+
     }
 
     void cleanup() {
