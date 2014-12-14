@@ -125,6 +125,8 @@ class PipelineCategory {
             pipeline.addStage(currentStage)
             currentStage.context.setInput(input1)
             currentStage.run()
+            
+            log.info "Checking that outputs ${currentStage.context.@output} exist"
             Dependencies.instance.checkFiles(currentStage.context.@output)
                     
             // If the stage did not return any outputs then we assume
@@ -143,7 +145,7 @@ class PipelineCategory {
             currentStage.context.@input = nextInputs
             pipeline.addStage(currentStage)
             currentStage.run()
-            return currentStage.context.nextInputs?:currentStage.context.output
+            return currentStage.context.nextInputs?:currentStage.context.@output
         }
         Pipeline.currentUnderConstructionPipeline.joiners << result
         return result
@@ -163,7 +165,7 @@ class PipelineCategory {
             Pipeline.currentRuntimePipeline.get().addStage(currentStage)
             currentStage.context.setInput(input1)
             currentStage.run()
-            Dependencies.instance.checkFiles(currentStage.context.output)
+            Dependencies.instance.checkFiles(currentStage.context.@output)
                     
             // If the stage did not return any outputs then we assume
             // that the inputs to the next stage are the same as the inputs
