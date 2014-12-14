@@ -26,9 +26,9 @@
 package bpipe
 
 import groovy.util.logging.Log;
-
 import groovyx.gpars.GParsPool
 import groovy.time.TimeCategory;
+import groovy.transform.CompileStatic;
 
 /**
  * A node in the dependency graph representing a set of outputs
@@ -43,6 +43,7 @@ class GraphEntry {
     List<GraphEntry> parents = []
     List<GraphEntry> children = []
     
+    @CompileStatic
     GraphEntry findBy(Closure c) {
         if(this.values != null && values.any { c(it) })
             return this
@@ -73,10 +74,31 @@ class GraphEntry {
     /**
      * Search the graph for entry with given outputfile
      */
-    GraphEntry entryFor(String outputFile) {
+    @CompileStatic
+    GraphEntry entryFor(File outputFile) {
         // In case of non-default output directory, the outputFile itself may be in a directory
-        File outputFileFile = new File(outputFile)
-        findBy { it.outputFile.canonicalPath == outputFileFile.canonicalPath }
+        final String outputFilePath = outputFile.canonicalPath
+        return entryForCanonicalPath(outputFilePath)
+    }
+    
+    @CompileStatic
+    GraphEntry entryForCanonicalPath(String canonicalPath) {
+        // In case of non-default output directory, the outputFile itself may be in a directory
+        findBy { Properties p -> canonicalPathFor(p) == canonicalPath  }
+    }
+    
+     /**
+     * getCanonicalPath can be very slow on some systems, so 
+     * this method caches them in the property file itself.
+     * 
+     * @param p
+     * @return
+     */
+    @CompileStatic
+    String canonicalPathFor(Properties p) {
+        if(p.containsKey("canonicalPath"))
+            return p["canonicalPath"]        
+        p["canonicalPath"] = ((File)p["outputFile"]).canonicalPath
     }
     
     /**
@@ -84,13 +106,13 @@ class GraphEntry {
      */
     Properties propertiesFor(String outputFile) { 
        // In case of non-default output directory, the outputFile itself may be in a directory
-       File outputFileFile = new File(outputFile)
-       def values = entryFor(outputFile)?.values
+       String outputFilePath = new File(outputFile).canonicalPath
+       def values = entryForCanonicalPath(outputFilePath)?.values
        if(!values)
            return null
            
        for(def o in values) {
-           if(o.outputFile.canonicalPath == outputFileFile.canonicalPath) {
+           if(canonicalPathFor(o) == outputFilePath) {
                return o
            }
        }
@@ -115,7 +137,7 @@ class GraphEntry {
      * Filter the graph so that only paths containing the specified output remain
      */
     GraphEntry filter(String output) {
-        GraphEntry outputEntry = this.entryFor(output)
+        GraphEntry outputEntry = this.entryFor(new File(output))
         
         if(!outputEntry)
             return null
@@ -321,6 +343,7 @@ class Dependencies {
                 
             Properties p = graph.propertiesFor(f.path)
             if(!p) {
+                log.info "There are no properties for $f.path and file is missing"
                 return true
             }
             
@@ -340,8 +363,11 @@ class Dependencies {
 
     
     synchronized GraphEntry getOutputGraph() {
-        if(this.outputGraph == null)
-            this.outputGraph = computeOutputGraph(scanOutputFolder())
+        if(this.outputGraph == null) {
+            List<Properties> propertiesFiles = scanOutputFolder()
+//            List<String> outputPaths = 
+            this.outputGraph = computeOutputGraph(propertiesFiles)
+        }
         return this.outputGraph
     }
     
@@ -450,12 +476,6 @@ class Dependencies {
             p.outputFile = p.outputFile.path
             
         File outputFile = new File(p.outputFile)
-        
-        // Here it seems like it PREFERs to use the output file timestamp
-        // even though that is not necessarily accurate. It seems like
-        // the logic here should be different: if a more accurate timestamp 
-        // is already known then that should take precedence
-        
         
         if(outputFile.exists())    
             p.timestamp = String.valueOf(outputFile.lastModified())
@@ -874,9 +894,14 @@ class Dependencies {
                 log.info "$p.outputFile was cleaned"
                 log.info "Checking  " + entry.children*.values*.outputPath + " from " + entry.children.size() + " children"
                 if(entry.children) {
-                    p.upToDate = entry.children.every { it.values*.upToDate.every() }
+                    
+                    List<GraphEntry> outOfDateChildren = entry.children.grep { c -> c.values.grep { !it.upToDate }*.outputPath  }.flatten()
+                    
+//                    p.upToDate = entry.children.every { it.values*.upToDate.every() }
+                    p.upToDate = outOfDateChildren.empty
+                    
                     if(!p.upToDate)
-                        log.info "Output $p.outputFile is not up to date because one or more children are not up to date"
+                        log.info "Output $p.outputFile is not up to date because ${outOfDateChildren*.values*.outputFile} are not up to date"
                     else
                         log.info "Output $p.outputFile is up to date because all its children are"
                 }
@@ -899,8 +924,9 @@ class Dependencies {
                 return false
                         
             log.info "Checking timestamp of $p.outputFile vs input $inputProps.outputPath"
-            if(inputProps?.maxTimestamp < p.timestamp) // inputs unambiguously older than output
+            if(inputProps?.maxTimestamp < p.timestamp) { // inputs unambiguously older than output 
                 return false
+            }
                     
             if(inputProps?.maxTimestamp > p.timestamp) // inputs unambiguously newer than output
                 return true
@@ -968,7 +994,7 @@ class Dependencies {
         
         // Normalizing the slashes in the path is necessary for Cygwin compatibility
         p.outputPath = p.outputFile.path.replaceAll("\\\\","/")
-
+        
         // If the file exists then we should get the timestamp from there
         // Otherwise just use the timestamp recorded
         if(p.outputFile.exists())
@@ -976,6 +1002,11 @@ class Dependencies {
         else
             p.timestamp = Long.parseLong(p.timestamp)
 
+        // Recompute this in case it was stored. It will be recomputed as required -
+        // this at least gives pipelines a chance to be portable if moved to a different
+        // path
+        p.remove("canonicalPath")
+        
         if(!p.containsKey('preserve'))
             p.preserve = 'false'
             
