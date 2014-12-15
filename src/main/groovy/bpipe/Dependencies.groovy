@@ -43,6 +43,26 @@ class GraphEntry {
     List<GraphEntry> parents = []
     List<GraphEntry> children = []
     
+    /**
+     * By default the index is null. However by calling the index method,
+     * you can create an index to speed up lookup of entries by the canonicalPath
+     * of the output file
+     */
+    Map<String,GraphEntry> index = null
+    
+    
+    void index() {
+        
+        Map tempIndex = [:]
+        
+        depthFirst { GraphEntry e ->
+            e.values.each { Properties p ->
+                if(p.canonicalPath)
+                    tempIndex[p.canonicalPath] = e
+            }
+        }
+    }
+    
     GraphEntry findBy(Closure c) {
         if(this.values != null && values.any { c(it) })
             return this
@@ -76,7 +96,11 @@ class GraphEntry {
     GraphEntry entryFor(String outputFile) {
         // In case of non-default output directory, the outputFile itself may be in a directory
         File outputFileFile = new File(outputFile)
-        findBy { it.outputFile.canonicalPath == outputFileFile.canonicalPath }
+        String canonicalPath = outputFileFile.canonicalPath
+        GraphEntry entry = index?.get(canonicalPath)
+        if(entry)
+            return entry
+        findBy { it.outputFile.canonicalPath == canonicalPath }
     }
     
     /**
@@ -488,6 +512,7 @@ class Dependencies {
         def graph
         Thread t = new Thread({
           graph = computeOutputGraph(outputs)
+          graph.index()
         })
         t.start()
         
