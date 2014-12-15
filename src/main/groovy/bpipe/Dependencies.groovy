@@ -96,9 +96,12 @@ class GraphEntry {
      */
     @CompileStatic
     String canonicalPathFor(Properties p) {
-        if(p.containsKey("canonicalPath"))
-            return p["canonicalPath"]        
-        p["canonicalPath"] = ((File)p["outputFile"]).canonicalPath
+        synchronized(p) {
+            if(p.containsKey("canonicalPath"))
+                return p["canonicalPath"]        
+                
+            p["canonicalPath"] = ((File)p["outputFile"]).canonicalPath
+        }
     }
     
     /**
@@ -436,6 +439,8 @@ class Dependencies {
                 p.propertyFile = file.name
                 p.inputs = allInputs.join(',')?:''
                 p.outputFile = o
+                p.basePath = Runner.runDirectory
+                p.canonicalPath = new File(o).canonicalPath
                 p.fingerprint = hash
                 
                 p.tools = context.documentation["tools"].collect { name, Tool tool -> tool.fullName + ":"+tool.version }.join(",")
@@ -1002,10 +1007,12 @@ class Dependencies {
         else
             p.timestamp = Long.parseLong(p.timestamp)
 
-        // Recompute this in case it was stored. It will be recomputed as required -
-        // this at least gives pipelines a chance to be portable if moved to a different
-        // path
-        p.remove("canonicalPath")
+        // The properties file may have a cached version of the "canonical path" to the
+        // output file. However this is an absolute path, so we can only use it if the
+        // base directory is still the same as when this property file was saved.
+        if(!p.containsKey("basePath") || (p["basePath"] != Runner.runDirectory)) {
+            p.remove("canonicalPath")
+        }
         
         if(!p.containsKey('preserve'))
             p.preserve = 'false'
