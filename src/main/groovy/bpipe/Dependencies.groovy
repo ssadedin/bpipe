@@ -43,6 +43,12 @@ class GraphEntry {
     List<GraphEntry> parents = []
     List<GraphEntry> children = []
     
+    /**
+     * An optional index to speed up lookups by canonical path - not populated by default,
+     * but can be populated by using index()
+     */
+    Map<String, GraphEntry> index = null
+    
     @CompileStatic
     GraphEntry findBy(Closure c) {
         if(this.values != null && values.any { c(it) })
@@ -52,6 +58,20 @@ class GraphEntry {
            def result = child.findBy(c)
            if(result)
                return result;
+        }
+    }
+    
+    @CompileStatic
+    void index(int sizeHint) {
+        Utils.time("Index output graph") {
+            Map<String, GraphEntry> indexTmp = new HashMap(sizeHint)
+            depthFirst { GraphEntry e ->
+                if(e.values) {
+                    for(Properties p in e.values) {
+                        indexTmp[(String)p.canonicalPath] = e
+                    }
+                }
+            }
         }
     }
     
@@ -83,6 +103,9 @@ class GraphEntry {
     
     @CompileStatic
     GraphEntry entryForCanonicalPath(String canonicalPath) {
+        GraphEntry entry = index?.get(canonicalPath)
+        if(entry)
+            return entry
         // In case of non-default output directory, the outputFile itself may be in a directory
         findBy { Properties p -> canonicalPathFor(p) == canonicalPath  }
     }
@@ -368,8 +391,8 @@ class Dependencies {
     synchronized GraphEntry getOutputGraph() {
         if(this.outputGraph == null) {
             List<Properties> propertiesFiles = scanOutputFolder()
-//            List<String> outputPaths = 
             this.outputGraph = computeOutputGraph(propertiesFiles)
+            this.outputGraph.index(propertiesFiles.size()*2)
         }
         return this.outputGraph
     }
