@@ -153,7 +153,7 @@ class LsfCommandExecutor implements CommandExecutor {
         }
         
         if(config?.procs) {
-            startCmd += "-n $config.procs"
+            startCmd += "-n $config.procs "
         }
 
         if( config?.lsf_request_options ) {
