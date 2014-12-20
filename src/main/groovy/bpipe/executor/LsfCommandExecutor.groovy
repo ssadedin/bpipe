@@ -152,8 +152,12 @@ class LsfCommandExecutor implements CommandExecutor {
             startCmd += "-J ${config.jobname} "
         }
         
+        if(config?.walltime) {
+            startCmd += "-W ${config.walltime} "
+        }
+                
         if(config?.procs) {
-            startCmd += "-n $config.procs"
+            startCmd += "-n $config.procs "
         }
 
         if( config?.lsf_request_options ) {
