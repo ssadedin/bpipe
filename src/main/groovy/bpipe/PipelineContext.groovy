@@ -1651,7 +1651,7 @@ class PipelineContext {
        
        log.info "From clause searching for inputs matching spec $exts"
        
-       if(!exts)
+       if(!exts || exts.every { it == null })
            throw new PipelineError("A call to 'from' was invoked with an empty or null argument. From requires a list of file patterns to match.")
        
        def orig = exts
