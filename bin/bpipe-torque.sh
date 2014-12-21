@@ -51,6 +51,10 @@ DEFAULT_BATCH_PROCS=1
 DEFAULT_WALLTIME="01:00:00" # one hour
 DEFAULT_QUEUE=batch
 
+# Default to 1 node - this can be overridden directly by user
+# or alternatively by value of procs via set_procs
+: ${NODES:=1}
+
 # Print a usage message
 usage () {
    echo "usage: $program_name (start | stop ID | status ID)"
@@ -67,9 +71,9 @@ usage () {
 set_procs() {
     if [ -z "$PROC_MODE" ];
     then
-        procs_request="#PBS -l nodes=1:ppn=$1"
-    else
         procs_request="#PBS -l procs=$1"
+    else
+        procs_request="#PBS -l nodes=$NODES:ppn=$1"
     fi
 }
 

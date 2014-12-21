@@ -217,7 +217,7 @@ class InputSplitter {
                 leftFlank.append(pattern[lpos-1]) 
                 --lpos
             }
-            leftFlank = leftFlank.toString().reverse()
+            leftFlank = leftFlank.toString().reverse().replaceAll(/\./,/\\./) 
            
             //			def leftFlank = c && (lastPos < 0 || (c-1 != lastPos+1)) ? pattern[c-1] : ""
             
