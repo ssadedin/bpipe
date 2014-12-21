@@ -196,7 +196,14 @@ class PipelineOutput {
             // being referneced by this
             if(this.outputChangeListener) {
                 boxed.grep { new File(it).parentFile?.canonicalPath == parentDir.canonicalPath }.each {
-                    this.outputChangeListener(it,null)
+                    // Need to exclude default output here. The problem is, the default output 
+                    // is just one made up by Bpipe - there's no indication from the user this output
+                    // will ever be created. If we treat it as a referenced output here then it leads to
+                    // spurious "output missing" errors or attempts to recreate the output because Bpipe
+                    // thinks it should exist when it doesn't
+                    // see produce_to_dir_no_output_ref test
+                    if(it != defaultOutput)
+                        this.outputChangeListener(it,null)
                 }
             }
         }

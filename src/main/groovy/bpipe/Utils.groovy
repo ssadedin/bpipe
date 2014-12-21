@@ -61,7 +61,7 @@ class Utils {
             
         // Remove any directories appearing as inputs - their timestamps change whenever
         // any file in the dir changes
-        inputs = inputs.grep { !(new File(it).isDirectory())}
+        inputs = inputs.grep { (it != null) && !(new File(it).isDirectory())}
 
         // Box into a collection for simplicity
         outputs = box(outputs)
@@ -439,6 +439,8 @@ class Utils {
      */
     static List<String> glob(pattern) {
         
+        if(pattern instanceof Pattern)
+            return regexGlob(pattern)
         
         if ( pattern == null ) throw new IllegalArgumentException('null pattern')
         if ( pattern instanceof Collection
@@ -549,6 +551,14 @@ class Utils {
         return fnames.sort()
     }
     
+    static List<String> regexGlob(Pattern globPattern) {
+        File f = new File(globPattern.toString())
+        File dir = f.parentFile != null ? f.parentFile : new File(".")
+        Pattern pattern = Pattern.compile(f.name)
+        def result = dir.listFiles().grep { pattern.matcher(it.name).matches() }*.path        
+        return result
+    }
+    
     final static int TEMP_DIR_ATTEMPTS = 500
     
     /**
@@ -631,14 +641,19 @@ class Utils {
            targetDirFile.mkdirs()
            
        String outPrefix = targetDir == "." ? "" : targetDir + "/" 
-       def newOutputs = Utils.box(outputs).collect { 
+       def boxed = Utils.box(outputs)
+       def types = boxed.collect { it.class }
+       def newOutputs = boxed.collect { 
+           Class type = it.class
            if(it.toString().contains("/") && it.toString().contains("*")) 
                return it
            else
            if(it.toString().contains("/") && new File(it).exists()) 
                return it
-           else
-             return outPrefix + new File(it.toString()).name 
+           else {
+             def result = outPrefix + new File(it.toString()).name 
+             return type == Pattern ? Pattern.compile(result) : result
+           }
        }
        return Utils.unbox(newOutputs)
     }
@@ -662,5 +677,21 @@ class Utils {
         if(index < 0 || index >= fileName.size()-1)
             return ""
         return fileName.substring(index+1)
+    }
+    
+    /**
+     * Reduce continuous runs of the same value down to a single instance.
+     * 
+     * @param values    List of strings to reduce
+     * @return          List containing all the values in values, but with
+     *                  sequential recurrent values reduced to single instance
+     */
+    static List removeRuns(List<String> values) {
+        def last = new Object()
+        values.grep {
+          def result = (last == null) || (last != it)
+          last = it
+          return result
+        }
     }
 }

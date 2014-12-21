@@ -67,6 +67,7 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
         
         // After starting the process, we launch a background thread that waits for the error
         // and output files to appear and then forward those inputs
+        log.info "Forwarding file " + this.jobDir+"/${command.id}.out"
         forward(this.jobDir+"/${command.id}.out", System.out)
         forward(this.jobDir+"/${command.id}.err", System.err)
     }
@@ -77,6 +78,10 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
     @Override
     public void stop() {
         super.stop();
+        
+        // Wait here 
+        Thread.sleep(1000)
+        
         cleanup()
     }
 

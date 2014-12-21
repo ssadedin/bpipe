@@ -120,6 +120,14 @@ class TransformOperation {
             while(exts.size() < toPatterns.size())
               exts.add( exts[-1] )
         }
+		
+		// Similarly, if there are not enough to patterns, fill them up from
+		// the first to pattern
+		if(toPatterns.size() < exts.size()) {
+			toPatterns = toPatterns.clone()
+			while(toPatterns.size() < exts.size())
+				toPatterns.add(toPatterns[-1])
+		}
         
         // In the advanced case, the "file extensions" are not file extensions, but
         // regular expressions for matching files to transform from
@@ -198,7 +206,6 @@ class TransformOperation {
             
             String txed = null
             if(inp.contains(".")) {
-                def startPortion = inp.replaceAll(fromPattern, "")
                 String dot = fromPattern.startsWith(".") ?"":"."
                 txed = inp.replaceAll(fromPattern,dot+FastUtils.dotJoin(additionalSegment,toPattern))
             }

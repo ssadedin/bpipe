@@ -15,7 +15,7 @@ world = {
 
 there = {
     produce("test.foo", "test.bar") {
-      exec "echo execute3; cp $input $output.bar"
+      exec "echo execute3; touch $output.foo; cp $input $output.bar"
     }
 }
 

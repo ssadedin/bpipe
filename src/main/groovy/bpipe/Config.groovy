@@ -68,6 +68,10 @@ class Config {
         
         // Whether a break has been triggered
         breakTriggered : false,
+		
+		// Branches to run: if empty all branches are run, can be set on command line to limit
+		// to a particular branches 
+		branchFilter: []
     ]
         
     /**

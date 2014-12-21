@@ -7,6 +7,7 @@ package bpipe;
  */
 public enum CommandStatus {
     QUEUEING,
+    WAITING,
     RUNNING, 
     COMPLETE, 
     UNKNOWN

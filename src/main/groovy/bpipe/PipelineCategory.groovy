@@ -156,7 +156,7 @@ class PipelineCategory {
      */
     static Object plus(Closure other, List segments) {
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
-        Closure mul = splitOnFiles("*", segments, false)
+        Closure mul = splitOnFiles("*", segments, false, false)
         def plusImplementation =  { input1 ->
             
             def currentStage = new PipelineStage(Pipeline.currentRuntimePipeline.get().createContext(), other)
@@ -207,11 +207,19 @@ class PipelineCategory {
             // separate pipeline for each one, and execute each parallel segment
             List<Pipeline> childPipelines = []
             List<Runnable> threads = []
+			Pipeline parent = Pipeline.currentRuntimePipeline.get()
+			Node branchPoint = parent.addBranchPoint("split")
             for(Closure s in segments) {
                 log.info "Processing segment ${s.hashCode()}"
                 chrs.each { chr ->
-                    log.info "Creating pipeline to run on chromosome $chr"
-                    Pipeline child = Pipeline.currentRuntimePipeline.get().fork()
+					
+					if(!Config.config.branchFilter.isEmpty() && !Config.config.branchFilter.contains(chr)) {
+						System.out.println "Skipping branch $chr because not in branch filter ${Config.config.branchFilter}"
+						return
+					}
+                    
+                    log.info "Creating pipeline to run on branch $chr"
+                    Pipeline child = Pipeline.currentRuntimePipeline.get().fork(branchPoint, chr.toString())
                     currentStage.children << child
                     Closure segmentClosure = s
                     threads << {
@@ -269,7 +277,7 @@ class PipelineCategory {
                         }
                         catch(Exception e) {
                             log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
-                            StackTraceUtils.sanitize(e).printStackTrace()
+                            Runner.reportExceptionToUser(e)
                             child.failed = true
                         }
                     } as Runnable
@@ -331,7 +339,7 @@ class PipelineCategory {
      * @param requireMatch  if true, the pipeline will fail if there are 
      *                      no matches to the pattern
      */
-    static Object splitOnFiles(def pattern, List segments, boolean requireMatch) {
+    static Object splitOnFiles(def pattern, List segments, boolean requireMatch, boolean sortResults=true) {
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
         
         def multiplyImplementation = { input ->
@@ -339,7 +347,7 @@ class PipelineCategory {
             log.info "multiply on input $input with pattern $pattern"
             
             // Match the input
-            InputSplitter splitter = new InputSplitter()
+            InputSplitter splitter = new InputSplitter(sortResults:sortResults)
             Map samples = splitter.split(pattern, input)
             
             if(samples.isEmpty() && !requireMatch && pattern == "*")        
@@ -389,23 +397,38 @@ class PipelineCategory {
             
         log.info "Created pipeline stage ${currentStage.hashCode()} for parallel block"
         
-        // Now we have all our samples, make a 
+        // Now we have all our branches, make a 
         // separate pipeline for each one, and for each parallel stage
         List<Pipeline> childPipelines = []
         List<Runnable> threads = []
+		Pipeline parent = Pipeline.currentRuntimePipeline.get()
+		Node branchPoint = parent.addBranchPoint("split")
         for(Closure s in segments) {
             log.info "Processing segment ${s.hashCode()}"
+
             samples.each { id, files ->
                     
-                log.info "Creating pipeline to run parallel segment $id with files $files"
+                log.info "Creating pipeline to run parallel segment $id with files $files. Branch filter = ${Config.config.branchFilter}"
                    
-                Pipeline child = Pipeline.currentRuntimePipeline.get().fork()
-                currentStage.children << child
+				if(!Config.config.branchFilter.isEmpty() && !Config.config.branchFilter.contains(id)) {
+					System.out.println "Skipping branch $id because not in branch filter ${Config.config.branchFilter}"
+					return
+				}
+ 
                 Closure segmentClosure = s
+                String childName = id
+                int segmentNumber = segments.indexOf(segmentClosure) + 1
+                if(segments.size()>1) {
+                    if(id == "all")
+                        childName = segmentNumber.toString()
+                    else
+                        childName = id + "." + segmentNumber
+                }
+				
+                Pipeline child = parent.fork(branchPoint,childName)
+                currentStage.children << child
                 threads << {
                     try {
-                        int segmentNumber = segments.indexOf(segmentClosure) + 1
-                            
                         // First we make a "dummy" stage that contains the inputs
                         // to the next stage as outputs.  This allows later logic
                         // to find these "inputs" correctly when it expects to see
@@ -419,13 +442,6 @@ class PipelineCategory {
                                 
                         log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
                         child.addStage(dummyPriorStage)
-                        String childName = id
-                        if(segments.size()>1) {
-                            if(id == "all")
-                                childName = segmentNumber.toString()
-                            else
-                                childName = id + "." + segmentNumber
-                        }
                         child.branch = new Branch(name:childName)
                         child.nameApplied = !applyName
                         child.runSegment(files, segmentClosure)
@@ -509,9 +525,11 @@ class PipelineCategory {
         // Fill in shorter stages with nulls
         stagesList = stagesList.collect { it + ([null] * (maxLen - it.size())) }
         
+        log.info "###### Merging results of parallel split in parent branch ${parent.branch?.name} #####"
+        
         def transposed = stagesList.transpose()
         transposed.eachWithIndex { List<PipelineStage> stagesAtIndex, int i ->
-            log.info "Grouping stages ${stagesAtIndex*.stageName} for merging"
+            log.info "Grouping stages at index $i ${stagesAtIndex*.stageName} for merging"
             
             if(stagesAtIndex.size() == 0)
                 throw new IllegalStateException("Encountered pipeline segment with zero parallel stages?")
@@ -536,7 +554,7 @@ class PipelineCategory {
                   
                 PipelineStage mergedStage = new PipelineStage(mergedContext, stages[0].body)
                 mergedStage.stageName = stages[0].stageName
-                parent.stages.add(mergedStage)
+                parent.addStage(mergedStage)
             }
         }
         
@@ -549,12 +567,13 @@ class PipelineCategory {
         PipelineContext mergedContext = 
             new PipelineContext(null, parent.stages, joiners, new Branch(name:'all'))
         def mergedOutputs = finalStages.collect { s ->
-            Utils.box(s.context.nextInputs ?: s.context.@output) 
+            Utils.box(s?.context?.nextInputs ?: s?.context?.@output) 
         }.sum().unique { new File(it).canonicalPath }
         log.info "Last merged outputs are $mergedOutputs"
         mergedContext.setRawOutput(mergedOutputs)
         PipelineStage mergedStage = new PipelineStage(mergedContext, finalStages.find { it != null }.body)
-        mergedStage.stageName = finalStages*.stageName.join("_")+"_bpipe_merge"
+        mergedStage.stageName = Utils.removeRuns(finalStages*.stageName).join("_")+"_bpipe_merge"
+        log.info "Merged stage name is $mergedStage.stageName"
         parent.stages.add(mergedStage)
         
         return mergedOutputs

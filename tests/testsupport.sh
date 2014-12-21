@@ -25,7 +25,15 @@ function err() {
 
 # Convenience function to run the test
 function run() {
+
+    rm -rf doc
+
 	bpipe run -r test.groovy $* > test.out 2>&1
+
+    if [ ! -e doc/index.html ];
+    then
+        err "No HTML report was generated for test. All tests are expected to generate a report."
+    fi
 }
 
 # Convenience function to run in test mode

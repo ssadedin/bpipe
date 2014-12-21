@@ -128,6 +128,7 @@ class Command implements Serializable {
     
     private String formatWalltime(def walltime) {
        // Treat as integer, convert to string
+       walltime = walltime.toInteger()
        int hours = (int)Math.floor(walltime / 3600)
        int minutes = (int)Math.floor((walltime - hours*3600)/60)
        int seconds = walltime % 60

@@ -102,6 +102,12 @@ class PipelineStage {
     
     boolean running = false
     
+    /**
+     * True if this is an artificially generated pipeline stage that should not be
+     * presented to the user in output reports, etc.
+     */
+    boolean synthetic = true
+    
     String stageName = "Unknown"
     
     /**
@@ -160,6 +166,9 @@ class PipelineStage {
         List<File> oldFiles = new File(context.outputDirectory).listFiles() as List
         oldFiles = oldFiles?:[]
         boolean joiner = (body in this.context.pipelineJoiners)
+        
+        if(!joiner)
+            this.synthetic = false
         
 		// The name used for displaying this stage
 		String displayName = "Unknown Stage"
@@ -237,7 +246,7 @@ class PipelineStage {
         catch(PipelineTestAbort e) {
             throw e
         }
-        catch(Exception e) {
+        catch(Throwable e) {
             
             if(!succeeded && !joiner) 
                 EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")

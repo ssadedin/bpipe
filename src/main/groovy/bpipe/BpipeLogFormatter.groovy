@@ -51,7 +51,9 @@ public class BpipeLogFormatter extends Formatter {
         }
         StringBuilder output = new StringBuilder()
             .append(loggerName)
-            .append("\t")
+            .append("\t[")
+            .append(record.threadID)
+            .append("]\t")
             .append(record.getLevel()).append("\t|")
             .append(format.format(new Date(record.getMillis())))
             .append(' ')

@@ -77,6 +77,8 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
             mp.parent = this
             mp.resolvedInputs = this.resolvedInputs
             mp.currentFilter = this.currentFilter
+            if(result instanceof PipelineInput)
+                mp.extensionPrefix = result.extensionPrefix
             log.info("My resolved inputs: " + this.resolvedInputs.hashCode() + " child resolved inputs " + mp.resolvedInputs.hashCode())
             return mp
         }

@@ -43,6 +43,26 @@ class GraphEntry {
     List<GraphEntry> parents = []
     List<GraphEntry> children = []
     
+    /**
+     * By default the index is null. However by calling the index method,
+     * you can create an index to speed up lookup of entries by the canonicalPath
+     * of the output file
+     */
+    Map<String,GraphEntry> index = null
+    
+    
+    void index() {
+        
+        Map tempIndex = [:]
+        
+        depthFirst { GraphEntry e ->
+            e.values.each { Properties p ->
+                if(p.canonicalPath)
+                    tempIndex[p.canonicalPath] = e
+            }
+        }
+    }
+    
     GraphEntry findBy(Closure c) {
         if(this.values != null && values.any { c(it) })
             return this
@@ -76,7 +96,11 @@ class GraphEntry {
     GraphEntry entryFor(String outputFile) {
         // In case of non-default output directory, the outputFile itself may be in a directory
         File outputFileFile = new File(outputFile)
-        findBy { it.outputFile.canonicalPath == outputFileFile.canonicalPath }
+        String canonicalPath = outputFileFile.canonicalPath
+        GraphEntry entry = index?.get(canonicalPath)
+        if(entry)
+            return entry
+        findBy { it.outputFile.canonicalPath == canonicalPath }
     }
     
     /**
@@ -301,10 +325,10 @@ class Dependencies {
      */
     void checkFiles(def fileNames, type="input") {
         
-        log.info "Checking " + fileNames
+        log.info "Checking $type (s) " + fileNames
         
         GraphEntry graph = this.getOutputGraph()
-        List missing = Utils.box(fileNames).collect { new File(it.toString()) }.grep { File f ->
+        List missing = Utils.box(fileNames).grep { String.valueOf(it) != "null" }.collect { new File(it.toString()) }.grep { File f ->
             
             log.info " Checking file $f"
             if(f.exists())
@@ -312,12 +336,17 @@ class Dependencies {
                 
             Properties p = graph.propertiesFor(f.path)
             if(!p) {
-                log.info "File $f.path [$type] does not exist but has a valid properties file"
                 return true
             }
             
-            // TODO: we could check that the "cleaned" flag has been set
-            return false
+            if(p.cleaned) {
+                log.info "File $f.path [$type] does not exist but has a properties file indicating it was cleaned up"
+                return false
+            }
+            else {
+                log.info "File $f.path [$type] does not exist, has a properties file indicating it is not cleaned up"
+                return true
+            }
         }
        
         if(missing)
@@ -483,6 +512,7 @@ class Dependencies {
         def graph
         Thread t = new Thread({
           graph = computeOutputGraph(outputs)
+          graph.index()
         })
         t.start()
         
@@ -588,16 +618,21 @@ class Dependencies {
         File outputFile = outputFileProperties.outputFile
         long outputSize = outputFile.size()
         if(trash) {
+            File trashDir = new File(".bpipe/trash")
+            if(!trashDir.exists())
+                trashDir.mkdirs()
+            
             if(!outputFile.renameTo(new File(".bpipe/trash", outputFile.name))) {
               log.warning("Failed to move output file ${outputFile.absolutePath} to trash folder")
               System.err.println "Failed to move file ${outputFile.absolutePath} to trash folder"
+              return 0
             }
-                
         }
         else
         if(!outputFile.delete()) {
             log.warning("Failed to delete output file ${outputFile.absolutePath}")
             System.err.println "Failed to delete file ${outputFile.absolutePath}"
+            return 0
         }
         return outputSize
     }

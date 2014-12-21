@@ -253,15 +253,26 @@ class CommandManager {
         commandsDir.eachFileMatch(~/[0-9]+/) { File f ->
             log.info "Loading command info from $f.absolutePath"
             CommandExecutor cmd
-            log.info "Loading command $cmd"
             try {
-                f.withObjectInputStream { result.add(it.readObject()) }
+                f.withObjectInputStream { 
+                    log.info "Loading command $cmd"
+                    cmd = it.readObject()
+                    String status
+                    try {
+                        status = cmd.status()
+                    }
+                    catch(Exception e) {
+                        log.info "Status probe for command $cmd failed: $e"
+                    }
+                    if(status == CommandStatus.RUNNING)
+                        result.add(cmd) 
+                }
             }
             catch(PipelineError e) {
-              System.err.println("Failed to read details for command: $cmd.\n\n${Utils.indent(e.message)}")
+              System.err.println("Failed to read details for command $f.name: $cmd.\n\n${Utils.indent(e.message)}")
             }
             catch(Throwable t) {
-              System.err.println("An unexpected error occured while reading details for command : $cmd.\n\n${Utils.indent(t.message)}")
+              System.err.println("An unexpected error occured while reading details for command $f.name : $cmd.\n\n${Utils.indent(t.message)}")
             }
         }
         return result

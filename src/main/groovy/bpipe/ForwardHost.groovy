@@ -47,6 +47,8 @@ class ForwardHost {
         }
     
         Forwarder f = new Forwarder(new File(fileName), s)
+        log.info "Forwarding file $fileName using forwarder $f"
+        
         forwardingTimer.schedule(f, 0, 2000)
     
         this.forwarders << f
@@ -61,6 +63,6 @@ class ForwardHost {
         log.info "Flushing outputs for forwarders: $forwarders"
         
         // Now run them all one last time to flush any last contents
-        this.forwarders*.run()
+        this.forwarders*.flush()
     }
 }

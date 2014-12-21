@@ -190,6 +190,15 @@ class PipelineContext {
     */
    List<String> referencedOutputs = []
    
+   
+   /**
+    * A list of internally set inputs/outputs that are not visible to the user
+    * (see use in Checker)
+    */
+   List<String> internalOutputs = []
+   
+   List<String> internalInputs = []
+   
    /**
     * A list of outputs that are to be marked as preserved.
     * These will not be deleted automatically by user initiated
@@ -267,6 +276,14 @@ class PipelineContext {
        this.@defaultOutput = toOutputFolder(defOut)
    }
    
+   /**
+    * The list of outputs that this pipeline stage is defined to produce. If specified, this
+    * list is enforced. That is, if the user then tries to reference an incompatible 
+    * output in one of their commands, they receive an error.
+    * <p>
+    * More flexible outputs are specified implicitly. These are 'inferred' outputs that
+    * are tracked using allInferredOutputs.
+    */
    def output
    
    void setOutput(o) {
@@ -483,7 +500,7 @@ class PipelineContext {
    
    void var(Map values) {
        values.each { k,v ->
-           if(!this.localVariables.containsKey(k) && !this.extraBinding.variables.containsKey(k) && !Runner.binding.variables.containsKey(k)) {
+           if(!this.localVariables.containsKey(k) && !this.extraBinding.variables.containsKey(k) && !Runner.binding.variables.containsKey(k) && !branch.properties.containsKey(k)) {
                log.info "Using default value of variable $k = $v"
                if(v instanceof Closure)
                  this.localVariables[k] = v()
@@ -859,10 +876,7 @@ class PipelineContext {
         this.currentFileNameTransform = null
     }
     
-    Object produceImpl(Object out, Closure body) { 
-      produceImpl(out,body,true)  
-    }
-   
+  
     /**
      * Specifies that the given output(s) (out) will be produced
      * by the given closure, and skips execution of the closure
@@ -892,40 +906,55 @@ class PipelineContext {
      *       properly handled in the glob matching
      *       
      */
-    Object produceImpl(Object out, Closure body, boolean coerceToOutputFolder) { 
+    Object produceImpl(Object out, Closure body) { 
+        produceImpl(out,body,false)
+    }
+    
+    Object produceImpl(Object out, Closure body, boolean explicit /* the end user actually invoked produce themself */) { 
         
         log.info "Producing $out from $this"
         
         // Unwrap any files that may be wrapped in PipelineInput or PipelineOutput objects
         out = Utils.unwrap(out)      
         
-        List globOutputs = Utils.box(toOutputFolder(Utils.box(out).grep { it.contains("*") }))
+        List globOutputs = Utils.box(toOutputFolder(Utils.box(out).grep { it instanceof Pattern || it.contains("*") }))
         
         // Coerce so that files go to the right output folder
-        if(coerceToOutputFolder)
+        if(explicit) { // User invoked produce directly. In that case, if they put a directory into the produce
+                       // we should preserve it
+            out = Utils.box(out).collect { it.toString().contains("/") ? it : toOutputFolder(it)  }
+        }
+        else {
             out = toOutputFolder(out)
+        }
         
         def lastInputs = this.@input
         boolean doExecute = true
         
-        List fixedOutputs = Utils.box(out).grep { !it.contains("*") }
+        List fixedOutputs = Utils.box(out).grep { !(it instanceof Pattern) &&  !it.contains("*") }
         
         // Check for all existing files that match the globs
         List globExistingFiles = globOutputs.collect { 
-            def result = Utils.glob(it) 
+            def result = Utils.glob(it)  
             log.info "Files matching glob $it = $result"
             return result
         }.flatten()
+        
         if((!globOutputs || globExistingFiles)) {
-
           // No inputs were newer than outputs, 
           // but were the commands that created the outputs modified?
           this.output = fixedOutputs
+          
+          // Probing can be nested: ie, an outer function can initiate probe mode
+          // and then call this one, so we need to ensure that we restore
+          // the state  upon exit
+          boolean oldProbeMode = this.probeMode
           this.probeMode = true
           this.trackedOutputs = [:]
           try {
             PipelineDelegate.setDelegateOn(this, body)
             log.info("Probing command using inputs ${this.@input}")
+            List oldInferredOutputs = this.allInferredOutputs.clone()
             try {
               body() 
             }
@@ -935,7 +964,25 @@ class PipelineContext {
             log.info "Finished probe"
             
             def allInputs = (getResolvedInputs()  + Utils.box(lastInputs)).unique()
-            if(!Dependencies.instance.checkUpToDate(fixedOutputs + globExistingFiles,allInputs)) {
+            
+            def outputsToCheck = fixedOutputs.clone()
+            List newInferredOutputs = this.allInferredOutputs.clone()
+            newInferredOutputs.removeAll(oldInferredOutputs)
+            outputsToCheck.addAll(newInferredOutputs)
+            
+            // In some cases the user may specify an output explicitly with a direct produce(...)
+            // but then not reference that output variable at all in any of their
+            // commands. In such a case the command should still execute, even though the command
+            // would seem not to create the output - if we can't see any other way the output
+            // is going to get created, we infer that the command is going to create it "magically"
+            // see produce_and_output_function_no_output_ref test.
+            for(def o in fixedOutputs) {
+                if(explicit && !trackedOutputs.containsKey(o) && !inferredOutputs.contains(o)) {
+                    this.internalOutputs.add(o)
+                }
+            }
+            
+            if(!Dependencies.instance.checkUpToDate(outputsToCheck + globExistingFiles,allInputs)) {
                 log.info "Not up to date because input inferred by probe of body newer than outputs"
             }
             else
@@ -949,13 +996,13 @@ class PipelineContext {
             }
           }
           finally {
-              this.probeMode = false
+              this.probeMode = oldProbeMode
           }
         }
         
         if(doExecute) {
             if(Utils.box(this.@output)) {
-                this.output = Utils.box(fixedOutputs) +  Utils.box(this.@output)
+                this.output = Utils.box(fixedOutputs) +  Utils.box(this.@output).grep { ! (it in fixedOutputs) }
                 this.output.removeAll { it in replacedOutputs  || toOutputFolder(it) in replacedOutputs}
             }
             else {
@@ -982,6 +1029,7 @@ class PipelineContext {
                 // filterLines which doesn't trigger inferred inputs because
                 // it does not execute at all
                 if(!allResolvedInputs && !this.inputWrapper?.resolvedInputs) {
+                    
                     allResolvedInputs.addAll(Utils.box(this.@input))
                 }
                 
@@ -998,7 +1046,7 @@ class PipelineContext {
         
         if(globOutputs) {
             def normalizedInputs = Utils.box(this.@input).collect { new File(it).absolutePath }
-            for(String pattern in globOutputs) {
+            for(pattern in globOutputs) {
                 def result = Utils.glob(pattern).grep {  !normalizedInputs.contains( new File(it).absolutePath) }
                 
                 log.info "Found outputs for glob $pattern: [$result]"
@@ -1049,6 +1097,8 @@ class PipelineContext {
         log.info "Files not in previously created outputs but matching preserve patterns $patterns are: $matchingOutputs"
         for(def entry in trackedOutputs) {
             def preserved = entry.value.outputs.grep { matchingOutputs.contains(new File(it).canonicalPath) }
+            
+            
             log.info "Outputs $preserved marked as preserved from stage $stageName by patterns $patterns"
             this.preservedOutputs += preserved 
         }
@@ -1335,14 +1385,21 @@ class PipelineContext {
        // but see here: 
        // http://stackoverflow.com/questions/20338162/how-can-i-launch-a-new-process-that-is-not-a-child-of-the-original-process
        String setSid = Utils.isLinux() ? " setsid " : ""
-
+       
+       String rscriptExe = "Rscript"
+       if(Config.userConfig.containsKey("R") && Config.userConfig.R.containsKey("executable")) {
+           rscriptExe = Config.userConfig.R.executable
+           log.info "Using custom R executable: $rscriptExe"
+       }
+           
+       
        boolean oldEchoFlag = this.echoWhenNotFound
        try {
             this.echoWhenNotFound = true
             log.info("Entering echo mode on context " + this.hashCode())
             String rTempDir = Utils.createTempDir().absolutePath
             String scr = c()
-            exec("""unset TMP; unset TEMP; TEMPDIR="$rTempDir" $setSid Rscript - <<'!'
+            exec("""unset TMP; unset TEMP; TEMPDIR="$rTempDir" $setSid $rscriptExe - <<'!'
             $scr
 !
 """,false, config)
@@ -1508,16 +1565,21 @@ class PipelineContext {
       // $ouput.<ext> form in their commands. These are intercepted at string evaluation time
       // (prior to the async or exec command entry) and set as inferredOutputs until
       // the command is executed, and then we wipe them out
-      def checkOutputs = this.inferredOutputs + referencedOutputs
+      def checkOutputs = this.inferredOutputs + this.referencedOutputs + this.internalOutputs
       EventManager.instance.signal(PipelineEvent.COMMAND_CHECK, "Checking command", [ctx: this, command: cmd, joined: joined, outputs: checkOutputs])
 
       // We expect that the actual inputs will have been resolved by evaluation of the command to be executed 
       // before this method is invoked
-      def actualResolvedInputs = Utils.box(this.@inputWrapper?.resolvedInputs)
+      def actualResolvedInputs = Utils.box(this.@inputWrapper?.resolvedInputs) + internalInputs
 
       log.info "Checking actual resolved inputs $actualResolvedInputs"
       if(!probeMode && checkOutputs && Dependencies.instance.checkUpToDate(checkOutputs,actualResolvedInputs)) {
-          String message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " due to inferred outputs $checkOutputs newer than inputs ${this.@input}"
+          String message
+          if(this.@input)
+              message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " due to inferred outputs $checkOutputs newer than inputs ${this.@input}"
+          else
+              message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " because outputs $checkOutputs already exist (no inputs referenced)"
+          
           log.info message
           msg message
           
