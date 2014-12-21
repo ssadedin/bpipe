@@ -1731,8 +1731,14 @@ class PipelineContext {
     */
     void forwardImpl(List values) {
        this.nextInputs = values.flatten().collect {
-           String.valueOf(it)
-       }
+           if(it instanceof MultiPipelineInput) {
+               it.input
+           }
+           else
+               String.valueOf(it)
+       }.flatten()
+       
+       log.info("Forwarding ${nextInputs.size()} inputs ${nextInputs}")
    }
    
    /**
