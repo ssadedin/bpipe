@@ -44,7 +44,6 @@ class GraphEntry {
     List<GraphEntry> children = []
     
     /**
-<<<<<<< HEAD
      * An optional index to speed up lookups by canonical path - not populated by default,
      * but can be populated by using index()
      */
@@ -108,7 +107,6 @@ class GraphEntry {
         if(entry)
             return entry
         // In case of non-default output directory, the outputFile itself may be in a directory
-<<<<<<< HEAD
         findBy { Properties p -> canonicalPathFor(p) == canonicalPath  }
     }
     
