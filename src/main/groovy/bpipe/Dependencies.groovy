@@ -552,7 +552,7 @@ class Dependencies {
         def graph
         Thread t = new Thread({
           graph = computeOutputGraph(outputs)
-          graph.index()
+          graph.index(outputs.size()*2)
         })
         t.start()
         
