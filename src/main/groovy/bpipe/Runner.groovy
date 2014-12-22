@@ -55,6 +55,8 @@ class Runner {
     
     final static String builddate = System.getProperty("bpipe.builddate")?:System.currentTimeMillis()
     
+    final static String runDirectory = new File(".").absoluteFile.parentFile.absolutePath
+    
     final static ParamsBinding binding = new ParamsBinding()
 	
     final static String DEFAULT_HELP = """
@@ -210,7 +212,7 @@ class Runner {
                  r longOpt:'report', 'generate an HTML report / documentation for pipeline'
                  'R' longOpt:'report', 'generate report using named template', args: 1
                  n longOpt:'threads', 'maximum threads', args:1
-                 m longOpt:'memory', 'maximum memory', args:1
+                 m longOpt:'memory', 'maximum memory in MB, or specified as <n>GB or <n>MB', args:1
                  l longOpt:'resource', 'place limit on named resource', args:1, argName: 'resource=value'
                  v longOpt:'verbose', 'print internal logging to standard error'
                  y longOpt:'yes', 'answer yes to any prompts or questions'
@@ -273,8 +275,15 @@ class Runner {
         }
         
         if(opts.m) {
-            log.info "Maximum memory specified as $opts.m MB"
-            Config.config.maxMemoryMB = Integer.parseInt(opts.m)
+            log.info "Maximum memory specified as $opts.m"
+            try {
+                Config.config.maxMemoryMB = parseMemoryOption(opts.m)
+            } 
+            catch (Exception e) {
+                System.err.println "\n$e.message\n"
+                cli.usage()
+                System.exit(1)
+            }
         }
         
         if(opts.l) {
@@ -710,6 +719,11 @@ class Runner {
                     System.err.println "\nJob ID could not be parsed as integer\n" + usageMsg
                     System.exit(1)
                 }
+                
+                if(commandLine == null) {
+                    System.err.println "\nCould not find a previous Bpipe run with id ${args[0]}. Please use 'bpipe history' to check for valid run ids.\n" + usageMsg
+                    System.exit(1)
+                }
             }
             else {
                 commandLine = historyLines[-1]
@@ -758,6 +772,35 @@ class Runner {
         }
     }
     
+    /**
+     * Parse the memory option and return the resulting memory amount in MB.
+     * <p>
+     * The value can be specified either as a plain integer (interpreted as MB) or as an integer followed by
+     * either MB or GB. For example:
+     * <li>4GB
+     * <li>4gb
+     * <li>4  (means 4MB)
+     * <li>4MB 
+     */
+    static int parseMemoryOption(String memoryValue) {
+        
+        if(memoryValue.isInteger())
+            return memoryValue.toInteger()
+            
+        // Separate the memory unit from the number
+        def memory = (memoryValue =~ /([0-9*])([a-zA-Z]{2})/)
+        if(!memory)
+            throw new IllegalArgumentException("Memory value '$memoryValue' couldn't be parsed. Please specify in the form <n>MB or <n>GB")
+        
+        String amount = memory[0][1]
+        String unit = memory[0][2].toUpperCase()
+        
+        if(unit == "MB")
+            return amount.toInteger()
+        
+        if(unit == "GB")
+            return amount.toInteger() * 1000
+    }
 }
 
 /**
