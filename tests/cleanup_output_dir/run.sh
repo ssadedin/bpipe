@@ -6,7 +6,7 @@ run test.txt
 
 grep -q "Stage hello" test.out || err "Failed to find expected stage hello"
 
-[ `grep -c "execute" test.out ` == 4 ] || err "All stages did not execute on first run"
+[ `grep -c "execute" test.out ` == 5 ] || err "All stages did not execute on first run"
 
 # Running a second time should skip the stages
 
