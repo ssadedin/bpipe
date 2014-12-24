@@ -64,4 +64,17 @@ class Branch extends Expando {
     String toString() {
         name
     }
+    
+    void setProperty(String name, Object value) {
+        if(name in PipelineCategory.closureNames.values()) {
+            throw new PipelineError("""
+                Attempt to define a branch variable $name with same name as a pipeline stage. 
+            
+                Please ensure that pipeline stages have different names to branch variables.
+            """.stripIndent())
+        }
+        else {
+            super.setProperty(name,value)
+        }
+    }
 }
