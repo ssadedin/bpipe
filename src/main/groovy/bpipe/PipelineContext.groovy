@@ -610,15 +610,18 @@ class PipelineContext {
     */
    PipelineInput getInputByIndex(int i) {
        
-       def boxed = Utils.box(input)
-       if(boxed.size()<i)
-           throw new PipelineError("Expected $i or more inputs but fewer provided")
-           
-       this.allResolvedInputs << input[i]
        
        PipelineInput wrapper = new PipelineInput(this.@input, pipelineStages)
        wrapper.currentFilter = currentFilter
        wrapper.defaultValueIndex = i
+       
+       def boxed = Utils.box(input)
+       if(boxed.size()<i) {
+           wrapper.parentError = new InputMissingError("Expected $i or more inputs but fewer provided")
+       }
+       else {
+           this.allResolvedInputs << input[i]
+       }
        
        if(!inputWrapper) 
          this.inputWrapper = wrapper
