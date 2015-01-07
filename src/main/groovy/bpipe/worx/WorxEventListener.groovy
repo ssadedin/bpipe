@@ -31,14 +31,15 @@ import java.util.concurrent.TimeUnit;
 
 import bpipe.Config;
 import bpipe.EventManager;
+import bpipe.NodeListCategory;
+import bpipe.Pipeline;
 import bpipe.PipelineContext;
 import bpipe.PipelineEvent;
 import bpipe.PipelineEventListener;
 import bpipe.PipelineStage;
-
+import bpipe.Runner;
 import groovy.json.JsonOutput;
 import groovy.util.logging.Log;
-
 import static PipelineEvent.*
 
 /**
@@ -187,7 +188,7 @@ class WorxEventListener implements PipelineEventListener {
             log.info "Response: $response"
         }
         catch(Exception e) {
-            log.severe "Failed to send event $this"
+            log.severe "Failed to send event to $socket $this"
             e.printStackTrace()
         }
       
@@ -203,7 +204,11 @@ class WorxEventListener implements PipelineEventListener {
             // Ignore
         }
         
-        String configUrl = Config.userConfig["worx.url"]?:"http://127.0.0.1:8888/"
+        log.info "Config is ${Config.userConfig}"
+        
+        String configUrl = Config.userConfig["worx"]?.url?:"http://127.0.0.1:8888/"
+        log.info "Connecting to $configUrl"
+        
         URL url = new URL(configUrl)
         socket = new Socket(url.host, url.port) 
         
@@ -243,8 +248,19 @@ class WorxEventListener implements PipelineEventListener {
        
         if(eventType == STARTED) {
             if(details.pipeline) {
-                details.pipeline = groovy.json.JsonOutput.toJson(details.pipeline)
+                use(NodeListCategory) {
+                    details.pipeline = groovy.json.JsonOutput.toJson(details.pipeline.toMap())
+                    log.info "Sending pipeline structure: $details.pipeline"
+                } 
             }
+            
+            File scriptFile = new File(Config.config.script)
+            details.title = Pipeline.documentation.title
+            if(!details.title)
+                details.title = scriptFile.name.replaceAll('\\.[^\\.]*?$', '').capitalize()
+            details.script = scriptFile.canonicalPath
+            details.dir = Runner.runDirectory
+            details.host = InetAddress.getLocalHost().hostName
         }
         
         WorxEventJob job = new WorxEventJob(event:eventType, properties: [desc: desc] + details)
