@@ -71,6 +71,7 @@ class Runner {
               cleanup
               query
               preserve
+              register <pipeline> <in1> <in2>...
               diagram <pipeline> <in1> <in2>...
               diagrameditor <pipeline> <in1> <in2>...
     """.stripIndent().trim()
@@ -82,12 +83,22 @@ class Runner {
     static CliBuilder stopCommandsCli = new CliBuilder(usage: "bpipe stopcommands\n", posix: true)
     
     static CliBuilder diagramCli = new CliBuilder(usage: "bpipe diagram [-e] [-f <format>] <pipeline> <input1> <input2> ...\n", posix: true)
+    
+    static CliBuilder registerCli = new CliBuilder(usage: "bpipe diagram [-e] [-f <format>] <pipeline> <input1> <input2> ...\n", posix: true)
+    
+    /**
+     * Introduced to (attempt to) deal with obscure out-of-memory situations. On rare
+     * occasions Bpipe shuts down with no message in the log files. The best theory that I
+     * have about it is that it's a severe out-of-memory situation and that even the attempts
+     * to write / flush the logs fail. To try and at least trace the problem, we track all
+     * the "normal" exit paths by setting this flag to true, and that way we know the exit
+     * is not "normal" in the shutdown handler and write directly to stderr.
+     */
+    static boolean normalShutdown = true
 	
     public static OptionAccessor opts = runCli.parse([])
     
     public static void main(String [] args) {
-        
-//        log.info "Starting in main"
         
         def db = new File(".bpipe")
         if(!db.exists())
@@ -109,6 +120,11 @@ class Runner {
 //        log.info "Adding shutdown hook"
         System.addShutdownHook { 
             
+            if(!normalShutdown) {
+                System.err.println "ERROR: Abnormal termination - check bpipe and operating system has enough memory!"
+                System.err.flush()
+            }
+            
             def home = System.getProperty("user.home")
             def jobFile = new File("$home/.bpipedb/jobs/$pid")
             if(jobFile.exists()) {
@@ -119,7 +135,7 @@ class Runner {
                 }
             }
             
-            if(Config.config.eraseLogsOnExit) {
+            if(Config.config.eraseLogsOnExit && parentPid != null) {
                 new File(".bpipe/logs/${parentPid}.erase.log").text=""
             }
             
@@ -130,7 +146,8 @@ class Runner {
                 EventManager.instance.signal(PipelineEvent.SHUTDOWN, "Shutting down process $pid")
             }
             catch(Exception e) {
-                // log.warn "Failure in shutdown events shutdown",e
+                // This execption occurs whenever worx not configured?
+                // System.err.println "ERROR: Failure in shutdown hook!"
             }
         }
                 
@@ -149,6 +166,12 @@ class Runner {
                 f "Set output format to 'png' or 'svg'", args:1
             }
             Config.config["mode"] = "diagram"
+        }
+        else
+        if(mode == "register")  {
+            log.info("Mode is register")
+            cli = registerCli
+            Config.config["mode"] = "register"
         }
         else
         if(mode == "documentation")  {
@@ -170,19 +193,19 @@ class Runner {
         if(mode == "query") {
             log.info("Showing dependency graph for " + args)
             Dependencies.instance.queryOutputs(args)
-            System.exit(0)
+            exit(0)
         }         
         else
         if(mode == "preserve") {
             log.info("Preserving " + args)
             this.runPreserve(args)
-            System.exit(0)
+            exit(0)
         } 
         else
         if(mode == "status") {
             log.info("Displaying status")
             this.runStatus(args)
-            System.exit(0)
+            exit(0)
         } 
         else
         if(mode == "stopcommands") {
@@ -191,7 +214,7 @@ class Runner {
             Config.config["mode"] = "stopcommands"
             int count = new CommandManager().stopAll()
             println "Stopped $count commands"
-            System.exit(0)
+            exit(0)
         } 
         else {
             
@@ -229,13 +252,13 @@ class Runner {
         
         def opt = cli.parse(args)
         if(!opt) 
-            System.exit(1)
+            exit(1)
             
         if(!opt.arguments()) {
             println versionInfo
             cli.usage()
             println "\n"
-            System.exit(1)
+            exit(1)
         }
         
         // Note: configuration reading depends on the script, so this
@@ -252,7 +275,7 @@ class Runner {
                 def cause = e.getCause() ?: e
                 println("\nError parsing 'bpipe.config' file. Cause: ${cause.getMessage() ?: cause}\n")
                 reportExceptionToUser(e)
-                System.exit(1)
+                exit(1)
             }
         }
             
@@ -282,7 +305,7 @@ class Runner {
             catch (Exception e) {
                 System.err.println "\n$e.message\n"
                 cli.usage()
-                System.exit(1)
+                exit(1)
             }
         }
         
@@ -292,7 +315,7 @@ class Runner {
             if(limit.size()!=2) {
                 System.err.println "\nBad format for limit $opts.l - expect format <name>=<value>\n"
                 cli.usage()
-                System.exit(1)
+                exit(1)
             }
             Concurrency.instance.setLimit(limit[0],limit[1] as Integer)
         }
@@ -381,24 +404,33 @@ class Runner {
         // RUN it
         try {
             log.info "Run ... "
-            script.run()
+            normalShutdown = false
+            synchronized(Runner.class) {
+                script.run()
+            }
+            normalShutdown=true
         }
         catch(MissingPropertyException e)  {
             if(e.type?.name?.startsWith("script")) {
                 // Handle this as a user error in defining their script
                 // print a nicer error message than what comes out of groovy by default
                 handleMissingPropertyFromPipelineScript(e)
-		        System.exit(1)
+		        exit(1)
             }
             else {
                 reportExceptionToUser(e)
-		        System.exit(1)
+		        exit(1)
             }
         }
         catch(Throwable e) {
             reportExceptionToUser(e)
-	        System.exit(1)
+	        exit(1)
         }
+   }
+    
+   static void exit(int code) {
+       normalShutdown = true
+       System.exit(code)
    }
     
    synchronized static reportExceptionToUser(Throwable e) {
@@ -505,7 +537,7 @@ class Runner {
                 if(count > 100) {
                     println "ERROR: Bpipe was unable to read its startup PID file from $pidFile.absolutePath"
                     println "ERROR: This may indicate you are in a read-only directory or one to which you do not have full permissions"
-                    System.exit(1)
+                    exit(1)
                 }
 
                 // Spin a short time waiting
@@ -554,7 +586,7 @@ class Runner {
             println "\nCould not understand command $pipelineFile or find it as a file\n"
             cli.usage()
             println "\n"
-            System.exit(1)
+            exit(1)
         }
         
         // Note that it is important to keep this on a single line because 
@@ -640,7 +672,7 @@ class Runner {
         }
             
         Dependencies.instance.cleanup(opt.arguments())
-        System.exit(0)
+        exit(0)
     }
     
     /**
@@ -653,10 +685,10 @@ class Runner {
         if(!opt.arguments()) {
             println ""
             cli.usage()
-            System.exit(1)
+            exit(1)
         }
         Dependencies.instance.preserve(opt.arguments())
-        System.exit(0)
+        exit(0)
     }
     
     static void runStatus(def args) {
@@ -691,13 +723,13 @@ class Runner {
         def historyFile = new File(".bpipe/history")
         if(!historyFile.exists()) {
             System.err.println(notFoundMsg);
-            System.exit(1)
+            exit(1)
         }
         
         def historyLines = historyFile.readLines()
         if(!historyLines) {
             System.err.println(notFoundMsg);
-            System.exit(1)
+            exit(1)
         }
         
         String commandLine = null
@@ -717,12 +749,12 @@ class Runner {
                 }
                 else {
                     System.err.println "\nJob ID could not be parsed as integer\n" + usageMsg
-                    System.exit(1)
+                    exit(1)
                 }
                 
                 if(commandLine == null) {
                     System.err.println "\nCould not find a previous Bpipe run with id ${args[0]}. Please use 'bpipe history' to check for valid run ids.\n" + usageMsg
-                    System.exit(1)
+                    exit(1)
                 }
             }
             else {
