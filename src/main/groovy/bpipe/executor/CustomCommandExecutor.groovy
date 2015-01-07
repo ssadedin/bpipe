@@ -202,7 +202,7 @@ class CustomCommandExecutor implements CommandExecutor {
             env.WALLTIME = config.walltime
        
         if(config?.memory)
-            env.MEMORY = config.memory
+            env.MEMORY = String.valueOf(config.memory)
              
         if(config?.procs)
             env.PROCS = config.procs.toString()
@@ -244,9 +244,9 @@ class CustomCommandExecutor implements CommandExecutor {
     	        result = out.toString()
 	        }
         }
-        if(this.cmd) {
+        if(this.command) {
             try {
-                this.cmd.setStatus(CommandStatus.forName(result))
+                this.command.setStatus(CommandStatus.forName(result))
             }
             catch(Exception e) {
                 log.warning("Failed to update status for result $result: $e")
@@ -431,6 +431,6 @@ class CustomCommandExecutor implements CommandExecutor {
     }
     
     String statusMessage() {
-        "$runningCommand, running since $startedAt ($config)"
+        "$runningCommand, running since $startedAt ($config), Job ID = #${commandId}"
     }
 }
