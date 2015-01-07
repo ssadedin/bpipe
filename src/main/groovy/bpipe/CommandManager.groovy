@@ -250,6 +250,12 @@ class CommandManager {
         List<CommandExecutor> result = []
         
         File commandsDir = new File(DEFAULT_COMMAND_DIR)
+        if(!commandsDir.exists()) {
+            log.info "No commands directory exists: empty status results"
+            return result
+        }
+        
+        List<String> statuses = [CommandStatus.RUNNING, CommandStatus.QUEUEING, CommandStatus.WAITING]*.name()
         commandsDir.eachFileMatch(~/[0-9]+/) { File f ->
             log.info "Loading command info from $f.absolutePath"
             CommandExecutor cmd
@@ -264,8 +270,10 @@ class CommandManager {
                     catch(Exception e) {
                         log.info "Status probe for command $cmd failed: $e"
                     }
-                    if(status == CommandStatus.RUNNING)
+                    if(status in statuses)
                         result.add(cmd) 
+                    else
+                        log.info "Skip command with status $status"
                 }
             }
             catch(PipelineError e) {
