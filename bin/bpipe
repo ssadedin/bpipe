@@ -44,6 +44,20 @@ tmsg() {
 }
 
 #----------------------------------------------------------
+# A variety of commands run in the foreground. These can be 
+# launched in a simpler manner than running a pipeline, which
+# needs to run in the background. The "launch mode" is the
+# command that is to be run, the Bpipe Runner interprets this
+# system property (bpipe.mode) to decide what to run.
+#----------------------------------------------------------
+launch_in_foreground() {
+    LAUNCH_MODE="$1"
+    shift 1
+    exec java -Xmx${MAX_JAVA_MEM} -classpath "$CP" $BPIPEDEBUG -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=$LAUNCH_MODE bpipe.Runner $* 
+    exit
+}
+
+#----------------------------------------------------------
 # Kill a whole tree of processes in a cross platform way.
 # Note, in some situations killing the parent process is 
 # sufficient ot kill the children, however this doesn't
@@ -438,37 +452,16 @@ then
         echo
     fi
     exit
-elif [ "$COMMAND" == "cleanup" ];
+elif [ "$COMMAND" == "cleanup" ] || \
+         [ "$COMMAND" == "register" ] || \
+         [ "$COMMAND" == "status" ] || \
+         [ "$COMMAND" == "query" ] || \
+         [ "$COMMAND" == "preserve" ] || \
+         [ "$COMMAND" == "diagram" ] || \
+         [ "$COMMAND" == "diagrameditor" ]  || \
+         [ "$COMMAND" == "documentation" ];
 then
-    shift 1
-    exec java -Xmx${MAX_JAVA_MEM} -classpath "$CP" $BPIPEDEBUG -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=cleanup bpipe.Runner $* 
-elif [ "$COMMAND" == "status" ];
-then
-    shift 1
-    exec java -Xmx${MAX_JAVA_MEM} -classpath "$CP"  $BPIPEDEBUG -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=status bpipe.Runner $* 
-elif [ "$COMMAND" == "query" ];
-then
-    shift 1
-    exec java -Xmx${MAX_JAVA_MEM} -classpath "$CP"  $BPIPEDEBUG -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=query bpipe.Runner $* 
-elif [ "$COMMAND" == "preserve" ];
-then
-    shift 1
-    exec java -Xmx${MAX_JAVA_MEM} -classpath "$CP"  $BPIPEDEBUG -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=preserve bpipe.Runner $* 
-elif [ "$COMMAND" == "diagram" ];
-then
-    shift 1
-    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=diagram bpipe.Runner $* 
-    exit
-#elif [ "$COMMAND" == "documentation" ];
-#then
-#    shift 1
-#    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.mode=documentation bpipe.Runner $* 
-#    exit
-elif [ "$COMMAND" == "diagrameditor" ];
-then
-    shift 1
-    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=diagrameditor bpipe.Runner $* 
-    exit
+    launch_in_foreground $*
 elif [ "$COMMAND" == "log" ];
 then
     shift 1
