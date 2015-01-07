@@ -471,7 +471,7 @@ public class Pipeline {
         pipeline.joiners += segmentJoiners
 
         def mode = Config.config.mode 
-        if(mode == "run" || mode == "documentation") // todo: documentation should be its own mode! but can't support that right now
+        if(mode == "run" || mode == "documentation" || mode == "register") // todo: documentation should be its own mode! but can't support that right now
             pipeline.execute(inputFile, host, pipelineBuilder)
         else
         if(mode in ["diagram","diagrameditor"])
@@ -617,12 +617,6 @@ public class Pipeline {
 
         Node pipelineStructure = launch ? diagram(host, pipeline) : null
         
-//        println "Executing pipeline: "
-//        use(NodeListCategory) {
-//            println groovy.json.JsonOutput.prettyPrint(pipelineStructure.toJson())
-//            EventManager.instance.signal(PipelineEvent.STARTED, "Pipeline started", [pipeline:pipelineStructure.toMap()])
-//        }
-//    
         def constructedPipeline
         use(PipelineCategory) {
             
@@ -632,6 +626,8 @@ public class Pipeline {
                 
                 constructedPipeline = pipeline()
                 
+                EventManager.instance.signal(PipelineEvent.STARTED, "Pipeline started", [pipeline:pipelineStructure])
+        
                 // See bug #60
                 if(constructedPipeline instanceof List) {
                     
