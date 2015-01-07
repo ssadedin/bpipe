@@ -112,34 +112,39 @@ class Utils {
             return
             
         List<String> failed = []
-        box(outputs).collect { new File(it) }.each { File f -> if(f.exists()) {  
-            // it.delete() 
-            File trashDir = new File(".bpipe/trash")
-            if(!trashDir.exists())
-                trashDir.mkdirs()
-                
-            File dest = new File(trashDir, f.name)
-            if(!Runner.opts.t) {
-                int count = 1;
-                while(dest.exists()) {
-                    dest = new File(trashDir, f.name + ".$count")
-                    ++count
+        box(outputs).collect { new File(it) }.each { File f -> 
+            if(f.exists()) {  
+                // it.delete() 
+                File trashDir = new File(".bpipe/trash")
+                if(!trashDir.exists())
+                    trashDir.mkdirs()
+                    
+                File dest = new File(trashDir, f.name)
+                if(!Runner.opts.t) {
+                    int count = 1;
+                    while(dest.exists()) {
+                        dest = new File(trashDir, f.name + ".$count")
+                        ++count
+                    }
+                    
+                    if(!f.renameTo(dest) && f.exists()) {
+                        println "WARNING: failed to clean up file $f"
+                        log.severe("Unable to cleanup file ${f.absolutePath} by moving it to ${dest.absolutePath}. Creating dirty file record.")
+                        failed.add(f.canonicalFile.absolutePath)
+                    }
+                    else {
+                        println "Cleaned up file $f to $dest" 
+                        log.info("Cleaned up file ${f.absolutePath} by moving it to ${dest.absolutePath}")
+                    }
+                    
                 }
-                
-                if(!f.renameTo(dest) && f.exists()) {
-                    println "WARNING: failed to clean up file $f"
-                    log.severe("Unable to cleanup file ${f.absolutePath} by moving it to ${dest.absolutePath}. Creating dirty file record.")
-                    failed.add(f.canonicalFile.absolutePath)
-                }
-                else {
-                    println "Cleaned up file $f to $dest" 
-                    log.info("Cleaned up file ${f.absolutePath} by moving it to ${dest.absolutePath}")
-                }
-                
+                else
+                    println "[TEST MODE] Would clean up file $f to $dest" 
             }
-            else
-                println "[TEST MODE] Would clean up file $f to $dest" 
-        }}
+            else {
+                log.info "Not cleaning up file $f because it does not exist"
+            }
+        }
         return failed
     }
     
