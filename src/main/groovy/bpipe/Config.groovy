@@ -130,7 +130,7 @@ class Config {
                 configFiles.pipelineConfig = pipelineConfigFile
             }
             else {
-                log.info "No configuration file found in same dir as pipeline file"
+                log.info "No configuration file found in same dir as pipeline file ${pipelineConfigFile.absolutePath}"
             }
         }
         
