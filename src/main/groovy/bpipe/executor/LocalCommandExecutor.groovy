@@ -25,6 +25,8 @@
  */
 package bpipe.executor
 
+import bpipe.Config
+import bpipe.Pipeline
 import groovy.util.logging.Log
 import bpipe.Command;
 import bpipe.OutputLog;
@@ -100,14 +102,38 @@ class LocalCommandExecutor implements CommandExecutor {
 			  }
               log.info "Converted $origCmd to $cmd to account for broken Java argument escaping"
 		  }
-          
           this.runningCommand = cmd
           this.startedAt = new Date()
-	      process = Runtime.getRuntime().exec((String[])(['bash','-e','-c',"echo \$\$ > ${CommandManager.DEFAULT_COMMAND_DIR}/${command.id}.pid;\n$cmd"].toArray()))
+
+          process = Runtime.getRuntime().exec((String[])(['bash','-e','-c',"echo \$\$ > ${CommandManager.DEFAULT_COMMAND_DIR}/${command.id}.pid;\n$cmd"].toArray()))
           this.command.status = CommandStatus.RUNNING.name()
           this.command.startTimeMs = System.currentTimeMillis()
-	      process.consumeProcessOutput(outputLog, errorLog)
+
+          //open a command log that will write to a file and to outputLog
+          String rootStartTime = this.command.branch.pipeline.root.startTime.format("yyyy-MM-dd__HH.mm.ss");
+          String logFilename = ".bpipe/logs/${Config.config.pid}.${rootStartTime}__${this.command.fullName}.log"
+          Appendable commandLog = new PrintStream(new BufferedOutputStream(new FileOutputStream(logFilename, true))) {
+              private boolean previousLineEnded = true;
+              private boolean appendToOutputLog = false;
+              public PrintStream append(CharSequence s) {
+                  //TODO is there a more robust way to prepend a timestamp to each line?
+                  if(appendToOutputLog)
+                    outputLog.append(s) //TODO create a generic AppendableTee class to write to 2 Appendables at once.
+
+                  super.print(previousLineEnded? new Date().format("[M/d/YY HH:mm:ss]  ") + s : s)
+                  previousLineEnded = s.contains('\n')
+                  if(previousLineEnded)
+                      this.flush()
+                  return this
+              }
+          };
+
+          commandLog.append("Command: $cmd\n")
+          commandLog.append("Directory: ${System.getProperty("user.dir")} \n")
+          commandLog.appendToOutputLog = true;
+          process.consumeProcessOutput(commandLog, commandLog)
           exitValue = process.waitFor()
+          commandLog.close()
           this.command.stopTimeMs = System.currentTimeMillis()
           this.id = command.id.toInteger()
           synchronized(this) {

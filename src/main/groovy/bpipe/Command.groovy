@@ -46,6 +46,11 @@ class Command implements Serializable {
     String name
 
     /**
+     * Command name with the full name of the Branch prepended.
+     */
+    String fullName
+
+    /**
      * This command's Branch
      */
     Branch branch
@@ -86,6 +91,7 @@ class Command implements Serializable {
      * Internal configuration = accessed via getConfig()
      */
     private Map cfg
+
     
     Map getConfig(inputs) {
         if(cfg != null)
@@ -157,5 +163,12 @@ class Command implements Serializable {
         catch(Exception e) {
             log.warning("Failed to update status for result $statusValue: $e")
         }
+    }
+
+    /**
+     * Returns a name prefixed with the full unique name of the branch this Command is on.
+     */
+    String getFullName() {
+        return branch.fullName + "." + id + "__" + name;
     }
 }

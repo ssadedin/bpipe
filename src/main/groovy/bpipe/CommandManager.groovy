@@ -39,6 +39,9 @@ import bpipe.executor.ThrottledDelegatingCommandExecutor;
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+
+
+
 @Log
 class CommandManager {
 
@@ -165,7 +168,7 @@ class CommandManager {
         log.info "Created bpipe command id " + command.id
         
         // Temporary hack until we figure out design for how output log gets passed through
-        OutputLog commandLog = new OutputLog(outputLog, command.id)
+        OutputLog commandLog = new OutputLog(outputLog, name)
         if(cmdExec instanceof LocalCommandExecutor) {
         	cmdExec.outputLog = commandLog
         	cmdExec.errorLog = commandLog
@@ -176,8 +179,9 @@ class CommandManager {
             wrapped.deferred = true
         
         command.name = name
+        Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
         wrapped.start(cfg, command, outputDirectory)
-    		
+
 		this.commandIds[cmdExec] = command.id
 		this.commandIds[wrapped] = command.id
             

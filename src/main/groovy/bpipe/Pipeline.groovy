@@ -117,7 +117,13 @@ public class Pipeline {
      * specific variables, see {@link #variables}
      */
     Binding externalBinding = new Binding()
-    
+
+    /**
+     * Records pipeline start time
+     */
+    Date startTime
+
+
     /**
      * Variables that are only available to this specific instance of a 
      * running pipeline.
@@ -163,7 +169,7 @@ public class Pipeline {
      * output file names when the pipeline is run as a child pipeline.
      * This is null and not used in the default, root pipeline
      */
-    Branch branch = new Branch(name:"")
+    Branch branch = new Branch(name:"", pipeline:this)
     
     void setBranch(Branch value) {
         this.branch = value
@@ -552,7 +558,10 @@ public class Pipeline {
         
         Pipeline.rootThreadId = Thread.currentThread().id
         this.threadId = Pipeline.rootThreadId
-        
+
+        // Record when the pipeline was started
+        startTime = new Date()
+
         // We have to manually add all the external variables to the outer pipeline stage
         this.externalBinding.variables.each { 
             log.info "Loaded external reference: $it.key"
@@ -579,8 +588,8 @@ public class Pipeline {
         if(launch) {
             cmdlog.write("")
             String startDateTime = startDate.format("yyyy-MM-dd HH:mm") + " "
-            cmdlog << "#"*Config.config.columns 
-            cmdlog << "# Starting pipeline at " + (new Date())
+            cmdlog << "#"*Config.config.columns
+            cmdlog << "# Starting pipeline at " + startDateTime
             cmdlog << "# Input files:  $inputFile"
             cmdlog << "# Output Log:  " + Config.config.outputLogPath 
             
@@ -1187,5 +1196,17 @@ public class Pipeline {
             current = current.parent
         }
         return branches
+    }
+
+    /**
+     * @return the root Pipeline.
+     */
+    Pipeline getRoot() {
+        if(parent == null) {
+            return this
+        }
+        else {
+            return parent.root
+        }
     }
 }

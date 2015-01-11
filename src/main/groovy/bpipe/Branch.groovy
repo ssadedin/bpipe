@@ -36,14 +36,19 @@ import groovy.transform.CompileStatic;
  * @author simon.sadedin@mcri.edu.au
  */
 class Branch extends Expando {
-    
+
     @Delegate
     String name = ""
-    
+
+    String fullName ;
+
     String dir = "."
     
     Branch parent = null
-    
+
+    Pipeline pipeline;
+
+
     Branch getTop() { // Causes compile to fail :-(
         if(parent == null) {
             return this
@@ -52,7 +57,15 @@ class Branch extends Expando {
             return parent.top
         }
     }
-    
+
+    /**
+     * Returns a unique name for this branch by taking its name and pre-pending the names of all parent branches
+     */
+    String getFullName() {
+        return pipeline.getBranchPath().reverse().join(".")
+    }
+
+
     public void setParent(Branch parent) {
         // Copy values of properties 
         parent.properties.each { entry ->

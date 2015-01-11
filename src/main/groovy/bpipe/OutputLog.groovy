@@ -52,11 +52,11 @@ class OutputLog implements Appendable {
      * The actual buffer
      */
     StringBuilder buffer = new StringBuilder()
-    
+
     String branch
     String prefix
     String commandId
-    
+
     OutputLog(String branch) {
         this.branch = branch
         this.prefix = branch == null ? "" : "[$branch]\t" 
@@ -97,7 +97,7 @@ class OutputLog implements Appendable {
         
         print buffer.toString()
         buffer.setLength(0)
-        
+
     }
     
 //    @CompileStatic

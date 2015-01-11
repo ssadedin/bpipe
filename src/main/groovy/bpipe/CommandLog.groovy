@@ -30,7 +30,7 @@ import groovy.util.logging.Log;
  * Responsible for committing commands to the command log.
  * <p>
  * At the moment this is really stunningly simple, and all it does
- * is ensures sychronisation (so we don't get garbled commands 
+ * is ensures synchronisation (so we don't get garbled commands
  * from multiple threads). However longer term it can get much much
  * more sophisticated. 
  * 

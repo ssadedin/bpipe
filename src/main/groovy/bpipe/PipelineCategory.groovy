@@ -50,7 +50,7 @@ import static Utils.*
  */
 @Log
 class PipelineCategory {
-    
+
     static Map closureNames = [:]
     
     /**
@@ -59,7 +59,13 @@ class PipelineCategory {
      * This is how predeclared Transform and Filters work.
      */
     static Map wrappers = [:]
-    
+
+    /**
+     * A global counter of pipeline segments which is used for giving segments (aka. branches or Pipelines) a unique
+     * full name.
+     */
+    static int segmentNumber = 0
+
     static Closure getAt(Closure c, String... params) {
         return c
     }
@@ -274,7 +280,7 @@ class PipelineCategory {
                             def region = chr instanceof Chr ? chr.region : ""
                             child.variables += [chr: region]
                             child.variables += [region: region]
-                            child.branch = new Branch(name:chr instanceof Chr ? chr.name : chr)
+                            child.branch = new Branch(name:chr instanceof Chr ? chr.name : chr, pipeline:child)
                             child.runSegment(childInputs, segmentClosure)
                         }
                         catch(Exception e) {
@@ -385,7 +391,7 @@ class PipelineCategory {
     
     static Object splitOnMap(def input, Map<String, List> samples, List segments, boolean applyName=false) {
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
-        segments = segments.collect { 
+        segments = segments.collect {
             if(it instanceof List) {
                 return multiply("*",it)
             }
@@ -419,7 +425,15 @@ class PipelineCategory {
  
                 Closure segmentClosure = s
                 String childName = id
-                int segmentNumber = segments.indexOf(segmentClosure) + 1
+
+                //NOTE: because segments.indexOf doesn't return a unique number when a closure is used more than
+                //once in a pipeline, use a global segmentCounter to create a unique id for all segments (aka. branches)
+
+                //int segmentNumber = segments.indexOf(segmentClosure) + 1
+                synchronized(segmentNumber) {
+                    segmentNumber += 1
+                }
+
                 if(segments.size()>1) {
                     if(id == "all")
                         childName = segmentNumber.toString()
@@ -444,7 +458,7 @@ class PipelineCategory {
                                 
                         log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
                         child.addStage(dummyPriorStage)
-                        child.branch = new Branch(name:childName)
+                        child.branch = new Branch(name:childName, pipeline:child)
                         child.nameApplied = !applyName
                         child.runSegment(files, segmentClosure)
                     }
