@@ -2098,6 +2098,62 @@ class PipelineContext {
         this.@output = Utils.box(this.@output) + value
         return value
     }
+    
+    void cleanup(java.lang.Object... patterns) {
+        
+        // This is used as a way to resolve inputs correctly in the same way
+        // that we would look for inputs (following branch semantics)
+        PipelineInput inp = getInput()
+        
+        List<String> exts = patterns.grep { !(it instanceof Pattern) }.collect { val ->
+            val.toString()
+        }
+        
+        List results = []
+        if(exts) {
+            results = inp.resolveInputsEndingWith(exts)
+            log.info "Resolved upstream outputs matching $exts for cleanup : $results"
+        }
+        
+        List<String> pats = patterns.grep { (it instanceof Pattern) }.collect { val ->
+            val.toString()
+        }
+        
+        if(pats) {
+            List patResults = inp.resolveInputsEndingWithPatterns(pats, pats)
+            log.info "Resolved upstream outputs matching $pats for cleanup : $results"
+            results.addAll(patResults)
+        }
+        
+        // Finally, cleanup all these files
+        log.info "Attempting to cleanup files: $results"
+        if(results) {
+            
+            List resultFiles = results.collect { new File(it) }
+            
+            List<Properties> props = Dependencies.instance.scanOutputFolder()
+            
+            List<File> cleaned = []
+            for(File result in resultFiles) {
+                
+                // Note we protect attempt to resolve canonical path with 
+                // the file name equality because it is very slow!
+                Properties resultProps = props.find { (it.outputFile.name == result.name) && (it.canonicalPath == result.canonicalPath) }
+                
+                if(resultProps.cleaned) {
+                    log.info "File $result already cleaned"
+                }
+                else {
+                    Dependencies.instance.removeOutputFile(resultProps)
+                    cleaned.add(result)
+                }
+            }
+            
+            if(cleaned) {
+                println "MSG: The following files were cleaned: " + cleaned.join(",")
+            }
+        }
+    }
 }
 
 
