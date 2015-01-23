@@ -1828,6 +1828,8 @@ class PipelineContext {
             UNCLEAN_FILE_PATH.mkdirs()
             
         this.uncleanFilePath = new File(UNCLEAN_FILE_PATH, String.valueOf(Thread.currentThread().id))   
+        if(uncleanFilePath.exists())
+            this.uncleanFilePath.delete()
         this.uncleanFilePath.text = ""
     }
     
@@ -2099,6 +2101,18 @@ class PipelineContext {
         return value
     }
     
+    /**
+     * Cleanup outputs matching the specified patterns from the current 
+     * file output hierarchy (ie: resolvable within current branch).
+     * <p>
+     * The list of patterns can contain Strings (or any object coerceable to a string)
+     * or it can contain regular expression Pattern objects (eg, created using ~"....")
+     * or a mixture of both. The Strings will be treated as file extensions, while the 
+     * patterns will be treated as end-matching patterns on the outputs visible to this 
+     * pipeline stage.
+     * 
+     * @param patterns
+     */
     void cleanup(java.lang.Object... patterns) {
         
         // This is used as a way to resolve inputs correctly in the same way
