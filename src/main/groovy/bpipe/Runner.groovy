@@ -405,9 +405,7 @@ class Runner {
         try {
             log.info "Run ... "
             normalShutdown = false
-            synchronized(Runner.class) {
-                script.run()
-            }
+            script.run()
             normalShutdown=true
         }
         catch(MissingPropertyException e)  {
@@ -487,9 +485,14 @@ class Runner {
         
         def parentLog = log.getParent()
         parentLog.getHandlers().each { parentLog.removeHandler(it) }
-
+        
+        File logFile = new File(".bpipe/bpipe.log")
+        if(logFile.exists()) {
+            logFile.delete()
+        }
+        
         // The current log file
-        FileHandler fh = new FileHandler(".bpipe/bpipe.log")
+        FileHandler fh = new FileHandler(logFile.path)
         fh.setFormatter(new BpipeLogFormatter())
         parentLog.addHandler(fh)
 
