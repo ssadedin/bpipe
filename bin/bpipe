@@ -698,16 +698,29 @@ then
       tail $LOGFILE | sed "$TAIL_PATTERN"
     fi
 else
-    (tail -f $LOGFILE | sed -l "$TAIL_PATTERN") &
+    #Emulate automatic termination of tail with named pipes
+    mkfifo .bpipe/logs/${BPIPE_PID}.log_named_pipe
+    
+    tail -f $LOGFILE >.bpipe/logs/${BPIPE_PID}.log_named_pipe &
     TAIL_PID="$!"
-    #echo "DEBUG:  tailing log using MacOSX pid tracking emulation RUNPID=$$, BPIPE_PID=$BPIPE_PID TAILPID=$TAIL_PID"
+    
+    <.bpipe/logs/${BPIPE_PID}.log_named_pipe sed -l "$TAIL_PATTERN" &
+    SED_PID="$!"
+    
+    #echo "DEBUG:  tailing log using MacOSX pid tracking emulation RUNPID=$$, BPIPE_PID=$BPIPE_PID TAILPID=$TAIL_PID SED_PID=$SED_PID"
 
     # Wait for the Java Bpipe process to finish naturally (not Ctrl-C, see above for that)
     wait $BPIPE_PID
 
-    # Seems like The Java Bpipe process ended by itself: kill the background tail process 
-    # started above
+    # Seems like The Java Bpipe process ended by itself: kill the background tail process
+    # started above. sed should be killed when it's pipe finishes, so only tail is sent the signal
+    # wait command used to prevent "$TAIL_PID Terminated: 15 " in output
     killtree $TAIL_PID
+    wait $TAIL_PID 2>/dev/null
+    
+    #killtree $SED_PID
+
+    rm .bpipe/logs/${BPIPE_PID}.log_named_pipe
 fi
 
 if [ -e .bpipe/prompt_input_files.${BPIPE_PID} ];
