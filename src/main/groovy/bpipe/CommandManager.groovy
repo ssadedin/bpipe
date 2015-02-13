@@ -149,13 +149,15 @@ class CommandManager {
 
         
         if(Runner.opts.t || Config.config.breakTriggered) {
-            if(cmdExec instanceof LocalCommandExecutor)
-              throw new PipelineTestAbort("Would execute: $cmd")
+            
+          String msg = command.branch.name ? "Branch $command.branch.name would execute: $cmd" : "Would execute $cmd"
+          if(cmdExec instanceof LocalCommandExecutor)
+              throw new PipelineTestAbort(msg)
           else {
               if(cfg && command.configName) {
                   cfg.name = configName
               }
-              throw new PipelineTestAbort("Would execute: $cmd\n\n                using $cmdExec with config $cfg")
+              throw new PipelineTestAbort("$msg\n\n                using $cmdExec with config $cfg")
           }
         }
         

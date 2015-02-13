@@ -221,6 +221,7 @@ class WorxEventListener implements PipelineEventListener {
              PipelineEvent.STARTED,
              PipelineEvent.STAGE_STARTED,
              PipelineEvent.STAGE_COMPLETED, 
+             PipelineEvent.FINISHED,
              PipelineEvent.SHUTDOWN
         ].each { EventManager.instance.addListener(it,this) } 
         
@@ -246,23 +247,28 @@ class WorxEventListener implements PipelineEventListener {
         if(!ctx)
             ctx = details.ctx
        
-        if(eventType == STARTED) {
-            if(details.pipeline) {
+        File scriptFile = new File(Config.config.script)
+        if(eventType == STARTED || eventType == FINISHED) {
+            if(details.pipeline && eventType == STARTED) {
                 use(NodeListCategory) {
                     details.pipeline = groovy.json.JsonOutput.toJson(details.pipeline.toMap())
                     log.info "Sending pipeline structure: $details.pipeline"
                 } 
             }
+            else {
+                details.remove("pipeline")
+            }
             
-            File scriptFile = new File(Config.config.script)
             details.title = Pipeline.documentation.title
             if(!details.title)
                 details.title = scriptFile.name.replaceAll('\\.[^\\.]*?$', '').capitalize()
-            details.script = scriptFile.canonicalPath
             details.dir = Runner.runDirectory
-            details.host = InetAddress.getLocalHost().hostName
         }
         
+        // All events
+        details.script = scriptFile.canonicalPath
+        details.host = InetAddress.getLocalHost().hostName
+            
         WorxEventJob job = new WorxEventJob(event:eventType, properties: [desc: desc] + details)
         
         this.service.submit(job);

@@ -33,6 +33,26 @@ package bpipe;
  */
 class PipelineError extends RuntimeException {
 
+    PipelineContext ctx;
+    
+    boolean summary = false;
+    
+    public boolean isSummary() {
+        return summary;
+    }
+
+    public void setSummary(boolean summary) {
+        this.summary = summary;
+    }
+
+    public void setCtx(PipelineContext ctx) {
+        this.ctx = ctx;
+    }
+
+    public PipelineContext getCtx() {
+        return ctx;
+    }
+
     public PipelineError() {
         super();
     }
@@ -47,6 +67,11 @@ class PipelineError extends RuntimeException {
 
     public PipelineError(Throwable arg0) {
         super(arg0);
+    }
+
+    public PipelineError(String description, PipelineContext ctx) {
+        this(description);
+        this.ctx = ctx;
     }
     
 }

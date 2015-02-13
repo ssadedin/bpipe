@@ -296,6 +296,10 @@ class PipelineStage {
 				}
 			}
 		}
+        catch(PipelineError e) {
+            e.ctx = context
+            throw e
+        }
 		finally {
             Pipeline.currentContext.set(null)
 			this.running = false
