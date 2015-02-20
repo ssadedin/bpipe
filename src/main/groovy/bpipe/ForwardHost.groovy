@@ -34,10 +34,11 @@ import java.util.Timer;
 class ForwardHost {
     
     static Timer forwardingTimer
-    
     transient List<Forwarder> forwarders = []
     
-    public void forward(String fileName, OutputStream s) {
+    //public void forward(String fileName, OutputStream s) {
+    //sb43: added bsubjobid as string t
+    public void forward(String fileName, OutputStream s, String t) {
     
         // Start the forwarding timer task if it is not already running
         synchronized(ForwardHost.class) {
@@ -45,11 +46,11 @@ class ForwardHost {
                 forwardingTimer = new  Timer(true)
             }
         }
-    
-        Forwarder f = new Forwarder(new File(fileName), s)
+   	
+        //Forwarder f = new Forwarder(new File(fileName), s)
+        Forwarder f = new Forwarder(new File(fileName), s, t)
         log.info "Forwarding file $fileName using forwarder $f"
-        
-        forwardingTimer.schedule(f, 0, 2000)
+        forwardingTimer.schedule(f, 0,2000)
     
         this.forwarders << f
     }
