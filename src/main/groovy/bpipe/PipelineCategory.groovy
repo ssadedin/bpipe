@@ -322,7 +322,7 @@ class PipelineCategory {
             // Map filteredBranches = branches.keySet().collectEntries { key -> 
             //   [key, Utils.box(branches[key]).removeAll { !(it in inputs) }]
             //}
-            splitOnMap(branches,segments)
+            splitOnMap(input, branches,segments)
         }
         
         log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
