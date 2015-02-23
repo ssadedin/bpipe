@@ -57,6 +57,8 @@ class Runner {
     
     final static String runDirectory = new File(".").absoluteFile.parentFile.absolutePath
     
+    final static String canonicalRunDirectory = new File(runDirectory).canonicalPath
+    
     final static ParamsBinding binding = new ParamsBinding()
 	
     final static String DEFAULT_HELP = """

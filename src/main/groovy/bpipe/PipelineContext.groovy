@@ -1871,8 +1871,20 @@ class PipelineContext {
         File outputsDir = new File(OUTPUT_METADATA_DIR)
         if(!outputsDir.exists()) 
             outputsDir.mkdirs()
+            
+        String outputPath = new File(outputFile).path
         
-        return  new File(outputsDir,this.stageName + "." + new File(outputFile).path.replaceAll("[/\\\\]", "_") + ".properties")
+        // If the output path starts with the run directory, trim it off
+        if(outputPath.indexOf(Runner.canonicalRunDirectory)==0) {
+            outputPath = outputPath.substring(Runner.canonicalRunDirectory.size()+1)
+        }
+        
+        if(outputPath.startsWith("./"))
+            outputPath = outputPath.substring(2)
+        
+        println "output path = " + outputPath
+        
+        return  new File(outputsDir,this.stageName + "." + outputPath.replaceAll("[/\\\\]", "_") + ".properties")
     }
     
     /**
