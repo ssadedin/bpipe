@@ -58,6 +58,7 @@ class Branch extends Expando {
         parent.properties.each { entry ->
             this.setProperty(entry.key, entry.value)
         }
+        this.parent = parent
     }
     
     @Override
