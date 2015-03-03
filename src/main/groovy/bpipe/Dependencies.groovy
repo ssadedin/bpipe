@@ -118,7 +118,7 @@ class GraphEntry {
      * @return
      */
     @CompileStatic
-    String canonicalPathFor(Properties p) {
+    static String canonicalPathFor(Properties p) {
         synchronized(p) {
             if(p.containsKey("canonicalPath"))
                 return p["canonicalPath"]        
@@ -445,7 +445,7 @@ class Dependencies {
                 
                 Properties p = new Properties()
                 if(file.exists()) {
-                    p = readOutputPropertyFile(file)
+                    p = readOutputPropertyFile(file)?:p
                 }
                 
                 String hash = Utils.sha1(cmd+"_"+o)
@@ -1000,7 +1000,7 @@ class Dependencies {
                                 
                 if(!files)
                     return []
-                result.addAll(files.collectParallel { readOutputPropertyFile(it) }.sort { it.timestamp })
+                result.addAll(files.collectParallel { readOutputPropertyFile(it) }.grep { it != null }.sort { it.timestamp })
             }
         }
         return result
@@ -1016,8 +1016,12 @@ class Dependencies {
         new FileInputStream(f).withStream { p.load(it) }
         p.inputs = p.inputs?p.inputs.split(",") as List : []
         p.cleaned = p.containsKey('cleaned')?Boolean.parseBoolean(p.cleaned) : false
-        if(!p.outputFile)
-            throw new IllegalStateException("Error: output meta data property file $f is missing essential information.")
+        if(!p.outputFile)  {
+            log.warning("Error: output meta data property file $f is missing essential outputFile property")
+            System.err.println ("Error: output meta data property file $f is missing essential outputFile property")
+            System.err.println ("Properties are: " + p)
+            return null
+        }
             
         p.outputFile = new File(p.outputFile)
         

@@ -27,6 +27,7 @@ package bpipe
 
 import groovy.util.logging.Log;
 import groovy.xml.MarkupBuilder
+
 import java.util.regex.Matcher
 import java.util.regex.Pattern;
 
@@ -1882,7 +1883,7 @@ class PipelineContext {
         if(outputPath.startsWith("./"))
             outputPath = outputPath.substring(2)
         
-        println "output path = " + outputPath
+//        println "output path = " + outputPath
         
         return  new File(outputsDir,this.stageName + "." + outputPath.replaceAll("[/\\\\]", "_") + ".properties")
     }
@@ -2164,8 +2165,13 @@ class PipelineContext {
                 
                 // Note we protect attempt to resolve canonical path with 
                 // the file name equality because it is very slow!
-                Properties resultProps = props.find { (it.outputFile.name == result.name) && (it.canonicalPath == result.canonicalPath) }
+                Properties resultProps = props.find { (it.outputFile.name == result.name) && (GraphEntry.canonicalPathFor(it) == result.canonicalPath) }
                 
+                if(resultProps == null) {
+                    log.warning "Unable to file matching known output $result.name"
+                    System.err.println("WARNING: unable to cleanup output $result because meta data file could not be resolved")
+                }
+                else
                 if(resultProps.cleaned) {
                     log.info "File $result already cleaned"
                 }
