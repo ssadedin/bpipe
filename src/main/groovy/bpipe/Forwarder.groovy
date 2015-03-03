@@ -131,7 +131,7 @@ class Forwarder extends TimerTask {
                             ifs.skip(skip)
                             int count = ifs.read(buffer)
                             if(count < 0) {
-                                log.info "No chars to read from ${f.absolutePath} (size=${f.length()})"
+                                //log.info "No chars to read from ${f.absolutePath} (size=${f.length()})"
                                 return
                             }
                             
