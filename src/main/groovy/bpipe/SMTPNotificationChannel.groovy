@@ -117,13 +117,13 @@ class SMTPNotificationChannel implements NotificationChannel {
 			props.put("mail.smtp.socketFactory.class",
 				"javax.net.ssl.SSLSocketFactory");
 		}
-		props.put("mail.smtp.auth", "true");
 		
 		if(port != -1)
 			props.put("mail.smtp.port", String.valueOf(port));
 			
 		Session session 
 		if(auth) {
+    		props.put("mail.smtp.auth", "true");
 			session = Session.getDefaultInstance(props,
 				new javax.mail.Authenticator() {
 					protected javax.mail.PasswordAuthentication getPasswordAuthentication() {
