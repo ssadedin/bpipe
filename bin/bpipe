@@ -382,7 +382,7 @@ display_log() {
 # symbolic link on OSX.
 #----------------------------------------------------------
 function python_readlink() {
-    python -c 'import os,sys; print os.path.realpath(sys.argv[1])' "$1"
+    python -c 'from __future__ import print_function;import os,sys; print(os.path.realpath(sys.argv[1]))' "$1"
 }
 
 #----------------------------------------------------------
