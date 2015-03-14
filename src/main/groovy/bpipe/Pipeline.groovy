@@ -26,7 +26,7 @@ package bpipe
 
 import groovy.text.GStringTemplateEngine;
 import groovy.text.GStringTemplateEngine.GStringTemplate;
-import groovy.time.TimeCategory;
+import groovy.time.TimeCategory
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -34,6 +34,7 @@ import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import groovy.util.logging.Log;
+import groovy.xml.MarkupBuilder;
 
 import java.util.logging.Level;
 import java.util.regex.Pattern;
@@ -164,6 +165,18 @@ public class Pipeline {
      * This is null and not used in the default, root pipeline
      */
     Branch branch = new Branch(name:"")
+    
+    /**
+     * Date / time when this pipeline started running
+     * Only populated for main / root level pipeline instance
+     */
+    Date startDate 
+    
+    /**
+     * Date / time when this pipeline finished running
+     * Only populated for main / root level pipeline instance
+     */
+    Date finishDate 
     
     void setBranch(Branch value) {
         this.branch = value
@@ -489,7 +502,7 @@ public class Pipeline {
      */
     void runSegment(def inputs, Closure s) {
         try {
-            currentRuntimePipeline.set(this)
+            currentRuntimePipeline.set(this) 
         
             this.rootContext = createContext()
             
@@ -521,7 +534,15 @@ public class Pipeline {
             }
             catch(PipelineError e) {
                 log.info "Pipeline segment failed (2): " + e.message
-                System.err << "Pipeline failed! (2) \n\n"+e.message << "\n\n"
+//                System.err << "Pipeline failed! (2) \n\n"+e.message << "\n\n"
+                
+                if(!e.summary) {
+                    if(e.ctx && e.ctx.stageName != "Unknown")
+                        System.println "ERROR: stage $e.ctx.stageName failed: $e.message \n"
+                    else
+                        System.println "ERROR: stage failed: $e.message \n" 
+                }
+                        
                 failed = true
                 if(e instanceof PatternInputMissingError)
                     throw e
@@ -529,7 +550,8 @@ public class Pipeline {
             }
             catch(PipelineTestAbort e) {
                 log.info "Pipeline segment aborted due to test mode"
-                println "\n\nAbort due to Test Mode!\n\n" + Utils.indent(e.message) + "\n"
+                if(!e.summary)
+                    println "\n\nAbort due to Test Mode!\n\n" + Utils.indent(e.message) 
                 failReason = "Pipeline was run in test mode and was stopped before performing an action. See earlier messages for details."
                 failed = true
             }
@@ -575,45 +597,12 @@ public class Pipeline {
         this.externalBinding.variables += pipeline.binding.variables
         
         def cmdlog = CommandLog.cmdLog
-        def startDate = new Date()
+        startDate = new Date()
         if(launch) {
-            cmdlog.write("")
-            String startDateTime = startDate.format("yyyy-MM-dd HH:mm") + " "
-            cmdlog << "#"*Config.config.columns 
-            cmdlog << "# Starting pipeline at " + (new Date())
-            cmdlog << "# Input files:  $inputFile"
-            cmdlog << "# Output Log:  " + Config.config.outputLogPath 
-            
-            OutputLog startLog = new OutputLog("----")
-            startLog.bufferLine("="*Config.config.columns)
-            startLog.bufferLine("|" + " Starting Pipeline at $startDateTime".center(Config.config.columns-2) + "|")
-            startLog.bufferLine("="*Config.config.columns)
-            startLog.flush()
-            
-            about(startedAt: startDate)
+            initializeRunLogs(inputFile)
         }
         
-        ArrayList.metaClass.plus = { x ->
-//            log.info "Interception list plus(" + delegate?.class?.name + "," + x?.class?.name + ")"
-            if(x instanceof Closure) {
-                if(delegate && (delegate[-1] instanceof ListBouncer)) {
-                    delegate[-1].elements.add(x)
-                    return delegate
-                }
-                else {
-                    ListBouncer b = new ListBouncer()
-                    b.elements.add(x)
-                    delegate.add(b)
-                    return delegate
-                }
-            }
-            else {
-                ArrayList result = new ArrayList()
-                result.addAll(delegate)
-                result.add(x)
-                return result
-            }
-        }
+        setArrayMetaClassProperties()
 
         Node pipelineStructure = launch ? diagram(host, pipeline) : null
         
@@ -626,8 +615,6 @@ public class Pipeline {
                 
                 constructedPipeline = pipeline()
                 
-                EventManager.instance.signal(PipelineEvent.STARTED, "Pipeline started", [pipeline:pipelineStructure])
-        
                 // See bug #60
                 if(constructedPipeline instanceof List) {
                     
@@ -655,49 +642,9 @@ public class Pipeline {
             }
             
             if(launch) {
-                try {
-                    this.checkRequiredInputs(Utils.box(inputFile))
-                    runSegment(inputFile, constructedPipeline)
-                }
-                catch(PatternInputMissingError e) {
-                    new File(".bpipe/prompt_input_files." + Config.config.pid).text = ''
-                }
-                catch(InputMissingError e) {
-                    println """
-                        A required input was missing from the files given as input.
-                        
-                                 Input Type:  $e.inputType
-                                Description:  $e.description""".stripIndent()
-                    failed = true
-                }
+                EventManager.instance.signal(PipelineEvent.STARTED, "Pipeline started", [pipeline:pipelineStructure])
                 
-                Date finishDate = new Date()
-                
-                println("\n"+" Pipeline Finished ".center(Config.config.columns,"="))
-                if(rootContext)
-                  rootContext.msg "Finished at " + finishDate
-                  
-                about(finishedAt: finishDate)
-                cmdlog << "# " + (" Finished at " + finishDate + " Duration = " + TimeCategory.minus(finishDate,startDate) +" ").center(Config.config.columns,"#")
-               
-                /*
-                def w =new StringWriter()
-                this.dump(w)
-                w.flush()
-                println w
-                */
-                
-                // See if any checks failed
-                List<Check> allChecks = Check.loadAll()
-                List<Check> failedChecks = allChecks.grep { !it.passed && !it.override }
-                if(failedChecks) {
-                    println "\nWARNING: ${failedChecks.size()} check(s) failed. Use 'bpipe checks' to see details.\n"
-                }
-                
-                EventManager.instance.signal(PipelineEvent.FINISHED, "Pipeline " + (failed?"Failed":"Succeeded"), [pipeline:this, checks:allChecks])
-                if(!failed) {
-                    summarizeOutputs(stages)
-                }
+                launchPipeline(constructedPipeline, inputFile, startDate)
             }
         }
 
@@ -716,6 +663,158 @@ public class Pipeline {
         }
         
         return constructedPipeline
+    }
+    
+    /**
+     * Run the pipeline, handling any errors and printing out results to the
+     * console.
+     * 
+     * @param constructedPipeline
+     * @param inputFile
+     */
+    void launchPipeline(def constructedPipeline, def inputFile, Date startDate) {
+        
+        def cmdlog = CommandLog.cmdLog
+        
+        String failureMessage = null
+        try {
+            this.checkRequiredInputs(Utils.box(inputFile))
+            runSegment(inputFile, constructedPipeline)
+                    
+            if(failed) {
+                failureMessage = ("\n" + failExceptions*.message.join("\n"))
+            }
+        }
+        catch(PatternInputMissingError e) {
+            new File(".bpipe/prompt_input_files." + Config.config.pid).text = ''
+        }
+        catch(InputMissingError e) {
+            failureMessage = """
+                A required input was missing from the files given as input.
+                        
+                         Input Type:  $e.inputType
+                        Description:  $e.description""".stripIndent()
+            failed = true
+        }
+                
+        finishDate = new Date()
+        if(Runner.opts.t && failed && failExceptions.empty) { 
+            println("\n"+" Pipeline Test Succeeded ".center(Config.config.columns,"="))
+        }
+        else {
+            println("\n"+" Pipeline ${failed?'Failed':'Succeeded'} ".center(Config.config.columns,"="))
+        }
+        if(failed) {
+            println failureMessage
+            println()
+        }
+                
+        if(rootContext)
+          rootContext.msg "Finished at " + finishDate
+                  
+        about(finishedAt: finishDate)
+        cmdlog << "# " + (" Finished at " + finishDate + " Duration = " + TimeCategory.minus(finishDate,startDate) +" ").center(Config.config.columns,"#")
+               
+        /*
+        def w =new StringWriter()
+        this.dump(w)
+        w.flush()
+        println w
+        */
+                
+        // See if any checks failed
+        List<Check> allChecks = Check.loadAll()
+        List<Check> failedChecks = allChecks.grep { !it.passed && !it.override }
+        if(failedChecks) {
+            println "\nWARNING: ${failedChecks.size()} check(s) failed. Use 'bpipe checks' to see details.\n"
+        }
+        
+        saveResultState(failed, allChecks, failedChecks) 
+                
+        EventManager.instance.signal(PipelineEvent.FINISHED, "Pipeline " + (failed?"Failed":"Succeeded"), 
+            [ 
+                pipeline:this, 
+                checks:allChecks, 
+                result:!failed, 
+                startDate:startDate,
+                finishDate:finishDate,
+                commands: CommandManager.executedCommands
+            ])
+        
+        if(!failed) {
+            summarizeOutputs(stages)
+        }
+    }
+    
+    static String DATE_FORMAT="yyyy-MM-dd HH:mm:ss"
+    
+    void saveResultState(boolean failed, List<Check> allChecks, List<Check> failedChecks) {
+       
+        new File(".bpipe/results").mkdirs()
+        
+        new File(".bpipe/results/${Config.config.pid}.xml").withWriter { w ->
+            MarkupBuilder xml = new MarkupBuilder(w)
+            xml.job(id:Config.config.pid) {
+                succeeded(String.valueOf(!failed))
+                startDateTime(startDate.format(DATE_FORMAT))
+                endDateTime(finishDate.format(DATE_FORMAT))
+                
+                commands {
+                   CommandManager.executedCommands.each {  Command cmd ->
+                        command {
+                            stage(cmd.name)
+                            branch(cmd.branch.name)
+                            content(cmd.command)
+                            start(new Date(cmd.startTimeMs).format(DATE_FORMAT))
+                            end(new Date(cmd.stopTimeMs).format(DATE_FORMAT))
+                            exitCode(cmd.exitCode)
+                        }
+                   }
+                }
+            }
+        }
+    }
+    
+    void initializeRunLogs(def inputFile) {
+        def cmdlog = CommandLog.cmdLog
+        cmdlog.write("")
+        String startDateTime = startDate.format("yyyy-MM-dd HH:mm") + " "
+        cmdlog << "#"*Config.config.columns 
+        cmdlog << "# Starting pipeline at " + (new Date())
+        cmdlog << "# Input files:  $inputFile"
+        cmdlog << "# Output Log:  " + Config.config.outputLogPath 
+            
+        OutputLog startLog = new OutputLog("----")
+        startLog.bufferLine("="*Config.config.columns)
+        startLog.bufferLine("|" + " Starting Pipeline at $startDateTime".center(Config.config.columns-2) + "|")
+        startLog.bufferLine("="*Config.config.columns)
+        startLog.flush()
+            
+        about(startedAt: startDate)
+    }
+    
+    void setArrayMetaClassProperties() {
+        ArrayList.metaClass.plus = { x ->
+//            log.info "Interception list plus(" + delegate?.class?.name + "," + x?.class?.name + ")"
+            if(x instanceof Closure) {
+                if(delegate && (delegate[-1] instanceof ListBouncer)) {
+                    delegate[-1].elements.add(x)
+                    return delegate
+                }
+                else {
+                    ListBouncer b = new ListBouncer()
+                    b.elements.add(x)
+                    delegate.add(b)
+                    return delegate
+                }
+            }
+            else {
+                ArrayList result = new ArrayList()
+                result.addAll(delegate)
+                result.add(x)
+                return result
+            }
+        }
     }
     
     PipelineContext createContext() {
@@ -770,7 +869,7 @@ public class Pipeline {
     
     static Set allLoadedPaths = new HashSet()
     
-    private static void loadExternalStagesFromPaths(GroovyShell shell, List<File> paths) {
+    private static void loadExternalStagesFromPaths(GroovyShell shell, List<File> paths, cache=true) {
         
         for(File pipeFolder in paths) {
             
@@ -795,26 +894,28 @@ public class Pipeline {
                 
             // Load all the scripts from this path / folder
             libPaths.each { File scriptFile ->
-                if(allLoadedPaths.contains(scriptFile.canonicalPath)) {
+                if(cache && allLoadedPaths.contains(scriptFile.canonicalPath)) {
                     log.info "Skip loading $scriptFile.canonicalPath (already loaded)"
                     return
                 }
                 
                 log.info("Evaluating library file $scriptFile")
                 try {
-                    
+                    String scriptClassName = scriptFile.name.replaceAll('.groovy$','_bpipe.groovy')
                     Script script = shell.evaluate(PIPELINE_IMPORTS+
                         " binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true;" +
                         "bpipe.Pipeline.scriptNames['$scriptFile']=this.class.name;" +
-                         scriptFile.text + "\nthis", scriptFile.name.replaceAll('.groovy$','_bpipe.groovy'))
+                         scriptFile.text + "\nthis", scriptClassName)
                     
-                    script.getMetaClass().getMethods().each { CachedMethod m ->
-                        if(m.declaringClass.name.matches("Script[0-9]*") && !["__\$swapInit","run","main"].contains(m.name)) {
-                          shell.context.variables[m.name] = { Object[] args -> script.getMetaClass().invokeMethod(script,m.name,args) }
-                        }
+                    script.getMetaClass().getMethods().grep { CachedMethod m ->
+                        (m.declaringClass.name.endsWith("_bpipe") && !["__\$swapInit","run","main"].contains(m.name)) 
+                    }.each { CachedMethod m ->
+                        shell.context.variables[m.name] = { Object[] args -> script.getMetaClass().invokeMethod(script,m.name,args) }
                     }
                     log.fine "Binding now has variables: " + shell.context.variables
-                    allLoadedPaths.add(scriptFile.canonicalPath)
+                    
+                    if(cache)
+                        allLoadedPaths.add(scriptFile.canonicalPath)
                 }
                 catch(Exception ex) {
                     log.log(Level.SEVERE,"Failed to evaluate script $scriptFile: "+ ex, ex)
@@ -882,9 +983,24 @@ public class Pipeline {
         if(!f.exists()) 
             throw new PipelineError("A script, requested to be loaded from file '$path', could not be accessed.")
             
-        def shell = new GroovyShell(Runner.binding)
-        loadExternalStagesFromPaths(shell, [f])
-         
+        if(currentRuntimePipeline.get()) {
+            Pipeline pipeline = currentRuntimePipeline.get()
+            Binding binding = new Binding()
+            def shell = new GroovyShell(binding)
+            
+            // Note: do not cache - different branches may need to load the same file
+            // which caching would prevent
+            loadExternalStagesFromPaths(shell, [f], false) 
+            shell.context.variables.each { name, value ->
+                log.info "Loaded variable $name into branch $pipeline.branch.name"
+                pipeline.branch[name] = value
+            }
+        }
+        else  {
+            def shell = new GroovyShell(Runner.binding)
+            loadExternalStagesFromPaths(shell, [f])
+        }
+            
         loadedPaths << f
     }
     

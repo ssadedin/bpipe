@@ -117,7 +117,7 @@ class SgeCommandExecutor implements CommandExecutor {
 		 * - o: define the file to which redirect the standard output
 		 * - e: define the file to which redirect the error output 
 		 */
-		def startCmd = "qsub -wd \$PWD -terse -o $jobDir/$CMD_OUT_FILENAME -e $jobDir/$CMD_ERR_FILENAME -V "
+		def startCmd = "qsub -N \"$name\" -wd \$PWD -terse -o $jobDir/$CMD_OUT_FILENAME -e $jobDir/$CMD_ERR_FILENAME -V "
 		// add other parameters (if any)
 		if(config?.queue) {
 			startCmd += "-q ${config.queue} "

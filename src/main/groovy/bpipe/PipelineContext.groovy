@@ -27,6 +27,7 @@ package bpipe
 
 import groovy.util.logging.Log;
 import groovy.xml.MarkupBuilder
+
 import java.util.regex.Matcher
 import java.util.regex.Pattern;
 
@@ -643,7 +644,7 @@ class PipelineContext {
     */
    def getInput() {
        if(this.@input == null || Utils.isContainer(this.@input) && this.@input.size() == 0) {
-           throw new PipelineError("Input expected but not provided")
+           throw new InputMissingError("Input expected but not provided")
        }
        if(!inputWrapper || inputWrapper instanceof MultiPipelineInput) {
            inputWrapper = new PipelineInput(this.@input, pipelineStages)
@@ -1343,8 +1344,8 @@ class PipelineContext {
       
       c.outputs = commandReferencedOutputs
      
-      int exitResult = c.executor.waitFor()
-      if(exitResult != 0) {
+      c.exitCode = c.executor.waitFor()
+      if(c.exitCode != 0) {
         // Output is still spooling from the process.  By waiting a bit we ensure
         // that we don't interleave the exception trace with the output
         Thread.sleep(200)
@@ -1352,7 +1353,7 @@ class PipelineContext {
         if(!this.probeMode)
             this.commandManager.cleanup(c)
             
-        throw new CommandFailedException("Command failed with exit status = $exitResult : \n\n$c.command")
+        throw new CommandFailedException("Command failed with exit status = $c.exitCode : \n\n$c.command")
       }
       
       if(!this.probeMode)
@@ -1432,10 +1433,9 @@ class PipelineContext {
     }
     
     class CommandThread extends Thread {
-        int exitStatus = -1
-        CommandExecutor toWaitFor
+        Command toWaitFor
         void run() {
-            exitStatus = toWaitFor.waitFor()
+            toWaitFor.exitCode = toWaitFor.executor.waitFor()
         }
     }
     
@@ -1492,11 +1492,11 @@ class PipelineContext {
           }
           
           List<Integer> exitValues = []
-          List<CommandThread> threads = execs.collect { new CommandThread(toWaitFor:it) }
+          List<CommandThread> threads = cmds.collect { new CommandThread(toWaitFor:it) }
           threads*.start()
           
           while(true) {
-              int stillRunning = threads.count { it.exitStatus == -1 }
+              int stillRunning = threads.count { it.toWaitFor.exitCode == -1 }
               if(stillRunning) {
                   log.info "Waiting for $stillRunning commands in multi block"
               }
@@ -1505,7 +1505,7 @@ class PipelineContext {
               Thread.sleep(2000)
           }
          
-          List<String> failed = [cmds,threads*.exitStatus].transpose().grep { it[1] }
+          List<String> failed = [cmds,threads*.toWaitFor*.exitCode].transpose().grep { it[1] }
           if(failed) {
               throw new PipelineError("Command(s) failed: \n\n" + failed.collect { "\t" + it[0] + "\n\t(Exit status = ${it[1]})\n"}.join("\n"))
           }
@@ -1871,8 +1871,20 @@ class PipelineContext {
         File outputsDir = new File(OUTPUT_METADATA_DIR)
         if(!outputsDir.exists()) 
             outputsDir.mkdirs()
+            
+        String outputPath = new File(outputFile).path
         
-        return  new File(outputsDir,this.stageName + "." + new File(outputFile).path.replaceAll("[/\\\\]", "_") + ".properties")
+        // If the output path starts with the run directory, trim it off
+        if(outputPath.indexOf(Runner.canonicalRunDirectory)==0) {
+            outputPath = outputPath.substring(Runner.canonicalRunDirectory.size()+1)
+        }
+        
+        if(outputPath.startsWith("./"))
+            outputPath = outputPath.substring(2)
+        
+//        println "output path = " + outputPath
+        
+        return  new File(outputsDir,this.stageName + "." + outputPath.replaceAll("[/\\\\]", "_") + ".properties")
     }
     
     /**
@@ -2152,8 +2164,13 @@ class PipelineContext {
                 
                 // Note we protect attempt to resolve canonical path with 
                 // the file name equality because it is very slow!
-                Properties resultProps = props.find { (it.outputFile.name == result.name) && (it.canonicalPath == result.canonicalPath) }
+                Properties resultProps = props.find { (it.outputFile.name == result.name) && (GraphEntry.canonicalPathFor(it) == result.canonicalPath) }
                 
+                if(resultProps == null) {
+                    log.warning "Unable to file matching known output $result.name"
+                    System.err.println("WARNING: unable to cleanup output $result because meta data file could not be resolved")
+                }
+                else
                 if(resultProps.cleaned) {
                     log.info "File $result already cleaned"
                 }

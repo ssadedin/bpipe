@@ -58,6 +58,7 @@ class Branch extends Expando {
         parent.properties.each { entry ->
             this.setProperty(entry.key, entry.value)
         }
+        this.parent = parent
     }
     
     @Override
@@ -66,7 +67,7 @@ class Branch extends Expando {
     }
     
     void setProperty(String name, Object value) {
-        if(name in PipelineCategory.closureNames.values()) {
+        if((name in PipelineCategory.closureNames.values()) && !(value instanceof Closure)) {
             throw new PipelineError("""
                 Attempt to define a branch variable $name with same name as a pipeline stage. 
             

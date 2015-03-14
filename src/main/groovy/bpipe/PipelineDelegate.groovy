@@ -79,6 +79,7 @@ class PipelineDelegate {
     def methodMissing(String name, args) {
 //        log.info "Query for method $name on ${context.get()} with args ${args.collect {it.class.name}} via delegate ${this} in thread ${Thread.currentThread().id}"
         
+        PipelineContext ctx = context.get()
         if(name == "from") {
             if(args.size()<1) 
                 throw new IllegalArgumentException("from requires an argument: please supply a pattern or file extension that from should match on")
@@ -118,7 +119,7 @@ class PipelineDelegate {
                 result = context.get().invokeMethod(name+"Impl", [actualArgs, body, true] as Object[])
             }
             else {
-                result = context.get().invokeMethod(name+"Impl", [actualArgs, body] as Object[])
+                result = ctx.invokeMethod(name+"Impl", [actualArgs, body] as Object[])
             }
             
 //            if(name == "produce") {
@@ -134,18 +135,23 @@ class PipelineDelegate {
         }
         else
         if(name == "multi") {
-            context.get().invokeMethod("multiExec", [args as List] as Object[])
+            ctx.invokeMethod("multiExec", [args as List] as Object[])
         }
         else
         if(name == "forward") {
-            context.get().invokeMethod("forwardImpl", [args as List] as Object[])
+            ctx.invokeMethod("forwardImpl", [args as List] as Object[])
         }
         else
-        if(context.get().currentBuilder) {
-            context.get().currentBuilder.invokeMethod(name, args)
+        if(ctx.currentBuilder) {
+            ctx.currentBuilder.invokeMethod(name, args)
+        }
+        else 
+        if(ctx.branch.properties.containsKey(name) && ctx.branch.properties[name] instanceof Closure) {
+            Closure c = ctx.branch.properties[name]
+            c.call(args)
         }
         else {
-            context.get().myDelegate = null
+            ctx.myDelegate = null
             try {
                 return context.get().invokeMethod(name, args)
             }

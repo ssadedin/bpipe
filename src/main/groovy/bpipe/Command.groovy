@@ -83,6 +83,11 @@ class Command implements Serializable {
     CommandStatus status
     
     /**
+     * The exit code of the command IF it has exited
+     */
+    int exitCode = -1
+    
+    /**
      * Internal configuration = accessed via getConfig()
      */
     private Map cfg

@@ -279,6 +279,15 @@ class PipelineStage {
      */
 	private runBody() {
 		this.running = true
+        
+        Closure actualBody = body
+        
+        // Check if the closure is overridden in this branch
+        if(context.branch.getProperty(stageName) && context.branch[stageName] instanceof Closure) {
+            log.info "Overriding body for $stageName due to branch variable of type Closure containing stage name"
+            body = context.branch[stageName]
+        }
+        
 		PipelineDelegate.setDelegateOn(context,body)
 		this.startDateTimeMs = System.currentTimeMillis()
 		try {
@@ -296,6 +305,10 @@ class PipelineStage {
 				}
 			}
 		}
+        catch(PipelineError e) {
+            e.ctx = context
+            throw e
+        }
 		finally {
             Pipeline.currentContext.set(null)
 			this.running = false

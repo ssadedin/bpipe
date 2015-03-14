@@ -30,6 +30,16 @@ package bpipe;
  * the user ran it in "test"mode.
  */
 class PipelineTestAbort extends RuntimeException {
+    
+    boolean summary = false;
+    
+    public boolean isSummary() {
+        return summary;
+    }
+
+    public void setSummary(boolean summary) {
+        this.summary = summary;
+    }
 
     public PipelineTestAbort() {
         super();

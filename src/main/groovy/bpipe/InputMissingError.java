@@ -34,6 +34,10 @@ public class InputMissingError extends PipelineError {
         super(description);
     }
     
+    public InputMissingError(String description, PipelineContext ctx) {
+        super(description,ctx);
+    }
+     
     public InputMissingError(String inputType, String description) {
         super("Input type " + inputType + " was missing");
         this.inputType = inputType;

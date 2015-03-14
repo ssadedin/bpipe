@@ -1,0 +1,50 @@
+<html>
+    <body style='font-family: arial;'>
+        <% if(pipeline.failed) { %>
+            <h2 style='color:#a00'>Pipeline Failed</h2>    
+        <% } else { %>
+            <h2 style='color:green'>Pipeline Succeeded</h2>    
+        <% } %>
+
+        <% 
+         thbg = "style='background-color: #eee'"
+        %>
+
+        <h3>Runtime Summary</h3>
+        <table style='border: solid 1px #555; border-collapse: collapse;' border=1 cellpadding=3>
+            <tbody>
+                <tr><th $thbg>Start</th><td><%=pipeline.startDate.format("yyyy-MM-dd HH:mm:ss")%></td> </tr>
+                <tr><th $thbg>End</th><td><%=pipeline.finishDate.format("yyyy-MM-dd HH:mm:ss")%></td></tr>
+                <tr><th $thbg>Duration</th><td><%=groovy.time.TimeCategory.minus(pipeline.finishDate,pipeline.startDate)%></td></tr>
+            </tbody>
+        </table>
+
+        <h3>Command Summary</h3>
+        <table  style='border-collapse: collapse;' border=1 cellpadding=3>
+            <thead>
+                <tr $thbg><th colspan=2 style='text-align:center;'>Commands</th></tr>
+            </thead>
+            <tbody>
+            <tr>
+                <th $thbg>Executed</th><td><%=commands.size()%></td>
+            </tr>
+            <tr>
+                <th $thbg>Succeeded</th><td><%=commands.count { !it.exitCode} %></td>
+            </tr>
+            <tr>
+                <th $thbg>Failed</th><td><%=commands.count { it.exitCode } %></td>
+            </tr>
+            </tbody>
+        </table>
+
+        <% if(commands.any { it.exitCode }) { %>
+            <h3>Failed Pipeline Stages</h3>
+            <p>The following pipeline stages failed:</p>
+            <ul>
+            <%commands.grep { it.exitCode }*.name.unique().each { n -> %>
+                <li>$n</li>
+            <% } %>
+        <% } %>
+
+    </body>
+</html>

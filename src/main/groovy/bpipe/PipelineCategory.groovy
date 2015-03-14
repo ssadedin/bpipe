@@ -38,6 +38,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import groovy.util.logging.Log;
+
 import java.util.regex.Pattern;
 
 import org.codehaus.groovy.runtime.StackTraceUtils;
@@ -321,7 +322,7 @@ class PipelineCategory {
             // Map filteredBranches = branches.keySet().collectEntries { key -> 
             //   [key, Utils.box(branches[key]).removeAll { !(it in inputs) }]
             //}
-            splitOnMap(branches,segments)
+            splitOnMap(input, branches,segments)
         }
         
         log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
@@ -470,11 +471,19 @@ class PipelineCategory {
                 
                 Pipeline current = Pipeline.currentRuntimePipeline.get()
                 for(Pipeline p in pipelines.grep { it.failed }) {
-                    current.failExceptions.addAll(p.failExceptions)
+                    // current.failExceptions.addAll(p.failExceptions)
                 }
                 current.failReason = messages
                 
-                throw new PipelineError("One or more parallel stages aborted. The following messages were reported: \n\n" + messages)
+                Exception e
+                if(pipelines.every { p -> p.failExceptions.every { it instanceof PipelineTestAbort } }) {
+                   e = new PipelineTestAbort()
+                }
+                else {
+                    e = new PipelineError("One or more parallel stages aborted. The following messages were reported: \n" + messages)
+                }
+                e.summary = true
+                throw e
             }
             else {
                 if(pipelines.every { it.aborted }) {
@@ -582,6 +591,24 @@ class PipelineCategory {
     }
     
     static String summarizeErrors(List<Pipeline> pipelines) {
+        
+        // Need to associate each exception to a pipeline
+        Map<Throwable,Pipeline> exPipelines = [:]
+        pipelines.each { Pipeline p -> p.failExceptions.each { ex -> exPipelines[ex] = p } }
+        
+        pipelines*.failExceptions.flatten().groupBy { it.message }.collect { String msg, List<Throwable> t ->
+            
+            List<String> branches = t.collect { exPipelines[it] }*.branchPath.flatten()
+            
+            List<String> stages = t.grep { it instanceof PipelineError && it.ctx != null }.collect { it.ctx.stageName }.unique()
+            
+            """
+                Branch${branches.size()>1?'es':''} ${branches.join(", ")} in stage${stages.size()>1?'s':''} ${stages.join(", ")} reported message:
+
+           """.stripIndent() + msg 
+        }.join("\n")
+        
+        /*
         pipelines.collect { 
                     if(it.failReason && it.failReason!="Unknown") 
                         return it.failReason
@@ -591,6 +618,7 @@ class PipelineCategory {
                     else
                     return null
         }.grep { it }.flatten().unique().join('\n') 
+        */
     }
     
     static void addStages(Binding binding) {
