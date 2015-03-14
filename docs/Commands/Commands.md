@@ -1,5 +1,3 @@
-#Bpipe command line usage 
-
 Bpipe without any arguments will output a summary of the valid commands.
 
 ```
