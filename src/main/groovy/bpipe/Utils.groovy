@@ -116,7 +116,7 @@ class Utils {
             
             if(!f.exists()) {
                 log.info "File $f does not appear to exist: listing directory to flush file system"
-                f.parentFile.listFiles()
+                try { f.absoluteFile.parentFile.listFiles() } catch(Exception e) { log.warning("Failed to list files of parent directory of $f"); }
                 if(f.exists())
                     log.info("File $f revealed by listing directory")
             }
