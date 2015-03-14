@@ -1478,9 +1478,9 @@ class PipelineContext {
         
         try {
           def aborts = []
-          List<CommandExecutor> execs = cmds.collect { 
+          List<Command> execCmds = cmds.collect { 
               try {
-                async(it,true,null,true).executor 
+                async(it,true,null,true)
               }
               catch(PipelineTestAbort e) {
                  aborts << e 
@@ -1492,7 +1492,7 @@ class PipelineContext {
           }
           
           List<Integer> exitValues = []
-          List<CommandThread> threads = cmds.collect { new CommandThread(toWaitFor:it) }
+          List<CommandThread> threads = execCmds.collect { new CommandThread(toWaitFor:it) }
           threads*.start()
           
           while(true) {
