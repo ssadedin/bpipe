@@ -113,6 +113,14 @@ class Utils {
             
         List<String> failed = []
         box(outputs).collect { new File(it) }.each { File f -> 
+            
+            if(!f.exists()) {
+                log.info "File $f does not appear to exist: listing directory to flush file system"
+                f.parentFile.listFiles()
+                if(f.exists())
+                    log.info("File $f revealed by listing directory")
+            }
+            
             if(f.exists()) {  
                 // it.delete() 
                 File trashDir = new File(".bpipe/trash")
