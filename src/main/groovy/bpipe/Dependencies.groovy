@@ -993,7 +993,7 @@ class Dependencies {
                 List<File> files = 
                                new File(PipelineContext.OUTPUT_METADATA_DIR).listFiles()
                                ?.toList()
-                                .grep { !it.name.startsWith(".") } // ignore files starting with ., 
+                                .grep { !it.name.startsWith(".") && !it.isDirectory() } // ignore files starting with ., 
                                                                    // added as a convenience because I occasionally
                                                                    // edit files in output folder when debugging and it causes
                                                                    // Bpipe to fail!
