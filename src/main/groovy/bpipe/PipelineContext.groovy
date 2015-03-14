@@ -1344,8 +1344,8 @@ class PipelineContext {
       
       c.outputs = commandReferencedOutputs
      
-      int exitResult = c.executor.waitFor()
-      if(exitResult != 0) {
+      c.exitCode = c.executor.waitFor()
+      if(c.exitCode != 0) {
         // Output is still spooling from the process.  By waiting a bit we ensure
         // that we don't interleave the exception trace with the output
         Thread.sleep(200)
@@ -1353,7 +1353,7 @@ class PipelineContext {
         if(!this.probeMode)
             this.commandManager.cleanup(c)
             
-        throw new CommandFailedException("Command failed with exit status = $exitResult : \n\n$c.command")
+        throw new CommandFailedException("Command failed with exit status = $c.exitCode : \n\n$c.command")
       }
       
       if(!this.probeMode)
@@ -1433,10 +1433,9 @@ class PipelineContext {
     }
     
     class CommandThread extends Thread {
-        int exitStatus = -1
-        CommandExecutor toWaitFor
+        Command toWaitFor
         void run() {
-            exitStatus = toWaitFor.waitFor()
+            toWaitFor.exitCode = toWaitFor.executor.waitFor()
         }
     }
     
@@ -1493,11 +1492,11 @@ class PipelineContext {
           }
           
           List<Integer> exitValues = []
-          List<CommandThread> threads = execs.collect { new CommandThread(toWaitFor:it) }
+          List<CommandThread> threads = cmds.collect { new CommandThread(toWaitFor:it) }
           threads*.start()
           
           while(true) {
-              int stillRunning = threads.count { it.exitStatus == -1 }
+              int stillRunning = threads.count { it.toWaitFor.exitCode == -1 }
               if(stillRunning) {
                   log.info "Waiting for $stillRunning commands in multi block"
               }
@@ -1506,7 +1505,7 @@ class PipelineContext {
               Thread.sleep(2000)
           }
          
-          List<String> failed = [cmds,threads*.exitStatus].transpose().grep { it[1] }
+          List<String> failed = [cmds,threads*.toWaitFor*.exitCode].transpose().grep { it[1] }
           if(failed) {
               throw new PipelineError("Command(s) failed: \n\n" + failed.collect { "\t" + it[0] + "\n\t(Exit status = ${it[1]})\n"}.join("\n"))
           }

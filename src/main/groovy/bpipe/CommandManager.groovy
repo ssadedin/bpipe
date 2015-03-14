@@ -61,6 +61,12 @@ class CommandManager {
      * The location under which completed command information will be stored
      */
     File completedDir
+    
+    
+    /**
+     * A global list of commands executed by all command managers in this run
+     */
+    static List<Command> executedCommands = Collections.synchronizedList([])
 	
 	/**
 	 * Track the ids of commands that were launched by this command manager
@@ -182,6 +188,7 @@ class CommandManager {
     		
 		this.commandIds[cmdExec] = command.id
 		this.commandIds[wrapped] = command.id
+        this.executedCommands << command
             
         new File(commandDir, command.id).withObjectOutputStream { it << cmdExec }
         

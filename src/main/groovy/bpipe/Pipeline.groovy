@@ -26,7 +26,7 @@ package bpipe
 
 import groovy.text.GStringTemplateEngine;
 import groovy.text.GStringTemplateEngine.GStringTemplate;
-import groovy.time.TimeCategory;
+import groovy.time.TimeCategory
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -34,6 +34,7 @@ import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import groovy.util.logging.Log;
+import groovy.xml.MarkupBuilder;
 
 import java.util.logging.Level;
 import java.util.regex.Pattern;
@@ -164,6 +165,18 @@ public class Pipeline {
      * This is null and not used in the default, root pipeline
      */
     Branch branch = new Branch(name:"")
+    
+    /**
+     * Date / time when this pipeline started running
+     * Only populated for main / root level pipeline instance
+     */
+    Date startDate 
+    
+    /**
+     * Date / time when this pipeline finished running
+     * Only populated for main / root level pipeline instance
+     */
+    Date finishDate 
     
     void setBranch(Branch value) {
         this.branch = value
@@ -584,9 +597,9 @@ public class Pipeline {
         this.externalBinding.variables += pipeline.binding.variables
         
         def cmdlog = CommandLog.cmdLog
-        def startDate = new Date()
+        startDate = new Date()
         if(launch) {
-            initializeRunLogs(startDate, inputFile)
+            initializeRunLogs(inputFile)
         }
         
         setArrayMetaClassProperties()
@@ -631,64 +644,7 @@ public class Pipeline {
             if(launch) {
                 EventManager.instance.signal(PipelineEvent.STARTED, "Pipeline started", [pipeline:pipelineStructure])
                 
-                String failureMessage = null
-        
-                try {
-                    this.checkRequiredInputs(Utils.box(inputFile))
-                    runSegment(inputFile, constructedPipeline)
-                    
-                    if(failed) {
-                        failureMessage = ("\n" + failExceptions*.message.join("\n"))
-                    }
-                }
-                catch(PatternInputMissingError e) {
-                    new File(".bpipe/prompt_input_files." + Config.config.pid).text = ''
-                }
-                catch(InputMissingError e) {
-                    failureMessage = """
-                        A required input was missing from the files given as input.
-                        
-                                 Input Type:  $e.inputType
-                                Description:  $e.description""".stripIndent()
-                    failed = true
-                }
-                
-                Date finishDate = new Date()
-                if(Runner.opts.t && failed && failExceptions.empty) {
-                    println("\n"+" Pipeline Test Succeeded ".center(Config.config.columns,"="))
-                }
-                else {
-                    println("\n"+" Pipeline ${failed?'Failed':'Succeeded'} ".center(Config.config.columns,"="))
-                }
-                if(failed) {
-                    println failureMessage
-                    println()
-                }
-                
-                if(rootContext)
-                  rootContext.msg "Finished at " + finishDate
-                  
-                about(finishedAt: finishDate)
-                cmdlog << "# " + (" Finished at " + finishDate + " Duration = " + TimeCategory.minus(finishDate,startDate) +" ").center(Config.config.columns,"#")
-               
-                /*
-                def w =new StringWriter()
-                this.dump(w)
-                w.flush()
-                println w
-                */
-                
-                // See if any checks failed
-                List<Check> allChecks = Check.loadAll()
-                List<Check> failedChecks = allChecks.grep { !it.passed && !it.override }
-                if(failedChecks) {
-                    println "\nWARNING: ${failedChecks.size()} check(s) failed. Use 'bpipe checks' to see details.\n"
-                }
-                
-                EventManager.instance.signal(PipelineEvent.FINISHED, "Pipeline " + (failed?"Failed":"Succeeded"), [pipeline:this, checks:allChecks])
-                if(!failed) {
-                    summarizeOutputs(stages)
-                }
+                launchPipeline(constructedPipeline, inputFile, startDate)
             }
         }
 
@@ -709,7 +665,117 @@ public class Pipeline {
         return constructedPipeline
     }
     
-    void initializeRunLogs(Date startDate, def inputFile) {
+    /**
+     * Run the pipeline, handling any errors and printing out results to the
+     * console.
+     * 
+     * @param constructedPipeline
+     * @param inputFile
+     */
+    void launchPipeline(def constructedPipeline, def inputFile, Date startDate) {
+        
+        def cmdlog = CommandLog.cmdLog
+        
+        String failureMessage = null
+        try {
+            this.checkRequiredInputs(Utils.box(inputFile))
+            runSegment(inputFile, constructedPipeline)
+                    
+            if(failed) {
+                failureMessage = ("\n" + failExceptions*.message.join("\n"))
+            }
+        }
+        catch(PatternInputMissingError e) {
+            new File(".bpipe/prompt_input_files." + Config.config.pid).text = ''
+        }
+        catch(InputMissingError e) {
+            failureMessage = """
+                A required input was missing from the files given as input.
+                        
+                         Input Type:  $e.inputType
+                        Description:  $e.description""".stripIndent()
+            failed = true
+        }
+                
+        finishDate = new Date()
+        if(Runner.opts.t && failed && failExceptions.empty) { 
+            println("\n"+" Pipeline Test Succeeded ".center(Config.config.columns,"="))
+        }
+        else {
+            println("\n"+" Pipeline ${failed?'Failed':'Succeeded'} ".center(Config.config.columns,"="))
+        }
+        if(failed) {
+            println failureMessage
+            println()
+        }
+                
+        if(rootContext)
+          rootContext.msg "Finished at " + finishDate
+                  
+        about(finishedAt: finishDate)
+        cmdlog << "# " + (" Finished at " + finishDate + " Duration = " + TimeCategory.minus(finishDate,startDate) +" ").center(Config.config.columns,"#")
+               
+        /*
+        def w =new StringWriter()
+        this.dump(w)
+        w.flush()
+        println w
+        */
+                
+        // See if any checks failed
+        List<Check> allChecks = Check.loadAll()
+        List<Check> failedChecks = allChecks.grep { !it.passed && !it.override }
+        if(failedChecks) {
+            println "\nWARNING: ${failedChecks.size()} check(s) failed. Use 'bpipe checks' to see details.\n"
+        }
+        
+        saveResultState(failed, allChecks, failedChecks) 
+                
+        EventManager.instance.signal(PipelineEvent.FINISHED, "Pipeline " + (failed?"Failed":"Succeeded"), 
+            [ 
+                pipeline:this, 
+                checks:allChecks, 
+                result:!failed, 
+                startDate:startDate,
+                finishDate:finishDate,
+                commands: CommandManager.executedCommands
+            ])
+        
+        if(!failed) {
+            summarizeOutputs(stages)
+        }
+    }
+    
+    static String DATE_FORMAT="yyyy-MM-dd HH:mm:ss"
+    
+    void saveResultState(boolean failed, List<Check> allChecks, List<Check> failedChecks) {
+       
+        new File(".bpipe/results").mkdirs()
+        
+        new File(".bpipe/results/${Config.config.pid}.xml").withWriter { w ->
+            MarkupBuilder xml = new MarkupBuilder(w)
+            xml.job(id:Config.config.pid) {
+                succeeded(String.valueOf(!failed))
+                startDateTime(startDate.format(DATE_FORMAT))
+                endDateTime(finishDate.format(DATE_FORMAT))
+                
+                commands {
+                   CommandManager.executedCommands.each {  Command cmd ->
+                        command {
+                            stage(cmd.name)
+                            branch(cmd.branch.name)
+                            content(cmd.command)
+                            start(new Date(cmd.startTimeMs).format(DATE_FORMAT))
+                            end(new Date(cmd.stopTimeMs).format(DATE_FORMAT))
+                            exitCode(cmd.exitCode)
+                        }
+                   }
+                }
+            }
+        }
+    }
+    
+    void initializeRunLogs(def inputFile) {
         def cmdlog = CommandLog.cmdLog
         cmdlog.write("")
         String startDateTime = startDate.format("yyyy-MM-dd HH:mm") + " "

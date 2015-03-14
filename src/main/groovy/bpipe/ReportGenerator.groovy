@@ -88,6 +88,7 @@ class ReportGenerator {
 //            return XmlUtil.escapeXml(String.valueOf(obj))
 //        }
         
+        reportBinding.commands = CommandManager.executedCommands
         reportBinding.outputGraph =  outputGraph
         reportBinding.escape = Utils.&escape
         reportBinding.utils = new Utils()

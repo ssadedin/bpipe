@@ -66,6 +66,8 @@ class SMTPNotificationChannel implements NotificationChannel {
 	
 	String recipients
     
+    String format = "html"
+    
 	SMTPNotificationChannel(ConfigObject cfg) {
 		host = cfg.host
 		ssl = cfg.secure?:false
@@ -85,6 +87,9 @@ class SMTPNotificationChannel implements NotificationChannel {
 		
 		recipients = cfg.to
 		from = cfg.from?:username
+        
+        if(cfg.containsKey("format"))
+            format = cfg.format
 	}
 
 	protected SMTPNotificationChannel() {
@@ -174,7 +179,15 @@ class SMTPNotificationChannel implements NotificationChannel {
     }
     
     String getDefaultTemplate() {
-        "email.template.txt"
+        if(format == "text")
+            "email.template.txt"
+        else
+        if(format == "html")
+            "email.template.html"
+        else {
+            log.warning("Email format $format is not recognised: please use 'html' or 'text'")
+            "email.template.html"
+        }
     }
 }
 
