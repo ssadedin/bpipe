@@ -18,7 +18,7 @@ The input and output variables are how Bpipe automatically connects tasks togeth
 
 ### =Extension Syntax for Input and Output Variables=
 
-Bpipe provides a special syntax for easily referencing inputs and outpus with specific file extensions. See [[ExtensionSyntax]] for more information.
+Bpipe provides a special syntax for easily referencing inputs and outpus with specific file extensions. See [ExtensionSyntax](Language/ExtensionSyntax) for more information.
 
 **Multiple Inputs**
 
@@ -95,7 +95,7 @@ will reach the shell as exactly:
   """
 ```
 
-See the [[Exec|exec]] statement for a longer example of using triple quotes.
+See the [exec](Language/Exec) statement for a longer example of using triple quotes.
 
 ### Referencing Variables Directly
 

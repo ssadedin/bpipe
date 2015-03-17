@@ -16,7 +16,7 @@ The *produce* statement declares a block of statements that will be executed *tr
 - The specified output will become the default input to the next stage in the pipeline
 - If the specified output already exists and is newer than all the input files then the produce block will not be executed.
 
-*Note*:  in most cases it will make more sense to use the convenience wrappers [[Filter|filter]] or [[Transform|transform]] rather than using *produce* directly as these statements will automatically determine an appropriate file name for the output based on the file name of the input.
+*Note*:  in most cases it will make more sense to use the convenience wrappers [filter](Language/Filter) or [transform](Language/Transform) rather than using *produce* directly as these statements will automatically determine an appropriate file name for the output based on the file name of the input.
 
 
 A wildcard pattern can also be provided as input to `produce`.  In such a case, the `$output` variable is not assigned a value, but after the `produce` block executes, the file system is scanned for files matching the wild card pattern and any files found that were not present before running the command are treated as outputs of the block.

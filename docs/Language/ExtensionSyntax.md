@@ -26,7 +26,7 @@ For example, to pass all the inputs ending with '.bam' to a 'merge_bam' command:
 
 ## Limitations
 
-At the moment extension syntax only works to filter a single file extension. Hence you can't ask for *$input.fastq.gz* - this will cause an error. For these cases you can consider using the [[From|from]] statement to match the right inputs:
+At the moment extension syntax only works to filter a single file extension. Hence you can't ask for *$input.fastq.gz* - this will cause an error. For these cases you can consider using the [from](Language/From) statement to match the right inputs:
 
 ```groovy 
 

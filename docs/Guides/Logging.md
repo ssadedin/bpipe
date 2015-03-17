@@ -25,7 +25,7 @@ cp ./test.csv ./test.xml
 
 Although Bpipe fully evaluates variables in the commands you run, you may still have ambiguity about which exact programs executed and their versions.  Bpipe understands how to extract version information from a predefined set of programs that are commonly used.  When Bpipe is able to extract this information it is logged in the HTML report. 
 
-You can extend this yourself by putting the tools you use into the [[ToolVersionDatabase|Tool Version Database]].
+You can extend this yourself by putting the tools you use into the [Tool Version Database](Guides/ToolVersionDatabase).
 
 ## Output logs
 
@@ -35,8 +35,8 @@ To keep them clear and uncluttered the command logs do not contain the actual ou
 bpipe log
 ```
 
-which will stream the output from the job continuously to your console.  If you wish to see the output log for an older job you need to find its *Job Id*, which you can see in the command log.  Then you can find the log archived in directory called `'.bpipe/logs/[[Job|Id]].log'`.
+which will stream the output from the job continuously to your console.  If you wish to see the output log for an older job you need to find its *Job Id*, which you can see in the command log.  Then you can find the log archived in directory called `'.bpipe/logs/[Job Id].log'`.
 
 ## Trace logs
 
-Trace logs contain internal Bpipe logging that details everything that Bpipe did for a particular job and why exactly it did those things.   You won't ordinarily wish to view this log, however if you can't understand why Bpipe is doing something or the other logs contain insufficient information for you to understand what happened, viewing the trace log can help to understand things better.  If you wish to file a bug then the output from the trace log will be highly valuable.  You can find the trace log for any Bpipe run by looking at the file `'.bpipe/logs/[[Job|Id]].bpipe.log'`.
+Trace logs contain internal Bpipe logging that details everything that Bpipe did for a particular job and why exactly it did those things.   You won't ordinarily wish to view this log, however if you can't understand why Bpipe is doing something or the other logs contain insufficient information for you to understand what happened, viewing the trace log can help to understand things better.  If you wish to file a bug then the output from the trace log will be highly valuable.  You can find the trace log for any Bpipe run by looking at the file `'.bpipe/logs/[Job Id].bpipe.log'`.

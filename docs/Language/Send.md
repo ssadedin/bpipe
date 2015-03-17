@@ -5,10 +5,9 @@
     
     
     send [text {<text>} | html { <html> } | report(<template>)] to <notification channel name><pre>
-send [{<text>} | html { <html> } | report(<template>)](text) to channel:<channel name>, 
+    send [{<text>} | html { <html> } | report(<template>)](text) to channel:<channel name>, 
                                                                subject:<subject>, 
                                                                file: <file to attach> 
-</pre>
  
 ### Availability
 
@@ -26,7 +25,7 @@ The content can be specified in three different ways. The first option simply sp
 
 The final form allows specification of a template. The template should end with an extension appropriate to the content type (for example, to send an HTML email, make sure the template ends with ".html").  The template file is processed as a [Groovy Template](http://groovy.codehaus.org/Groovy+Templates) which allows references to variables using the normal `$` syntax, `${variable}` form as well as complete Groovy programmatic logic within `<% %>`  and `<%= %>` blocks.
 
-*Note*: a common scenario is to terminate a branch of a pipeline due to a failure or exceptional situation and to send a status message about that. To make this convenient, the [[Succeed|succeed]] and [[Fail|fail]] commands can accept the same syntax as `send`, but also have the effect of terminating the execution of the current pipeline branch with a corresponding status message.
+*Note*: a common scenario is to terminate a branch of a pipeline due to a failure or exceptional situation and to send a status message about that. To make this convenient, the [succeed](Language/Succeed) and [fail](Language/Fail) commands can accept the same syntax as `send`, but also have the effect of terminating the execution of the current pipeline branch with a corresponding status message.
 
 ### Examples
 
