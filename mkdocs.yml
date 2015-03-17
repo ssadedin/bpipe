@@ -69,4 +69,4 @@ pages:
 - ['Development/DevelopmentSetup.md','Development','Development Setup']
 - ['Development/DocumentationStyle.md','Development','Documentation Style']
 - ['Development/ImplementingAResourceManager.md','Development','Implementing A Resource Manager']
-#markdown_extensions: [gfm]
+markdown_extensions: [gfm]
