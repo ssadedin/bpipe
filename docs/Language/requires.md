@@ -9,7 +9,7 @@ Bpipe version 0.9.8.6
 
 ### Behavior
 
-Specify a parameter or variable that must be provided for this pipeline stage to run. The variable can be provided with a [[Using]] construct, by passing a value on the command line (--param option), or simply by defining the variable directly in the pipeline script. If the variable is not defined by one of these mechanisms, Bpipe prints out an error message to the user, including the message defined by the `requires` statement.
+Specify a parameter or variable that must be provided for this pipeline stage to run. The variable can be provided with a [Using](Language/Using) construct, by passing a value on the command line (--param option), or simply by defining the variable directly in the pipeline script. If the variable is not defined by one of these mechanisms, Bpipe prints out an error message to the user, including the message defined by the `requires` statement.
 
 ### Examples
 

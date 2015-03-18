@@ -12,7 +12,7 @@
 
 The *about* statement defines pipeline level documentation for a pipeline file.  It can be used any where at the top level of a pipeline file.  At the moment, *title* is the only supported attribute for pipeline documentation.
 
-Pipeline documentation is used in the HTML report that can be generated using the [run](run) command.
+Pipeline documentation is used in the HTML report that can be generated using the [run](Commands/run) command.
 
 ### Examples
 

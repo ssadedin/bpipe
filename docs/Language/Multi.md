@@ -18,7 +18,7 @@
 
 The *multi* statement executes multiple commands in parallel and waits for them all to finish. If any of the commands fail the whole pipeline stage fails, and all the failures are reported.
 
-Generally you will want to use Bpipe's built in [[ParallelTasks|parallelization]] features to run multiple commands in parallel. However sometimes that may not fit how you want to model your pipeline stages. The *multi* statement let's you perform small-scale parallelization inside your pipeline stages.
+Generally you will want to use Bpipe's built in [parallelization](Language/ParallelTasks) features to run multiple commands in parallel. However sometimes that may not fit how you want to model your pipeline stages. The *multi* statement let's you perform small-scale parallelization inside your pipeline stages.
 
 *Note*: if you wish to pass a computed list of commands to *multi*, use the form *multiExec* instead (see example below).
 

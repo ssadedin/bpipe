@@ -22,7 +22,7 @@ Valid documentation Attributes are:
 
 A *doc* statement adds documentation to a pipeline stage.  It is only valid within a declaration of a pipeline stage.  The *doc* statement has one of two forms - a brief from that allows you to give a simple one line description of a pipeline stage and a longer form that lets you specify multiple attributes.
 
-Documentation added with a *doc* statement is currently used when you generate a HTML report for a run (see [run](run) command).
+Documentation added with a *doc* statement is currently used when you generate a HTML report for a run (see [run](Commands/run) command).
 
 *Note*: Bpipe will augment documentation provided with the `doc` command with additional values that are determined at run time, such as the inputs of the pipeline stage, the outputs of the pipeline stage, the versions of executable tools used in the pipeline stage (where those have been able to be determined) and the execution time details (start, stop, duration).
 

@@ -8,13 +8,13 @@
 
 ### Behavior
 
-The *exec* statement runs the command specified as an argument using a bash shell in a managed fashion.  The command is specified using a string which may be in double quotes, single quotes or triple quotes.  [[Variables]] will be evaluated and expanded even when surrounded by single quotes.  Single quotes inside double quotes are passed through to the underlying shell and thus can be used to pass values that may contain spaces.  
+The *exec* statement runs the command specified as an argument using a bash shell in a managed fashion.  The command is specified using a string which may be in double quotes, single quotes or triple quotes.  [Variables](Language/Variables) will be evaluated and expanded even when surrounded by single quotes.  Single quotes inside double quotes are passed through to the underlying shell and thus can be used to pass values that may contain spaces.  
 
-The *exec* statement blocks until the specified command returns.  See the [[Async|async]] statement for an alternative that launches the process in the background and returns immediately.
+The *exec* statement blocks until the specified command returns.  See the [async](Language/Async) statement for an alternative that launches the process in the background and returns immediately.
 
 Long commands that are passed to *exec* can be specified over multiple lines by using triple quotes.  Bpipe automatically removes newlines from commands so that you do not need to worry about it.
 
-An *exec* statement will often be embedded in a [[Produce|produce]], [[Filter|filter]] or [[Transform|transform]] block to specify and manage the outputs of the command.
+An *exec* statement will often be embedded in a [produce](Language/Produce), [filter](Language/Filter) or [transform](Language/Transform) block to specify and manage the outputs of the command.
 
 ### Logging
 
