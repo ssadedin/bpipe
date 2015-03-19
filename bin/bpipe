@@ -146,7 +146,7 @@ is_running() {
     fi
 
     # Has been run, is it finished?
-    kill -0 $LAST_PID > /dev/null 2>&1
+    kill -0 $LAST_PID > /dev/null 2>&1 || [ -e /proc/$LAST_PID ]
 }
 
 #----------------------------------------------------------
