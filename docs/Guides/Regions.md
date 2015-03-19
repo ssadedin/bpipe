@@ -23,7 +23,7 @@ This has a few different effects:
 1. A variable `$region` is available to your pipeline stages, carrying the value from the command line.
 1. A variable `$chr` is available to your pipeline that specifies the chromosome from the region
 1. You can reference `$region.bed` to reference the region in the form of a BED file. Bpipe creates this file on the fly for you when it is needed.
-1. If you have parallelized over regions within your pipeline (for example, using the [[Chr|chr]] command), Bpipe will limit the parallelization to the regions you've specified.
+1. If you have parallelized over regions within your pipeline (for example, using the [chr](Language/Chr) command), Bpipe will limit the parallelization to the regions you've specified.
 
 The last point might be a little hard to understand, but it is tremendously useful in allowing you to create generic pipelines that can parallelize over the whole genome, while still letting the user limit the pipeline to a specific region at the time of running the pipeline. This is particularly useful during testing, since running 20 parallel paths of your pipeline just to find out if one of them is going to work can be a cumbersome way to debug your pipeline.
 

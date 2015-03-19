@@ -163,7 +163,7 @@ By default Bpipe sticks to sending plain text notifications. However if you name
 
 ## Sending Arbitrary Notifications
 
-You may wish to send out notifications explicitly as part of your pipeline, rather than relying on Bpipe to do it in response to pipeline events. This is possible via the [[Send|send]], [[Succeed|succeed]] and [[Fail|fail]] commands. See documentation on these commands for more information.
+You may wish to send out notifications explicitly as part of your pipeline, rather than relying on Bpipe to do it in response to pipeline events. This is possible via the [send](Language/Send), [succeed](Language/Succeed) and [fail](Language/Fail) commands. See documentation on these commands for more information.
 
 
 

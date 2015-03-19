@@ -10,9 +10,9 @@
     }
 ### Behavior
 
-Filter is a convenient alias for [[Produce|produce]] where the name of the output or outputs is deduced from the name of the input(s) by keeping the same file extension but adding a new tag to the file name.   For example, if you have a command that removes comment lines from a CSV file *foo.csv*, you can easily declare a section of your script to produce output *foo.nocomments.csv* by declaring a filter with name "nocomments".  In general you will use filter where you are keeping the same format for the data but performing some operation on the data.
+Filter is a convenient alias for [produce](Language/Produce) where the name of the output or outputs is deduced from the name of the input(s) by keeping the same file extension but adding a new tag to the file name.   For example, if you have a command that removes comment lines from a CSV file *foo.csv*, you can easily declare a section of your script to produce output *foo.nocomments.csv* by declaring a filter with name "nocomments".  In general you will use filter where you are keeping the same format for the data but performing some operation on the data.
 
-The output(s) that are automatically deduced by *filter* will inherit all the behavior implied by the [[Produce|produce]] statement.
+The output(s) that are automatically deduced by *filter* will inherit all the behavior implied by the [produce](Language/Produce) statement.
 
 ### Annotation
 

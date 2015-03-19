@@ -30,7 +30,7 @@ The *check* statement gives a convenient way to implement validation of a pipeli
 
 The *check* statement is stateful. Bpipe remembers the result and does not re-execute a check unless the input files are updated. Thus it is possible to implement long-running, intensive tasks to perform checks as just like normal Bpipe commands, they will not be re-executed if the pipeline is re-executed. The state is remembered by files that are created in the `.bpipe/checks` directory in the pipeline directory. Effectively, the created check file is treated as an implicit output of the `check` clause.
 
-A convenient use of `check` is in conjunction with [[Success|success]], [[Fail|fail]] and [[Send|send]] commands.
+A convenient use of `check` is in conjunction with [succeed](Language/Succeed), [fail](Language/Fail) and [send](Language/Send) commands.
 
 *Note*:  a check does not have to result in aborting of the pipeline.  You may choose to do nothing in the otherwise clause of the check (it must still exist though), in which case the check is merely informational. Alternatively, the `succeed` command will cause the current branch to terminate and not produce any output files, but leave other branches running. To fail the whole pipeline, use the `fail` command.
 
