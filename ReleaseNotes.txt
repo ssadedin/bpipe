@@ -1,3 +1,126 @@
+=========== Changes for Bpipe Version 0.9.8.7 ============
+
+   - check /proc on linux rather than relying on kill 
+     0 to see if pipeline is running (enables cross
+     user support for "bpipe log") 
+    
+   - Addition of documentation to Bpipe distro
+    
+   - fix failure to cleanup files with no parent directory 
+     (regression) 
+    
+   - Add __future__ import for Python 2 and 3 compatibility 
+     (fix failure on Mac when Python3 is default)
+    
+   - switch to HTML format for default email.  to switch back
+     to text, use notifications { smtp { format="text" } } in
+     bpipe.config.  
+    
+   - Fix presence of subdirectory in bpipe output meta data folder 
+     causing bpipe to spew errors 
+    
+   - Fix files sometimes not cleaned up on distributd file system 
+     where lag exists in synchronizing b/w nodes
+
+   - Issue #128: use qsub -N to name job according to stage/filename 
+    
+   - support for overriding a stage with an alternative implementation 
+     within a particular branch 
+    
+   - fix: authentication failures on passwordless SMTP
+     server 
+    
+   - fix failure in cleanup if output properties file
+     did not get optional canonicalPath property added 
+    
+   - comment out verbose log message creating large bpipe
+     logfiles for long runs 
+    
+   - avoid encoding whole directory path into internal property file 
+     names (fix 'file path too long errors' on file systems allowing only
+     256 chars in file names)
+    
+   - fix parent branches not visible in children via branch property 
+    
+   - fix method missing error when multiplying by map by list 
+    
+   - Reformatting and summarizing of errors at end of pipeline to make 
+     it easier to see where & why pipelines failed 
+
+   - Aggregating identical errors from
+     multiple branches together in output so that failures from
+     many branches are less verbose 
+
+   - Support for 'load' within a pipeline stage.  Loads into the 
+     context of current branch rather than global. Pipeline stages 
+     not supported, only variables.
+    
+   - prevent error if files used by Bpipe are not writable but
+     are deletable 
+    
+   - prevent premature wildcard expansion of
+     quoted arguments passed to Bpipe    
+
+   - support for cleanup as command in pipeline stage 
+    
+   - prevent error if files used by Bpipe are not writable but 
+     are deletable 
+    
+   - attempt to ensure log messages written
+     even if exit due to outofmemory error 
+    
+   - log message if file is not cleaned up because it doesn't
+     exist: help to diagnose problems with files not cleaned up 
+   
+   - better log info about where config files are 
+    
+   - allow memory to be integer for torque/slurm/etc, fix error
+     querying status in torque/slurm/etc, include queuing system
+     command id in bpipe status output 
+    
+   - show pending and waiting jobs with bpipe status, don't throw ugly error 
+     if no commands ever run 
+    
+   - Fix: downstream references to inputs
+     by index throwing "expected more inputs" error incorrectly 
+   
+   - avoid confusing stack overflow when user defines branch
+     variable with same name as pipeline stage 
+    
+   - accept 'MB' or 'GB' in command line option for memory,
+     cache runtime directory instead of creating new File objects
+     all the time to figure it out 
+    
+   - Merge pull request #123
+     from lonsbio/master 
+    
+   - prevent null pointer exception when list containing null 
+     provided to 'from' 
+   
+   - fix multiple inputs not
+     forwarding correctly when referenced using "$inputs" 
+    
+   - Merge pull request #122 from druvus/master 
+    
+   - Bug fixes for lsf 
+    
+   - Added walltime option for Lsf 
+    
+   - caching of DAG lookups by
+     canonical path to speed up large, complex pipelines 
+    
+   - caching of canonical path with check of basePath to ensure
+     consistency 
+    
+   - some initial, untested support for caching
+     DAG graph lookups to speed up large pipelines 
+    
+   - fix dependency issues after
+     cleanup when non-default output directory used 
+    
+   - Performance optimisations for systems where canonicalPath is
+     very slow, better logging to resolve dependency issues 
+
 =========== Changes for Bpipe Version 0.9.8.6 ============
 
    - fix: errors may printed about files not existing when attempting 
