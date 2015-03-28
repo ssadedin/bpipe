@@ -91,29 +91,19 @@
      cache runtime directory instead of creating new File objects
      all the time to figure it out 
     
-   - Merge pull request #123
-     from lonsbio/master 
-    
    - prevent null pointer exception when list containing null 
      provided to 'from' 
    
    - fix multiple inputs not
      forwarding correctly when referenced using "$inputs" 
     
-   - Merge pull request #122 from druvus/master 
-    
-   - Bug fixes for lsf 
-    
-   - Added walltime option for Lsf 
+   - Bug fixes for lsf, added walltime option for Lsf 
     
    - caching of DAG lookups by
      canonical path to speed up large, complex pipelines 
     
    - caching of canonical path with check of basePath to ensure
      consistency 
-    
-   - some initial, untested support for caching
-     DAG graph lookups to speed up large pipelines 
     
    - fix dependency issues after
      cleanup when non-default output directory used 
