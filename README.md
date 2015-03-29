@@ -5,7 +5,7 @@ Bpipe provides a platform for running big bioinformatics jobs that consist of a 
 
 * March 29th - New! Bpipe 0.9.8.7 released!
 * Download [latest](http://download.bpipe.org/versions/bpipe-0.9.8.7.tar.gz), [all](http://download.bpipe.org)
-* [Documentation](http://code.google.com/p/bpipe/wiki/Reference)
+* [Documentation](http://docs.bpipe.org)
 
 Bpipe has been published in [Bioinformatics](http://bioinformatics.oxfordjournals.org/content/early/2012/04/11/bioinformatics.bts167.abstract)! If you use Bpipe, please cite:
 
