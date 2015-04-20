@@ -99,6 +99,11 @@ public class Pipeline {
     static Long rootThreadId
     
     /**
+     * The top level pipeline at the root of the pipeline hierarchy
+     */
+    static Pipeline rootPipeline
+    
+    /**
      * A map of script file names to internal Groovy class names. This is needed
      * because Bpipe loads and evaluates pipeline scripts itself, which results in
      * scripts being assigned random identifiers. When such identifiers appear
@@ -574,6 +579,7 @@ public class Pipeline {
         
         Pipeline.rootThreadId = Thread.currentThread().id
         this.threadId = Pipeline.rootThreadId
+        Pipeline.rootPipeline = this
         
         // We have to manually add all the external variables to the outer pipeline stage
         this.externalBinding.variables.each { 
@@ -711,7 +717,7 @@ public class Pipeline {
                 
         if(rootContext)
           rootContext.msg "Finished at " + finishDate
-                  
+          
         about(finishedAt: finishDate)
         cmdlog << "# " + (" Finished at " + finishDate + " Duration = " + TimeCategory.minus(finishDate,startDate) +" ").center(Config.config.columns,"#")
                
@@ -752,12 +758,18 @@ public class Pipeline {
        
         new File(".bpipe/results").mkdirs()
         
+        // Compute the total runtime of all tools
+        long commandTimeMs = CommandManager.executedCommands.sum {  Command cmd -> (cmd.stopTimeMs - cmd.startTimeMs) }
+        if(commandTimeMs == null)
+            commandTimeMs = 0
+                  
         new File(".bpipe/results/${Config.config.pid}.xml").withWriter { w ->
             MarkupBuilder xml = new MarkupBuilder(w)
             xml.job(id:Config.config.pid) {
                 succeeded(String.valueOf(!failed))
                 startDateTime(startDate.format(DATE_FORMAT))
                 endDateTime(finishDate.format(DATE_FORMAT))
+                totalCommandTimeSeconds(commandTimeMs/1000)
                 
                 commands {
                    CommandManager.executedCommands.each {  Command cmd ->
@@ -967,7 +979,7 @@ public class Pipeline {
      */
     static synchronized void load(String path) {
         File f = new File(path)
-        if(!f.exists()) {
+        if(!Utils.fileExists(f)) {
             // Attempt to resolve the file relative to the main script location if
             // it cannot be resolved directly
             f = new File(new File(Config.config.script).canonicalFile.parentFile, path)
