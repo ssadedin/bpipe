@@ -123,7 +123,10 @@ class Runner {
         System.addShutdownHook { 
             
             if(!normalShutdown) {
-                System.err.println "ERROR: Abnormal termination - check bpipe and operating system has enough memory!"
+                if(new File(".bpipe/stopped/$pid").exists())
+                    System.err.println "MSG: Bpipe stopped by stop command: " + new Date()
+                else
+                    System.err.println "ERROR: Abnormal termination - check bpipe and operating system has enough memory!"
                 System.err.flush()
             }
             
