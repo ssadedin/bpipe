@@ -364,8 +364,8 @@ class Dependencies {
         List missing = Utils.box(fileNames).grep { String.valueOf(it) != "null" }.collect { new File(it.toString()) }.grep { File f ->
             
             log.info " Checking file $f"
-            if(f.exists())
-                return false
+            if(Utils.fileExists(f))
+                return false // not missing
                 
             Properties p = graph.propertiesFor(f.path)
             if(!p) {
@@ -407,6 +407,7 @@ class Dependencies {
      * if the pipeline is re-executed.
      */
     synchronized void saveOutputs(PipelineContext context, List<File> oldFiles, Map<File,Long> timestamps, List<String> inputs) {
+
         GraphEntry root = getOutputGraph()
         
         // Get the full branch path of this pipeline stage
