@@ -35,7 +35,9 @@ import groovy.transform.CompileStatic;
  * 
  * @author simon.sadedin@mcri.edu.au
  */
-class Branch extends Expando {
+class Branch extends Expando implements Serializable {
+    
+    public static final long serialVersionUID = 0L
     
     @Delegate
     String name = ""
