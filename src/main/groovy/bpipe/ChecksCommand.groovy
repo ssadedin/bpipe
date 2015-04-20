@@ -38,6 +38,7 @@ class ChecksCommand {
         CliBuilder cli = new CliBuilder(usage: "bpipe override | bpipe checks", posix:true)
         cli.with {
             o "override specified check to force it to pass", args:1
+            l "list checks and exit, non-interactive mode"
         }
         
         List<Check> checks = Check.loadAll()
@@ -63,10 +64,10 @@ class ChecksCommand {
                 System.exit(1)
             }
         }
-       
+        
         printChecks(checks)
         
-        if(overrideChecks) {
+        if(overrideChecks || opts.l) {
             System.exit(0)
         }
         
@@ -124,26 +125,43 @@ class ChecksCommand {
         if(options && options.columns)
             columns = options.columns
          
+        int screenColumns = -1
+        if(System.getenv("COLUMNS") != null) {
+            screenColumns = System.getenv("COLUMNS").toInteger()
+        }
+        
+        // Estimate maximum needed width 
+        List headers = [" Check"," Branch"," Status"," Details"]
+        List widths = [
+              (checks.collect { it.name?:"" }+[headers[0]])*.size()*.plus(4).max(), 
+              (checks.collect { it.branch?:"" }+[headers[1]])*.size().max(), 
+             "Overridden".size(), 
+             (checks.collect { it.message?:"" }+[headers[3]])*.size().max() 
+       ].collect { it+2 }
+        
+        if(screenColumns > 0 && (widths.sum()+10)>screenColumns) {
+            widths[-1] = Math.max(20, screenColumns - widths[0..-1].sum())
+        }
+        
+        columns = widths.sum()  + 10
+        
         int count = 1
         out.println "=" * columns
         out.println "|" + " Check Report ".center(columns-2) + "|"
         out.println "=" * columns
         
-        def widths = [25,15,15]
-        widths += columns - widths.sum()
-        
-        out.println "Check".padRight(widths[0]) + " Branch".padRight(widths[1]) + " Status".padRight(widths[2]) + " Details".padRight(widths[3])
+        String header = [ headers, widths ].transpose().collect { it[0].padRight(it[1]+1) }.join("|")
+        out.println "|" + header + " |"
         out.println "-" * columns
-        
         
         out.println checks.collect {
                String checkName = it.stage
                if(it.name)
                    checkName += "/" + it.name
-               ((count++) + ". " + Utils.truncnl(checkName,widths[0]-6)).padRight(widths[0]) +
-               (" " + (it.branch!="all"?it.branch:"")).padRight(widths[1]) +
-               (" " + (it.override?"Overridden":(it.passed?"Passed":"Failed"))).padRight(widths[2]) +
-               (" " + (it.message?Utils.truncnl(it.message,widths[3]-4):"")).padRight(widths[3])
+               ((count++) + ". " + Utils.truncnl(checkName,widths[0]-4)).padRight(widths[0]+2," ") +
+               (" " + (it.branch!="all"?it.branch:"")).padRight(widths[1]+2," ") +
+               (" " + (it.override?"Overridden":(it.passed?"Passed":"Failed"))).padRight(widths[2]+2) +
+               (" " + (it.message?Utils.truncnl(it.message,widths[3]-1):"")).padRight(widths[3])
         }*.plus('\n').join("")
         
         out.println "-" * columns
