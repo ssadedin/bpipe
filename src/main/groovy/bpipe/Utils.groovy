@@ -100,6 +100,18 @@ class Utils {
         }
     }
     
+    static boolean fileExists(File f) {
+       if(f.exists())
+           return true
+       if(!f.exists()) {
+           log.info "File $f does not appear to exist: listing directory to flush file system"
+           try { f.absoluteFile.parentFile.listFiles() } catch(Exception e) { log.warning("Failed to list files of parent directory of $f"); }
+           if(f.exists())
+               log.info("File $f revealed by listing directory")
+       } 
+       return f.exists()
+    }
+    
     /**
      * Attempt to delete all of the specified outputs, if any
      * 
@@ -114,14 +126,7 @@ class Utils {
         List<String> failed = []
         box(outputs).collect { new File(it) }.each { File f -> 
             
-            if(!f.exists()) {
-                log.info "File $f does not appear to exist: listing directory to flush file system"
-                try { f.absoluteFile.parentFile.listFiles() } catch(Exception e) { log.warning("Failed to list files of parent directory of $f"); }
-                if(f.exists())
-                    log.info("File $f revealed by listing directory")
-            }
-            
-            if(f.exists()) {  
+            if(fileExists(f)) {  
                 // it.delete() 
                 File trashDir = new File(".bpipe/trash")
                 if(!trashDir.exists())
