@@ -252,6 +252,9 @@ class PipelineStage {
                 EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")
             
             log.info("Retaining pre-existing files $oldFiles from outputs")
+            
+            log.severe "Cleaning up outputs due to error"
+            log.throwing("PipelineStage", "run", e)
             cleanupOutputs(oldFiles)
             throw e
         }
@@ -280,9 +283,6 @@ class PipelineStage {
 	private runBody() {
 		this.running = true
         
-        Closure actualBody = body
-        
-        // Check if the closure is overridden in this branch
         if(context.branch.getProperty(stageName) && context.branch[stageName] instanceof Closure) {
             log.info "Overriding body for $stageName due to branch variable of type Closure containing stage name"
             body = context.branch[stageName]
