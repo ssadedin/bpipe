@@ -59,6 +59,13 @@ public class BpipeLogFormatter extends Formatter {
             .append(' ')
             .append(record.getMessage()).append(' ')
             .append(lineSep);
+            
+        if(record.getThrown()!=null) {
+            StringWriter w = new StringWriter()
+            record.getThrown().printStackTrace(new PrintWriter(w))
+            output.append("Exception:\n" + w.toString())
+        }    
+            
         return output.toString();
     }
  
