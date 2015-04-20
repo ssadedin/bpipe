@@ -53,6 +53,11 @@ class CommandManager {
     public static final String DEFAULT_EXECUTED_DIR = ".bpipe/executed"
     
     /**
+     * File where half processed files will be listed on shutdown
+     */
+    public static File UNCLEAN_FILE_PATH = new File(".bpipe/inprogress")
+    
+    /**
      * The location under which running command information will be stored
      */
     File commandDir
@@ -61,7 +66,6 @@ class CommandManager {
      * The location under which completed command information will be stored
      */
     File completedDir
-    
     
     /**
      * A global list of commands executed by all command managers in this run
@@ -189,8 +193,8 @@ class CommandManager {
 		this.commandIds[cmdExec] = command.id
 		this.commandIds[wrapped] = command.id
         this.executedCommands << command
-            
-        new File(commandDir, command.id).withObjectOutputStream { it << cmdExec }
+        
+        saveCommand(command, commandDir)
         
         return wrapped
     }
@@ -203,25 +207,52 @@ class CommandManager {
      */
     int stopAll() { 
         int count = 0
+        List<Command> stoppedCommands = []
         commandDir.eachFileMatch(~/[0-9]+/) { File f ->
             log.info "Loading command info from $f.absolutePath"
-            CommandExecutor cmd
-            log.info "Stopping command $cmd"
+            CommandExecutor exec
+            Command cmd
+            log.info "Stopping command $exec"
             try {
-                f.withObjectInputStream { cmd = it.readObject() }
-                cmd.stop() 
-                cleanup(f.name)
-                log.info "Successfully stopped command $cmd"
+                f.withObjectInputStream { 
+                    exec = it.readObject() 
+                    try {
+                        cmd = it.readObject()
+                    }
+                    catch(Exception e) {
+                        log.info "Unable to read command details for $f.absolutePath : maybe legacy pipeline directory?"
+                    }
+                    if(cmd)
+                        stoppedCommands << cmd
+                }
+                exec.stop() 
+                log.info "Successfully stopped command $exec"
             }
             catch(PipelineError e) {
-              System.err.println("Failed to stop command: $cmd.\n\n${Utils.indent(e.message)}\n\nThe job may already be stopped; use 'bpipe cleancommands' to clear old commands.")      
+              System.err.println("Failed to stop command: $exec.\n\n${Utils.indent(e.message)}\n\nThe job may already be stopped; use 'bpipe cleancommands' to clear old commands.")      
             }
             catch(Throwable t) {
-              System.err.println("An unexpected error occured while stopping command: $cmd.\n\n${Utils.indent(t.message)}\n\nThe job may already be stopped; use 'bpipe cleancommands' to clear old commands.")      
+              System.err.println("An unexpected error occured while stopping command: $exec.\n\n${Utils.indent(t.message)}\n\nThe job may already be stopped; use 'bpipe cleancommands' to clear old commands.")      
             }            
+            try {
+                cleanup(f.name)
+            }
+            catch(Exception e) {
+                log.error "Failed to clean up command object $f.name: " + e
+            }
             ++count
         }
         log.info "Successfully stopped $count commands"
+        
+        for(Command cmd in stoppedCommands) {
+            try {
+                Utils.cleanup(cmd.outputs)
+            }
+            catch(Exception e) {
+                log.info "Failed to cleanup one or more commands from $cmd.outputs: " + e.toString()
+            }
+        }
+        
         return count
     }
     
@@ -250,8 +281,25 @@ class CommandManager {
      * @param commandId id of the command to move
      */
     public void cleanup(String commandId) {
-        if(!new File(this.commandDir, commandId).renameTo(new File(this.completedDir, commandId)))
-            log.warning("Unable to cleanup persisted file for command $commandId")
+        File from = new File(this.commandDir, commandId)
+        
+        // Update the command file with its latest details (runtime, etc)
+        Command command = null
+        synchronized(this.executedCommands) {
+            command = this.executedCommands.find { it.id == commandId }
+        }
+        
+        if(command)
+            saveCommand(command, completedDir)
+        else
+            log.warning("Unable to location command $commandId as an executed command")
+            
+        from.delete()
+    }
+    
+    void saveCommand(Command command, File dir) {
+       return;
+       new File(dir, command.id).withObjectOutputStream { it << command.executor; it << command } 
     }
     
     public static List<CommandExecutor> getCurrentCommands() {
