@@ -1345,6 +1345,9 @@ class PipelineContext {
       c.outputs = commandReferencedOutputs
      
       c.exitCode = c.executor.waitFor()
+      if(c.stopTimeMs <= 0)
+          c.stopTimeMs = System.currentTimeMillis()
+          
       if(c.exitCode != 0) {
         // Output is still spooling from the process.  By waiting a bit we ensure
         // that we don't interleave the exception trace with the output
@@ -1413,6 +1416,14 @@ class PipelineContext {
        }
     }
     
+    /**
+     * Undocumented feature: run a command and capture its output into a pipeline variable
+     * This currently just runs the command directly.
+     * 
+     * @TODO run it properly through the CommandManager
+     * @param cmd
+     * @return
+     */
     String capture(String cmd) {
       if(probeMode)
           return ""
@@ -1420,11 +1431,15 @@ class PipelineContext {
       CommandLog.cmdLog.write(cmd)
       def joined = ""
       cmd.eachLine { joined += " " + it }
-      
       Process p = Runtime.getRuntime().exec((String[])(['bash','-c',"$joined"].toArray()))
       StringWriter outputBuffer = new StringWriter()
-      p.consumeProcessOutput(outputBuffer,System.err)
-      p.waitFor()
+      Thread t1 = p.consumeProcessOutputStream(outputBuffer)
+      Thread t2 = p.consumeProcessOutputStream(System.err)
+      int exitCode = p.waitFor()
+      try { t1.join(); } catch(Exception e) {}
+      try { t2.join(); } catch(Exception e) {}
+      if(exitCode != 0)
+          throw new PipelineError("Command $cmd failed with error $exitCode")
       return outputBuffer.toString()
     }
     
@@ -1604,12 +1619,16 @@ class PipelineContext {
             if(toolsDiscovered)
                 this.doc(["tools" : toolsDiscovered])
           }
+          
 
           command.branch = this.branch
+          command.outputs = checkOutputs.unique()
           command.executor = 
               commandManager.start(stageName, command, config, Utils.box(this.input), 
                                    new File(outputDirectory), this.usedResources,
                                    deferred, this.outputLog)
+          // log.info "Command $command.id started with resources " + this.usedResources
+          
           trackedOutputs[command.id] = command              
           List outputFilter = command.executor.ignorableOutputs
           if(outputFilter) {
