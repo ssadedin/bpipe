@@ -48,12 +48,12 @@ class LocalCommandExecutor implements CommandExecutor {
     /**
      * The output log to which stdout will be written
      */
-	transient Appendable outputLog = System.out
+    transient Appendable outputLog = System.out
     
     /**
      * The output log to which stderr will be written
      */
-	transient Appendable errorLog = System.err
+    transient Appendable errorLog = System.err
     
     /**
      * The exit code returned by the process, only
@@ -77,8 +77,8 @@ class LocalCommandExecutor implements CommandExecutor {
     
     transient Command command
     
-	LocalCommandExecutor() {
-	}
+    LocalCommandExecutor() {
+    }
     
     void start(Map cfg, Command command, File outputDirectory) {
         
@@ -87,19 +87,19 @@ class LocalCommandExecutor implements CommandExecutor {
       new Thread({
           
           // Special case for Windows / Cygwin
-		  // On Windows Java detects spaces in arguments and if it finds them
-		  // wraps the whole argument in double quotes.  However it doesn't 
-		  // escape quotes embedded in the argument body, so it actually 
-		  // creates invalid arguments
+          // On Windows Java detects spaces in arguments and if it finds them
+          // wraps the whole argument in double quotes.  However it doesn't 
+          // escape quotes embedded in the argument body, so it actually 
+          // creates invalid arguments
           if(Utils.isWindows()) {
               // See java.lang.ProcessImpl for this test. It is not really correct
-			  // but it is important for it to be the same as what is in the Java src
+              // but it is important for it to be the same as what is in the Java src
               String origCmd = cmd
-			  if(cmd.indexOf(' ') >=0 || cmd.indexOf('\t') >=0) {
+              if(cmd.indexOf(' ') >=0 || cmd.indexOf('\t') >=0) {
                   cmd = cmd.replaceAll(/"/, /\\"/)
-			  }
+              }
               log.info "Converted $origCmd to $cmd to account for broken Java argument escaping"
-		  }
+          }
           
           this.runningCommand = cmd
           this.startedAt = new Date()
@@ -123,11 +123,11 @@ class LocalCommandExecutor implements CommandExecutor {
           this.command.stopTimeMs = System.currentTimeMillis()
           this.id = command.id.toInteger()
           synchronized(this) {
-	          this.notifyAll()
+              this.notifyAll()
           }
       }).start()
       while(!process) 
-	    Thread.sleep(100)
+        Thread.sleep(100)
     }
     
     String status() {
