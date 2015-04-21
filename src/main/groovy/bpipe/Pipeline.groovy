@@ -871,7 +871,7 @@ public class Pipeline {
         while(true) {
           pipeFolders.addAll(loadedPaths)
           loadedPaths = []
-          loadExternalStagesFromPaths(shell, pipeFolders)
+          loadExternalStagesFromPaths(shell, pipeFolders, true, true)
           pipeFolders.clear() 
           
           if(loadedPaths.isEmpty())
@@ -881,7 +881,7 @@ public class Pipeline {
     
     static Set allLoadedPaths = new HashSet()
     
-    private static void loadExternalStagesFromPaths(GroovyShell shell, List<File> paths, cache=true) {
+    private static void loadExternalStagesFromPaths(GroovyShell shell, List<File> paths, cache=true, includesLibs=false) {
         
         for(File pipeFolder in paths) {
             
@@ -915,7 +915,7 @@ public class Pipeline {
                 try {
                     String scriptClassName = scriptFile.name.replaceAll('.groovy$','_bpipe.groovy')
                     Script script = shell.evaluate(PIPELINE_IMPORTS+
-                        " binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true;" +
+                        (includesLibs?" binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true;":"") +
                         "bpipe.Pipeline.scriptNames['$scriptFile']=this.class.name;" +
                          scriptFile.text + "\nthis", scriptClassName)
                     
