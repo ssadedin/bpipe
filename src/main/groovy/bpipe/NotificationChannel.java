@@ -32,5 +32,15 @@ public interface NotificationChannel {
 	
 	void notify(PipelineEvent event, String subject, Template template, Map<String,Object> model);
     
-	String getDefaultTemplate();
+    /**
+     * Return a default template to use in the case where neither the pipeline, 
+     * nor the user has specified a format for a message. The contentType parameter
+     * may be null. If contentType is null a barebones but functional template 
+     * typically in plain text format should be returned.
+     * 
+     * @param contentType - may be null, but if not null, requests a particular type
+     *                      of default template in mime format (text/html, etc.)
+     * @return
+     */
+	String getDefaultTemplate(String contentType);
 }

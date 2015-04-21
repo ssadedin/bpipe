@@ -25,6 +25,7 @@
 package bpipe
 
 import java.lang.reflect.Constructor;
+import java.util.logging.Level;
 
 import groovy.text.SimpleTemplateEngine
 import groovy.util.ConfigObject;
@@ -113,7 +114,7 @@ class NotificationManager {
         if(!this.cfg.notifications.containsKey(channelName)) {
             String msg = "An unknown communication recipient / channel was specified: $channelName for message: $desc"
             log.warning(msg)
-            println "WARNING: $msg\nWARNING: To fix this, please edit bpipe.config and add a 'gmail' entry."
+            println "WARNING: $msg\nWARNING: To fix this, please edit bpipe.config and add a '$channelName' entry."
             return
         }
         
@@ -145,7 +146,10 @@ class NotificationManager {
 		}
         
         // Figure out the right template name from the channel configuration
-        String templateName = channel.defaultTemplate
+        // Note that in most situations, detail[send.contentType] below will be null
+        // - only when the pipeline itself is sending content and suggests a content type
+        // will it be non-null
+        String templateName = channel.getDefaultTemplate(detail["send.contentType"])
         if(cfg.containsKey("template")) {
             templateName = cfg.template
         }
@@ -184,6 +188,8 @@ class NotificationManager {
         // Or let config override for ultimate control
         if(cfg.containsKey('contentType'))
             contentType = cfg.contentType
+            
+        //Pipeline pipeline = Pipeline.currentRuntimePipeline.get()?.rootPipeline
         
         def engine = new SimpleTemplateEngine()
         detail += [
@@ -191,8 +197,11 @@ class NotificationManager {
             full_path : (new File(".").absolutePath),
             event : evt,
             description: desc,
-            'send.contentType' : contentType
+            'send.contentType' : contentType,
+            pipeline : Pipeline.rootPipeline
         ]
+        
+        log.info "Generating template from file $templateFile.absolutePath"
         def template = engine.createTemplate(templateFile.getText())
 	
 		sendTimestamps[category] = System.currentTimeMillis()
@@ -201,8 +210,9 @@ class NotificationManager {
 			channel.notify(evt, desc, template, detail)
 		}
 		catch(Throwable t) {
-			log.warning("Failed to send notification via channel "+ channel + " with configuration " + cfg + ": " + t)
-			t.printStackTrace()
+			log.warning("Failed to send notification via channel "+ channel + " with using template file $templateFile.absolutePath,configuration " + cfg + ": " + t)
+            log.log(Level.SEVERE, "Failed to send notification to channel $channel using template $templateFile, coniguration $cfg", t)
+			System.err.println "MSG: unable to send notification to channel $channel due to $t"
 		}
 	}
 	

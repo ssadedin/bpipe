@@ -145,7 +145,7 @@ class XMPPNotificationChannel implements NotificationChannel {
 		}
 	}
     
-    String getDefaultTemplate() {
+    String getDefaultTemplate(String contentType) {
         "xmpp.template.txt"
     }
 }

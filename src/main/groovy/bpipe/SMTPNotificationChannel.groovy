@@ -99,18 +99,18 @@ class SMTPNotificationChannel implements NotificationChannel {
 	public void notify(PipelineEvent event, String subject, Template template, Map<String, Object> model) {
 		String subjectLine = "Pipeline " + event.name().toLowerCase() + ": " + subject + " in directory " + (new File(".").absoluteFile.parentFile.name)
         
-        String text = template.make(model).toString()
-        
         if(event == PipelineEvent.SEND) {
-            // sendEmail(String subjectLine, String text, File attachment = null, String contentType = null) {
+            // For SEND event, the text is extracted entirely from send.content, the template is already applied
             sendEmail(subjectLine, model["send.content"], model["send.file"]?new File(model["send.file"]):null, model["send.contentType"])
         }
-        else
-        if(event == PipelineEvent.REPORT_GENERATED) { // For a report event, attach the actual report
-            sendEmail(subjectLine,text, new File(new File(model.reportListener.outputDir), model.reportListener.outputFileName))
-        }
         else {
-            sendEmail(subjectLine,text, null, model['send.contentType'])
+            String text = template.make(model).toString()
+            if(event == PipelineEvent.REPORT_GENERATED) { // For a report event, attach the actual report
+                sendEmail(subjectLine,text, new File(new File(model.reportListener.outputDir), model.reportListener.outputFileName))
+            }
+            else {
+                sendEmail(subjectLine,text, null, model['send.contentType'])
+            }
         }
 	}
     
@@ -178,11 +178,24 @@ class SMTPNotificationChannel implements NotificationChannel {
 		Transport.send(message);
     }
     
-    String getDefaultTemplate() {
-        if(format == "text")
+    String getDefaultTemplate(String contentType) {
+        
+        // Default to the format user has configured in config
+        String templateFormat = this.format
+        
+        // Override if the pipeline itself is specifying a particular format
+        if(contentType) {
+           if(contentType == "text/html")
+               templateFormat = "html"
+           else
+           if(contentType == "text/plain")
+               templateFormat = "text"
+        }
+        
+        if(templateFormat == "text")
             "email.template.txt"
         else
-        if(format == "html")
+        if(templateFormat == "html")
             "email.template.html"
         else {
             log.warning("Email format $format is not recognised: please use 'html' or 'text'")

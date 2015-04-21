@@ -26,9 +26,12 @@ class FileNotificationChannel implements NotificationChannel {
     @Override
     public void notify(PipelineEvent event, String subject, Template template, Map<String, Object> model) {
         log.info "Saving file for event $event (subject = $subject)"
+        if(!dir.exists())
+            dir.mkdirs()
+            
         File targetFile = new File(dir, "${count}_${event.name()}.txt")
         if(event == PipelineEvent.SEND) {
-            if(model.containsKey("send.file"))
+            if(model.containsKey("send.file") && model["send.file"] != null)
                 targetFile = new File(model["send.file"])
                 
             if(model["send.content"] instanceof String)
@@ -45,7 +48,7 @@ class FileNotificationChannel implements NotificationChannel {
     }
 
     @Override
-    public String getDefaultTemplate() {
+    public String getDefaultTemplate(String contentType) {
         "file.template.txt"
     }
 
