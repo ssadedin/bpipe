@@ -24,6 +24,7 @@
  */
 package bpipe
 
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
@@ -50,7 +51,9 @@ import groovy.util.logging.Log;
  * @author ssadedin
  */
 @Log
-class ResourceUnit {
+class ResourceUnit implements Serializable {
+    
+    public static final long serialVersionUID = 0L
     
     int amount = 0;
     
@@ -113,10 +116,27 @@ class Concurrency {
                           return t
                         } as ThreadFactory
         
-        this.pool = new ThreadPoolExecutor(Config.config.maxThreads, Integer.MAX_VALUE,
+        // LinkedBlockingQueue vs SynchronousBlockingQueue vs ArrayBlockingQueue?
+        //
+        //    - SynchronousBlockingQueue holds zero elements. That means if no thread in 
+        //      the pool, it creates a new one, corePoolSize is IGNORED
+        //            
+        //    - LinkedBlockingQueue : a queue with infinite capacity, means that if
+        //      no thread available will wait until one available. maxPoolSize ignored,
+        //      only uses corePoolSize
+        //     
+        //    - ArrayBlockingQueue : a queue with fixed size. Will throw error when
+        //     number of items exceeds capcacity
+        //
+        // In practise, observe that SynchronousQueue allows unlimited simultatneous
+        // threads, it essentially disables the queueing and makes it so that any 
+        // overflow from the pool results in a new thread being created.
+        // 
+        this.pool = new ThreadPoolExecutor(Config.config.maxThreads*2, Integer.MAX_VALUE,
                                       0L, TimeUnit.MILLISECONDS,
-//                                      new LinkedBlockingQueue<Runnable>(), 
-                                      new SynchronousQueue<Runnable>(), 
+                                      new LinkedBlockingQueue<Runnable>(), 
+//                                      new SynchronousQueue<Runnable>(), 
+//                                      new ArrayBlockingQueue<Runnable>(Config.config.maxThreads), 
                                       threadFactory) {
               @Override
               void afterExecute(Runnable r, Throwable t) {
