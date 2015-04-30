@@ -298,7 +298,6 @@ class CommandManager {
     }
     
     void saveCommand(Command command, File dir) {
-       return;
        new File(dir, command.id).withObjectOutputStream { it << command.executor; it << command } 
     }
     
