@@ -128,7 +128,7 @@ class Concurrency {
         //    - ArrayBlockingQueue : a queue with fixed size. Will throw error when
         //     number of items exceeds capcacity
         //
-        // In practise, observe that SynchronousQueue allows unlimited simultatneous
+        // In practise, observe that SynchronousQueue allows unlimited simultaneous
         // threads, it essentially disables the queueing and makes it so that any 
         // overflow from the pool results in a new thread being created.
         // 
