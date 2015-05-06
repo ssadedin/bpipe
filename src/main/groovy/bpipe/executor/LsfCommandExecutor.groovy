@@ -72,6 +72,8 @@ class LsfCommandExecutor implements CommandExecutor {
 
     private static String CMD_OUT_FILENAME = "cmd.out"
 
+    private static String CMD_LSF_OUT_FILENAME = "cmd.lsf.out"
+
     private static String CMD_ERR_FILENAME = "cmd.err"
 
 	/**
@@ -141,7 +143,7 @@ class LsfCommandExecutor implements CommandExecutor {
 		 * Note: since LSF append a noise report information to the standard out
 		 * we suppress it, and save the 'cmd' output in the above script
 		 */
-		def startCmd = "bsub $cwdOption -o /dev/null -e $jobDir/$CMD_ERR_FILENAME "
+		def startCmd = "bsub $cwdOption -o $jobDir/$CMD_LSF_OUT_FILENAME -e $jobDir/$CMD_ERR_FILENAME "
         
 		// add other parameters (if any)
 		if(config?.queue) {
