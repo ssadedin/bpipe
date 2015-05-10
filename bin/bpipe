@@ -604,9 +604,26 @@ tmsg " Launching Java"
 # to pass through to Bpipe
 set -f
 
-nohup echo 'printf $$ > .bpipe.'$LAUNCHER_PID'.run.pid &
-      exec java -Xmx'${MAX_JAVA_MEM}' -noverify -classpath "'"$CP"'" '$BPIPEDEBUG' '$MODEFLAG' -Dbpipe.pid='$LAUNCHER_PID' -Dbpipe.home='"$JVM_BPIPE_HOME"' -Dbpipe.version='$VERSION' -Dbpipe.builddate='$BUILDDATE' org.codehaus.groovy.tools.GroovyStarter --classpath "'"$CP"'" --main bpipe.Runner '$TESTMODE' '$BPIPE_ARGS' > .bpipe/logs/$$.log 2>&1' \
-     2>&1 | bash - > /dev/null 2>&1 &
+LAUNCH_CMD='
+   printf $$ > .bpipe.'$LAUNCHER_PID'.run.pid &
+   exec java -Xmx'${MAX_JAVA_MEM}' \
+             -noverify \
+             -classpath "'"$CP"'" '$BPIPEDEBUG' '$MODEFLAG' \
+             -Dbpipe.pid='$LAUNCHER_PID' \
+             -Dbpipe.home='"$JVM_BPIPE_HOME"' \
+             -Dbpipe.version='$VERSION' \
+             -Dbpipe.builddate='$BUILDDATE' \
+                 org.codehaus.groovy.tools.GroovyStarter \
+                    --classpath "'"$CP"'" \
+                    --main bpipe.Runner '$TESTMODE' '$BPIPE_ARGS' > .bpipe/logs/$$.log 2>&1
+'
+
+$SHOWDEBUG && {
+    echo "LAUNCH_CMD: $LAUNCH_CMD"
+}
+
+nohup bash -c "$LAUNCH_CMD" \
+    > /dev/null 2>&1 &
 
 # Re-enable wildcard expansion: don't want it turned off in case it's 
 # needed somewhere else in this script
