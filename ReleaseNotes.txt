@@ -1,3 +1,60 @@
+=========== Changes for Bpipe Version 0.9.8.8 ============
+
+   - fix: commands run using torque / pbs not using -e flag for bash,
+     thus only treated as failed if last command fails
+    
+   - support for aliasing inputs to outputs via 'forward <x> to
+     <y>' to allow an input to be virtually treated as a named
+     output within the pipeline 
+
+   - fix: bpipe terminating if ssh session terminates while showing bpipe log 
+     in foreground directly after initial launch 
+    
+   - save output from LSF (to assist in debugging failed LSF commands)
+    
+   - fix stages not found when defined in bpipe lib folder and referenced in
+     segment declaration if used after load 
+    
+   - Switch to use html format for emails by default 
+
+   - allow user to configure email format with 'format' attribute in
+     configuration 
+
+   - allow multiple templates per notification type with different formats 
+
+   - fix problems in using 'send'
+     and 'file' to send explicit files based on templates 
+    
+   - Fix high thread concurrency used when large number of concurrent branches 
+     created by one pipeline branch 
+    
+   - Explicitly destroy process after waiting
+     until streams closed to ensure file handles not leaked 
+    
+   - fix some cases where Bpipe could report file as missing when
+     created in slow syncing distributed file system
+    
+   - Allow more screen width when using 'bpipe checks', better formatting 
+     of check display 
+
+   - Add option to list checks rather than enter interactive mode 
+    
+   - fix some cases where commands might not
+     be stopped, and outputs not cleaned up when using bpipe
+     stop.  Update saved command info after cleanup.  
+    
+   - ensure stop time is always set for commands 
+
+   - close possible file handle leak in (undocumented) capture command
+
+   - more robust checking for file existance 
+
+   - refactor file existance checking into common utils method, to allow 
+     wider application 
+    
+   - Avoid misleading termination message when user deliberately stops 
+     pipeline 
+    
 =========== Changes for Bpipe Version 0.9.8.7 ============
 
    - check /proc on linux rather than relying on kill 
