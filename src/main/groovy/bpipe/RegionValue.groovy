@@ -5,7 +5,9 @@ package bpipe
  * enables them to be used as either string values or to support a ".bed"
  * extension.
  */
-class RegionValue {
+class RegionValue implements Serializable {
+    
+    public static final long serialVersionUID = 0L
     
     String value
     
