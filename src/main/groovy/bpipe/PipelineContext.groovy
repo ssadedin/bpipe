@@ -100,7 +100,7 @@ class PipelineContext {
         def pipeline = Pipeline.currentRuntimePipeline.get()
         if(pipeline)
             this.applyName = pipeline.name && !pipeline.nameApplied
-         
+        this.aliases = pipeline.aliases 
         this.outputLog = new OutputLog(branch.name)
     }
     
@@ -150,6 +150,11 @@ class PipelineContext {
     Set<String> outputMask = ['\\.bai$', '\\.log$'] as Set
 
     File uncleanFilePath
+    
+    /**
+     * Set of aliases to use for mapping file names
+     */
+    Aliases aliases = null
    
     /**
      * Documentation attributes for the the pipeline stage
@@ -612,7 +617,7 @@ class PipelineContext {
    PipelineInput getInputByIndex(int i) {
        
        
-       PipelineInput wrapper = new PipelineInput(this.@input, pipelineStages)
+       PipelineInput wrapper = new PipelineInput(this.@input, pipelineStages, this.aliases)
        wrapper.currentFilter = currentFilter
        wrapper.defaultValueIndex = i
        
@@ -647,7 +652,7 @@ class PipelineContext {
            throw new InputMissingError("Input expected but not provided")
        }
        if(!inputWrapper || inputWrapper instanceof MultiPipelineInput) {
-           inputWrapper = new PipelineInput(this.@input, pipelineStages)
+           inputWrapper = new PipelineInput(this.@input, pipelineStages, this.aliases)
            this.allUsedInputWrappers[0] = inputWrapper
        }
        inputWrapper.currentFilter = currentFilter    
@@ -660,7 +665,7 @@ class PipelineContext {
    
    def getInputs() {
        if(!inputWrapper || !(inputWrapper instanceof MultiPipelineInput)) {
-           this.inputWrapper = new MultiPipelineInput(this.@input, pipelineStages)
+           this.inputWrapper = new MultiPipelineInput(this.@input, pipelineStages, this.aliases)
            this.allUsedInputWrappers[0] = inputWrapper
        }
        inputWrapper.currentFilter = currentFilter    
@@ -1380,7 +1385,7 @@ class PipelineContext {
         }
         
         if(!inputWrapper)
-           inputWrapper = new PipelineInput(this.@input, pipelineStages)
+           inputWrapper = new PipelineInput(this.@input, pipelineStages, this.aliases)
            
            
        // On OSX and Linux, R actively attaches to and listens to signals on the
@@ -1818,7 +1823,7 @@ class PipelineContext {
     * 
     * @param values
     */
-    void forwardImpl(List values) {
+    Aliaser forwardImpl(List values) {
        this.nextInputs = values.flatten().collect {
            if(it instanceof MultiPipelineInput) {
                it.input
@@ -1828,6 +1833,8 @@ class PipelineContext {
        }.flatten()
        
        log.info("Forwarding ${nextInputs.size()} inputs ${nextInputs}")
+       
+       return new Aliaser(this.aliases, Utils.box(values)[0])
    }
    
    /**

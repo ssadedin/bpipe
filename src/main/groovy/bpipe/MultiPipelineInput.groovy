@@ -41,8 +41,8 @@ import groovy.util.logging.Log;
 @Log
 class MultiPipelineInput extends PipelineInput implements Iterable {
     
-    MultiPipelineInput(def input, List<PipelineStage> stages) {
-		super(input,stages)	
+    MultiPipelineInput(def input, List<PipelineStage> stages, Aliases aliases) {
+		super(input,stages, aliases)	
 	}
 	
 	/**
@@ -52,7 +52,7 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
 	public String mapToCommandValue(def values) {
 		def result = Utils.box(values)
         addResolvedInputs(result)
-        return result.collect { String.valueOf(it) }.join(' ')
+        return result.collect { this.aliases[String.valueOf(it)] }.join(' ')
 	}
 
 	String toString() {
@@ -73,7 +73,7 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
             
         def result = super.propertyMissing(name)
         if(result) {
-            def mp = new MultiPipelineInput(this.resolvedInputs.clone(), stages)
+            def mp = new MultiPipelineInput(this.resolvedInputs.clone(), stages, this.aliases)
             mp.parent = this
             mp.resolvedInputs = this.resolvedInputs
             mp.currentFilter = this.currentFilter

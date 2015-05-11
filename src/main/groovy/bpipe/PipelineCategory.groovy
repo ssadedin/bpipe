@@ -128,7 +128,7 @@ class PipelineCategory {
             currentStage.run()
             
             log.info "Checking that outputs ${currentStage.context.@output} exist"
-            Dependencies.instance.checkFiles(currentStage.context.@output)
+            Dependencies.instance.checkFiles(currentStage.context.@output, pipeline.aliases)
                     
             // If the stage did not return any outputs then we assume
             // that the inputs to the next stage are the same as the inputs
@@ -140,7 +140,7 @@ class PipelineCategory {
             }
                 
             log.info "Checking inputs for next stage:  $nextInputs"
-            Dependencies.instance.checkFiles(nextInputs)
+            Dependencies.instance.checkFiles(nextInputs, pipeline.aliases)
                 
             currentStage = new PipelineStage(pipeline.createContext(), other)
             currentStage.context.@input = nextInputs
@@ -162,11 +162,12 @@ class PipelineCategory {
         Closure mul = splitOnFiles("*", segments, false, false)
         def plusImplementation =  { input1 ->
             
-            def currentStage = new PipelineStage(Pipeline.currentRuntimePipeline.get().createContext(), other)
-            Pipeline.currentRuntimePipeline.get().addStage(currentStage)
+            Pipeline runtimePipeline = Pipeline.currentRuntimePipeline.get()
+            def currentStage = new PipelineStage(runtimePipeline.createContext(), other)
+            runtimePipeline.addStage(currentStage)
             currentStage.context.setInput(input1)
             currentStage.run()
-            Dependencies.instance.checkFiles(currentStage.context.@output)
+            Dependencies.instance.checkFiles(currentStage.context.@output, runtimePipeline.aliases)
                     
             // If the stage did not return any outputs then we assume
             // that the inputs to the next stage are the same as the inputs
@@ -175,7 +176,7 @@ class PipelineCategory {
             if(nextInputs == null)
                 nextInputs = currentStage.context.@input
                 
-            Dependencies.instance.checkFiles(nextInputs)
+            Dependencies.instance.checkFiles(nextInputs, runtimePipeline.aliases)
             
             return mul(nextInputs)
         }

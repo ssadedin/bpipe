@@ -131,6 +131,11 @@ public class Pipeline {
     Map<String,String> variables = [:]
     
     /**
+     * File name mappings belonging to this pipeline instance
+     */
+    Aliases aliases = new Aliases()
+    
+    /**
      * Id of thread that is running this pipeline
      */
     Long threadId
@@ -855,6 +860,7 @@ public class Pipeline {
         p.node = new Node(branchPoint, childName, [type:'pipeline',pipeline:p])
         p.stages = [] + this.stages
         p.joiners = [] + this.joiners
+        p.aliases = this.aliases
         p.parent = this
 //        branchPoint.appendNode(p.node)
         ++this.childCount
