@@ -98,9 +98,10 @@ class PipelineContext {
         this.threadId = Thread.currentThread().getId()
         this.branch = branch
         def pipeline = Pipeline.currentRuntimePipeline.get()
-        if(pipeline)
+        if(pipeline) {
             this.applyName = pipeline.name && !pipeline.nameApplied
-        this.aliases = pipeline.aliases 
+            this.aliases = pipeline.aliases 
+        }
         this.outputLog = new OutputLog(branch.name)
     }
     
