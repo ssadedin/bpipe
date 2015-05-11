@@ -2,7 +2,10 @@
 
 ## Helping Out
 
-Bpipe is an open source project that anybody can contribute to. There are a variety of ways you can help, from adding documentation to providing feedback, but most of all, if you have skills in programming, you can help add new features to Bpipe.
+Bpipe is an open source project that anybody can contribute to. There are a
+variety of ways you can help, from adding documentation to providing feedback,
+but most of all, if you have skills in programming, you can help add
+new features to Bpipe.
 
 ## Building Bpipe
 
@@ -52,4 +55,15 @@ More than likely if you make any significant changes you will end up wanting to 
 bpipe debug test.groovy input1.txt ....
 ```
 
-The debug command will run Java in debug mode which will then wait for you to attach with a debugger that supports remote debugging such as eclipse. Just configure Eclipse to attach to the port printed out by the command.
+The debug command will run Java in debug mode which will then wait for you to
+attach with a debugger that supports remote debugging such as eclipse. Just
+configure Eclipse to attach to the port printed out by the command.
+
+## Adding Documentation
+
+Improving Bpipe's documentation is one of the easiest ways to help. Even small
+improvements such as clarifications, grammar fixes, or addition of examples are
+very much appreciated.
+
+See [DocumentationStyle](/Guides/DocumentationStyle) for information about how to 
+edit and test your documentation changes.
