@@ -114,4 +114,13 @@ class RunnerTest {
     }
 
 
+    @Test
+    void testParseMemoryOption() {
+        assert Runner.parseMemoryOption("4GB") == 4000
+        assert Runner.parseMemoryOption("4gb") == 4000
+        assert Runner.parseMemoryOption("4MB") == 4
+        assert Runner.parseMemoryOption("4mb") == 4
+        assert Runner.parseMemoryOption("4") == 4
+    }
+    
 }

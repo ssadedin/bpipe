@@ -568,6 +568,7 @@ class Runner {
                             // it cannot be resolved directly
                             f = new File(new File(Config.config.script).canonicalFile.parentFile, jar)
                         }
+                        log.info "Attempting to load JAR file from $f.absolutePath"
                         Runner.class.classLoader.rootLoader.addURL(f.toURL())
                     }
                     catch(Exception e) {

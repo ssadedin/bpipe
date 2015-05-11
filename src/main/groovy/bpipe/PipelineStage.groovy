@@ -147,7 +147,9 @@ class PipelineStage {
         // the pipeline for inputs matching a pattern
         this.originalInputs = this.context.@input
         
-        Dependencies.instance.checkFiles(context.@input)
+        def pipeline = Pipeline.currentRuntimePipeline.get()
+        
+        Dependencies.instance.checkFiles(context.@input, pipeline.aliases)
         
 		// Note: although it would appear these are being injected at a per-pipeline level,
 		// in fact they end up as globally shared variables across all parallel threads
@@ -176,7 +178,6 @@ class PipelineStage {
             oldFiles.removeAll { File f -> IGNORE_NEW_FILE_PATTERNS.any { f.name.matches(it) } || f.isDirectory() }
             def modified = oldFiles.inject([:]) { result, f -> result[f] = f.lastModified(); return result }
             
-            def pipeline = Pipeline.currentRuntimePipeline.get()
             if(!joiner) {
                 stageName = 
                     PipelineCategory.closureNames.containsKey(body) ? PipelineCategory.closureNames[body] : "${stageCount}"
@@ -268,7 +269,7 @@ class PipelineStage {
 		}
         
         log.info "Checking files: " + context.@output
-        Dependencies.instance.checkFiles(context.@output,"output")
+        Dependencies.instance.checkFiles(context.@output, pipeline.aliases, "output")
         
         // Save the database of files created
 //        if(Config.config.enableCommandTracking)
