@@ -140,7 +140,7 @@ class TransformOperation {
             if(!pattern.endsWith('$'))
                 pattern += '$'
                 
-            PipelineInput input = new PipelineInput(this.files, this.ctx.pipelineStages)
+            PipelineInput input = new PipelineInput(this.files, this.ctx.pipelineStages, this.ctx.aliases)
             List<String> filesResolved = input.resolveInputsEndingWithPatterns([fromPattern + '$'], [fromPattern])
             this.files.addAll(filesResolved)
             
