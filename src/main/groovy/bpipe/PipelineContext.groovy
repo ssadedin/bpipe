@@ -1835,7 +1835,7 @@ class PipelineContext {
        
        log.info("Forwarding ${nextInputs.size()} inputs ${nextInputs}")
        
-       return new Aliaser(this.aliases, Utils.box(values)[0])
+       return new Aliaser(this.aliases, String.valueOf(Utils.box(values)[0]))
    }
    
    /**
