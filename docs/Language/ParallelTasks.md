@@ -21,7 +21,8 @@ Now suppose you wanted to add a second "mars" stage that would execute simultane
 ```groovy 
 
 Bpipe.run {
-  hello + [}
+  hello + [ world,mars ]
+}
 ```
 
 _Note: if you are familiar with Groovy syntax, you will notice that the square bracket notation is how you define a list in Groovy.  Thus all we are saying is that if you give Bpipe a list of stages to process, it executes them in parallel._
@@ -30,7 +31,7 @@ You can execute multiple stages in parallel too:
 ```groovy 
 
 Bpipe.run {
-  hello + [ blue + world, red + mars ](world,mars]) 
+  hello + [ blue + world, red + mars ] 
 }
 ```
 
