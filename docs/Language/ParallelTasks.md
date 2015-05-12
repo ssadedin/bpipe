@@ -49,7 +49,7 @@ You can also nest parallel tasks if you wish:
 ```groovy 
 
 Bpipe.run {
-  hello + [ blue + world, red + [](mars,venus]) + nice_to_see_you
+  hello + [ blue + world, red + [mars,venus] ] + nice_to_see_you
 }
 ```
 
