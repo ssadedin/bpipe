@@ -26,7 +26,7 @@ Different tasks have different numbers of inputs and outputs, so what happens wh
 
 - The variable *input1* is always a single file name that a task can read inputs from.  If there were multiple outputs from the previous stage, the *input1* variable is the first of those outputs.  This output is treated as the "primary" or "default" output.  The variable `$input` also evaluates, by default, to the value of *input1*.
 - If a task wants to accept more than one input then it can reference each input using the variables *input1*, *input2*, etc.
-- If a task has an unknown number of inputs it may reference the variable *input* as a *list* and use array like indices to access the elements, for example `_input[is the same as `input1`, `input[1](0]_`)` corresponds to `input2`, etc.   You can reference the size of the inputs using `input.size()` and iterate over inputs using a syntax like
+- If a task has an unknown number of inputs it may reference the variable *input* as a *list* and use array like indices to access the elements, for example `input[0]` is the same as `input1`, `input[1]` corresponds to `input2`, etc.   You can reference the size of the inputs using `input.size()` and iterate over inputs using a syntax like
 ```groovy 
 
   for(i in input) {
