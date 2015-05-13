@@ -126,7 +126,7 @@ This means Bpipe will look for the first (and shortest) token in the file name t
 
 ### =Ordering=
 
-Bpipe supports one other special character in its input splitting patterns:  the `**` wildcard.  This also acts as a wildcard match but it *does not* split the input into groups.  Instead, it affects ordering within the groups that are split.  When Bpipe matches a `**` character in an input splitting pattern it first splits the files into their groups (based on the `%` match) and then sorts them based on the portions that match the `**` character.  This helps you ensure that even after splitting, your files are still in a sensible order.   For example, consider the following input files
+Bpipe supports one other special character in its input splitting patterns:  the `*` wildcard.  This also acts as a wildcard match but it *does not* split the input into groups.  Instead, it affects ordering within the groups that are split.  When Bpipe matches a `*` character in an input splitting pattern it first splits the files into their groups (based on the `%` match) and then sorts them based on the portions that match the `*` character.  This helps you ensure that even after splitting, your files are still in a sensible order.   For example, consider the following input files
 
 - input_1_1.txt
 - input_1_2.txt
