@@ -93,7 +93,7 @@ class Concurrency {
     /**
      * The thread pool to use for executing tasks.
      */
-    ThreadPoolExecutor pool = initPool() 
+    List<ThreadPoolExecutor> pools = Collections.synchronizedList([initPool()])
     
     /**
      * Each resource allocation allocates resources for its resource type against
@@ -106,11 +106,15 @@ class Concurrency {
      */
     Map<Runnable,AtomicInteger> counts = [:]
     
-    ThreadPoolExecutor initPool() {
+    ThreadPoolExecutor initPool(int numThreads=-1) {
         
-        log.info "Creating thread pool with " + Config.config.maxThreads + " threads to execute parallel pipelines"
+        if(numThreads < 0)
+            numThreads = Config.config.maxThreads*2 
+        
+        log.info "Creating thread pool with " + numThreads + " threads to execute parallel pipelines"
         
         ThreadFactory threadFactory = { Runnable r ->
+                          println ">>>> NEW THREAD"
                           def t = new Thread(r)  
                           t.setDaemon(true)
                           return t
@@ -132,7 +136,7 @@ class Concurrency {
         // threads, it essentially disables the queueing and makes it so that any 
         // overflow from the pool results in a new thread being created.
         // 
-        this.pool = new ThreadPoolExecutor(Config.config.maxThreads*2, Integer.MAX_VALUE,
+        return new ThreadPoolExecutor(numThreads, Integer.MAX_VALUE,
                                       0L, TimeUnit.MILLISECONDS,
                                       new LinkedBlockingQueue<Runnable>(), 
 //                                      new SynchronousQueue<Runnable>(), 
@@ -180,7 +184,16 @@ class Concurrency {
      * 
      * @param runnables
      */
-    void execute(List<Runnable> runnables) {
+    void execute(List<Runnable> runnables, int tier=0) {
+        
+        synchronized(this.pools) {
+            while(this.pools.size()<=tier) {
+                println "Creating thread pool for tier $tier"
+                this.pools.add(initPool(Config.config.maxThreads+1))
+            }
+        }
+        
+        ThreadPoolExecutor pool = pools[tier]
         
         AtomicInteger runningCount = new AtomicInteger()
         

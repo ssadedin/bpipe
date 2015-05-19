@@ -465,12 +465,14 @@ class PipelineCategory {
     
     static runAndWaitFor(PipelineStage currentStage, List<Pipeline> pipelines, List<Runnable> threads) {
             // Start all the threads
-            Concurrency.instance.execute(threads)
+        
+            Pipeline current = Pipeline.currentRuntimePipeline.get()
+            
+            Concurrency.instance.execute(threads, current.branchPath.size())
             
             if(pipelines.any { it.failed }) {
                 def messages = summarizeErrors(pipelines)
                 
-                Pipeline current = Pipeline.currentRuntimePipeline.get()
                 for(Pipeline p in pipelines.grep { it.failed }) {
                     // current.failExceptions.addAll(p.failExceptions)
                 }
