@@ -91,7 +91,9 @@ class ResourceUnit implements Serializable {
 class Concurrency {
     
     /**
-     * The thread pool to use for executing tasks.
+     * The thread pools to use for executing tasks. Pools are organised into tiers,
+     * where dependent threads *must* be placed in different tiers, to ensure there
+     * cannot be a possibility of deadlock.
      */
     List<ThreadPoolExecutor> pools = Collections.synchronizedList([initPool()])
     
@@ -114,7 +116,6 @@ class Concurrency {
         log.info "Creating thread pool with " + numThreads + " threads to execute parallel pipelines"
         
         ThreadFactory threadFactory = { Runnable r ->
-                          println ">>>> NEW THREAD"
                           def t = new Thread(r)  
                           t.setDaemon(true)
                           return t
@@ -179,8 +180,11 @@ class Concurrency {
     }
     
     /**
-     * Execute the given list of runnables using the global thread pool,
-     * and wait for them all to finish. 
+     * Execute the given list of runnables using the specified thread pool. Thread pools are maintained in
+     * tiers, which are designed to separate threads which have dependencies (hence raising the
+     * possibility of deadlocks). Each nested level of the pipeline runs in a separate "tier".
+     * <p>
+     * This method waits for all the runnables in the given list to finish before returning.
      * 
      * @param runnables
      */
