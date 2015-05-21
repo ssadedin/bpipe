@@ -624,7 +624,7 @@ class PipelineContext {
        
        def boxed = Utils.box(input)
        if(boxed.size()<i) {
-           wrapper.parentError = new InputMissingError("Expected $i or more inputs but fewer provided")
+           wrapper.parentError = new InputMissingError("Stage '$stageName' expected $i or more inputs but fewer provided", this)
        }
        else {
            this.allResolvedInputs << input[i]
@@ -650,7 +650,7 @@ class PipelineContext {
     */
    def getInput() {
        if(this.@input == null || Utils.isContainer(this.@input) && this.@input.size() == 0) {
-           throw new InputMissingError("Input expected but not provided")
+           throw new InputMissingError("Stage '$stageName' expects an input but none are available", this)
        }
        if(!inputWrapper || inputWrapper instanceof MultiPipelineInput) {
            inputWrapper = new PipelineInput(this.@input, pipelineStages, this.aliases)
@@ -1629,8 +1629,7 @@ class PipelineContext {
 
           command.branch = this.branch
           command.outputs = checkOutputs.unique()
-          command.executor = 
-              commandManager.start(stageName, command, config, Utils.box(this.input), 
+          commandManager.start(stageName, command, config, Utils.box(this.input), 
                                    new File(outputDirectory), this.usedResources,
                                    deferred, this.outputLog)
           // log.info "Command $command.id started with resources " + this.usedResources
@@ -2177,6 +2176,8 @@ class PipelineContext {
             log.info "Resolved upstream outputs matching $pats for cleanup : $results"
             results.addAll(patResults)
         }
+        
+        results = results.grep { !aliases.isAliased(it) }
         
         // Finally, cleanup all these files
         log.info "Attempting to cleanup files: $results"
