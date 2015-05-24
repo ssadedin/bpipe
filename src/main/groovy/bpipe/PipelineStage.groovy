@@ -231,7 +231,7 @@ class PipelineStage {
             def nextInputs = determineForwardedFiles(newFiles)
                 
             if(!this.context.@output) {
-                // log.info "No explicit output on stage ${this.hashCode()} context ${this.context.hashCode()} so output is nextInputs $nextInputs"
+                log.info "No explicit output on stage ${this.hashCode()} context ${this.context.hashCode()} so output is nextInputs $nextInputs"
                 this.context.rawOutput = nextInputs 
             }
 
@@ -300,7 +300,7 @@ class PipelineStage {
 			else {
 				use(PipelineBodyCategory) {
 					def returnedInputs = body(context.@input)
-					if(joiner) {
+					if(joiner || (body in Pipeline.currentRuntimePipeline.get().segmentJoiners)) {
 						context.nextInputs = returnedInputs
 					}
 				}
@@ -357,6 +357,9 @@ class PipelineStage {
         if(!context.nextInputs && this.context.@output != null) {
             log.info("Inferring nextInputs from explicit output as ${context.@output}")
             context.nextInputs = Utils.box(this.context.@output).collect { it.toString() }
+        }
+        else {
+            log.info "Inputs are NOT being inferred from context.output (context.nextInputs=$context.nextInputs)"
         }
 
         // No output OR forward inputs were specified by the pipeline stage?!
