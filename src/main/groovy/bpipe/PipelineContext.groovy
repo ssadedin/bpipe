@@ -1823,7 +1823,7 @@ class PipelineContext {
     * 
     * @param values
     */
-    Aliaser forwardImpl(List values) {
+    void forwardImpl(List values) {
        this.nextInputs = values.flatten().collect {
            if(it instanceof MultiPipelineInput) {
                it.input
@@ -1833,8 +1833,10 @@ class PipelineContext {
        }.flatten()
        
        log.info("Forwarding ${nextInputs.size()} inputs ${nextInputs}")
-       
-       return new Aliaser(this.aliases, String.valueOf(Utils.box(values)[0]))
+   }
+    
+   Aliaser alias(def value) {
+       new Aliaser(this.aliases, String.valueOf(value))
    }
    
    /**
@@ -2176,6 +2178,8 @@ class PipelineContext {
             log.info "Resolved upstream outputs matching $pats for cleanup : $results"
             results.addAll(patResults)
         }
+        
+        log.info "Removing outputs that were aliased from cleanup targets: aliased = $aliases"
         
         results = results.grep { !aliases.isAliased(it) }
         
