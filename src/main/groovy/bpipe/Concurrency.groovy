@@ -192,7 +192,6 @@ class Concurrency {
         
         synchronized(this.pools) {
             while(this.pools.size()<=tier) {
-                println "Creating thread pool for tier $tier"
                 this.pools.add(initPool(Config.config.maxThreads+1))
             }
         }
