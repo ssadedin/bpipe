@@ -137,6 +137,8 @@ abstract class AbstractGridBashExecutor implements CommandExecutor {
         return result?.exitCode
     }
 
-
-
+    @Override
+    public String statusMessage() {
+        return "Grid job command: $cmd"
+    }
 }
