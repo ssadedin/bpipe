@@ -4,7 +4,7 @@ rm -f test.txt.* *.xml hello.*
 
 # Without an input should get a good message back
 run 
-grep -q "Input expected but not provided" test.out || err "Expected error message asking for input"
+grep -q "Stage 'hello' expects an input but none are available" test.out || err "Expected error message asking for input"
 
 # Now run with multiple inputs
 run test.csv test.txt
