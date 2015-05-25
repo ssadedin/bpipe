@@ -1,5 +1,5 @@
 hello = {
-    forward input.txt to output.csv
+    alias input.txt to output.csv
 }
 
 world = {
