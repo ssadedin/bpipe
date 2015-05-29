@@ -27,7 +27,7 @@ The purpose of this statement is to help you control concurrency to achieve bett
 ```groovy 
 
   run_bwa = {
-    uses(threads:4,GB:4,tempfiles:2) {
+    uses(threads:4,GB:4,tempfiles:3) {
         exec "bwa aln -t 4 ref.fa $input.fq"
     }
   }
