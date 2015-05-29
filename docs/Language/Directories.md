@@ -15,9 +15,9 @@ While the `input.dir` is a fixed value, `output.dir` is a writeable value, so yo
 ```groovy 
 
 hello = {
-   output.dir="out_dir"
    def myOutput = output.txt
    exec "cp $input.csv $myOutput"
+   output.dir="out_dir"
 }
 ```
 
