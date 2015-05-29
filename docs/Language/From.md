@@ -61,7 +61,7 @@ sequentially each time that extension appears in the list given.
   }
 ```
 
-**Match all CSV files from the last stage that produces a CSV file**
+**Match all CSV files from the last stage that produces a XML file**
 ```groovy 
 
   from("*.csv") transform("xml") {
