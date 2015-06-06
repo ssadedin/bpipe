@@ -94,9 +94,15 @@ class PipelineInput {
      */
     List<String> currentFilter = []
     
-    PipelineInput(def input, List<PipelineStage> stages) {
+    /**
+     * Set of aliases to use in mapping file names
+     */
+    Aliases aliases
+    
+    PipelineInput(def input, List<PipelineStage> stages, Aliases aliases) {
         this.stages = stages;
         this.input = input
+        this.aliases = aliases
     }
     
     String toString() {
@@ -164,7 +170,7 @@ class PipelineInput {
             parentError=null
         }
         catch(InputMissingError e) {
-            PipelineInput childInp = new PipelineInput(this.resolvedInputs.clone(), stages)
+            PipelineInput childInp = new PipelineInput(this.resolvedInputs.clone(), stages, aliases)
             childInp.parent = this
             childInp.resolvedInputs = this.resolvedInputs
             childInp.currentFilter = this.currentFilter
@@ -193,9 +199,10 @@ class PipelineInput {
 	 * given values.  See also {@link MultiPipelineInput#mapToCommandValue(Object)}
 	 */
 	String mapToCommandValue(def values) {
-        def result = String.valueOf(Utils.box(values)[defaultValueIndex])
-        log.info "Adding resolved input $result"
-        this.addResolvedInputs([result])
+        String rawResolvedInput = String.valueOf(Utils.box(values)[defaultValueIndex])
+        def result = this.aliases[rawResolvedInput]
+        log.info "Adding resolved input $result (raw input = $rawResolvedInput)"
+        this.addResolvedInputs([rawResolvedInput])
         return result
 	}
     

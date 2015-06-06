@@ -101,8 +101,10 @@ class Utils {
     }
     
     static boolean fileExists(File f) {
+        
        if(f.exists())
            return true
+           
        if(!f.exists()) {
            log.info "File $f does not appear to exist: listing directory to flush file system"
            try { f.absoluteFile.parentFile.listFiles() } catch(Exception e) { log.warning("Failed to list files of parent directory of $f"); }

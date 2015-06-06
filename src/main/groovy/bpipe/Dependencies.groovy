@@ -356,12 +356,12 @@ class Dependencies {
      *
      * @param f     a String or collection of Strings representing file names
      */
-    void checkFiles(def fileNames, type="input") {
+    void checkFiles(def fileNames, Aliases aliases, type="input") {
         
         log.info "Checking $type (s) " + fileNames
         
         GraphEntry graph = this.getOutputGraph()
-        List missing = Utils.box(fileNames).grep { String.valueOf(it) != "null" }.collect { new File(it.toString()) }.grep { File f ->
+        List missing = Utils.box(fileNames).grep { String.valueOf(it) != "null" }.collect { new File(aliases[it.toString()]) }.grep { File f ->
             
             log.info " Checking file $f"
             if(Utils.fileExists(f))

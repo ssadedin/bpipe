@@ -98,9 +98,10 @@ class PipelineContext {
         this.threadId = Thread.currentThread().getId()
         this.branch = branch
         def pipeline = Pipeline.currentRuntimePipeline.get()
-        if(pipeline)
+        if(pipeline) {
             this.applyName = pipeline.name && !pipeline.nameApplied
-         
+            this.aliases = pipeline.aliases 
+        }
         this.outputLog = new OutputLog(branch.name)
     }
     
@@ -150,6 +151,11 @@ class PipelineContext {
     Set<String> outputMask = ['\\.bai$', '\\.log$'] as Set
 
     File uncleanFilePath
+    
+    /**
+     * Set of aliases to use for mapping file names
+     */
+    Aliases aliases = null
    
     /**
      * Documentation attributes for the the pipeline stage
@@ -612,13 +618,13 @@ class PipelineContext {
    PipelineInput getInputByIndex(int i) {
        
        
-       PipelineInput wrapper = new PipelineInput(this.@input, pipelineStages)
+       PipelineInput wrapper = new PipelineInput(this.@input, pipelineStages, this.aliases)
        wrapper.currentFilter = currentFilter
        wrapper.defaultValueIndex = i
        
        def boxed = Utils.box(input)
        if(boxed.size()<i) {
-           wrapper.parentError = new InputMissingError("Expected $i or more inputs but fewer provided")
+           wrapper.parentError = new InputMissingError("Stage '$stageName' expected $i or more inputs but fewer provided", this)
        }
        else {
            this.allResolvedInputs << input[i]
@@ -644,10 +650,10 @@ class PipelineContext {
     */
    def getInput() {
        if(this.@input == null || Utils.isContainer(this.@input) && this.@input.size() == 0) {
-           throw new InputMissingError("Input expected but not provided")
+           throw new InputMissingError("Stage '$stageName' expects an input but none are available", this)
        }
        if(!inputWrapper || inputWrapper instanceof MultiPipelineInput) {
-           inputWrapper = new PipelineInput(this.@input, pipelineStages)
+           inputWrapper = new PipelineInput(this.@input, pipelineStages, this.aliases)
            this.allUsedInputWrappers[0] = inputWrapper
        }
        inputWrapper.currentFilter = currentFilter    
@@ -660,7 +666,7 @@ class PipelineContext {
    
    def getInputs() {
        if(!inputWrapper || !(inputWrapper instanceof MultiPipelineInput)) {
-           this.inputWrapper = new MultiPipelineInput(this.@input, pipelineStages)
+           this.inputWrapper = new MultiPipelineInput(this.@input, pipelineStages, this.aliases)
            this.allUsedInputWrappers[0] = inputWrapper
        }
        inputWrapper.currentFilter = currentFilter    
@@ -1380,7 +1386,7 @@ class PipelineContext {
         }
         
         if(!inputWrapper)
-           inputWrapper = new PipelineInput(this.@input, pipelineStages)
+           inputWrapper = new PipelineInput(this.@input, pipelineStages, this.aliases)
            
            
        // On OSX and Linux, R actively attaches to and listens to signals on the
@@ -1623,8 +1629,7 @@ class PipelineContext {
 
           command.branch = this.branch
           command.outputs = checkOutputs.unique()
-          command.executor = 
-              commandManager.start(stageName, command, config, Utils.box(this.input), 
+          commandManager.start(stageName, command, config, Utils.box(this.input), 
                                    new File(outputDirectory), this.usedResources,
                                    deferred, this.outputLog)
           // log.info "Command $command.id started with resources " + this.usedResources
@@ -1828,6 +1833,10 @@ class PipelineContext {
        }.flatten()
        
        log.info("Forwarding ${nextInputs.size()} inputs ${nextInputs}")
+   }
+    
+   Aliaser alias(def value) {
+       new Aliaser(this.aliases, String.valueOf(value))
    }
    
    /**
@@ -2169,6 +2178,10 @@ class PipelineContext {
             log.info "Resolved upstream outputs matching $pats for cleanup : $results"
             results.addAll(patResults)
         }
+        
+        log.info "Removing outputs that were aliased from cleanup targets: aliased = $aliases"
+        
+        results = results.grep { !aliases.isAliased(it) }
         
         // Finally, cleanup all these files
         log.info "Attempting to cleanup files: $results"

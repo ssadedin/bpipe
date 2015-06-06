@@ -284,7 +284,6 @@ class SgeCommandExecutor implements CommandExecutor {
 				msg += "\n" + Utils.indent(err.toString())
 			}
 			throw new PipelineError(msg)
-
 		}
         
 		// Successful stop command
@@ -300,5 +299,10 @@ class SgeCommandExecutor implements CommandExecutor {
     List<String> getIgnorableOutputs() {
 		//TODO ?? 
         return null 
+    }
+
+    @Override
+    public String statusMessage() {
+        return "SGE Job ID: $commandId command: $cmd"
     }
 }

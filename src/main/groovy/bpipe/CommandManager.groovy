@@ -194,6 +194,8 @@ class CommandManager {
 		this.commandIds[wrapped] = command.id
         this.executedCommands << command
         
+        command.executor = wrapped
+        
         saveCommand(command, commandDir)
         
         return wrapped
@@ -212,10 +214,10 @@ class CommandManager {
             log.info "Loading command info from $f.absolutePath"
             CommandExecutor exec
             Command cmd
-            log.info "Stopping command $exec"
             try {
                 f.withObjectInputStream { 
                     exec = it.readObject() 
+                    log.info "Stopping command $exec"
                     try {
                         cmd = it.readObject()
                     }
@@ -225,8 +227,13 @@ class CommandManager {
                     if(cmd)
                         stoppedCommands << cmd
                 }
-                exec.stop() 
-                log.info "Successfully stopped command $exec"
+                if(exec != null) {
+                    exec.stop() 
+                    log.info "Successfully stopped command $exec"
+                }
+                else {
+                    println "WARNING: stored command $f.asbsolutePath had null executor (internal error)"
+                }
             }
             catch(PipelineError e) {
               System.err.println("Failed to stop command: $exec.\n\n${Utils.indent(e.message)}\n\nThe job may already be stopped; use 'bpipe cleancommands' to clear old commands.")      
@@ -292,14 +299,18 @@ class CommandManager {
         if(command)
             saveCommand(command, completedDir)
         else
-            log.warning("Unable to location command $commandId as an executed command")
+            log.warning("Unable to locate command $commandId as an executed command")
             
         from.delete()
     }
     
     void saveCommand(Command command, File dir) {
-       return;
-       new File(dir, command.id).withObjectOutputStream { it << command.executor; it << command } 
+        
+       def e = command.executor
+       if(e instanceof ThrottledDelegatingCommandExecutor)
+            e = e.commandExecutor
+  
+       new File(dir, command.id).withObjectOutputStream { it << e; it << command } 
     }
     
     public static List<CommandExecutor> getCurrentCommands() {

@@ -101,6 +101,10 @@ class TransformOperation {
         
         this.body = c
         
+        // Save original files: we need them later in case they were different
+        // from those implied by previous stages (eg: modified by 'from')
+        List originalFiles = this.files
+        
         // We are going to re-resolve the files to use based on the 
         // from patterns (which are stored in exts)
         this.files = []
@@ -140,7 +144,7 @@ class TransformOperation {
             if(!pattern.endsWith('$'))
                 pattern += '$'
                 
-            PipelineInput input = new PipelineInput(this.files, this.ctx.pipelineStages)
+            PipelineInput input = new PipelineInput(originalFiles, this.ctx.pipelineStages, this.ctx.aliases)
             List<String> filesResolved = input.resolveInputsEndingWithPatterns([fromPattern + '$'], [fromPattern])
             this.files.addAll(filesResolved)
             

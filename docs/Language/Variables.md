@@ -16,17 +16,32 @@ Implicit variables are special variables that are made available to your Bpipe p
 
 The input and output variables are how Bpipe automatically connects tasks together to make a pipeline.  The default input to a stage is the output from the previous stage. In general you should always try to use these variables instead of hard coding file names into your commands.   Using these variables ensures that your tasks are reusable and can be joined together to form flexible pipelines.  
 
-### =Extension Syntax for Input and Output Variables=
+### Extension Syntax for Input and Output Variables
 
-Bpipe provides a special syntax for easily referencing inputs and outpus with specific file extensions. See [ExtensionSyntax](Language/ExtensionSyntax) for more information.
+Bpipe provides a special syntax for easily referencing inputs and outpus with
+specific file extensions. See [ExtensionSyntax](Language/ExtensionSyntax) for
+more information.
 
 **Multiple Inputs**
 
-Different tasks have different numbers of inputs and outputs, so what happens when a stage with multiple outputs is joined to a stage with only a single input?  Bpipe's goal is to try and make things work no matter what stages you join together.  To do this:
+Different tasks have different numbers of inputs and outputs, so what happens
+when a stage with multiple outputs is joined to a stage with only a single
+input?  Bpipe's goal is to try and make things work no matter what stages you
+join together.  To do this:
 
-- The variable *input1* is always a single file name that a task can read inputs from.  If there were multiple outputs from the previous stage, the *input1* variable is the first of those outputs.  This output is treated as the "primary" or "default" output.  The variable `$input` also evaluates, by default, to the value of *input1*.
-- If a task wants to accept more than one input then it can reference each input using the variables *input1*, *input2*, etc.
-- If a task has an unknown number of inputs it may reference the variable *input* as a *list* and use array like indices to access the elements, for example `_input[is the same as `input1`, `input[1](0]_`)` corresponds to `input2`, etc.   You can reference the size of the inputs using `input.size()` and iterate over inputs using a syntax like
+- The variable *input1* is always a single file name that a task can read
+  inputs from.  If there were multiple outputs from the previous stage, the
+  *input1* variable is the first of those outputs.  This output is treated as the
+  "primary" or "default" output.  The variable `$input` also evaluates, by
+  default, to the value of *input1*.
+- If a task wants to accept more than one input then it can reference each
+  input using the variables *input1*, *input2*, etc.
+- If a task has an unknown number of inputs it may reference the variable
+  *input* as a *list* and use array like indices to access the elements, for
+  example `input[0]` is the same as `input1`, `input[1]` corresponds to
+  `input2`, etc.   You can reference the size of the inputs using `input.size()`
+  and iterate over inputs using a syntax like
+
 ```groovy 
 
   for(i in input) {
@@ -34,11 +49,23 @@ Different tasks have different numbers of inputs and outputs, so what happens wh
   }
 ```
 
-- When a stage has multiple outputs, the first such output is treated as the "primary" output and appears to the next stage as the "input" variable.  If the following stage only accepts a single input then its input will be the primary output of the previous stage.
+- When a stage has multiple outputs, the first such output is treated as the
+  "primary" output and appears to the next stage as the "input" variable.  If the
+  following stage only accepts a single input then its input will be the primary
+  output of the previous stage.
+
+- Use of [ExtensionSyntax](../Language/ExtensionSyntax) will filter the inputs to 
+  include only those of a particular type. For example, `$inputs.bam` will evaluate
+  to all files with extension '.bam', and `$input1.bam` will find the first BAM file 
+  output by an upstream stage.
 
 ### Explicit Variables
 
-Explicit variables are ones you define yourself.  These variables are created inline inside your Bpipe scripts using Java-like (or Groovy) syntax.  They can be defined inside your tasks or outside of your tasks to share them between tasks.  For example, here two variables are defined and shared between two tasks:
+Explicit variables are ones you define yourself.  These variables are created
+inline inside your Bpipe scripts using Java-like (or Groovy) syntax.  They can
+be defined inside your tasks or outside of your tasks to share them between
+tasks.  For example, here two variables are defined and shared between two
+tasks:
 ```groovy 
 
   NUMTHREADS=8
