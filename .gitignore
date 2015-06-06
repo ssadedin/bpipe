@@ -27,3 +27,8 @@ Icon
 
 # ignore jar files
 local-lib/gridgain-hpc-5.1.2.jar
+
+# test artifacts
+test.out
+test.src.out
+
