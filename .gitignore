@@ -1,0 +1,34 @@
+# see "https://github.com/github/gitignore"
+
+# BPIPE ARTIFACTS
+.bpipe
+commandlog.txt
+
+# GRADLE: Output directories
+build/
+.gradle/
+.gradletasknamecache
+
+# Java class files
+*.class
+
+# OSX
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+# OSX: Thumbnails
+._*
+
+# OSX: Files that might appear on external disk
+.Spotlight-V100
+.Trashes
+
+# ignore jar files
+local-lib/gridgain-hpc-5.1.2.jar
+
+# test artifacts
+test.out
+test.src.out
+
