@@ -1,5 +1,7 @@
 hello = {
-    alias input.txt to output.csv
+    produce("crazy.csv") {
+        forward(input.txt) to(output.csv)
+    }
 }
 
 world = {

@@ -8,6 +8,10 @@ world = {
     """
 }
 
+there = {
+    cleanup "*.csv"
+}
+
 run {
-    hello + world
+    hello + world + there
 }

@@ -108,4 +108,9 @@ class ThrottledDelegatingCommandExecutor {
         }
         this.commandExecutor.stop()
     }
+    
+    String statusMessage() {
+        this.commandExecutor.statusMessage()
+    }
+    
 }

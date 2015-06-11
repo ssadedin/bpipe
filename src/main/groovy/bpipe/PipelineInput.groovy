@@ -199,9 +199,10 @@ class PipelineInput {
 	 * given values.  See also {@link MultiPipelineInput#mapToCommandValue(Object)}
 	 */
 	String mapToCommandValue(def values) {
-        def result = this.aliases[String.valueOf(Utils.box(values)[defaultValueIndex])]
-        log.info "Adding resolved input $result"
-        this.addResolvedInputs([result])
+        String rawResolvedInput = String.valueOf(Utils.box(values)[defaultValueIndex])
+        def result = this.aliases[rawResolvedInput]
+        log.info "Adding resolved input $result (raw input = $rawResolvedInput)"
+        this.addResolvedInputs([rawResolvedInput])
         return result
 	}
     

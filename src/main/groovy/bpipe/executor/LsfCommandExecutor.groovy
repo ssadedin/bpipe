@@ -25,6 +25,7 @@
 package bpipe.executor
 
 import groovy.util.logging.Log
+
 import java.util.regex.Pattern
 import java.util.regex.Matcher
 
@@ -347,5 +348,10 @@ class LsfCommandExecutor implements CommandExecutor {
     List<String> getIgnorableOutputs() {
 		//TODO ?? 
         return null 
+    }
+
+    @Override
+    public String statusMessage() {
+        return "LSF [$name] JobID: $commandId, command: $cmd"
     }
 }

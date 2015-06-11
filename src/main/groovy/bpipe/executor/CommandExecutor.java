@@ -60,6 +60,8 @@ public interface CommandExecutor extends Serializable {
     
     void cleanup();
     
+    String statusMessage(); 
+    
     /**
      * Return a list of outputs that should be ignored in terms of 
      * being considered as actual output files for the executed job

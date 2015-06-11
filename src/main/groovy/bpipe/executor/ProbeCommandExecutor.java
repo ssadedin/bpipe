@@ -70,4 +70,9 @@ public class ProbeCommandExecutor implements CommandExecutor {
         return null;
     }
 
+    @Override
+    public String statusMessage() {
+        return "Probe command executor";
+    }
+
 }

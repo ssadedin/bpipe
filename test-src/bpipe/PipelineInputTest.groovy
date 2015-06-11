@@ -8,10 +8,10 @@ class PipelineInputTest {
 
     @Test
     public void testPlusOperator() {
-        PipelineInput inp = new PipelineInput("foo.txt", [])
-        
+        PipelineInput inp = new PipelineInput("foo.txt", [], null)
+
         println( inp + ".bar")
-        
+
     }
 
 }

@@ -550,7 +550,7 @@ public class Pipeline {
                     if(e.ctx && e.ctx.stageName != "Unknown")
                         System.println "ERROR: stage $e.ctx.stageName failed: $e.message \n"
                     else
-                        System.println "ERROR: stage failed: $e.message \n" 
+                        System.println "ERROR: $e.message \n" 
                 }
                         
                 failed = true

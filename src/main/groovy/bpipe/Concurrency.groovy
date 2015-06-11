@@ -91,9 +91,11 @@ class ResourceUnit implements Serializable {
 class Concurrency {
     
     /**
-     * The thread pool to use for executing tasks.
+     * The thread pools to use for executing tasks. Pools are organised into tiers,
+     * where dependent threads *must* be placed in different tiers, to ensure there
+     * cannot be a possibility of deadlock.
      */
-    ThreadPoolExecutor pool = initPool() 
+    List<ThreadPoolExecutor> pools = Collections.synchronizedList([initPool()])
     
     /**
      * Each resource allocation allocates resources for its resource type against
@@ -106,9 +108,12 @@ class Concurrency {
      */
     Map<Runnable,AtomicInteger> counts = [:]
     
-    ThreadPoolExecutor initPool() {
+    ThreadPoolExecutor initPool(int numThreads=-1) {
         
-        log.info "Creating thread pool with " + Config.config.maxThreads + " threads to execute parallel pipelines"
+        if(numThreads < 0)
+            numThreads = Config.config.maxThreads*2 
+        
+        log.info "Creating thread pool with " + numThreads + " threads to execute parallel pipelines"
         
         ThreadFactory threadFactory = { Runnable r ->
                           def t = new Thread(r)  
@@ -132,7 +137,7 @@ class Concurrency {
         // threads, it essentially disables the queueing and makes it so that any 
         // overflow from the pool results in a new thread being created.
         // 
-        this.pool = new ThreadPoolExecutor(Config.config.maxThreads*2, Integer.MAX_VALUE,
+        return new ThreadPoolExecutor(numThreads, Integer.MAX_VALUE,
                                       0L, TimeUnit.MILLISECONDS,
                                       new LinkedBlockingQueue<Runnable>(), 
 //                                      new SynchronousQueue<Runnable>(), 
@@ -175,12 +180,23 @@ class Concurrency {
     }
     
     /**
-     * Execute the given list of runnables using the global thread pool,
-     * and wait for them all to finish. 
+     * Execute the given list of runnables using the specified thread pool. Thread pools are maintained in
+     * tiers, which are designed to separate threads which have dependencies (hence raising the
+     * possibility of deadlocks). Each nested level of the pipeline runs in a separate "tier".
+     * <p>
+     * This method waits for all the runnables in the given list to finish before returning.
      * 
      * @param runnables
      */
-    void execute(List<Runnable> runnables) {
+    void execute(List<Runnable> runnables, int tier=0) {
+        
+        synchronized(this.pools) {
+            while(this.pools.size()<=tier) {
+                this.pools.add(initPool(Config.config.maxThreads+1))
+            }
+        }
+        
+        ThreadPoolExecutor pool = pools[tier]
         
         AtomicInteger runningCount = new AtomicInteger()
         
