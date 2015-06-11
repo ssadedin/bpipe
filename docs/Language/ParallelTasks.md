@@ -31,7 +31,7 @@ You can execute multiple stages in parallel too:
 ```groovy 
 
 Bpipe.run {
-  hello + [ blue + world, red + mars ] 
+  hello + [ blue + world, red + mars ]
 }
 ```
 
