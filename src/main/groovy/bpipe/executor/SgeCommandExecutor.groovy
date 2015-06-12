@@ -103,11 +103,9 @@ class SgeCommandExecutor implements CommandExecutor {
 		 * - o: define the file to which redirect the standard output
 		 * - e: define the file to which redirect the error output
 		 */
-		def startCmd = "qsub -V "
+		def startCmd = "qsub "
 		// add other parameters (if any)
-		if(config?.queue) {
-			startCmd += "-q ${config.queue} "
-		}
+
     if( config?.sge_request_options ) {
         startCmd += config.sge_request_options + ' '
     }
@@ -125,6 +123,11 @@ class SgeCommandExecutor implements CommandExecutor {
     if( config?.walltime )
     {
       additional_options += "#\$ -l h_rt=${config.walltime}\n"
+    }
+
+    if(config?.queue)
+    {
+      additional_options += "#\$ -q ${config.queue} "
     }
 
     if( config?.procs && config.procs.toString().isInteger() )
@@ -149,7 +152,8 @@ class SgeCommandExecutor implements CommandExecutor {
     cmdWrapperScript.text =
       """\
       #!/bin/sh
-      #\$ -wd \$PWD
+      #\$ -S /bin/sh
+      #\$ -cwd
       #\$ -N \"$name\"
       #\$ -terse
       #\$ -o $jobDir/$CMD_OUT_FILENAME
