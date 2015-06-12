@@ -159,12 +159,15 @@ class SgeCommandExecutor implements CommandExecutor {
       #\$ -o $jobDir/$CMD_OUT_FILENAME
       #\$ -e $jobDir/$CMD_ERR_FILENAME
       ${additional_options}
+      """.stripIndent()
+
+    cmdWrapperScript.text +=
+      """\
       ${cmd}
       result=\$?
       echo -n \$result > $jobDir/$CMD_EXIT_FILENAME
       exit \$result
-      """
-      .stripIndent()
+      """.stripIndent()
 
 		/*
 		 * prepare the command to invoke
