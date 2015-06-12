@@ -127,7 +127,7 @@ class SgeCommandExecutor implements CommandExecutor {
 
     if(config?.queue)
     {
-      additional_options += "#\$ -q ${config.queue} "
+      additional_options += "#\$ -q ${config.queue}\n"
     }
 
     if( config?.procs && config.procs.toString().isInteger() )
