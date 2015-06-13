@@ -1,7 +1,5 @@
 # Directory Convenience Function
 
-## Directory Convenience Function
-
 Sometimes a command you want requires not the name of an output file, but the name of the directory in which that file resides. This can cause a bit of confusion to Bpipe, because the real output is the file, but what you reference in your command is the directory.
 
 To help with this, Bpipe offers a special meaning for the "dir" extension. When you reference `$output.dir` Bpipe treats it as a reference to the output **file**, but it passes the directory in which the file resides to the command that is executing.
@@ -17,9 +15,9 @@ While the `input.dir` is a fixed value, `output.dir` is a writeable value, so yo
 ```groovy 
 
 hello = {
-   output.dir="out_dir"
    def myOutput = output.txt
    exec "cp $input.csv $myOutput"
+   output.dir="out_dir"
 }
 ```
 
