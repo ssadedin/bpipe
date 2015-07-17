@@ -1182,23 +1182,29 @@ class PipelineContext {
     void uses(Map resourceSpec, Closure block) {
         List<ResourceUnit> res = resourceSpec.collect { e ->
             String name = e.key
-            int n
+            int n = 1
+            int max = 0
             try {
                 if(e.value instanceof String)
                     n = Integer.parseInt(e.value)
-                else
-                    n = e.value
+                else 
+                if(e.value instanceof IntRange) {
+                    n = e.value.from 
+                    max = e.value.to 
+                }
+                else 
+                    n = e.value as Integer
             }
             catch(NumberFormatException f) {
                 throw new PipelineError("The value for resource $e.key ($e.value) couldn't be parsed as a number")
             }
             
             if(name == "GB") {
-                return new ResourceUnit(key: "memory", amount: (n as Integer) * 1024)
+                name = "memory"
+                n = n * 1024
             }
-            else {
-                return new ResourceUnit(key: name, amount: n as Integer)
-            }
+            
+            new ResourceUnit(key: name, amount: n, maxAmount: max)
         }
         resources(res, block)
     }
@@ -1562,28 +1568,37 @@ class PipelineContext {
       // after we have resolved the right thread / procs value
       Command command = new Command(command:joined, configName:config)
       
-      // Replacement of magic $thread variable with real value 
+      // Work out how many threads to request
       String actualThreads = this.usedResources['threads'].amount as String  
       
       // If the config itself specifies procs, it should override the auto-thread magic variable
       // which may get given a crazy high number of threads
+      String configThreads = null
       if(config) {
           def procs = command.getConfig(Utils.box(this.input)).procs
           if(procs) {
+              int maxProcs = 0
               if(procs instanceof String) {
                  // Allow range of integers
-                 procs = procs.replaceAll(" *-.*\$","")
+                 def intRangeMatch = (procs =~ /([0-9]*) *- *([0-9]*)$/)
+                 if(intRangeMatch) {
+                     procs = intRangeMatch[0][1].toInteger()
+                     maxProcs = intRangeMatch[0][2].toInteger()
+                 }
+                 else {
+                     procs = procs.trim().toInteger()
+                 }
               }
               else
               if(procs instanceof IntRange) {
-                  procs = procs.to
+                  procs = procs.from
+                  maxProcs = procs.to
               }
-              log.info "Found procs value $procs to override computed threads value of $actualThreads"
-              actualThreads = String.valueOf(Math.min(procs.toInteger(), actualThreads.toInteger()))
+              log.info "Found procs value $procs (maxProcs = $maxProcs) to override computed threads value of $actualThreads"
+              this.usedResources['threads'].amount = procs
+              this.usedResources['threads'].maxAmount = maxProcs
           }
       }
-      
-      command.command = joined.replaceAll(THREAD_LAZY_VALUE, actualThreads)
       
       // Inferred outputs are outputs that are picked up through the user's use of 
       // $ouput.<ext> form in their commands. These are intercepted at string evaluation time
@@ -1946,7 +1961,13 @@ class PipelineContext {
             }
             
             try {
-                this.usedResources['threads'].amount = Math.max((int)1, (int)maxThreads / childCount)
+                  // Old logic: divide by numer of branches - overly conservative
+                  // this.usedResources['threads'].amount = Math.max((int)1, (int)maxThreads / childCount)
+                  // The actual value is not resolved now until resources are negotiated inside Concurrency.allocateResources
+                
+                // Note the value 1 here is interpreted as "default" or "unset by the user" by 
+                // the ThrottledDelegatingCommandExecutor
+                this.usedResources['threads'].amount = 1
             }
             catch(Exception e) {
                 e.printStackTrace()
