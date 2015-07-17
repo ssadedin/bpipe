@@ -290,6 +290,7 @@ class PipelineCategory {
                                     
                                 if(!childInputs) {
                                     println "MSG: Skipping region ${chr.name} because no matching inputs were found"
+                                    Concurrency.instance.unregisterResourceRequestor(child)
                                     return
                                 }
                             }
@@ -309,6 +310,7 @@ class PipelineCategory {
                         catch(Exception e) {
                             log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
                             Runner.reportExceptionToUser(e)
+                            Concurrency.instance.unregisterResourceRequestor(child)
                             child.failed = true
                         }
                     } as Runnable
