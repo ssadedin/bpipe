@@ -375,15 +375,7 @@ class Concurrency {
             if(resourceRequestors.size() >= numBidders) {
                 // distribute resources
                 log.info "Assuming responsibility for distributing resources for $resourceUnit.key: (requestors = ${resourceRequestors.size()} / $numBidders)"
-
                 this.allocateResources(resource)
-
-                resourceRequestors.each {
-                    synchronized(it) {
-                        it.notify()
-                    }
-                }
-
                 amount = request.allocated.amount
             }
             else {
@@ -392,6 +384,12 @@ class Concurrency {
                     resourceRequestors.wait(2000)
                     if(request.allocated == null) {
                         log.info "Thread ${Thread.currentThread().name} waiting for resource allocation ($resourceUnit)"
+                        numBidders = registeredResourceRequestors.count { it.bidding }
+                        if(resourceRequestors.size() >= numBidders) {
+                            log.info "Taking over resource allocation because requested/bidders = ${resourceRequestors.size()} / $numBidders"
+                            this.allocateResources(resource)
+                            amount = request.allocated.amount
+                        }
                     }
                     else {
                         log.info "Thread ${Thread.currentThread().name} allocated $request.allocated resources after " + (System.currentTimeMillis() - startTimeMs)
@@ -421,7 +419,7 @@ class Concurrency {
        log.info "First pass allocations are " + resourceRequestors*.allocated*.amount
        
        // Then divide up the remainder of the free resources to the ones that are unlimited
-       int freeResources = resource.availablePermits() - resourceRequestors.sum { it.allocated.amount }
+       int freeResources = resource.availablePermits() - resourceRequestors.sum { it.allocated.amount }?:0
        List<ResourceRequestor> unlimitedRequestors = resourceRequestors.grep { it.resource.amount == ResourceUnit.UNLIMITED || it.resource.maxAmount }
        if(freeResources > 0 && unlimitedRequestors) {
            
@@ -464,6 +462,12 @@ class Concurrency {
                    freeResources --
                }
            }
+       }
+       
+       resourceRequestors.each {
+            synchronized(it) {
+                it.notify()
+            }
        }
    }
    
