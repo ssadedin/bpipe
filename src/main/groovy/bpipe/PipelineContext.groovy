@@ -1461,7 +1461,11 @@ class PipelineContext {
     
     class CommandThread extends Thread {
         Command toWaitFor
+        Pipeline pipeline
         void run() {
+
+            Pipeline.currentRuntimePipeline.set(pipeline)
+
             toWaitFor.exitCode = toWaitFor.executor.waitFor()
         }
     }
@@ -1519,7 +1523,7 @@ class PipelineContext {
           }
           
           List<Integer> exitValues = []
-          List<CommandThread> threads = execCmds.collect { new CommandThread(toWaitFor:it) }
+          List<CommandThread> threads = execCmds.collect { new CommandThread(toWaitFor:it, pipeline:Pipeline.currentRuntimePipeline.get()) }
           threads*.start()
           
           while(true) {
