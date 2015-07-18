@@ -98,24 +98,6 @@ class ThrottledDelegatingCommandExecutor {
     @Override
     int waitFor() {
         if(deferred) {
-
-//          ResourceUnit threadResource = resources.find { it.key == "threads" }
-//
-//          // TODO: test is wrong ! 
-//          // == 1 at the end is incorrect, 1 is the default, so this test is trying to check if
-//          // the user set the value explicitly or not. However they could have actually explicitly set it to 1
-//          // in which case this will go wonky
-//          if(threadResource && command.command.contains(PipelineContext.THREAD_LAZY_VALUE) && (threadResource.amount==1) && (threadResource.maxAmount==0)) 
-//              threadResource.amount = ResourceUnit.UNLIMITED 
-//
-//          resources.each { Concurrency.instance.acquire(it) }
-//
-//          String threadAmount = String.valueOf(resources.find { it.key == "threads" }?.amount)
-//
-//          command.command = command.command.replaceAll(PipelineContext.THREAD_LAZY_VALUE, threadAmount)
-//
-//          bpipe.Pipeline.currentRuntimePipeline.get().isIdle = false
-//          commandExecutor.start(cfg, this.command, outputDirectory)
             doStart(cfg,this.command,outputDirectory)
         }
         
