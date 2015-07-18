@@ -160,6 +160,7 @@ class CommandManager {
         
         if(Runner.opts.t || Config.config.breakTriggered) {
             
+            /*
           String msg = command.branch.name ? "Branch $command.branch.name would execute: $cmd" : "Would execute $cmd"
           if(cmdExec instanceof LocalCommandExecutor)
               throw new PipelineTestAbort(msg)
@@ -169,7 +170,15 @@ class CommandManager {
               }
               throw new PipelineTestAbort("$msg\n\n                using $cmdExec with config $cfg")
           }
+          */
         }
+        
+        if(!(cmdExec instanceof LocalCommandExecutor)) {
+            if(cfg && command.configName) {
+                cfg.name = configName
+            }
+        }
+        
         
         // Create a command id for the job
         command.id = CommandId.newId()
