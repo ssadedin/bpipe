@@ -24,6 +24,7 @@
  */
 package bpipe
 
+import java.util.Collections.SynchronizedList
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.SynchronousQueue;
@@ -55,13 +56,45 @@ class ResourceUnit implements Serializable {
     
     public static final long serialVersionUID = 0L
     
+    public static final int UNLIMITED = -1
+    
     int amount = 0;
+    
+    /**
+     * Note that the default max amount of 0 implies that the 
+     * maximum amount will be unlimited, or will take the limit
+     * imposed automatically by configuration
+     */
+    int maxAmount = 0
     
     String key
     
     String toString() {
         "$amount $key"
     }
+}
+
+class ResourceRequest implements Serializable {
+    
+    public static final long serialVersionUID = 0L
+    
+    /**
+     * The amount of the resource to be requested
+     * <p>
+     * In this attribute, the maxAmount of zero is interpreted as
+     * requesting an unlimited amount up to the default max_threads_per_command 
+     * value which is set in the default / user bpipe.config
+     */
+    ResourceUnit resource
+    
+    /**
+     * The amount that was allocated.
+     * <p>
+     * In this attribute, the maxAmount is set to contain the actual maximum that was
+     * derived after considering configuration from bpipe.config, pipeline stage and 
+     * defaults.
+     */
+    ResourceUnit allocated
 }
 
 @Singleton
@@ -91,6 +124,18 @@ class ResourceUnit implements Serializable {
 class Concurrency {
     
     /**
+     * The maximum time a resource request will be kept waiting before distributing resources.
+     * The purpose of this period is to allow for fairer scheduling of resources.
+     */
+    public final static long AUCTION_TIMEOUT_MS = 5000L
+    
+    /**
+     * When waiting for an auction to start, resource requestors will periodically poll
+     * to check if they have timed out yet with this frequency (see #AUCTION_TIMEOUT_MS)
+     */
+    public final static long AUCTION_ATTENDEE_POLL_PERIOD = 2000L
+    
+    /**
      * The thread pools to use for executing tasks. Pools are organised into tiers,
      * where dependent threads *must* be placed in different tiers, to ensure there
      * cannot be a possibility of deadlock.
@@ -102,12 +147,31 @@ class Concurrency {
      * these resource allocations.
      */
     Map<String,Semaphore> resourceAllocations = initResourceAllocations()    
+    
+    /**
+     * List of known resource requestors
+     */
+    List<ResourceRequestor> registeredResourceRequestors = Collections.synchronizedList([])
+    
+    /**
+     * The current outstanding list of resource requests waiting for a resource auction to start
+     * <p>
+     * NOTE: in the future this needs to become a per-resource list. Right now, it only
+     * contains requests for thread resources.
+     */
+    List<ResourceRequest> resourceRequests = Collections.synchronizedList([])
 	
     /**
      * Counts of threads running
      */
     Map<Runnable,AtomicInteger> counts = [:]
     
+    /**
+     * Create a thread pool for use by this class, based on the maximum concurrency 
+     * configured by the user.
+     * 
+     * @return  A ThreadPoolExecutor for executing jobs
+     */
     ThreadPoolExecutor initPool(int numThreads=-1) {
         
         if(numThreads < 0)
@@ -168,7 +232,7 @@ class Concurrency {
 
         Map res = [ threads: new Semaphore(Config.config.maxThreads)]
 
-        if(Config.userConfig.maxMemoryMB) {
+        if(Config.userConfig?.maxMemoryMB) {
             res["memory"] = new Semaphore(Integer.parseInt(Config.userConfig.maxMemoryMB))
         }               
         
@@ -232,6 +296,40 @@ class Concurrency {
                 Thread.sleep(300)
         }
     }
+    
+   /**
+    * Register the given requestor as a participant in auctions
+    * <p>
+    * The purpose of this "registration" is to increase the fairness of auctions
+    * for resources. Auctions try to wait for all potential "bidders" to show
+    * up and put in a bid for resources. Every pipeline segment registers
+    * as a "bidder" using this method, so that auctions will wait for them.
+    * The purpose of waiting for "bidders" to arrive is to enable a fair scheduling
+    * of resources instead of first-come-first-serve which leads to a greedy allocation
+    * of resources where the first to arrive gets over allocated resources.
+    * <p>
+    * Note that when a command is executing, the requestor remains registered,
+    * but says they are not 'bidding' via the isBidding() method.
+    * <p>
+    * A requestor should deregister themselves via the unregisterResourceRequestor 
+    * method when they are finished. They should signal then are not bidding when not
+    * active (eg: when waiting for a command to finish).
+    * 
+    * @param requestor
+    */
+   void registerResourceRequestor(ResourceRequestor requestor) {
+       log.info "Register resource requestor $requestor"
+       synchronized(resourceRequests) {
+           registeredResourceRequestors.add(requestor)
+       }
+   }
+   
+   void unregisterResourceRequestor(ResourceRequestor requestor) {
+       log.info "Unregister resource requestor $requestor"
+       synchronized(resourceRequests) {
+           registeredResourceRequestors.remove(requestor)
+       }
+   }
 
    /**
     * Called by parallel paths before they begin execution: enforces overall concurrency by blocking
@@ -250,15 +348,200 @@ class Concurrency {
         
        int amount = resourceUnit.amount
         
-       log.info "Thread " + Thread.currentThread().getName() + " requesting for $amount concurrency permit(s) type $resourceUnit.key with " + resource.availablePermits() + " available"
+       log.info "Thread " + Thread.currentThread().getName() + 
+           " requesting for $amount concurrency permit(s) type $resourceUnit.key with " + resource.availablePermits() + " available"
+           
        long startTimeMs = System.currentTimeMillis()
+       
+       if(resourceUnit.key == "threads") {
+           amount = negotiateDynamicResources(resourceUnit, resource)
+       }
+           
        resource.acquire(amount)
+       resourceUnit.amount = amount
+       
        long durationMs = startTimeMs - System.currentTimeMillis()
        if(durationMs > 1000) {
            log.info "Thread " + Thread.currentThread().getName() + " blocked for $durationMs ms waiting for resource $resourceUnit.key amount(s) $amount"
        }
        else
            log.info "Thread " + Thread.currentThread().getName() + " acquired resource $resourceUnit.key in amount $amount"
+   }
+
+   /**
+    * Attempt to share the given resource fairly among all requestors that are bidding
+    * for the same resource.
+    * <p>
+    * At the moment, this is only implemented for threads to support the dynamic 
+    * "$threads" variable. The implementation blocks ALL requests for thread resources
+    * prior to the actual resource acquisition, to adjust their requests. The result is that
+    * acquisition takes place in two phases:
+    * 
+    * <li> All the currently active segments put in their "bids" for resources by 
+    *      entering this method
+    * <li> They are blocked until every active segment has done this. Note that "active"
+    *      means that #Pipeline.isIdle is set to false.
+    * <li> When all active segments have made their bid, the bids are resolved. This is 
+    *      done by the last thread to enter this method, which as the last entrant, 
+    *      assumes the role of dividing up the available resources among the "bidders".
+    * <li> The allocated amount is returned and replaces the amount actually used
+    *      in the actual resource acquisition phase
+    * 
+    * Note that in the future this will become a generic mechanism, so everything in here
+    * is handled generically. However some limitations mean that for now we can't apply this
+    * to more than one resource (specifically, dividing up resources obviously has to be done
+    * "per resource". The current implementation only works because <i>every</i> command has
+    * to allocate a thread. Optional resources will have to have a more sophisticated 
+    * per-resource handling.
+    * 
+    * @param resourceUnit   the amount of the resource requested
+    * @param resource       the semaphore that controls access to the resource - used to 
+    *                       estimate current available resources.
+    * @return               the actual amount of resources allocated
+    */
+    private int negotiateDynamicResources(ResourceUnit resourceUnit, Semaphore resource) {
+        int amount = resourceUnit.amount
+        long startTimeMs = System.currentTimeMillis()
+        ResourceRequest request = new ResourceRequest(resource:resourceUnit)
+        synchronized(resourceRequests) {
+            // Two scenarios:
+            //
+            //  - we are the last thread to arrive here
+            //  - we are not the last
+            //
+            // If we are the last, it is our job to distribute the resources
+            // and then signal the others to continue
+            int numBidders = registeredResourceRequestors.count { it.bidding }
+            
+            int auctionThreshold = Math.min(numBidders, Config.config.maxThreads-1)
+            
+            log.info "There are ${registeredResourceRequestors.size()} registered bidders with $numBidders currently bidding, will distribute resources at $auctionThreshold"
+
+            resourceRequests.add(request)
+            while(true) {
+               tryAuction(resource, startTimeMs) 
+                if(request.allocated == null) {
+                    log.info "Thread ${Thread.currentThread().name} waiting for resource allocation ($resourceUnit)"
+                }
+                else {
+                    log.info "Thread ${Thread.currentThread().name} allocated $request.allocated resources after " + (System.currentTimeMillis() - startTimeMs)
+                    amount = request.allocated.amount
+                    break
+                }
+                resourceRequests.wait(AUCTION_ATTENDEE_POLL_PERIOD)
+           }
+        }
+        return amount
+    }
+    
+    /**
+     * Check if it is time to run an auction for resources on the given resource
+     * If so, run the auction and return true, otherwise return false.
+     * <p>
+     * NOTE: thread safety oon this code relies on it only being accessed by a thread that 
+     *       holds a monitor on the resourceRequests list.
+     * 
+     * @param resource
+     * @param startTimeMs
+     * @return  true if an auction was held
+     */
+    boolean tryAuction(Semaphore resource, long startTimeMs) {
+        int numBidders = registeredResourceRequestors.count { it.bidding }
+        int auctionThreshold = Math.min(numBidders, Config.config.maxThreads)
+        
+        if(resourceRequests.size() >= auctionThreshold) { 
+            log.info "Taking over resource allocation because requested/bidders = ${resourceRequests.size()} / $auctionThreshold"
+            this.allocateResources(resource)
+            return true
+        }        
+        
+        if(System.currentTimeMillis()-startTimeMs > AUCTION_TIMEOUT_MS) {
+            log.info "Assuming over resource allocation because requested/bidders = ${resourceRequests.size()} / $auctionThreshold"
+            this.allocateResources(resource)
+            return true
+        }
+        
+        return false
+    }
+   
+    /**
+     * Distribute available resources to the current list of requestors,
+     * then clear the list and notify all participants via notifyAll() on the 
+     * resourceRequests list.
+     * <p>
+     * The current algorithm for allocating resources is quite simple. It works by first
+     * distributing the minimum resources requested by all the participants to each 
+     * participant. Then the remaining available resources are distributed evenly 
+     * to all participants to "top them up" with more resources where variable
+     * amounts of resource were requested.
+     * <p>
+     * NOTE: thread safety oon this code relies on it only being accessed by a thread that 
+     *       holds a monitor on the resourceRequests list.
+     */
+     void allocateResources(Semaphore resource) {
+       
+       // Start by trying to allocate the minimum resources to everyone, if possible
+       resourceRequests.each { r->
+           r.allocated = new ResourceUnit(key: r.resource.key, amount: r.resource.amount)
+           if(r.resource.amount != ResourceUnit.UNLIMITED && r.resource.maxAmount == 0 ) // not a dynamic allocation
+               r.allocated.amount = r.resource.amount
+           else { // dynamic allocation: seed the value with 1 and we will top up with more after
+               if(r.resource.amount == ResourceUnit.UNLIMITED)
+                   r.allocated.amount = 1 
+           }
+       }
+       
+       log.info "First pass allocations are " + resourceRequests*.allocated*.amount
+       
+       // Then divide up the remainder of the free resources to the ones that are unlimited
+       int freeResources = resource.availablePermits() - (resourceRequests.sum { it.allocated.amount }?:0)
+       List<ResourceRequestor> unlimitedRequestors = resourceRequests.grep { it.resource.amount == ResourceUnit.UNLIMITED || it.resource.maxAmount }
+       if(freeResources > 0 && unlimitedRequestors) {
+           
+           int perRequestorAmount = Math.floor(freeResources / unlimitedRequestors.size())
+           
+           log.info "Dividing up $freeResources free resource permits among ${unlimitedRequestors.size()} requestors = $perRequestorAmount"
+           
+           unlimitedRequestors.eachWithIndex { ResourceRequest r, int i ->
+               
+               int myMax = r.resource.maxAmount
+               if(r.resource.amount == ResourceUnit.UNLIMITED) {
+                   // Note: default value for max_per_command_threads is set in the default bpipe.config,
+                   // so unless the user explicitly overrode it, it will always be non-null
+                   if(Config.userConfig.max_per_command_threads != null) {
+                       myMax = Config.userConfig.max_per_command_threads.toInteger()
+                   }
+                   else
+                       myMax = 0
+               }
+               
+               r.allocated.maxAmount = myMax
+               
+               int myAmount = perRequestorAmount 
+               
+               // Would this amount exceed the max amount set for this resource?
+               if((myMax > 0) &&  (r.allocated.amount + perRequestorAmount > myMax)) {
+                   // It would exceed the max amount: just allocate the difference to bring us up to the max amount
+                   myAmount = Math.max(0, myMax - r.allocated.amount )
+                   log.info "$perRequestorAmount is too much for requestor $i: allocating $myAmount "
+               }
+               
+               r.allocated.amount += myAmount
+               freeResources -= myAmount
+           }
+           
+           unlimitedRequestors.eachWithIndex { r, i ->
+               if(freeResources>0 && (r.allocated.maxAmount == 0 || r.allocated.amount < r.allocated.maxAmount)) {
+                   log.info "Bonus free resource to unlimited requestor $i"
+                   r.allocated.amount ++
+                   freeResources --
+               }
+           }
+       }
+       
+       resourceRequests.notifyAll()
+       
+       resourceRequests.clear()
    }
    
    void release(ResourceUnit resourceUnit) {

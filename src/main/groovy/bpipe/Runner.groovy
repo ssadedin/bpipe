@@ -829,7 +829,7 @@ class Runner {
             return memoryValue.toInteger()
             
         // Separate the memory unit from the number
-        def memory = (memoryValue =~ /([0-9*])([a-zA-Z]{2})/)
+        def memory = (memoryValue =~ /([0-9]*)([a-zA-Z]{2})/)
         if(!memory)
             throw new IllegalArgumentException("Memory value '$memoryValue' couldn't be parsed. Please specify in the form <n>MB or <n>GB")
         
@@ -957,7 +957,7 @@ class ParamsBinding extends Binding {
             return null
         }
 
-        if( !value ) {
+        if( value == null ) {
             value = true
         }
         else {

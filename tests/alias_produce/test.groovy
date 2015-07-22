@@ -1,12 +1,13 @@
 hello = {
-    produce("crazy.csv") {
-        forward(input.txt) to(output.csv)
+    produce("crazy.txt") {
+        if(inputs.txt.size() == 1) 
+            alias(input.txt) to(output.txt)
     }
 }
 
 world = {
     exec """
-        cp $input.csv $output.xml
+        cp $input.txt $output.xml
     """
 }
 

@@ -26,10 +26,10 @@ package bpipe
 
 import static bpipe.Utils.*
 
+import java.util.List;
 import java.util.Map;
 
 import groovy.lang.Closure
-
 import groovy.util.logging.Log
 
 /*
@@ -73,6 +73,26 @@ class DefinePipelineCategory {
     
     static {
         reset()
+    }
+    
+    static Object plus(List l, List other) {
+        if(!l.empty && !other.empty && l[0] instanceof Closure && other[1] instanceof Closure) {
+            def j = {
+                return it
+            }
+            joiners << j
+            return plus(j, l) + other
+        }
+        else
+            return org.codehaus.groovy.runtime.DefaultGroovyMethods.plus(l,other)
+    }
+
+    static Object plus(List l, Closure other) {
+        def j = {
+            return it
+        }
+        joiners << j
+        return plus(j, l) + other        
     }
     
     static Object plus(Closure c, Closure other) {
@@ -140,6 +160,10 @@ class DefinePipelineCategory {
 	static Object multiply(Map chrs, List segments) {
         multiply("*", segments)
     }
+    
+    static Object multiply(String pattern, Closure c) {
+        throw new PipelineError("Multiply syntax requires a list of stages")
+    }
         
     /**
      * Implements the syntax that allows an input filter to 
@@ -170,7 +194,7 @@ class DefinePipelineCategory {
            def oldStages = currentStage
            def newStages = []
            
-           for(Closure s in segments) {
+           for(Closure s in segments.grep { it instanceof Closure }) {
                 log.info "Processing segment ${s.hashCode()}"
                 currentStage = oldStages
                 if(s in joiners) {

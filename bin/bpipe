@@ -202,7 +202,7 @@ cleanup() {
                       mkdir -p .bpipe/trash
                   fi
                   count=1
-                  realtarget="$target"
+                  realtarget="`basename $target`"
                   while [ -e "$realtarget" ];
                   do
                     realtarget="${target}.${count}"
@@ -740,3 +740,12 @@ To run with all files in the local directory as input, use:
 fi
 
 clean_job_files
+
+# Use grep -q as the last command to cause this script to return an exit code
+# reflecting whether the run succeeded or not
+# Make sure this stays as the LAST command in this script
+if [ -e .bpipe/results/$BPIPE_PID.xml ];
+then
+    grep -q '<succeeded>true</succeeded>' .bpipe/results/$BPIPE_PID.xml
+fi
+

@@ -108,6 +108,27 @@ class PipelineCategory {
     static String quote(String value) {
         Utils.quote(value)
     }
+    
+    static Object plus(List l, Closure c) {
+        def j = {
+            return it
+        }
+        Pipeline.currentUnderConstructionPipeline.joiners << j
+        return plus(j, l) + c
+    }
+    
+    
+    static Object plus(List l, List other) {
+        if(!l.empty && !other.empty && l[0] instanceof Closure && other[1] instanceof Closure) {
+            def j = {
+                return it
+            }
+            Pipeline.currentUnderConstructionPipeline.joiners << j
+            return plus(j, l) + other
+        }
+        else
+            return org.codehaus.groovy.runtime.DefaultGroovyMethods.plus(l,other)
+    }
 	
      /**
      * Joins two closures representing pipeline stages together by
@@ -115,6 +136,8 @@ class PipelineCategory {
      * basis of Bpipes's + syntax for joining sequential pipeline stages.
      */
     static Object plus(Closure c, Closure other) {
+        
+        // log.info "Closure["+PipelineCategory.closureNames[c] + "] + Closure[" + PipelineCategory.closureNames[other] + "]"
         
         // What we return is actually a closure to be executed later
         // when the pipeline is run.  
@@ -186,6 +209,10 @@ class PipelineCategory {
     
     static Object multiply(List objs, List segments) {
         multiply(objs.collect { String.valueOf(it) } as Set, segments)
+    }
+    
+    static Object multiply(String pattern, Closure c) {
+        throw new PipelineError("Multiply syntax requires a list of stages")
     }
     
     static Object multiply(Set objs, List segments) {
@@ -263,6 +290,7 @@ class PipelineCategory {
                                     
                                 if(!childInputs) {
                                     println "MSG: Skipping region ${chr.name} because no matching inputs were found"
+                                    Concurrency.instance.unregisterResourceRequestor(child)
                                     return
                                 }
                             }
@@ -282,6 +310,7 @@ class PipelineCategory {
                         catch(Exception e) {
                             log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
                             Runner.reportExceptionToUser(e)
+                            Concurrency.instance.unregisterResourceRequestor(child)
                             child.failed = true
                         }
                     } as Runnable
@@ -468,7 +497,17 @@ class PipelineCategory {
         
             Pipeline current = Pipeline.currentRuntimePipeline.get()
             
-            Concurrency.instance.execute(threads, current.branchPath.size())
+            pipelines.each { 
+                Concurrency.instance.registerResourceRequestor(it)
+            }
+            
+            try {
+                current.isIdle = true
+                Concurrency.instance.execute(threads, current.branchPath.size())
+            }
+            finally {
+                current.isIdle = false
+            }
             
             if(pipelines.any { it.failed }) {
                 def messages = summarizeErrors(pipelines)

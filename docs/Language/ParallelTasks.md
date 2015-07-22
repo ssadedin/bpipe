@@ -21,7 +21,8 @@ Now suppose you wanted to add a second "mars" stage that would execute simultane
 ```groovy 
 
 Bpipe.run {
-  hello + [}
+  hello + [ world,mars ]
+}
 ```
 
 _Note: if you are familiar with Groovy syntax, you will notice that the square bracket notation is how you define a list in Groovy.  Thus all we are saying is that if you give Bpipe a list of stages to process, it executes them in parallel._
@@ -30,7 +31,7 @@ You can execute multiple stages in parallel too:
 ```groovy 
 
 Bpipe.run {
-  hello + [ blue + world, red + mars ](world,mars]) 
+  hello + [ blue + world, red + mars ]
 }
 ```
 
@@ -48,7 +49,7 @@ You can also nest parallel tasks if you wish:
 ```groovy 
 
 Bpipe.run {
-  hello + [ blue + world, red + [](mars,venus]) + nice_to_see_you
+  hello + [ blue + world, red + [mars,venus] ] + nice_to_see_you
 }
 ```
 
@@ -125,7 +126,7 @@ This means Bpipe will look for the first (and shortest) token in the file name t
 
 ### =Ordering=
 
-Bpipe supports one other special character in its input splitting patterns:  the `**` wildcard.  This also acts as a wildcard match but it *does not* split the input into groups.  Instead, it affects ordering within the groups that are split.  When Bpipe matches a `**` character in an input splitting pattern it first splits the files into their groups (based on the `%` match) and then sorts them based on the portions that match the `**` character.  This helps you ensure that even after splitting, your files are still in a sensible order.   For example, consider the following input files
+Bpipe supports one other special character in its input splitting patterns:  the `*` wildcard.  This also acts as a wildcard match but it *does not* split the input into groups.  Instead, it affects ordering within the groups that are split.  When Bpipe matches a `*` character in an input splitting pattern it first splits the files into their groups (based on the `%` match) and then sorts them based on the portions that match the `*` character.  This helps you ensure that even after splitting, your files are still in a sensible order.   For example, consider the following input files
 
 - input_1_1.txt
 - input_1_2.txt

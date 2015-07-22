@@ -47,27 +47,6 @@ import static Utils.unbox
 
 
 /**
- * This class is a hack / workaround to enable a specific syntax quirk
- * to work in an intuitive way. Normally groovy evaluates expressions left
- * to right, so closure + list invokes Closure.plus(List ...). However if the
- * List is the first item in the expression: list + closure then Groovy tries to invoke
- * List.plus() which places the closure into the list instead of implementing Bpipe's
- * pipeline logic. This class is part of how we hack groovy to make the syntax work
- * how we want (see below for where it is used).
- */
-class ListBouncer {
-    List elements = []
-    
-    // Note: invoked when diagram is created
-    void call() {
-    }
-    
-    String toString() {
-        "LB:[" + elements.collect {PipelineCategory.closureNames[it]?:String.valueOf(it)}.join(",")+"]"
-    }
-}
-
-/**
  * Utility to convert a Node structure to a Map structure (primarily, for export as Json)
  */
 class NodeListCategory {
@@ -85,7 +64,7 @@ class NodeListCategory {
  * surrounding category to enable implicit pipeline stage functions.
  */
 @Log
-public class Pipeline {
+public class Pipeline implements ResourceRequestor {
     
     /**
      * Default imports added to the top of all files executed by Bpipe
@@ -187,6 +166,12 @@ public class Pipeline {
      * Only populated for main / root level pipeline instance
      */
     Date finishDate 
+    
+    boolean isIdle = false
+    
+    boolean isBidding() {
+        return !isIdle;
+    }
     
     void setBranch(Branch value) {
         this.branch = value
@@ -512,6 +497,7 @@ public class Pipeline {
      */
     void runSegment(def inputs, Closure s) {
         try {
+            
             currentRuntimePipeline.set(this) 
         
             this.rootContext = createContext()
@@ -576,6 +562,7 @@ public class Pipeline {
         }
         finally {
             log.info "Finished running segment for inputs $inputs"
+            Concurrency.instance.unregisterResourceRequestor(this)
         }
     }
     
@@ -613,8 +600,6 @@ public class Pipeline {
             initializeRunLogs(inputFile)
         }
         
-        setArrayMetaClassProperties()
-
         Node pipelineStructure = launch ? diagram(host, pipeline) : null
         
         def constructedPipeline
@@ -628,27 +613,8 @@ public class Pipeline {
                 
                 // See bug #60
                 if(constructedPipeline instanceof List) {
-                    
-                    // If ListBouncer at the end ...
-                    ListBouncer bouncer = null
-                    log.info("Constructed pipeline is list: " + constructedPipeline)
-                    
-                    int bouncerIndex = constructedPipeline.findIndexOf { it instanceof ListBouncer }
-                    if(bouncerIndex>=0) {
-                        log.info "Found list bouncer at $bouncerIndex: bouncing it out ...."
-                        bouncer = constructedPipeline[bouncerIndex]
-                        for(int i=bouncerIndex+1;i<constructedPipeline.size();++i) {
-                            bouncer.elements.add(constructedPipeline[i])
-                        }
-                        constructedPipeline = constructedPipeline[0..(bouncerIndex-1)]
-                        log.info("Constructed pipeline after bouncing is : " + constructedPipeline)
-                    }
-                    
                     currentRuntimePipeline.set(this)
                     constructedPipeline = PipelineCategory.splitOnFiles("*", constructedPipeline, false)
-                    if(bouncer != null) {
-                        constructedPipeline = constructedPipeline + bouncer.elements.sum()
-                    }
                 }
             }
             
@@ -662,17 +628,7 @@ public class Pipeline {
         // Make sure the command log ends with newline
         // as output is not terminated with one by default
         cmdlog << ""
-        
-        if(launch) {
-            /*
-            if(Config.config.mode == "documentation" || Config.config.report) 
-                documentation()
-            else
-            if(Config.config.customReport)
-                generateCustomReport(Config.config.customReport)
-              */
-        }
-        
+       
         return constructedPipeline
     }
     
@@ -808,30 +764,6 @@ public class Pipeline {
         startLog.flush()
             
         about(startedAt: startDate)
-    }
-    
-    void setArrayMetaClassProperties() {
-        ArrayList.metaClass.plus = { x ->
-//            log.info "Interception list plus(" + delegate?.class?.name + "," + x?.class?.name + ")"
-            if(x instanceof Closure) {
-                if(delegate && (delegate[-1] instanceof ListBouncer)) {
-                    delegate[-1].elements.add(x)
-                    return delegate
-                }
-                else {
-                    ListBouncer b = new ListBouncer()
-                    b.elements.add(x)
-                    delegate.add(b)
-                    return delegate
-                }
-            }
-            else {
-                ArrayList result = new ArrayList()
-                result.addAll(delegate)
-                result.add(x)
-                return result
-            }
-        }
     }
     
     PipelineContext createContext() {
@@ -1004,6 +936,7 @@ public class Pipeline {
         if(currentRuntimePipeline.get()) {
             Pipeline pipeline = currentRuntimePipeline.get()
             Binding binding = new Binding()
+            binding.variables = Runner.binding.variables.clone()
             def shell = new GroovyShell(binding)
             
             // Note: do not cache - different branches may need to load the same file
