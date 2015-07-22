@@ -156,6 +156,7 @@ class SgeCommandExecutor implements CommandExecutor {
       #\$ -cwd
       #\$ -N \"$name\"
       #\$ -terse
+      #\$ -V
       #\$ -o $jobDir/$CMD_OUT_FILENAME
       #\$ -e $jobDir/$CMD_ERR_FILENAME
       ${additional_options}
