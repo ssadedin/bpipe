@@ -298,7 +298,12 @@ class PipelineContext {
    }
    
    void setRawOutput(o) {
-       log.info "Setting output $o on context ${this.hashCode()} in thread ${Thread.currentThread().id}"
+
+       if(o == null || o.size()<200)
+           log.info "Setting output $o on context ${this.hashCode()} in thread ${Thread.currentThread().id}"
+       else
+           log.info "Setting ${o.size()} outputs starting with ${o[0..9]} on context ${this.hashCode()} in thread ${Thread.currentThread().id}"
+
        if(Thread.currentThread().id != threadId)
            log.warning "Thread output being set to $o from wrong thread ${Thread.currentThread().id} instead of $threadId"
        
