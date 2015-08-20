@@ -58,7 +58,8 @@ class Branch extends Expando implements Serializable {
     public void setParent(Branch parent) {
         // Copy values of properties 
         parent.properties.each { entry ->
-            this.setProperty(entry.key, entry.value)
+            if(entry.key != 'name')
+                this.setProperty(entry.key, entry.value)
         }
         this.parent = parent
     }
@@ -69,6 +70,7 @@ class Branch extends Expando implements Serializable {
     }
     
     void setProperty(String name, Object value) {
+        
         if((name in PipelineCategory.closureNames.values()) && !(value instanceof Closure)) {
             throw new PipelineError("""
                 Attempt to define a branch variable $name with same name as a pipeline stage. 

@@ -241,7 +241,7 @@ class CommandManager {
                     log.info "Successfully stopped command $exec"
                 }
                 else {
-                    println "WARNING: stored command $f.asbsolutePath had null executor (internal error)"
+                    println "WARNING: stored command $f.absolutePath had null executor (internal error)"
                 }
             }
             catch(PipelineError e) {

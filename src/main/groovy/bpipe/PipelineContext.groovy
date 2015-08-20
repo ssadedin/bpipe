@@ -298,7 +298,12 @@ class PipelineContext {
    }
    
    void setRawOutput(o) {
-       log.info "Setting output $o on context ${this.hashCode()} in thread ${Thread.currentThread().id}"
+
+       if(o == null || o.size()<200)
+           log.info "Setting output $o on context ${this.hashCode()} in thread ${Thread.currentThread().id}"
+       else
+           log.info "Setting ${o.size()} outputs starting with ${o[0..9]} on context ${this.hashCode()} in thread ${Thread.currentThread().id}"
+
        if(Thread.currentThread().id != threadId)
            log.warning "Thread output being set to $o from wrong thread ${Thread.currentThread().id} instead of $threadId"
        
@@ -1634,8 +1639,6 @@ class PipelineContext {
       this.inferredOutputs = []
       
       if(!probeMode) {
-          CommandLog.cmdLog.write(command.command)
-          
           // Check the command for versions of tools it uses
           if(!Runner.opts.t) { // Don't execute probes if the user is just testing the pipeline
             def toolsDiscovered = ToolDatabase.instance.probe(cmd)
@@ -1648,9 +1651,15 @@ class PipelineContext {
 
           command.branch = this.branch
           command.outputs = checkOutputs.unique()
-          commandManager.start(stageName, command, config, Utils.box(this.input), 
-                                   new File(outputDirectory), this.usedResources,
-                                   deferred, this.outputLog)
+          try {
+              commandManager.start(stageName, command, config, Utils.box(this.input), 
+                                       new File(outputDirectory), this.usedResources,
+                                       deferred, this.outputLog)
+          }
+          finally {
+              CommandLog.cmdLog.write(command.command)
+          }
+          
           // log.info "Command $command.id started with resources " + this.usedResources
           
           trackedOutputs[command.id] = command              
@@ -1785,8 +1794,13 @@ class PipelineContext {
        
        log.info "Found inputs $resolvedInputs for spec $orig"
        
-       if(resolvedInputs.any { it == null})
-           throw new PipelineError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with $orig")
+       List missingInputs = resolvedInputs.findIndexValues { it == null }
+       if(missingInputs) {
+           if(exts.size()>1)
+               throw new PipelineError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with $orig\nMost likely missing extensions: ${exts[missingInputs]}")
+           else
+               throw new PipelineError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with $orig")
+       }
            
        // resolvedInputs = Utils.unbox(resolvedInputs)
        resolvedInputs = resolvedInputs.flatten().unique()

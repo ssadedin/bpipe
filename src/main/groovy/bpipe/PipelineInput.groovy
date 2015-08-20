@@ -318,7 +318,9 @@ class PipelineInput {
         def reverseOutputs = stages.reverse().grep { 
             // Only consider outputs from threads that are related to us but don't consider our own
             // (yet to be created) outputs
-            it.context.threadId in relatedThreads && !this.is(it.context.@inputWrapper)
+            it.context.threadId in relatedThreads && !inputBelongsToStage(it)
+            
+            // !this.is(it.context.@inputWrapper) && ( this.parent == null || !this.parent.is(it.context.@inputWrapper)    )
         }.collect { PipelineStage stage ->
             Utils.box(stage.context.@output) 
         }
@@ -338,6 +340,22 @@ class PipelineInput {
         reverseOutputs.add(0,Utils.box(this.@input))        
             
         return reverseOutputs
+    }
+    
+    /**
+     * Return true if this input wrapper or one of its parents is set as
+     * the PipelineInput for the given stage
+     * 
+     * @param stage
+     */
+    boolean inputBelongsToStage(PipelineStage stage) {
+        PipelineInput stageInputWrapper = stage.context.@inputWrapper
+        PipelineInput pinp = this
+        while(pinp != null) {
+            if(pinp.is(stageInputWrapper))
+                return true
+            pinp = pinp.parent
+        }
     }
     
     void addFilterExts(List objs) {

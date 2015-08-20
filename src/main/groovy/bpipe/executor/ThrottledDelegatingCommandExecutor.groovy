@@ -74,7 +74,10 @@ class ThrottledDelegatingCommandExecutor {
 
         resources.each { Concurrency.instance.acquire(it) }
 
-        String threadAmount = String.valueOf(threadResource?threadResource.amount:1)
+        int threadCount = threadResource?threadResource.amount:1
+        String threadAmount = String.valueOf(threadCount)
+
+        cfg.procs = threadCount
 
         command.command = command.command.replaceAll(PipelineContext.THREAD_LAZY_VALUE, threadAmount)
 
@@ -82,6 +85,7 @@ class ThrottledDelegatingCommandExecutor {
 
         if(bpipe.Runner.opts.t || bpipe.Config.config.breakTriggered) {
             String msg = command.branch.name ? "Branch $command.branch.name would execute: $cmd.command" : "Would execute $cmd.command"
+            this.releaseAll()
             if(commandExecutor instanceof LocalCommandExecutor)
                 throw new bpipe.PipelineTestAbort(msg)
             else {

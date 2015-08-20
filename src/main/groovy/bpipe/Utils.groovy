@@ -33,6 +33,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.security.DigestInputStream
 import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
 import java.util.regex.Pattern
 
 /**
@@ -67,13 +68,24 @@ class Utils {
         outputs = box(outputs)
         
         def inputFiles = inputs.collect { new File(it) }
+        
+        def inputFileTimestamps = inputFiles.collectEntries { [ it, it.lastModified() ] }
+       
+        long maxInputTimestamp = inputFileTimestamps.max { it.value }.value
     
         outputs.collect { new File(it) }.grep { outFile ->
+            
+            long outputTimestamp = outFile.lastModified()
             
             log.info "===== Check $outFile ====="
             if(!outFile.exists()) {
                 log.info "file doesn't exist: $outFile"
                 return true
+            }
+            
+            if(maxInputTimestamp < outputTimestamp) {
+                log.info "Output newer than all inputs (quick check)"
+                return false
             }
                 
             if(inputs instanceof String || inputs instanceof GString) {
@@ -87,10 +99,19 @@ class Utils {
             }
             else
             if(isContainer(inputs)) {
-                log.info "Checking $outFile against inputs $inputs"
-                return inputFiles.any { inFile ->
-                    log.info "Check $inFile : " + inFile.lastModified() + " >  " + "$outFile : " + outFile.lastModified() 
-                    inFile.lastModified() > outFile.lastModified() 
+                
+                if(inputs.size()<20)
+                    log.info "Checking $outFile against inputs $inputs"
+                else
+                    log.info "Checking $outFile against ${inputs.size()} inputs"
+                    
+                boolean logTimestamps = inputFiles.size()*outputs.size() < 5000 // 5k lines in the log from 1 loop is too much
+                
+                return inputFiles.any { File inFile ->
+                    long inputFileTimestamp = inputFileTimestamps[inFile]
+                    if(logTimestamps) 
+                        log.info "Check $inFile : " + inputFileTimestamp + " >  " + "$outFile : " + outputTimestamp
+                    inputFileTimestamp > outputTimestamp
                 }
             }
             else 
@@ -713,5 +734,21 @@ class Utils {
           last = it
           return result
         }
+    }
+    
+    static HashMap<String,File> canonicalFiles = new ConcurrentHashMap<String, File>(1000)
+    
+    static File canonicalFileFor(String path) {
+        File result = canonicalFiles[path]
+        if(result != null)
+            return result 
+            
+        result = new File(path).canonicalFile
+        canonicalFiles[path] = result
+        
+        if(canonicalFiles.size() % 1000 == 0)
+            log.info "Number of cached canonical paths = " + canonicalFiles.size()
+            
+        return result
     }
 }

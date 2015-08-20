@@ -424,7 +424,7 @@ class Concurrency {
                     log.info "Thread ${Thread.currentThread().name} waiting for resource allocation ($resourceUnit)"
                 }
                 else {
-                    log.info "Thread ${Thread.currentThread().name} allocated $request.allocated resources after " + (System.currentTimeMillis() - startTimeMs)
+                    log.info "Thread ${Thread.currentThread().name} allocated $request.allocated resources after " + (System.currentTimeMillis() - startTimeMs) + " ms"
                     amount = request.allocated.amount
                     break
                 }

@@ -289,14 +289,20 @@ class PipelineOutput {
             }
         }
         
-        if(!result)
-            throw new PipelineError("An output of type ." + name + " was referenced, however such an output was not in the outputs specified by an outer transform / filter / produce statement.\n\n" + "Valid outputs are: ${overrideOutputs.join('\n')}")
-          else
+        if(!result) {
+            if(!overrideOutputs.any { it ==~ /.*\./+name+/\..*/ }) {
+                throw new PipelineError("An output containing or ending with '." + name + "' was referenced.\n\n"+
+                                        "However such an output was not in the outputs specified by an enclosing transform / filter / produce statement.\n\n" +
+                                        "Valid outputs according to the enclosing block are: ${overrideOutputs.join('\n')}")
+            }
+        }
+        else {
             log.info "Selected output $result with extension $name from expected outputs $overrideOutputs"
           
-        this.outputUsed = result
-        if(this.outputChangeListener != null) {
-            this.outputChangeListener(result,replaced)
+            this.outputUsed = result
+            if(this.outputChangeListener != null) {
+                this.outputChangeListener(result,replaced)
+            }
         }
         
         return result
