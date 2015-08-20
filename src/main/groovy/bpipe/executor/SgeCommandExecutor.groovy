@@ -162,13 +162,19 @@ class SgeCommandExecutor implements CommandExecutor {
       ${additional_options}
       """.stripIndent()
 
+    // removed echo of VAR $? to output file (test)
     cmdWrapperScript.text +=
-      """\
+    """\
       ${cmd}
-      result=\$?
-      echo -n \$result > $jobDir/$CMD_EXIT_FILENAME
-      exit \$result
-      """.stripIndent()
+    """.stripIndent()
+
+    // cmdWrapperScript.text +=
+    //   """\
+    //   ${cmd}
+    //   result=\$?
+    //   echo -n \$result > $jobDir/$CMD_EXIT_FILENAME
+    //   exit \$result
+    //   """.stripIndent()
 
 		/*
 		 * prepare the command to invoke
