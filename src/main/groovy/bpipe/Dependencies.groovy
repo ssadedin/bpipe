@@ -97,7 +97,7 @@ class GraphEntry {
     @CompileStatic
     GraphEntry entryFor(File outputFile) {
         // In case of non-default output directory, the outputFile itself may be in a directory
-        final String outputFilePath = outputFile.canonicalPath
+        final String outputFilePath = Utils.canonicalFileFor(outputFile.path).path
         return entryForCanonicalPath(outputFilePath)
     }
     
@@ -123,7 +123,7 @@ class GraphEntry {
             if(p.containsKey("canonicalPath"))
                 return p["canonicalPath"]        
                 
-            p["canonicalPath"] = ((File)p["outputFile"]).canonicalPath
+            p["canonicalPath"] = Utils.canonicalFileFor(((File)p["outputFile"]).path).path
         }
     }
     
@@ -132,7 +132,7 @@ class GraphEntry {
      */
     Properties propertiesFor(String outputFile) { 
        // In case of non-default output directory, the outputFile itself may be in a directory
-       String outputFilePath = new File(outputFile).canonicalPath
+       String outputFilePath = Utils.canonicalFileFor(outputFile).path
        def values = entryForCanonicalPath(outputFilePath)?.values
        if(!values)
            return null
@@ -798,7 +798,8 @@ class Dependencies {
         // Find all entries with inputs that are not outputs of any other entry
         def outputsWithExternalInputs = outputs.grep { p -> ! p.inputs.any { allOutputs.contains(it) } }
         
-        log.info "External inputs: " + outputsWithExternalInputs*.inputs + " for outputs " + outputsWithExternalInputs*.outputPath
+        // NOTE: turning this log on can be expensive for large numbers of inputs and outputs
+        // log.info "External inputs: " + outputsWithExternalInputs*.inputs + " for outputs " + outputsWithExternalInputs*.outputPath
         
         handledOutputs.addAll(outputsWithExternalInputs)
         
