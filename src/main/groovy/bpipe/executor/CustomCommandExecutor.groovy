@@ -314,7 +314,7 @@ class CustomCommandExecutor implements CommandExecutor {
                 String msg = "Attempt to poll status for job $commandId return status $exitValue using command $cmd:\n\n  $out"
                 if(errorCount > MAX_STATUS_ERROR) 
                     throw new PipelineError(msg)
-                log.warning(msg + "(retrying)")
+                log.warning(msg + "(retrying, $errorCount)")
                 errorCount++
                 Thread.sleep(100)
                 continue
