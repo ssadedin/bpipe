@@ -115,6 +115,10 @@ class SMTPNotificationChannel implements NotificationChannel {
 	}
     
     public void sendEmail(String subjectLine, String text, File attachment = null, String contentType = null) {
+        
+        if(contentType == null)
+            contentType = "text/plain"
+        
 		Properties props = new Properties();
 		props.put("mail.smtp.host", host);
 		if(port != -1) {
