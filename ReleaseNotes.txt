@@ -1,4 +1,66 @@
-=========== Changes for Bpipe Version 0.9.8.8 ============
+=========== Changes for Bpipe Version 0.9.9_beta_1 ============
+
+   - Fix content type not set causing errors with some smtp
+     connections 
+    
+   - Issue #155: Update to gradle 2.0 to avoid compile failure with JDK9 
+    
+   - Performance optimisations for large numbers of inputs /
+     outputs 
+    
+   - Should report error if is referenced and
+     finds no inputs 
+    
+   - Give a hint about which 'from' clause
+     pattern did not find a match in error message 
+    
+   - Fix typo causing exception while logging error message 
+    
+   - Fix: setting branch name from within stage causes incorrect
+     branches downstream 
+    
+   - Fix input resolved as output in rare circumstances 
+    
+   - Fix transform ...  to followed by double
+     output variable extensions (.foo.bar) failing with confusing
+     error message 
+    
+   - Fix procs not set in torque job when using variable 
+    
+   - Make bpipe return exit code reflecting whether pipeline 
+     succeeded or failed 
+
+   - Fix: bpipe may fail to cleanup files created in subdirectories 
+    
+   - Fix hang / exception when using multi command (regression) 
+    
+   - Fix regression caused by incorrect synchronization on wrong object.  Refactored
+     Concurrency resource auctions for clarity 
+    
+   - Fix regression / failure when no inputs specify any fixed thread
+     requirements 
+    
+   - Better / fairer scheduling for dynamically allocated $thread variables 
+   
+   - Support for ranges in procs parameter, eg: procs = 1..10, or
+     uses(threads:1..10) { ...  } 
+
+   - Fix: failure to parallelize stages inside a list added to 
+     another list, eg: [foo, bar] + [fubar,fug] 
+    
+   - Added explicit license file for clarity of
+     licensing 
+    
+   - Issue #148: bpipe parsing commandline memory
+     specification incorrectly 
+
+   - Issue #150: Cannot pass blank parameter via command line 
+    
+   - Various documentation fixes
+    
+   - Fix: junit tests were not executed 
+
+   - Additional SGE options, SGE options moved inside script 
 
    - fix: commands run using torque / pbs not using -e flag for bash,
      thus only treated as failed if last command fails
@@ -54,7 +116,13 @@
     
    - Avoid misleading termination message when user deliberately stops 
      pipeline 
-    
+
+   - Incorrect input used as basis for output file name in transforms inside 
+     'from', if competing input available from previous stage
+   
+   - fix: rare deadlocks - use dedicated thread pool per pipeline tier to 
+     avoid possibility of deadlocks in heavily nested pipelines
+
 =========== Changes for Bpipe Version 0.9.8.7 ============
 
    - check /proc on linux rather than relying on kill 

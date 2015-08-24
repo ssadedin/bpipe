@@ -2,7 +2,7 @@ apply plugin: 'eclipse'
 apply plugin: 'groovy'
 
 project.ext {
-    VERSION="0.9.8.8"
+    VERSION="0.9.9_beta_1"
     STAGE="build/stage/bpipe-$VERSION"
 }
 
