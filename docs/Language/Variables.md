@@ -1,3 +1,5 @@
+[comment]: <> ( vim: ts=20 expandtab tw=100 spell nocindent nosmartindent filetype=Markdown)
+
 # Variables in Bpipe
 
 Bpipe supports variables inside Bpipe scripts.  In Bpipe there are two kinds of variables: 
@@ -5,7 +7,7 @@ Bpipe supports variables inside Bpipe scripts.  In Bpipe there are two kinds of 
 - *implicit* variables  - variables defined by Bpipe for you
 - *explicit* variables  - variables you define yourself
 
-### Implicit Variables
+### Implicit variables
 
 Implicit variables are special variables that are made available to your Bpipe pipeline stages automatically.   The two important implicit variables are:
 
@@ -18,7 +20,7 @@ The input and output variables are how Bpipe automatically connects tasks togeth
 
 ### Extension Syntax for Input and Output Variables
 
-Bpipe provides a special syntax for easily referencing inputs and outpus with
+Bpipe provides a special syntax for easily referencing inputs and outputs with
 specific file extensions. See [ExtensionSyntax](Language/ExtensionSyntax) for
 more information.
 
@@ -159,3 +161,26 @@ In this case the $ followed by the open bracket is illegal because Bpipe will tr
 ```
 
 - Bpipe treats a `.` as a special character for querying a property, while Bash merely delimits a variable name with it. Hence if you wish to write `$foo.txt` to have a file with '.txt' appended to the value of variable foo, you need to use curly braces: `${foo}.txt`.
+
+
+### Environment Variables
+
+If you reference a variable that has no definition, Bpipe evaluates it to its own name, prefixed by
+a $ sign. That is, inside an `exec` command, "$USER" would evaluate to "$USER" if undefined. This has 
+the effect that variables are "passed through" as environment variables in commands. For example:
+
+```groovy
+    exec """
+        echo $USER
+    """
+```
+
+Even though USER is not defined as a Bpipe variable, this will print the value of the USER
+environment variable.  Note that Bpipe does not substitute the value of such a variable at all. The
+substitution is done by bash when the command is executed. Hence, if you are running commands using a
+computational cluster or similar, the value of the environment variable must be defined for jobs
+that run on the node where the command is executed.
+
+
+
+

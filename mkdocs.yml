@@ -7,7 +7,6 @@ pages:
 - ['Overview/ComparisonToWorkflowTools.md','Overview','Comparison To Workflow Tools']
 - ['Overview/InstallInstructions.md','Overview','Install Instructions']
 - ['Language/About.md','Language','About']
-- ['Language/BpipeVariables.md','Language','Bpipe Variables']
 - ['Language/ParallelTasks.md','Language','Parallel Tasks']
 - ['Language/BranchVariables.md','Language','Branch Variables']
 - ['Language/Check.md','Language','Check']
