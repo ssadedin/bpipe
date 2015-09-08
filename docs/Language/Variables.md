@@ -41,12 +41,12 @@ join together.  To do this:
 - If a task has an unknown number of inputs it may reference the variable
   *input* as a *list* and use array like indices to access the elements, for
   example `input[0]` is the same as `input1`, `input[1]` corresponds to
-  `input2`, etc.   You can reference the size of the inputs using `input.size()`
+  `input2`, etc.   You can reference the size of the inputs using `inputs.size()`
   and iterate over inputs using a syntax like
 
 ```groovy 
 
-  for(i in input) {
+  for(i in inputs) {
     exec "... some command that reads $i ..."
   }
 ```
