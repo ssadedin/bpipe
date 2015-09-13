@@ -82,6 +82,36 @@ tasks:
   }
 ```
 
+**NOTE 1**: it is important to understand that variables defined in this way have global scope
+and are also modifiable. This becomes important if you have parallel stages in your pipeline.
+Modifications to such variables, therefore, can result in race conditions, deadlocks and all 
+the usual ills that befall multithreaded programming. For this reason, it is strongly recommended 
+that you treat any such variables as constants which you assign once and then reference as read only
+variables in the remainder of your script.
+
+**NOTE 2**: explicit variables can be assigned inside your own pipeline stages. However in current 
+Bpipe they are assigned to the _global_ environment. Thus even though you may assign a variable
+inside a pipeline stage it is not private to that pipeline stage. If you wish a variable to be
+private to a pipeline stage, prefix it with 'def'. If you want to share it with other pipeline
+stages that share the same branch (which will confine it to a single thread as well) you can 
+prefix it with 'branch.':
+
+```groovy
+    
+  align_reads = {
+
+    num_threads=8 // bad idea, this is a global variable!
+
+    def thread_num=8 // good idea, this is private
+
+    branch.thread_num = 8 // good idea if you want the variable to be visible 
+                          // to other stages in the same branch
+
+    exec "bwa aln -t $num_threads $REFERENCE_GENOME $input"
+  }
+``` 
+
+
 ### Variable Evaluation
 
 Most times the way you will use variables is by referencing them inside shell commands that you are running using the *exec* statement.  Such statements define the command using single quotes, double quotes or triple quotes.  Each kind of quotes handles variable expansion slightly differently:
