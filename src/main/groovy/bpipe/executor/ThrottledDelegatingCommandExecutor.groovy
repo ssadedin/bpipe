@@ -77,7 +77,10 @@ class ThrottledDelegatingCommandExecutor {
         int threadCount = threadResource?threadResource.amount:1
         String threadAmount = String.valueOf(threadCount)
 
-        cfg.procs = threadCount
+        // Problem: some executors use non-integer values here, if we overwrite with an integer value then
+        // we break them (Sge)
+        if(cfg.procs == null || cfg.procs.toString().isInteger())
+            cfg.procs = threadCount
 
         command.command = command.command.replaceAll(PipelineContext.THREAD_LAZY_VALUE, threadAmount)
 
