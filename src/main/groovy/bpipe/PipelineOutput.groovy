@@ -210,7 +210,7 @@ class PipelineOutput {
         else {
             parentDir = new File(".")
             if(baseOutput) {
-                if(this.outputChangeListener)
+                if(this.outputChangeListener && (baseOutput != defaultOutput))
                     this.outputChangeListener(baseOutput,null)
             }
         }
