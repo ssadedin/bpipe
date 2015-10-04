@@ -862,6 +862,17 @@ class Runner {
 class ParamsBinding extends Binding {
     
     def parameters = []
+    
+    /**
+     * This global binding takes precendence of the binding assigned to the closures that
+     * represent pipeline stages. This has the unfortunate effect that even if a pipeline stage
+     * has a variable set explicitly with 'using' the global value still takes precedence. This
+     * threadlocal is used to allow such variables to override the global value during execution.
+     * 
+     * @see PipelineStage#runBody
+     * @see #withLocalVariables method
+     */
+    ThreadLocal<Map<String,Object>> stageLocalVariables = new ThreadLocal()
 
     def void setParam( String name, Object value ) {
 
@@ -976,5 +987,24 @@ class ParamsBinding extends Binding {
         }
 
         new MapEntry( key, value )
+    }
+    
+    Object withLocalVariables(Map variables, Closure c) {
+        this.stageLocalVariables.set(variables)
+        try {
+          return c()
+        }
+        finally {
+            this.stageLocalVariables.set(null)
+        }
+    }
+    
+    Object getVariable(String name) {
+        if(stageLocalVariables.get()?.containsKey(name)) {
+            return this.stageLocalVariables.get()[name]
+        }
+        else {
+            return super.getVariable(name)
+        }
     }
 }

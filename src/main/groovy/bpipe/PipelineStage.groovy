@@ -285,37 +285,42 @@ class PipelineStage {
 		this.running = true
         
         if(context.branch.getProperty(stageName) && context.branch[stageName] instanceof Closure) {
-            log.info "Overriding body for $stageName due to branch variable of type Closure containing stage name"
             body = context.branch[stageName]
-        }
+            log.info "Overriding body for $stageName due to branch variable of type Closure ${context.branch[stageName].hashCode()} containing stage name (new body = " +
+                     PipelineCategory.closureNames[body] + "," + PipelineCategory.closureNames[context.branch[stageName]] + ")"
+         }
         
-		PipelineDelegate.setDelegateOn(context,body)
-		this.startDateTimeMs = System.currentTimeMillis()
-		try {
+        PipelineDelegate.setDelegateOn(context,body)
+        this.startDateTimeMs = System.currentTimeMillis()
+        try {
             Pipeline.currentContext.set(context)
-			if(PipelineCategory.wrappers.containsKey(stageName)) {
-				log.info("Executing stage $stageName inside wrapper")
-				PipelineCategory.wrappers[stageName](body, context.@input)
-			}
-			else {
-				use(PipelineBodyCategory) {
-					def returnedInputs = body(context.@input)
-					if(joiner || (body in Pipeline.currentRuntimePipeline.get().segmentJoiners)) {
-						context.nextInputs = returnedInputs
-					}
-				}
-			}
-		}
+            if(PipelineCategory.wrappers.containsKey(stageName)) {
+                log.info("Executing stage $stageName inside wrapper")
+                PipelineCategory.wrappers[stageName](body, context.@input)
+            }
+            else {
+                use(PipelineBodyCategory) {
+                    // Closure binding does NOT normally take precedence overy the global script binding
+                    // to enable local variables to override global ones, ask main binding to override
+                    def returnedInputs = Runner.binding.withLocalVariables(body.binding.variables) {
+                        body(context.@input)
+                    }
+                    if(joiner || (body in Pipeline.currentRuntimePipeline.get().segmentJoiners)) {
+                        context.nextInputs = returnedInputs
+                    }
+                }
+            }
+        }
         catch(PipelineError e) {
             e.ctx = context
             throw e
         }
-		finally {
+        finally {
             Pipeline.currentContext.set(null)
-			this.running = false
-			this.endDateTimeMs = System.currentTimeMillis()
-		}
-	}
+            this.running = false
+            this.endDateTimeMs = System.currentTimeMillis()
+        }
+    }
 
     /**
      * Interrogate the PipelineContext and the specified list of 
