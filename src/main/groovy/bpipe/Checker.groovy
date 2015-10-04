@@ -58,7 +58,20 @@ class Checker {
     void otherwise(Closure otherwiseClause) {
         log.info("Evaluating otherwise clause for Check $ctx.stageName / $name")
         
-        Check check = Check.getCheck(ctx.stageName, this.name, ctx.branch.toString())
+        Check check
+        
+        // Legacy compatibility: if a check is saved with only the branch name,
+        // accept that
+        if(Check.getFile(ctx.stageName, this.name, ctx.branch.toString()).exists())
+            check = Check.getCheck(ctx.stageName, this.name, ctx.branch.toString())
+        else {
+            Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
+            String branchPath = ctx.pipelineStages.grep { it.stageName && it.stageName != "Unknown" && !(it ==~ '_.*inputs$') }*.stageName.join("_")  
+            if(branchPath.size() > 40) {
+                branchPath = Utils.sha1(branchPath) + "_" + ctx.branch.toString()
+            }
+            check = Check.getCheck(ctx.stageName, this.name, branchPath);
+        }
         
         log.info "Check name = $check.name"
         
