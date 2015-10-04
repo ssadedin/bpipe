@@ -95,7 +95,7 @@ task stage(dependsOn: jar) << {
   ["templates","html"].each { type ->
       ant.mkdir(dir: "$STAGE/$type")
       ant.copy(todir: "$STAGE/$type") {
-        ant.fileset(dir: "src/main/$type/bpipe", includes: "*")
+        ant.fileset(dir: "src/main/$type/bpipe", includes: "**")
       }
   }
 

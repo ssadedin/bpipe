@@ -112,11 +112,11 @@ class ReportGenerator {
             }
         }
         else {
-            generateFromGStringTemplate(pipeline,templateFile,outputDir,outputFile)
+            generateFromGStringTemplate(templateFile,outputDir,outputFile)
         }
     }
     
-    void generateFromGStringTemplate(Pipeline pipeline, File templateFile, String outputDir, File outputFile) {
+    void generateFromGStringTemplate(File templateFile, String outputDir, File outputFile) {
         
         InputStream templateStream = new FileInputStream(templateFile)
         
@@ -129,16 +129,15 @@ class ReportGenerator {
 //        GStringTemplateEngine e = new GStringTemplateEngine()
         SimpleTemplateEngine e  = new SimpleTemplateEngine()
         
-        log.info "Generating report to $outputFile.absolutePath"
+        log.info "Generating output from template ${templateFile.absolutePath} to $outputFile.absolutePath"
         templateStream.withReader { r ->
             def template = e.createTemplate(r).make(reportBinding)
             outputFile.text = template.toString()
         }
         templateStream.close()
-        println "MSG: Generated report "+ outputFile.absolutePath
     }
     
-    static File resolveTemplateFile(String templateFileName) {
+    static File resolveTemplateFile(String templateFileName, List templateLocations=["html","templates"]) {
         
         // First priority is an absolute path or relative directly to a template file
         File templateFile = new File(templateFileName)
@@ -150,7 +149,7 @@ class ReportGenerator {
         // Look in default template locations (such as the stock reports shipped with Bpipe)
         if(!templateFile.exists()) {
                 
-            for(srcDirName in ["html","templates"]) {
+            for(srcDirName in templateLocations) {
                     
                 File srcTemplateDir = new File(System.getProperty("bpipe.home") + "/src/main/$srcDirName/bpipe")
                 
@@ -168,7 +167,7 @@ class ReportGenerator {
                 
         if(!templateFile.exists()) {
             throw new PipelineError("""
-                The documentation template you specified (${templateFileName.replaceAll(".html","")}) could not be located. Valid report templates are:
+                The template template you specified (${templateFileName.replaceAll(".html","")}) could not be located. Valid templates are:
             """.stripIndent() + "\n\t" + templateFile.parentFile.listFiles()*.name.collect{it.replaceAll(".html","")}.join("\n\t"))
         }
         return templateFile
