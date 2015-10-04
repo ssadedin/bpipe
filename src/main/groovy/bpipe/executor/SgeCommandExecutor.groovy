@@ -149,7 +149,7 @@ class SgeCommandExecutor implements CommandExecutor {
     cmdWrapperScript.text =
       """\
       #!/bin/sh
-      #\$ -wd \$PWD
+      #\$ -wd ${bpipe.Runner.canonicalRunDirectory}
       #\$ -N \"$name\"
       #\$ -terse
       #\$ -o $jobDir/$CMD_OUT_FILENAME
