@@ -24,6 +24,8 @@
  */
 package bpipe
 
+import java.util.logging.Level;
+
 import groovy.util.logging.Log;
 
 /**
@@ -276,7 +278,9 @@ class PipelineInput {
                 pattern = '^.*' + pattern
                 log.info "Resolving inputs matching pattern $pattern"
 	            for(s in reverseOutputs) {
-	                log.info("Checking outputs ${s}")
+                    if(log.isLoggable(Level.FINE))
+    	                log.fine("Checking outputs ${s}")
+                        
 	                def o = s.find { it?.matches(wholeMatch) }
                     if(o)
 	                    return s.grep { it?.matches(wholeMatch) }
