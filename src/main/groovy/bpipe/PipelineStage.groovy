@@ -302,7 +302,8 @@ class PipelineStage {
                 use(PipelineBodyCategory) {
                     // Closure binding does NOT normally take precedence overy the global script binding
                     // to enable local variables to override global ones, ask main binding to override
-                    def returnedInputs = Runner.binding.withLocalVariables(body.binding.variables) {
+                    def bindingVariables = body.hasProperty("binding") ? body.binding.variables : [:]
+                    def returnedInputs = Runner.binding.withLocalVariables(bindingVariables) {
                         body(context.@input)
                     }
                     if(joiner || (body in Pipeline.currentRuntimePipeline.get().segmentJoiners)) {
