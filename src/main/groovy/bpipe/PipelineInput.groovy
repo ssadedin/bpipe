@@ -264,7 +264,7 @@ class PipelineInput {
 	            String pattern = extsAndOrigs[0]
 	            String origName = extsAndOrigs[1]
                 
-                String wholeMatch = '^' + pattern + '$'
+                String wholeMatch = '(^|^.*/)' + pattern + '$'
                 
                 // Special case: treat a leading dot as a literal dot.
                 // ie: if the user specifies ".xml", they probably mean
