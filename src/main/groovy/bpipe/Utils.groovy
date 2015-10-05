@@ -71,8 +71,8 @@ class Utils {
         
         def inputFileTimestamps = inputFiles.collectEntries { [ it, it.lastModified() ] }
        
-        long maxInputTimestamp = inputFileTimestamps.max { it.value }.value
-    
+        long maxInputTimestamp = (inputFileTimestamps.max { it.value }?.value)?:0
+        
         outputs.collect { new File(it) }.grep { outFile ->
             
             long outputTimestamp = outFile.lastModified()
