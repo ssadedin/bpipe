@@ -1465,13 +1465,19 @@ class PipelineContext {
     }
     
     class CommandThread extends Thread {
+        static int EXIT_ABORTED = -2
         Command toWaitFor
+        PipelineTestAbort abort
         Pipeline pipeline
         void run() {
-
             Pipeline.currentRuntimePipeline.set(pipeline)
-
-            toWaitFor.exitCode = toWaitFor.executor.waitFor()
+            try {
+                toWaitFor.exitCode = toWaitFor.executor.waitFor()
+            }
+            catch(PipelineTestAbort e) {
+                abort = e 
+                toWaitFor.exitCode = EXIT_ABORTED
+            } 
         }
     }
     
@@ -1513,19 +1519,7 @@ class PipelineContext {
         log.info "Scaled resource use to ${usedResources.values()} to execute in multi block"
         
         try {
-          def aborts = []
-          List<Command> execCmds = cmds.collect { 
-              try {
-                async(it,true,null,true)
-              }
-              catch(PipelineTestAbort e) {
-                 aborts << e 
-              }
-          }
-          
-          if(aborts) {
-              throw new PipelineTestAbort("Would execute multiple commands: \n\n" + [ 1..aborts.size(),aborts.collect { it.message.replaceAll("Would execute:","") }].transpose()*.join("\t").join("\n"))
-          }
+          List<Command> execCmds = cmds.collect { async(it,true,null,true) }
           
           List<Integer> exitValues = []
           List<CommandThread> threads = execCmds.collect { new CommandThread(toWaitFor:it, pipeline:Pipeline.currentRuntimePipeline.get()) }
@@ -1539,6 +1533,11 @@ class PipelineContext {
               else
                 break
               Thread.sleep(2000)
+          }
+          
+          List aborts = threads*.abort.grep { it != null }
+          if(aborts) {
+              throw new PipelineTestAbort("Would execute multiple commands: \n\n" + [ 1..aborts.size(),aborts.collect { it.message.replaceAll("Would execute:","") }].transpose()*.join("\t").join("\n"))
           }
          
           List<String> failed = [cmds,threads*.toWaitFor*.exitCode].transpose().grep { it[1] }
