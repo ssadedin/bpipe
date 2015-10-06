@@ -1464,8 +1464,9 @@ class PipelineContext {
         async(cmd, true, config)
     }
     
+    final static int EXIT_ABORTED = -2
+    
     class CommandThread extends Thread {
-        static int EXIT_ABORTED = -2
         Command toWaitFor
         PipelineTestAbort abort
         Pipeline pipeline
