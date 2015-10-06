@@ -1595,7 +1595,10 @@ class PipelineContext {
                      maxProcs = intRangeMatch[0][2].toInteger()
                  }
                  else {
-                     procs = procs.trim().toInteger()
+                     // NOTE: currently SGE is using a procs option like
+                     // 'orte 3' for 3 processes. This here is a hack to enable
+                     // that not to fail, but we need to think about how to handle that better
+                     procs = procs.trim().replaceAll('[^0-9]','').toInteger()
                  }
               }
               else
