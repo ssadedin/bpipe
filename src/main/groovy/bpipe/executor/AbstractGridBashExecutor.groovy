@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) Murdoch Childrens Research Institute and Contributers
  * All rights reserved.
@@ -24,6 +25,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package bpipe.executor
+
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Future
@@ -55,6 +57,10 @@ abstract class AbstractGridBashExecutor implements CommandExecutor {
     transient protected Future<BashResult> task
 
     transient protected ExecutorServiceProvider provider
+    
+    transient protected Appendable outputLog
+    
+    transient protected Appendable errorLog
 
     protected BashResult result
 
@@ -66,12 +72,15 @@ abstract class AbstractGridBashExecutor implements CommandExecutor {
 
 
     @Override
-    void start(Map cfg, Command command, File outputDirectory) {
+    void start(Map cfg, Command command, File outputDirectory, Appendable outputLog, Appendable errorLog) {
 
         this.cfg = cfg
         this.id = command.id
         this.name = command.name
         this.cmd = command.command ?. trim()
+        
+        this.outputLog = outputLog
+        this.errorLog = errorLog
 
         /*
          * submit to the grid for command execution
@@ -131,8 +140,8 @@ abstract class AbstractGridBashExecutor implements CommandExecutor {
             command.status = CommandStatus.COMPLETE.name()
         }
 
-        if( result?.stdOutput ) { System.out.println(result.stdOutput) }
-        if( result?.stdError ) { System.out.println(result.stdError) }
+        if( result?.stdOutput ) { outputLog.println(result.stdOutput) }
+        if( result?.stdError ) { errorLog.println(result.stdError) }
 
         return result?.exitCode
     }

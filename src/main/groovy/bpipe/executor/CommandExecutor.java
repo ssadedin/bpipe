@@ -50,7 +50,7 @@ import bpipe.Command;
  */
 public interface CommandExecutor extends Serializable {
     
-    void start(Map cfg, Command cmd, File outputDirectory);
+    void start(Map cfg, Command cmd, File outputDirectory, Appendable outputLog, Appendable errorLog);
     
     String status();
     

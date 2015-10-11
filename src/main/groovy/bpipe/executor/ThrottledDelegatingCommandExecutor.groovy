@@ -16,11 +16,20 @@ import bpipe.ResourceUnit;
 @Log
 class ThrottledDelegatingCommandExecutor {
     
+    public static final long serialVersionUID = 0L
+    
     /**
      * The level of concurrency that will be reserved for executing the command
      */
     List<ResourceUnit> resources
     
+    transient Appendable outputLog = null
+    
+    /**
+     * The output log to which stderr will be written
+     */
+    transient Appendable errorLog = null
+     
     /**
      * If true, command is only actually executed when "waitFor()" is called
      * This is necessary to avoid deadlocks when multiple commands are run
@@ -50,8 +59,10 @@ class ThrottledDelegatingCommandExecutor {
      * the delegate {@link CommandExecutor#start(java.util.Map, String, String, String, java.io.File)}
      */
     @Override
-    void start(Map cfg, Command cmd, File outputDirectory) {
+    void start(Map cfg, Command cmd, File outputDirectory, Appendable outputLog, Appendable errorLog) {
         this.command = cmd
+        this.outputLog = outputLog
+        this.errorLog = errorLog
         if(deferred) {
           this.cfg = cfg
           this.outputDirectory = outputDirectory
@@ -95,7 +106,7 @@ class ThrottledDelegatingCommandExecutor {
                 throw new bpipe.PipelineTestAbort("$msg\n\n                using $commandExecutor with config $cfg")
             }
         }
-        commandExecutor.start(cfg, this.command, outputDirectory)
+        commandExecutor.start(cfg, this.command, outputDirectory, outputLog, errorLog)
     }
     
     /**

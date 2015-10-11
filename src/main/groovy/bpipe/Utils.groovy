@@ -34,6 +34,8 @@ import java.lang.management.OperatingSystemMXBean;
 import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
 import java.util.regex.Pattern
 
 /**
@@ -750,5 +752,19 @@ class Utils {
             log.info "Number of cached canonical paths = " + canonicalFiles.size()
             
         return result
+    }
+    
+    /**
+     * Set up simple logging to work in a sane way
+     * 
+     * @param path
+     * @return
+     */
+    public static configureSimpleLogging(String path) {
+        def parentLog = Logger.getLogger("bpipe.Runner").parent
+        parentLog.getHandlers().each { parentLog.removeHandler(it) }
+        FileHandler fh = new FileHandler(path)
+        fh.setFormatter(new BpipeLogFormatter())
+        parentLog.addHandler(fh)
     }
 }

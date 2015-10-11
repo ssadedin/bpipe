@@ -187,17 +187,13 @@ class CommandManager {
         
         // Temporary hack until we figure out design for how output log gets passed through
         OutputLog commandLog = new OutputLog(outputLog, command.id)
-        if(cmdExec instanceof LocalCommandExecutor) {
-        	cmdExec.outputLog = commandLog
-        	cmdExec.errorLog = commandLog
-        }
 
         ThrottledDelegatingCommandExecutor wrapped = new ThrottledDelegatingCommandExecutor(cmdExec, resources)
         if(deferred)
             wrapped.deferred = true
         
         command.name = name
-        wrapped.start(cfg, command, outputDirectory)
+        wrapped.start(cfg, command, outputDirectory, commandLog, commandLog)
     		
 		this.commandIds[cmdExec] = command.id
 		this.commandIds[wrapped] = command.id
@@ -320,6 +316,23 @@ class CommandManager {
             e = e.commandExecutor
   
        new File(dir, command.id).withObjectOutputStream { it << e; it << command } 
+    }
+    
+    Command readSavedCommand(String commandId) {
+        File commandFile = new File(completedDir, commandId)
+        if(!commandFile.exists()) {
+            log.info "No executed command file for $commandId exists: either it is still running or it never ran"
+            return null
+        }
+        
+        log.info "Loading command $commandId"
+        commandFile.withObjectInputStream { 
+            // First saved object is the CommandExecutor
+            it.readObject(); 
+            
+            // Second is the one we want, the command itself
+            it.readObject() 
+        }
     }
     
     public static List<CommandExecutor> getCurrentCommands() {

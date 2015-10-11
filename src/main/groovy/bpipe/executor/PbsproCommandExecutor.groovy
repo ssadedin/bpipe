@@ -59,7 +59,7 @@ class PbsproCommandExecutor extends CustomCommandExecutor implements CommandExec
      * These appear as files in the local directory.
      */
     @Override
-    void start(Map cfg, Command command, File outputDirectory) {
+    void start(Map cfg, Command command, File outputDirectory, Appendable outputLog, Appendable errorLog) {
 
         this.command = command
         this.config = cfg
@@ -128,8 +128,8 @@ class PbsproCommandExecutor extends CustomCommandExecutor implements CommandExec
         new File(jobDirFile.absolutePath+"/${id}.out").createNewFile()
         new File(jobDirFile.absolutePath+"/${id}.err").createNewFile()
 
-        forward(jobDirFile.absolutePath+"/${id}.out", System.out)
-        forward(jobDirFile.absolutePath+"/${id}.err", System.err)
+        forward(jobDirFile.absolutePath+"/${id}.out", outputLog)
+        forward(jobDirFile.absolutePath+"/${id}.err", errorLog)
     }
 
     /**

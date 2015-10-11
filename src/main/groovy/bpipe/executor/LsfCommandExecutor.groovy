@@ -25,7 +25,6 @@
 package bpipe.executor
 
 import groovy.util.logging.Log
-
 import java.util.regex.Pattern
 import java.util.regex.Matcher
 
@@ -89,7 +88,7 @@ class LsfCommandExecutor implements CommandExecutor {
 	 *   the job exit code. To monitor for job termination will will wait for that file to exist
 	 */
     @Override
-    void start(Map cfg, Command command, File outputDirectory) {
+    void start(Map cfg, Command command, File outputDirectory, Appendable outputLog, Appendable errorLog) {
         
         this.config = cfg
         this.id = command.id
@@ -195,12 +194,10 @@ class LsfCommandExecutor implements CommandExecutor {
 			log.info "Started command with id $commandId"
 		}
 
-
         // After starting the process, we launch a background thread that waits for the error
         // and output files to appear and then forward those inputs
-        forward("$jobDir/$CMD_OUT_FILENAME", System.out)
-        forward("$jobDir/$CMD_ERR_FILENAME", System.err)
-		
+        forward("$jobDir/$CMD_OUT_FILENAME", outputLog)
+        forward("$jobDir/$CMD_ERR_FILENAME", errorLog)
     }
 
 

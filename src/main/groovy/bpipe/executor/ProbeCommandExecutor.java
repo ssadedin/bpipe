@@ -44,8 +44,7 @@ public class ProbeCommandExecutor implements CommandExecutor {
     private static final long serialVersionUID = 1L;
 
     @Override
-    public void start(Map cfg, Command command, File outputDirectory) {
-
+    public void start(Map cfg, Command command, File outputDirectory, Appendable outputLog, Appendable errorLog) {
     }
 
     @Override

@@ -27,6 +27,8 @@ package bpipe
 
 import java.io.BufferedReader;
 
+import bpipe.executor.CommandExecutor;
+
 /**
  * Custom support for tailing the log file.
  * <p>
@@ -47,8 +49,12 @@ class Tail {
         logCli.with {
             n longOpt: 'lines', 'number of lines to log', args:1
             t longOpt: 'threads', 'thread id to track', args:1
+            c longOpt: 'command', 'command id to show output for', args:1
             f longOpt: 'follow', 'keep following file until user presses Ctrl+C'
+            x longOpt: 'completed', 'show in context of completed pipeline with given pid', args:1
         }
+        
+        Utils.configureSimpleLogging(".bpipe/bpipe.log")
         
         def opts = logCli.parse(args)
         
@@ -64,6 +70,53 @@ class Tail {
         
         // Open the file
         File logFile = new File(".bpipe/logs/${jobId}.log")    
+        if(opts.c) {
+            showCommandLog(logFile, opts.c)
+        }
+        else {
+            showTail(logFile, lines, threadId, opts)
+        }
+    }
+    
+    static void showCommandLog(File logFile, String commandId) {
+        OutputLogEntry logEntry = logFile.withReader { r ->
+            OutputLogIterator i = new OutputLogIterator(r)
+            i.find { it.commandId == commandId }
+        }
+        
+        // Try to also show the command information
+        Command cmd = new CommandManager().readSavedCommand(commandId)
+        
+        println " Command $commandId ".center(Config.config.columns, "=")
+        
+        int leftWidth = 10
+        if(cmd) {
+            println ""
+            println "Command ".padRight(leftWidth) + " : " + cmd.command
+            println "Exit Code ".padRight(leftWidth) + " : " + cmd.exitCode
+            println "Output ".padRight(leftWidth) + " : "
+            println ""
+            if(logEntry) {
+                println logEntry.content
+            }
+            else {
+                println "No command output found in most recent log file"
+            }
+        }
+        
+        println ""
+    }
+    
+    static void showTail(File logFile, int lines, String threadId, def opts) {
+        
+        if(opts.x) {
+            println ""
+            println "MSG: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"
+            println "MSG:     NOTE: Pipeline completed as process $opts.x.  Trailing lines follow."
+            println "MSG:     Use bpipe log -n <lines> to see more lines"
+            println "MSG: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+            println ""
+        }
         
         int countSkip = 0
         BufferedReader r 
@@ -146,6 +199,6 @@ class Tail {
         finally {
             if(r)
               r.close()
-        }
+        } 
     }
 }

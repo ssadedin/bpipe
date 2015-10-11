@@ -46,16 +46,6 @@ class LocalCommandExecutor implements CommandExecutor {
     transient Process process
     
     /**
-     * The output log to which stdout will be written
-     */
-    transient Appendable outputLog = System.out
-    
-    /**
-     * The output log to which stderr will be written
-     */
-    transient Appendable errorLog = System.err
-    
-    /**
      * The exit code returned by the process, only
      * available after the process has exited and
      * status() or waitFor() has been called.
@@ -80,7 +70,7 @@ class LocalCommandExecutor implements CommandExecutor {
     LocalCommandExecutor() {
     }
     
-    void start(Map cfg, Command command, File outputDirectory) {
+    void start(Map cfg, Command command, File outputDirectory, Appendable outputLog, Appendable errorLog) {
         
       this.command = command
       String cmd = command.command
