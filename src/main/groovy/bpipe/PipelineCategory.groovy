@@ -263,7 +263,7 @@ class PipelineCategory {
                             // all "inputs" reflected as some output of an earlier stage
                             PipelineContext dummyPriorContext = pipeline.createContext()
                             PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
-                            dummyPriorContext.stageName = dummyPriorStage.stageName = "Nested pipeline segment: $chr"
+                            dummyPriorContext.stageName = dummyPriorStage.stageName = "_${chr}_inputs"
                                 
                             // If the filterInputs option is set, match input files on the region name
                             def childInputs = input
