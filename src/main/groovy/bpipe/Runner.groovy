@@ -362,7 +362,8 @@ class Runner {
                            { ToolDatabase.instance.init(Config.userConfig) },
                            { /* Add event listeners that come directly from configuration */ EventManager.instance.configure(Config.userConfig) },
                            { Concurrency.instance.initFromConfig() },
-                           { if(!opts.t) { NotificationManager.instance.configure(Config.userConfig); configureReportsFromUserConfig() } }
+                           { if(!opts.t) { NotificationManager.instance.configure(Config.userConfig); configureReportsFromUserConfig() } },
+                           { Dependencies.instance.preloadOutputGraph() }
                            ].collect{new Thread(it)}
         initThreads*.start()
 

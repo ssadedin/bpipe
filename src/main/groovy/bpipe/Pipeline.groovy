@@ -1180,7 +1180,12 @@ public class Pipeline implements ResourceRequestor {
     void summarizeOutputs(List stages) {
         
         Dependencies.instance.reset()
-        List all = Dependencies.instance.findLeaves(Dependencies.instance.outputGraph)*.values.flatten()*.outputPath
+        def graph = Dependencies.instance.outputGraph
+        List all = Dependencies.instance.findLeaves(graph)*.values.flatten()*.outputPath
+        
+        Utils.time("Save output graph") {
+            Dependencies.instance.saveOutputGraphCache()
+        }
         
         def runFiles = Dependencies.instance.outputFilesGenerated
         

@@ -37,7 +37,9 @@ import groovy.transform.CompileStatic;
  * 
  * @author ssadedin
  */
-class GraphEntry {
+class GraphEntry implements Serializable {
+    
+    public static final long serialVersionUID = 0L
     
     List<Properties> values
     List<GraphEntry> parents = []
@@ -47,7 +49,7 @@ class GraphEntry {
      * An optional index to speed up lookups by canonical path - not populated by default,
      * but can be populated by using index()
      */
-    Map<String, GraphEntry> index = null
+    transient Map<String, GraphEntry> index = null
     
     @CompileStatic
     GraphEntry findBy(Closure c) {
@@ -274,6 +276,11 @@ class GraphEntry {
 @Log
 class Dependencies {
     
+    /**
+     * The file to which the output graph is saved between runs
+     */
+    final static File OUTPUT_GRAPH_CACHE_FILE = new File(".bpipe/outputs/outputGraph.ser")
+    
     GraphEntry outputGraph
     
     /**
@@ -386,7 +393,32 @@ class Dependencies {
         if(missing)
             throw new PipelineError("Expected $type file ${missing[0]} could not be found")
     }
-
+    
+    synchronized saveOutputGraphCache() {
+		
+		if(!OUTPUT_GRAPH_CACHE_FILE.parentFile.exists()) {
+			OUTPUT_GRAPH_CACHE_FILE.parentFile.mkdirs()
+		}
+		
+        OUTPUT_GRAPH_CACHE_FILE.withObjectOutputStream { oos ->
+            oos << outputGraph
+        }
+    }
+    
+    /**
+     * Attempt to load the output graph from previously saved serialized form, if it is available
+     * @return
+     */
+    synchronized preloadOutputGraph() {
+        if(OUTPUT_GRAPH_CACHE_FILE.exists()) {
+            Utils.time("Read cached output graph") {
+                outputGraph = OUTPUT_GRAPH_CACHE_FILE.withObjectInputStream { it.readObject() }
+            }
+        }
+        else {
+            log.info "No cached output graph ($OUTPUT_GRAPH_CACHE_FILE.name) available: will be computed from property files"
+        }
+    }
     
     synchronized GraphEntry getOutputGraph() {
         if(this.outputGraph == null) {
@@ -490,10 +522,17 @@ class Dependencies {
      * Store the given properties file as an output meta data file
      */
     void saveOutputMetaData(Properties p) {
-        
         p = p.clone()
         
         File file = new File(PipelineContext.OUTPUT_METADATA_DIR, p.propertyFile)
+        
+        // Ideally we would update the file, but as a stop gap,
+        // ensure it is deleted if any file gets updated.
+        // In the normal course of events 
+        if(OUTPUT_GRAPH_CACHE_FILE.exists()) {
+            log.info "Deleting output graph cache file $OUTPUT_GRAPH_CACHE_FILE.absolutePath due to update of properties $file"
+            OUTPUT_GRAPH_CACHE_FILE.delete()
+        }
         
         // Undo possible format conversions so everything is strings
         if(p.inputs instanceof List)
@@ -792,7 +831,7 @@ class Dependencies {
         // from the list of outputs and recursively do the same for each output we discovered, building
         // the whole graph from the original inputs through to the final outputs
         
-        List allInputs = outputs*.inputs.flatten().unique()
+        List allInputs = Utils.time("Calculate unique inputs") { outputs*.inputs.flatten().unique() }
         List allOutputs = outputs*.outputPath
         
         // Find all entries with inputs that are not outputs of any other entry
@@ -1001,7 +1040,7 @@ class Dependencies {
                 List<File> files = 
                                new File(PipelineContext.OUTPUT_METADATA_DIR).listFiles()
                                ?.toList()
-                                .grep { !it.name.startsWith(".") && !it.isDirectory() } // ignore files starting with ., 
+                                .grep { !it.name.startsWith(".") && !it.isDirectory() && !it.name.equals("outputGraph.ser") } // ignore files starting with ., 
                                                                    // added as a convenience because I occasionally
                                                                    // edit files in output folder when debugging and it causes
                                                                    // Bpipe to fail!
