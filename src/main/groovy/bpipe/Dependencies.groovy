@@ -567,7 +567,7 @@ class Dependencies {
         }
         t.join()
         
-        log.info "\nOutput graph is: \n\n" + graph.dump()
+        // log.info "\nOutput graph is: \n\n" + graph.dump()
         
         // Identify the leaf nodes
         List leaves = findLeaves(graph)
