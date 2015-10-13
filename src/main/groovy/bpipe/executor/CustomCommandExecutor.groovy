@@ -192,7 +192,16 @@ class CustomCommandExecutor implements CommandExecutor {
      */
     void setEnvironment(Map env) {
         
-        env.COMMAND = '('+ command.command + ') > .bpipe/commandtmp/'+command.id+'/'+command.id+'.out 2>  .bpipe/commandtmp/'+command.id+'/'+command.id+'.err'
+        if(config?.stdbuf) {
+            String commandScript = '.bpipe/commandtmp/'+command.id+'/'+command.id+'.sh'
+            File commandScriptFile = new File(commandScript)
+            commandScriptFile.text = command.command
+            commandScriptFile.setExecutable(true)
+            env.COMMAND = 'stdbuf -o0 ' + commandScript + ' > .bpipe/commandtmp/'+command.id+'/'+command.id+'.out 2>  .bpipe/commandtmp/'+command.id+'/'+command.id+'.err'
+        }
+        else {
+            env.COMMAND = '('+ command.command + ') > .bpipe/commandtmp/'+command.id+'/'+command.id+'.out 2>  .bpipe/commandtmp/'+command.id+'/'+command.id+'.err'
+        }
             
         // If an account is specified by the config then use that
         if(config?.account)
