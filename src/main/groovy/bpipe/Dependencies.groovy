@@ -866,8 +866,14 @@ class Dependencies {
 //        log.info "There are ${outputGroups.size()} output groups: ${outputGroups.values()*.outputPath}"
         log.info "There are ${outputGroups.size()} output groups"
         log.info "Subtracting ${outputsWithExternalInputs.size()} remaining outputs from ${outputs.size()} total outputs"
-        List remainingOutputs = outputs.clone()
-        remainingOutputs.removeAll(outputsWithExternalInputs)
+        
+        Set outputsWithExternalInputsSet = outputsWithExternalInputs as Set
+        
+        List remainingOutputs = outputs.grep { !outputsWithExternalInputsSet.contains(it) }
+        // remainingOutputs.removeAll(outputsWithExternalInputs)
+        
+        List remainingWithoutExternal = new ArrayList(remainingOutputs.size())
+        
         outputGroups.each { key, outputGroup ->
 //          log.info "Remaining outputs: " + remainingOutputs*.outputPath
             computeOutputGraph(remainingOutputs, createdEntries[key], topRoot, handledOutputs)
