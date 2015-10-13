@@ -51,8 +51,9 @@ class Forwarder extends TimerTask {
      * Longest amount of time we will wait for an expected file that does not exist
      * to appear
      */
-    static long MAX_FLUSH_WAIT = 10000
-   
+    static long MAX_WAIT_MISSING_FILE = 10000
+    
+    
     /**
      * The list of files that are being 'tailed'
      */
@@ -66,13 +67,13 @@ class Forwarder extends TimerTask {
     /**
      * Destinations to which the file should be forwarded
      */
-    Map<File, OutputStream> fileDestinations = [:]
+    Map<File, Appendable> fileDestinations = [:]
     
-    Forwarder(File f, OutputStream out) {
+    Forwarder(File f, Appendable out) {
         forward(f,out)
     }
    
-    void forward(File file, OutputStream out) {
+    void forward(File file, Appendable out) {
         synchronized(files) {
             files << file
             fileDestinations[file] = out
@@ -98,14 +99,14 @@ class Forwarder extends TimerTask {
             
             this.files.collect { it.parentFile }.unique { it.canonicalFile.absolutePath }*.listFiles()
             
-            while(now - startTimeMs < MAX_FLUSH_WAIT) {
+            while(now - startTimeMs < MAX_WAIT_MISSING_FILE) {
                 if(this.files.every { it.exists() })
                     break
                 now = System.currentTimeMillis()
                 Thread.sleep(1000)
             }
-            if(now - startTimeMs >= MAX_FLUSH_WAIT) {
-                def msg = "Exceeded $MAX_FLUSH_WAIT ms waiting for one or more output files ${files*.absolutePath} to appear: output may be incomplete"
+            if(now - startTimeMs >= MAX_WAIT_MISSING_FILE) {
+                def msg = "Exceeded $MAX_WAIT_MISSING_FILE ms waiting for one or more output files ${files*.absolutePath} to appear: output may be incomplete"
                 System.err.println  msg
                 log.warning msg
             }
@@ -139,7 +140,8 @@ class Forwarder extends TimerTask {
                             
                             // TODO: for neater output we could trim the output to the 
                             // most recent newline here
-                            fileDestinations[f].write(buffer,0,count)
+                            fileDestinations[f].append(new String(buffer,0,count))
+                            fileDestinations[f].flush()
                             filePositions[f] = filePositions[f] + count
                         }
                     }
