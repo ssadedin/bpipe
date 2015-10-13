@@ -303,6 +303,14 @@ class PipelineStage {
                     // Closure binding does NOT normally take precedence overy the global script binding
                     // to enable local variables to override global ones, ask main binding to override
                     def bindingVariables = body.hasProperty("binding") ? body.binding.variables : [:]
+                    if(body instanceof ParameterizedClosure) {
+                        def extras = body.getExtraVariables()
+                        if(extras instanceof Closure)
+                            extras = extras()
+                            
+                        bindingVariables += extras
+                    }
+                        
                     def returnedInputs = Runner.binding.withLocalVariables(bindingVariables) {
                         body(context.@input)
                     }
