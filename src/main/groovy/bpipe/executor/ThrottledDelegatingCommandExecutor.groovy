@@ -16,7 +16,7 @@ import bpipe.ResourceUnit;
 @Log
 class ThrottledDelegatingCommandExecutor {
     
-    public static final long serialVersionUID = 0L
+    public static final long serialVersionUID = 4057750835163512598L
     
     /**
      * The level of concurrency that will be reserved for executing the command
