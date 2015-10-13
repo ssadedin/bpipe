@@ -735,6 +735,7 @@ public class Pipeline implements ResourceRequestor {
                 commands {
                    CommandManager.executedCommands.each {  Command cmd ->
                         command {
+                            id(cmd.id)
                             stage(cmd.name)
                             branch(cmd.branch.name)
                             content(cmd.command)

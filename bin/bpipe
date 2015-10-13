@@ -462,6 +462,11 @@ then
     shift 1
     display_log $*
     exit
+elif [ "$COMMAND" == "errors" ];
+then
+    shift 1
+    display_log -e $*
+    exit
 elif [ "$COMMAND" == "stop" ];
 then
     shift 1

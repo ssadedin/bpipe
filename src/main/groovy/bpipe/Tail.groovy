@@ -50,6 +50,7 @@ class Tail {
             n longOpt: 'lines', 'number of lines to log', args:1
             t longOpt: 'threads', 'thread id to track', args:1
             c longOpt: 'command', 'command id to show output for', args:1
+            e longOpt: 'errors', 'show output for commands that failed in the last run'
             f longOpt: 'follow', 'keep following file until user presses Ctrl+C'
             x longOpt: 'completed', 'show in context of completed pipeline with given pid', args:1
         }
@@ -70,11 +71,39 @@ class Tail {
         
         // Open the file
         File logFile = new File(".bpipe/logs/${jobId}.log")    
+        if(opts.e) {
+            showFailedCommands(logFile)
+        }
+        else
         if(opts.c) {
             showCommandLog(logFile, opts.c)
         }
         else {
             showTail(logFile, lines, threadId, opts)
+        }
+    }
+    
+    static void showFailedCommands(File logFile) {
+        
+        // Open the most recent results file
+        def results = new File(".bpipe/results").listFiles().max { it.lastModified() }
+        if(!results) {
+            println "\nNo Bpipe pipeline results were found in this directory.\n"
+            return
+        }
+        
+        // Parse the XML to find the commands that failed
+        def failedCommands =  
+            new XmlSlurper().parse(results).commands.command.grep { it.exitCode.text() !="0" }.id*.text()
+        
+        def runId = results.name.replaceAll('[^0-9]','')
+        
+        println ""
+        println " Found ${failedCommands.size()} failed commands from run ${runId} ".center(Config.config.columns,'=')
+        println ""
+        
+        failedCommands.each {
+            showCommandLog(logFile, it)
         }
     }
     
