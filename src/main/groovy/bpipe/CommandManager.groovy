@@ -193,15 +193,16 @@ class CommandManager {
             wrapped.deferred = true
         
         command.name = name
+        command.executor = wrapped
+        command.dir = this.commandDir
+        
         wrapped.start(cfg, command, outputDirectory, commandLog, commandLog)
     		
 		this.commandIds[cmdExec] = command.id
 		this.commandIds[wrapped] = command.id
         this.executedCommands << command
         
-        command.executor = wrapped
-        
-        saveCommand(command, commandDir)
+        command.save()
         
         return wrapped
     }
@@ -301,21 +302,14 @@ class CommandManager {
             command = this.executedCommands.find { it.id == commandId }
         }
         
-        if(command)
-            saveCommand(command, completedDir)
+        if(command) {
+            command.dir = completedDir
+            command.save()
+        }
         else
             log.warning("Unable to locate command $commandId as an executed command")
             
         from.delete()
-    }
-    
-    void saveCommand(Command command, File dir) {
-        
-       def e = command.executor
-       if(e instanceof ThrottledDelegatingCommandExecutor)
-            e = e.commandExecutor
-  
-       new File(dir, command.id).withObjectOutputStream { it << e; it << command } 
     }
     
     Command readSavedCommand(String commandId) {
@@ -335,9 +329,9 @@ class CommandManager {
         }
     }
     
-    public static List<CommandExecutor> getCurrentCommands() {
+    public static List<Command> getCurrentCommands() {
         
-        List<CommandExecutor> result = []
+        List<Command> result = []
         
         File commandsDir = new File(DEFAULT_COMMAND_DIR)
         if(!commandsDir.exists()) {
@@ -348,29 +342,41 @@ class CommandManager {
         List<String> statuses = [CommandStatus.RUNNING, CommandStatus.QUEUEING, CommandStatus.WAITING]*.name()
         commandsDir.eachFileMatch(~/[0-9]+/) { File f ->
             log.info "Loading command info from $f.absolutePath"
-            CommandExecutor cmd
+            CommandExecutor cmdExec
+            Command cmd
             try {
                 f.withObjectInputStream { 
-                    log.info "Loading command $cmd"
-                    cmd = it.readObject()
+                    cmdExec = it.readObject()
                     String status
                     try {
-                        status = cmd.status()
+                        status = cmdExec.status()
                     }
                     catch(Exception e) {
-                        log.info "Status probe for command $cmd failed: $e"
+                        println "Status probe for command $cmdExec failed: $e"
                     }
-                    if(status in statuses)
+                    
+                    try {
+                        cmd = it.readObject()
+                    }
+                    catch(Exception e) {
+                        System.err.println "WARN: unable to read saved command: " + e.message
+                    }
+                    
+                    // Update the status
+                    if(status in statuses) {
+                        cmd.status = CommandStatus.valueOf(status)
                         result.add(cmd) 
+                    }
                     else
                         log.info "Skip command with status $status"
                 }
             }
             catch(PipelineError e) {
-              System.err.println("Failed to read details for command $f.name: $cmd.\n\n${Utils.indent(e.message)}")
+              System.err.println("Failed to read details for command $f.name: $cmdExec.\n\n${Utils.indent(e.message)}")
             }
             catch(Throwable t) {
-              System.err.println("An unexpected error occured while reading details for command $f.name : $cmd.\n\n${Utils.indent(t.message)}")
+              System.err.println("An unexpected error occured while reading details for command $f.name : $cmdExec.\n\n${Utils.indent(t.message)}")
+              t.printStackTrace()
             }
         }
         return result

@@ -25,6 +25,7 @@
  */ 
 package bpipe
 
+import groovy.time.TimeCategory;
 import bpipe.executor.CommandExecutor;
 
 class StatusCommand {
@@ -35,12 +36,16 @@ class StatusCommand {
     void execute(def args) {
         
         // List all the commands in the commands folder
-        List<CommandExecutor> commands = CommandManager.getCurrentCommands()
+        List<Command> commands = CommandManager.getCurrentCommands()
         
         println "\nFound ${commands.size()} currently executing commands:\n"
         
+        Date now = new Date()
+        
         commands.eachWithIndex { cmd, i -> 
-            println Utils.indent("${i+1}. " + cmd.statusMessage())
+            println Utils.indent("${i+1}.".padRight(6) + cmd.executor.statusMessage())
+            if(cmd.status == CommandStatus.QUEUEING || cmd.status == CommandStatus.WAITING)
+                println Utils.indent("      " + cmd.status.name() + " for " + TimeCategory.minus(now,new Date(cmd.createTimeMs)))
         }
         println ""
     }

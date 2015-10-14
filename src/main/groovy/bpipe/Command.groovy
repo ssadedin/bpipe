@@ -163,4 +163,29 @@ class Command implements Serializable {
             log.warning("Failed to update status for result $statusValue: $e")
         }
     }
+    
+    File dir
+
+    synchronized void save() {
+        
+       def e = this.executor
+       if(e instanceof bpipe.executor.ThrottledDelegatingCommandExecutor)
+            e = e.commandExecutor
+  
+       File saveFile = new File(dir, this.id)
+       
+       Command me = this
+       saveFile.withObjectOutputStream { ois ->
+           ois.writeObject(e)
+           ois.writeObject(me)
+       } 
+    }
+    
+    static Command readCommand(File saveFile) {
+        saveFile.withObjectInputStream { ois ->
+            CommandExecutor exe2 = ois.readObject()
+            Command c2 = ois.readObject()
+            return c2
+        }       
+    }
 }

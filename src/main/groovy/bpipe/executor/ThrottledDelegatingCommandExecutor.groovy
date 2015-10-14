@@ -107,6 +107,8 @@ class ThrottledDelegatingCommandExecutor {
             }
         }
         commandExecutor.start(cfg, this.command, outputDirectory, outputLog, errorLog)
+        
+        this.command.save()
     }
     
     /**
@@ -147,6 +149,18 @@ class ThrottledDelegatingCommandExecutor {
                 log.warning("Error reported while releasing $resource.amount $resource.key : " + t.toString())
             }
         }
+    }
+    
+    String status() {
+        String result = commandExecutor.status()
+        try {
+            command.status = bpipe.CommandStatus.valueOf(result)
+            command.save()
+        }
+        catch(Exception e) {
+            log.warning("Failed to update command status " + command)
+        }
+        return result   
     }
     
     @Override

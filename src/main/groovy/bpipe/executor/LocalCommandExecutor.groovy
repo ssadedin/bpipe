@@ -65,14 +65,11 @@ class LocalCommandExecutor implements CommandExecutor {
      */
     boolean destroyed = false
     
-    transient Command command
-    
     LocalCommandExecutor() {
     }
     
     void start(Map cfg, Command command, File outputDirectory, Appendable outputLog, Appendable errorLog) {
         
-      this.command = command
       String cmd = command.command
       new Thread({
           
@@ -94,8 +91,10 @@ class LocalCommandExecutor implements CommandExecutor {
           this.runningCommand = cmd
           this.startedAt = new Date()
           process = Runtime.getRuntime().exec((String[])(['bash','-e','-c',"echo \$\$ > ${CommandManager.DEFAULT_COMMAND_DIR}/${command.id}.pid;\n$cmd"].toArray()))
-          this.command.status = CommandStatus.RUNNING.name()
-          this.command.startTimeMs = System.currentTimeMillis()
+          command.status = CommandStatus.RUNNING.name()
+          command.startTimeMs = System.currentTimeMillis()
+          this.id = command.id.toInteger()
+          command.save()
 
           Thread t1 = process.consumeProcessOutputStream(outputLog);
           Thread t2 = process.consumeProcessErrorStream(errorLog)
@@ -110,8 +109,8 @@ class LocalCommandExecutor implements CommandExecutor {
           // other things above went horribly wrong
           try { this.process.destroy() } catch(Throwable t) {}
 
-          this.command.stopTimeMs = System.currentTimeMillis()
-          this.id = command.id.toInteger()
+          command.stopTimeMs = System.currentTimeMillis()
+          
           synchronized(this) {
               this.notifyAll()
           }
@@ -119,10 +118,9 @@ class LocalCommandExecutor implements CommandExecutor {
       while(!process) 
         Thread.sleep(100)
     }
-    
+   
     String status() {
         String result = statusImpl()
-        this.command.status = result
         return result  
     }
     
@@ -133,10 +131,6 @@ class LocalCommandExecutor implements CommandExecutor {
             File pidFile = new File("${CommandManager.DEFAULT_COMMAND_DIR}/${id}.pid")
             if(pidFile.exists()) {
                 pid = pidFile.text.trim().toInteger()
-                
-                // Update the serialized file object so that it contains the PID
-                File pidCommandFile = new File(CommandManager.DEFAULT_COMMAND_DIR, String.valueOf(id)) 
-                pidCommandFile.withObjectOutputStream { it << this }
             }
         }
         
