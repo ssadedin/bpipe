@@ -142,12 +142,12 @@ class LocalCommandExecutor implements CommandExecutor {
         
         if(!this.process && this.pid != -1L) {
             try {
-                String info = "ps -o ppid,ruser --pid ${this.pid}".execute().text
+                String info = "ps -o ppid,ruser -p ${this.pid}".execute().text
                 def lines = info.split("\n")*.trim()
                 if(lines.size()>1)  {
-                    processInfo = lines[1].split(" ")[1]; 
-                    if(processInfo[1] == System.properties["user.name"]) {
-                        return CommandStatus.RUNNING
+                    info = lines[1].split(" ")[1]; 
+                    if(info == System.properties["user.name"]) {
+                        return CommandStatus.RUNNING.name()
                     }
                 }
             }
