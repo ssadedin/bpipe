@@ -13,7 +13,6 @@ Implicit variables are special variables that are made available to your Bpipe p
 
 - input - defines the name(s) of files that are inputs to your pipeline stage
 - output - defines the name(s) of files that are outputs from your pipeline stage
-- environment variables - variables inherited from your shell environment (note: this feature is not implemented yet - coming soon!).
 - branch - when a pipeline is running parallel branches, the name of the current branch is available in a *$branch* variable.
 
 The input and output variables are how Bpipe automatically connects tasks together to make a pipeline.  The default input to a stage is the output from the previous stage. In general you should always try to use these variables instead of hard coding file names into your commands.   Using these variables ensures that your tasks are reusable and can be joined together to form flexible pipelines.  
