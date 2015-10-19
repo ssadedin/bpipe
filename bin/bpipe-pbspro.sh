@@ -121,6 +121,12 @@ make_pbs_script () {
 	# It must consist of an alphabetic or numeric character 
 	# followed by printable, non-white-space characters.
 	TRIMMED_NAME=$(echo $NAME | cut -c 1-15)
+    
+    # ssadedin: add memory request
+    if [[ ! -z $MEMORY ]];
+    then
+        memory_request="#PBS -l mem="`echo "$MEMORY" | sed 's/gb$//'`"gb"
+    fi
 
 	# write out the job script to a file
 	cat > $job_script_name << HERE
