@@ -44,9 +44,8 @@ class StatusCommand {
         
         commands.eachWithIndex { cmd, i -> 
             println Utils.indent("${i+1}.".padRight(6) + cmd.executor.statusMessage())
-            if(cmd.status == CommandStatus.QUEUEING || cmd.status == CommandStatus.WAITING)
-                println Utils.indent("      " + cmd.status.name() + " for " + TimeCategory.minus(now,new Date(cmd.createTimeMs)))
+            println Utils.indent("      " + cmd.status.name() + " for " + TimeCategory.minus(now,new Date(cmd.createTimeMs)))
+            println ""
         }
-        println ""
     }
 }
