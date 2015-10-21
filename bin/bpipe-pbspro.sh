@@ -51,6 +51,9 @@ DEFAULT_BATCH_MEM=1
 DEFAULT_BATCH_PROCS=1
 DEFAULT_QUEUE=workq
 
+# Utility to join strings with separator
+function join { local IFS="$1"; shift; echo "$*"; }
+
 # Print a usage message
 usage () {
 	echo "usage: $program_name (start | stop ID | status ID)"
@@ -106,6 +109,8 @@ make_pbs_script () {
     #                -l select=<chunks>           <--- selection statement
     #   The only resources that can be requested in chunks are host-level resources, such as mem and ncpus.  
     #   The only resources that can be in a job-wide request are server-level or queue-level resources, such as walltime.  
+    
+    resource_requests=()
 
     # we have a SELECT_STATEMENT var
     if [[ ! -z $SELECT_STATEMENT ]]; then
@@ -114,6 +119,7 @@ make_pbs_script () {
 
 	if [[ ! -z $WALLTIME ]]; then
 		walltime_request="#PBS -l walltime=${WALLTIME}"
+        resource_requests+=("walltime=${WALLTIME}")
 	fi
 
 	# First strip name beacuse in PBS pro -N name have the following specs:
@@ -122,10 +128,23 @@ make_pbs_script () {
 	# followed by printable, non-white-space characters.
 	TRIMMED_NAME=$(echo $NAME | cut -c 1-15)
     
+    if [[ ! -z $PROCS ]];
+    then
+        resource_requests+=("nodes=1:ppn=$PROCS")
+        echo "PROCS=$PROCS" > tmp.log
+    fi
+    
     # ssadedin: add memory request
     if [[ ! -z $MEMORY ]];
     then
         memory_request="#PBS -l mem="`echo "$MEMORY" | sed 's/gb$//'`"gb"
+        resource_requests+=("mem="`echo "$MEMORY" | sed 's/gb$//'`"gb")
+    fi
+    
+    resource_requests_joined=`join , ${resource_requests[*]}`
+    if [[ ! -z $resource_requests_joined ]];
+    then
+        resource_requests_directive="#PBS -l $resource_requests_joined"
     fi
 
 	# write out the job script to a file
@@ -137,9 +156,7 @@ make_pbs_script () {
 #PBS -e $PBSERROR
 $project_name
 $account
-$memory_request
-$procs_request
-$walltime_request
+$resource_requests_directive
 $select_request
 
 cd \$PBS_O_WORKDIR
