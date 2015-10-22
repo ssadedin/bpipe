@@ -1,12 +1,19 @@
 # Using Bpipe with Cluster Resource Management Systems
 
-In some environments commands cannot be issued directly but must be queued and run in a managed environment that controls how long they can run for and what resources (memory, CPU, storage space, etc) they can use.  Bpipe supports integration with third-party Resource Manager software to run commands that are part of your pipeline in this kind of environment.  Out of the box Bpipe supports  [Torque PBS](http://www.adaptivecomputing.com/products/torque.php), Sun / Oracle Grid Engine, and Platform LSF.  Others can be integrated if you implement a simple adapter shell script that can relay commands between Bpipe and the resource manager software.
+In some environments commands cannot be issued directly but must be queued and
+run in a managed environment that controls how long they can run for and what
+resources (memory, CPU, storage space, etc) they can use.  Bpipe supports
+integration with third-party Resource Manager software to run commands that are
+part of your pipeline in this kind of environment.  Out of the box Bpipe
+supports  [Torque PBS](http://www.adaptivecomputing.com/products/torque.php),
+Sun / Oracle Grid Engine, and Platform LSF.  Others can be integrated if you
+implement a simple adapter shell script that can relay commands between Bpipe
+and the resource manager software.
 
 ## Using a Resource Manager
 
 To make Bpipe use a Resource Manager to execute commands, you make a small file in the local directory (the same place as your pipeline script) called "bpipe.config".   In this script you can place a single line that names the resource manager - for example:
 ```groovy 
-
     executor="torque"
 ```
 
@@ -28,13 +35,11 @@ The following options are supported:
 
 The walltime parameter can be specified in several different ways.  The most human friendly way to specify it is using the format "hh:mm:ss".  For example, to allow 3 hours and 30 minutes for a job, you can specify:
 ```groovy 
-
 walltime="03:30:00"
 ```
 
 Alternatively, you can also specify the walltime as a simple integer number of seconds, in which case the value 12600 would work instead:
 ```groovy 
-
 walltime=12600
 ```
 
@@ -46,7 +51,6 @@ walltime={ files -> files.size() ** 12600 }  // 3.5 hours for each file
 
 To make Bpipe use to total size of all the files to determine the time you could use something like this:
 ```groovy 
-
 walltime={ files -> files**.length().sum() / (1024*1024) * 60 } // 1 minute per MB
 ```
 
@@ -56,7 +60,6 @@ Note that in this case the expression will be evaluated for each command execute
 
 So far as we have described things options would apply globally to every command Bpipe executes.  However obviously different commands will need different resources, so it is important to allow for that.  Bpipe lets you customize resources in two ways.  First, you can override the configuration based on the **command** that is executed.  For example, you could override the resources for the "bwa" command as follows:
 ```groovy 
-
 walltime="03:30:00" // default is 3.5 hours
 commands {
     bwa {
@@ -67,19 +70,16 @@ commands {
 
 Note that Bpipe matches the configuration by parsing the start of the command you execute.  This means that it only works for simple commands where the command happens to be the first token in the text passed to the 'exec' command.  So this would work:
 ```groovy 
-
     exec "bwa aln test.fastq > test.sai"
 ```
 
 But this would not work:
 ```groovy 
-
     exec "time (bwa aln test.fastq > test.sai)"
 ```
 
 For more complicated cases you can override the configuration using a completely arbitrary configuration name that you supply after the "exec" command itself.   So the second example could be made to work by modifying the "exec" portion:
 ```groovy 
-
     exec "time (bwa aln test.fastq > test.sai)","bwa"
 ```
 
@@ -88,7 +88,6 @@ For more complicated cases you can override the configuration using a completely
 In order to enable the Sun Grid Engine (SGE) resource manager define the following entry in the `bpipe.config` file :
 
 ```groovy 
-
     executor="sge"
 ```
 
@@ -100,7 +99,6 @@ The amount of memory to be reserved can be specified with the `memory` option. V
 
 To specify the parallel environment configuration, use the `procs` option providing the parallel environment name and the number of processes on which your parallel (MPI or OpenMP) application should run. For example: 
 ```groovy 
-
    executor="sge"
    procs="orte 8" 
 ```
@@ -122,7 +120,6 @@ The above example uses the `-v` parameter to define a variable named `VAR` in th
 Pipeline execution thought the Platform LSF grid engine can be enabled specifying the string `lsf` as the executor in the `bpipe.config` file, as shown below: 
  
 ```groovy 
-
    executor="lsf"
 ```
 
@@ -135,7 +132,6 @@ The following options are supported by the LSF executor:
 For example: 
 
 ```groovy 
-
   executor="lsf" 
   queue="idle"
   lsf_request_options="-M 500000 -m 'hostA hostD hostB' -R 'rusage[swap=50]' "
