@@ -140,3 +140,27 @@ For example:
   queue="idle"
   lsf_request_options="-M 500000 -m 'hostA hostD hostB' -R 'rusage[swap=50]' "
 ```
+
+## PBS Pro
+
+PBS Pro is mostly configured the same way as the Torque engine is - use:
+
+```groovy
+executor="pbspro" 
+queue="<your queue name>"
+```
+
+Once that is configured, use the "procs" and "memory" options. Note that "memory" can only be specified in GB.
+
+If you want to override these with more complex configuration you can pass in a "select" statement:
+
+```groovy
+select_statement="X:ncpus=Y:mem=Z" 
+```
+
+However, note that the ncpus in the select statement is not automatically
+integrated with Bpipe's automated concurrency management. For example, if you use
+-n to control total concurrency, Bpipe won't know about the value embedded in your
+select statement, unless you specify it explicitly (eg: with "using").
+
+

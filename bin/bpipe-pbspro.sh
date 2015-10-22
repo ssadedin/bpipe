@@ -114,7 +114,7 @@ make_pbs_script () {
 
     # we have a SELECT_STATEMENT var
     if [[ ! -z $SELECT_STATEMENT ]]; then
-    	select_request="#PBS -l $SELECT_STATEMENT"
+    	select_request="#PBS -l select=$SELECT_STATEMENT"
     fi
 
 	if [[ ! -z $WALLTIME ]]; then
