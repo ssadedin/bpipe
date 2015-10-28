@@ -155,7 +155,16 @@ class SgeCommandExecutor implements CommandExecutor {
           additional_options += "#\$ -l virtual_free=${config.memory}\n"
         }
         
-        File commandTemplate = bpipe.ReportGenerator.resolveTemplateFile("executor/sge-command.template.sh")
+        String jobTemplateFile = "executor/sge-command.template.sh"
+        if(config?.jobTemplate) {
+            if(config.jobTemplate instanceof Closure) {
+                jobTemplateFile = String.valueOf(config.jobTemplate(config))
+            }
+            else 
+                jobTemplateFile = String.valueOf(config.jobTemplate)
+        }
+        
+        File commandTemplate = bpipe.ReportGenerator.resolveTemplateFile(jobTemplateFile)
         
         log.info "Generating output from command template ${commandTemplate.absolutePath} to $cmdWrapperScript.absolutePath"
         SimpleTemplateEngine e  = new SimpleTemplateEngine()
