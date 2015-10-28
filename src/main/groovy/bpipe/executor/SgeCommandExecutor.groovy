@@ -297,7 +297,7 @@ class SgeCommandExecutor implements CommandExecutor {
             exitValue = p.waitFor()
         }
 
-        if( !exitValue ) {
+        if( exitValue ) {
 
             def msg = "SGE failed to stop command $id, returned exit code $exitValue from command line: $cmd"
             log.severe "Failed stop command produced output: \n$out\n$err"
