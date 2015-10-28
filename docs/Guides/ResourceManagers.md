@@ -95,17 +95,24 @@ The configuration options available are the same as described above, with the ex
 
 The amount of memory to be reserved can be specified with the `memory` option. Values without any units is interpreted as number of bytes. Optionally it is possible to use `M` for mega-byte and `G` for giga-byte. Eg "100M" or "2G". 
 
-### = Parallel environment =
+### Parallel environment
 
-To specify the parallel environment configuration, use the `procs` option providing the parallel environment name and the number of processes on which your parallel (MPI or OpenMP) application should run. For example: 
+To specify the parallel environment configuration, use the `procs` option
+providing the parallel environment name and the number of processes on which
+your parallel (MPI or OpenMP) application should run. For example: 
+
 ```groovy 
    executor="sge"
    procs="orte 8" 
 ```
 
-### = Advanced configuration =
+### Advanced configuration
 
-Bpipe submits jobs requests to the SGE resource manager through the `qsub` command. Experienced users may want/need to have fine control on the job submitting parameters. Using the option `sge_request_options`, it is possible to provide any configuration parameter accepted by the `qsub` command. For example:
+Bpipe submits jobs requests to the SGE resource manager through the `qsub`
+command. Experienced users may want/need to have fine control on the job
+submitting parameters. Using the option `sge_request_options`, it is possible
+to provide any configuration parameter accepted by the `qsub` command. For
+example:
 
 ```groovy 
 
