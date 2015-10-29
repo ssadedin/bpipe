@@ -1584,7 +1584,6 @@ class PipelineContext {
       // which may get given a crazy high number of threads
       def commandCfg = command.getConfig(Utils.box(this.input))
       String configThreads = null
-<<<<<<< HEAD
       if(commandCfg.containsKey('procs')) {
           def procs = commandCfg.procs
           int maxProcs = 0
@@ -1606,34 +1605,6 @@ class PipelineContext {
           if(procs instanceof IntRange) {
               procs = procs.from
               maxProcs = procs.to
-=======
-      if(config) {
-          def procs = command.getConfig(Utils.box(this.input)).procs
-          if(procs) {
-              int maxProcs = 0
-              if(procs instanceof String) {
-                 // Allow range of integers
-                 def intRangeMatch = (procs =~ /([0-9]*) *- *([0-9]*)$/)
-                 if(intRangeMatch) {
-                     procs = intRangeMatch[0][1].toInteger()
-                     maxProcs = intRangeMatch[0][2].toInteger()
-                 }
-                 else {
-                     // NOTE: currently SGE is using a procs option like
-                     // 'orte 3' for 3 processes. This here is a hack to enable
-                     // that not to fail, but we need to think about how to handle that better
-                     procs = procs.trim().replaceAll('[^0-9]','').toInteger()
-                 }
-              }
-              else
-              if(procs instanceof IntRange) {
-                  procs = procs.from
-                  maxProcs = procs.to
-              }
-              log.info "Found procs value $procs (maxProcs = $maxProcs) to override computed threads value of $actualThreads"
-              this.usedResources['threads'].amount = procs
-              this.usedResources['threads'].maxAmount = maxProcs
->>>>>>> sge_fixes
           }
           log.info "Found procs value $procs (maxProcs = $maxProcs) to override computed threads value of $actualThreads"
           this.usedResources['threads'].amount = procs
