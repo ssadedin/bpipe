@@ -41,6 +41,8 @@ import bpipe.CommandStatus
 @Mixin(ForwardHost)
 @Log
 class SgeCommandExecutor implements CommandExecutor {
+    
+    public static final long serialVersionUID = 520230130470104528L;
 
     private Map config;
 
@@ -107,7 +109,7 @@ class SgeCommandExecutor implements CommandExecutor {
          * - o: define the file to which redirect the standard output
          * - e: define the file to which redirect the error output
          */
-        def startCmd = "qsub -V -notify "
+        def startCmd = "qsub -V -notify -terse "
         
         // add other parameters (if any)
         if(config?.queue) {
