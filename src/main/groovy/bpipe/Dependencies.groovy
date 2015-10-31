@@ -41,7 +41,7 @@ class GraphEntry implements Serializable {
     
     public static final long serialVersionUID = 0L
     
-    List<Properties> values
+    List<OutputProperties> values
     List<GraphEntry> parents = []
     List<GraphEntry> children = []
     
@@ -69,7 +69,7 @@ class GraphEntry implements Serializable {
             Map<String, GraphEntry> indexTmp = new HashMap(sizeHint)
             depthFirst { GraphEntry e ->
                 if(e.values) {
-                    for(Properties p in e.values) {
+                    for(OutputProperties p in e.values) {
                         indexTmp[(String)p.canonicalPath] = e
                     }
                 }
@@ -109,7 +109,7 @@ class GraphEntry implements Serializable {
         if(entry)
             return entry
         // In case of non-default output directory, the outputFile itself may be in a directory
-        findBy { Properties p -> canonicalPathFor(p) == canonicalPath  }
+        findBy { OutputProperties p -> canonicalPathFor(p) == canonicalPath  }
     }
     
      /**
@@ -120,19 +120,19 @@ class GraphEntry implements Serializable {
      * @return
      */
     @CompileStatic
-    static String canonicalPathFor(Properties p) {
+    static String canonicalPathFor(OutputProperties p) {
         synchronized(p) {
-            if(p.containsKey("canonicalPath"))
-                return p["canonicalPath"]        
+            if(p.canonicalPath != null)
+                return p.canonicalPath
                 
-            p["canonicalPath"] = Utils.canonicalFileFor(((File)p["outputFile"]).path).path
+            p.canonicalPath = Utils.canonicalFileFor(((File)p.outputFile).path).path
         }
     }
     
     /**
      * Search the graph for properties for the given output file
      */
-    Properties propertiesFor(String outputFile) { 
+    OutputProperties propertiesFor(String outputFile) { 
        // In case of non-default output directory, the outputFile itself may be in a directory
        String outputFilePath = Utils.canonicalFileFor(outputFile).path
        def values = entryForCanonicalPath(outputFilePath)?.values
@@ -204,7 +204,7 @@ class GraphEntry implements Serializable {
      * inputs.
      * @return
      */
-    def groupOutputs(List<Properties> outputs = null) {
+    def groupOutputs(List<OutputProperties> outputs = null) {
         def outputGroups = [:]
         if(outputs == null)
             outputs = this.values
@@ -236,7 +236,7 @@ class GraphEntry implements Serializable {
     /**
      * Render this graph entry as a tree
      */
-    String dumpChildren(int indent = 0, List<Properties> filter = null) {
+    String dumpChildren(int indent = 0, List<OutputProperties> filter = null) {
         
        
         def valuesToDump = filter != null ? filter : values
@@ -374,7 +374,7 @@ class Dependencies {
             if(Utils.fileExists(f))
                 return false // not missing
                 
-            Properties p = graph.propertiesFor(f.path)
+            OutputProperties p = graph.propertiesFor(f.path)
             if(!p) {
                 log.info "There are no properties for $f.path and file is missing"
                 return true
@@ -422,7 +422,7 @@ class Dependencies {
     
     synchronized GraphEntry getOutputGraph() {
         if(this.outputGraph == null) {
-            List<Properties> propertiesFiles = scanOutputFolder()
+            List<OutputProperties> propertiesFiles = scanOutputFolder()
             this.outputGraph = computeOutputGraph(propertiesFiles)
             this.outputGraph.index(propertiesFiles.size()*2)
         }
@@ -440,8 +440,6 @@ class Dependencies {
      */
     synchronized void saveOutputs(PipelineContext context, List<File> oldFiles, Map<File,Long> timestamps, List<String> inputs) {
 
-        GraphEntry root = getOutputGraph()
-        
         // Get the full branch path of this pipeline stage
         def pipeline = Pipeline.currentRuntimePipeline.get()
         String branchPath = pipeline.branchPath.join("/")
@@ -476,9 +474,12 @@ class Dependencies {
                 
                 this.outputFilesGenerated << o
                 
-                Properties p = new Properties()
+                Properties p 
                 if(file.exists()) {
-                    p = readOutputPropertyFile(file)?:p
+                    p = OutputProperties.readProperties(file)
+                }
+                else {
+                    p = new Properties()
                 }
                 
                 String hash = Utils.sha1(cmd+"_"+o)
@@ -586,7 +587,7 @@ class Dependencies {
         
         log.info "Executing cleanup with arguments $arguments"
         
-        List<Properties> outputs = scanOutputFolder() 
+        List<OutputProperties> outputs = scanOutputFolder() 
         
         // Start by scanning the output folder for dependency files
         def graph
@@ -724,7 +725,7 @@ class Dependencies {
      */
     void queryOutputs(def args) {
         // Start by scanning the output folder for dependency files
-        List<Properties> outputs = scanOutputFolder()
+        List<OutputProperties> outputs = scanOutputFolder()
         def graph = computeOutputGraph(outputs)
         
         if(args) {
@@ -769,7 +770,7 @@ class Dependencies {
     }
     
     void preserve(def args) {
-        List<Properties> outputs = scanOutputFolder()
+        List<OutputProperties> outputs = scanOutputFolder()
         int count = 0
         for(def arg in args) {
             Properties output = outputs.find { it.outputPath == arg }
@@ -868,7 +869,7 @@ class Dependencies {
                
             // Attach each output as a child of the respective input nodes
             // in existing tree
-            outputsWithExternalInputs.each { Properties out ->
+            outputsWithExternalInputs.each { OutputProperties out ->
                 
                 GraphEntry entry = new GraphEntry(values: [out])
                 log.info "New entry for ${out.outputPath}"
@@ -933,7 +934,7 @@ class Dependencies {
             
             List inputValues = entry.parents*.values.flatten().grep { it != null }
             
-            for(Properties p in entry.values) {
+            for(OutputProperties p in entry.values) {
                 
                 // No entry is up to date if one of its inputs is newer
                 log.info " $p.outputFile / entry ${entry.hashCode()} ".center(40,"-")
@@ -993,8 +994,8 @@ class Dependencies {
         return rootTree
     }
     
-    List<Properties> findNewerInputs(Properties p, List<Properties> inputValues) {
-        inputValues.grep { Properties inputProps ->
+    List<OutputProperties> findNewerInputs(OutputProperties p, List<OutputProperties> inputValues) {
+        inputValues.grep { OutputProperties inputProps ->
                     
             if(!p.inputs.contains(inputProps.outputPath)) // Not an input used to produce this output
                 return false
@@ -1032,7 +1033,7 @@ class Dependencies {
      * Read all the properties files in the output folder
      * @return
      */
-    List<Properties> scanOutputFolder() {
+    List<OutputProperties> scanOutputFolder() {
         int concurrency = (Config.userConfig?.outputScanConcurrency)?:5
         List result = []
         Utils.time("Output folder scan (concurrency=$concurrency)") {
@@ -1047,73 +1048,10 @@ class Dependencies {
                                 
                 if(!files)
                     return []
-                result.addAll(files.collectParallel { readOutputPropertyFile(it) }.grep { it != null }.sort { it.timestamp })
+                result.addAll(files.collectParallel { OutputProperties.read(it) }.grep { it != null }.sort { it.timestamp })
             }
         }
         return result
-    }
-    
-    /**
-     * Read the given file as an output meta data file, parsing
-     * various expected properties to native form from string values.
-     */
-    Properties readOutputPropertyFile(File f) {
-        log.info "Reading property file $f"
-        def p = new Properties();
-        new FileInputStream(f).withStream { p.load(it) }
-        p.inputs = p.inputs?p.inputs.split(",") as List : []
-        p.cleaned = p.containsKey('cleaned')?Boolean.parseBoolean(p.cleaned) : false
-        if(!p.outputFile)  {
-            log.warning("Error: output meta data property file $f is missing essential outputFile property")
-            System.err.println ("Error: output meta data property file $f is missing essential outputFile property")
-            System.err.println ("Properties are: " + p)
-            return null
-        }
-            
-        p.outputFile = new File(p.outputFile)
-        
-        // Normalizing the slashes in the path is necessary for Cygwin compatibility
-        p.outputPath = p.outputFile.path.replaceAll("\\\\","/")
-        
-        // If the file exists then we should get the timestamp from there
-        // Otherwise just use the timestamp recorded
-        if(p.outputFile.exists())
-            p.timestamp = p.outputFile.lastModified()
-        else
-            p.timestamp = Long.parseLong(p.timestamp)
-
-        // The properties file may have a cached version of the "canonical path" to the
-        // output file. However this is an absolute path, so we can only use it if the
-        // base directory is still the same as when this property file was saved.
-        if(!p.containsKey("basePath") || (p["basePath"] != Runner.runDirectory)) {
-            p.remove("canonicalPath")
-        }
-        
-        if(!p.containsKey('preserve'))
-            p.preserve = 'false'
-            
-        if(!p.containsKey('intermediate'))
-            p.intermediate = 'false'
-            
-        p.preserve = Boolean.parseBoolean(p.preserve)
-        p.intermediate = Boolean.parseBoolean(p.intermediate)
-        p.commandId = (p.commandId!=null)?p.commandId:"-1"
-        p.startTimeMs = (p.startTimeMs?:0).toLong()
-        p.createTimeMs = (p.createTimeMs?:0).toLong()
-        p.stopTimeMs = (p.stopTimeMs?:0).toLong()
-        
-        if(!p.containsKey("tools")) {
-            p.tools = ""
-        }
-        
-        if(!p.containsKey("branchPath")) {
-            p.branchPath = ""
-        }
-        
-        if(!p.containsKey("stageName")) {
-            p.stageName = ""
-        }
-        return p
     }
     
     /**
