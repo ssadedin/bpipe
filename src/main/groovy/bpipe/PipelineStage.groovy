@@ -25,7 +25,9 @@
  */
 package bpipe
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log
+import java.util.regex.Pattern
 
 class PipelineBodyCategory {
 	static String getPrefix(String value) {
@@ -76,7 +78,7 @@ class PipelineStage {
      * are treated as being unlikely to be actual outputs from the pipeline
      * that should be passed to next stages
      */
-    static IGNORE_NEW_FILE_PATTERNS = ["commandlog.txt", ".*\\.log"]
+    static IGNORE_NEW_FILE_PATTERNS = ["commandlog.txt", ".*\\.log"].collect { java.util.regex.Pattern.compile(it) }
     
     PipelineStage(PipelineContext context) {
     }
@@ -165,7 +167,9 @@ class PipelineStage {
         }
         
         succeeded = false
-        List<File> oldFiles = new File(context.outputDirectory).listFiles() as List
+        File outDir = new File(context.outputDirectory)
+        long outDirTimestamp = outDir.lastModified()
+        List<File> oldFiles = outDir.listFiles() as List
         oldFiles = oldFiles?:[]
         boolean joiner = (body in this.context.pipelineJoiners)
         
@@ -175,48 +179,21 @@ class PipelineStage {
 		// The name used for displaying this stage
 		String displayName = "Unknown Stage"
         try {
-            oldFiles.removeAll { File f -> IGNORE_NEW_FILE_PATTERNS.any { f.name.matches(it) } || f.isDirectory() }
+            removeIgnorableFiles(oldFiles)
+            
             def modified = oldFiles.inject([:]) { result, f -> result[f] = f.lastModified(); return result }
             
             if(!joiner) {
-                stageName = 
-                    PipelineCategory.closureNames.containsKey(body) ? PipelineCategory.closureNames[body] : "${stageCount}"
-	            context.stageName = stageName
-				
-				displayName = pipeline.name ? "$stageName [" + pipeline.name.replaceAll('\\.[^.]*$','') + "]" : stageName
-                    
-                context.outputLog.flush("\n"+" Stage ${displayName} ".center(Config.config.columns,"="))
-                CommandLog.cmdLog << "# Stage $displayName"
-                ++stageCount
-                
-                EventManager.instance.signal(PipelineEvent.STAGE_STARTED, "Starting stage $displayName", [stage:this])
-                
-                if(context.@output == null && context.@defaultOutput == null) {
-                    if(context.@input) {
-                        // If we are running in a sub-pipeline that has a name, make sure we
-                        // reflect that in the output file name.  The name should only be applied to files
-                        // produced form the first stage in the sub-pipeline
-                        if(pipeline.name && !pipeline.nameApplied) {
-                            context.defaultOutput = Utils.first(context.@input) + "." + pipeline.name + "."+stageName
-                            // Note we don't set pipeline.nameApplied = true here
-                            // if it is really applied then that is flagged in PipelineContext
-                            // Setting the applied flag here will stop it from being applied
-                            // in the transform / filter constructs 
-                        }
-                        else {
-                                context.defaultOutput = Utils.first(context.@input) + "." + stageName
-                        }
-                    }
-                    else
-                        context.defaultOutput = stageName
-                }
-                log.info("Stage $displayName : INPUT=${context.@input} OUTPUT=${context.defaultOutput}")
+                displayName = this.prepareRealStage(pipeline)
             }   
-            context.stageName = stageName
+            context.stageName = stageName // todo: possibly should be removed, this is set in prepareRealStage
             
             if(stageName in Config.config.breakAt)
                 Config.config.breakTriggered = true
             
+                
+            int commandCount = CommandManager.executedCommands.size()
+                
             // Execute the actual body of the pipeline stage
             runBody()
                 
@@ -227,7 +204,13 @@ class PipelineStage {
                 
             context.uncleanFilePath.text = ""
             
-            def newFiles = findNewFiles(oldFiles, modified)
+            
+            def newFiles = null
+            if(commandCount != CommandManager.executedCommands.size())
+                newFiles = findNewFiles(outDir, outDirTimestamp,oldFiles ,modified)
+            else
+                newFiles = []
+                
             def nextInputs = determineForwardedFiles(newFiles)
                 
             if(!this.context.@output) {
@@ -241,10 +224,7 @@ class PipelineStage {
             
             Dependencies.instance.saveOutputs(context, oldFiles, modified, Utils.box(this.context.@input))
         }
-        catch(UserTerminateBranchException e) {
-            throw e
-        }
-        catch(PipelineTestAbort e) {
+        catch(UserTerminateBranchException|PipelineTestAbort e) {
             throw e
         }
         catch(Throwable e) {
@@ -275,6 +255,59 @@ class PipelineStage {
 //        if(Config.config.enableCommandTracking)
         
         return context.nextInputs
+    }
+    
+    /**
+     * Prepare to execute a "real" stage, by setting the stage name in various 
+     * places.
+     * 
+     * @return
+     */
+    String prepareRealStage(Pipeline pipeline) {
+        
+        stageName = PipelineCategory.closureNames.containsKey(body) ? PipelineCategory.closureNames[body] : "${stageCount}"
+        
+        context.stageName = stageName
+
+        def displayName = pipeline.name ? "$stageName [" + pipeline.name.replaceAll('\\.[^.]*$','') + "]" : stageName
+
+        context.outputLog.flush("\n"+" Stage ${displayName} ".center(Config.config.columns,"="))
+        CommandLog.cmdLog << "# Stage $displayName"
+        ++stageCount
+
+        EventManager.instance.signal(PipelineEvent.STAGE_STARTED, "Starting stage $displayName", [stage:this])
+
+        if(context.@output == null && context.@defaultOutput == null) {
+            if(context.@input) {
+                // If we are running in a sub-pipeline that has a name, make sure we
+                // reflect that in the output file name.  The name should only be applied to files
+                // produced form the first stage in the sub-pipeline
+                if(pipeline.name && !pipeline.nameApplied) {
+                    context.defaultOutput = Utils.first(context.@input) + "." + pipeline.name + "."+stageName
+                    // Note we don't set pipeline.nameApplied = true here
+                    // if it is really applied then that is flagged in PipelineContext
+                    // Setting the applied flag here will stop it from being applied
+                    // in the transform / filter constructs
+                }
+                else {
+                    context.defaultOutput = Utils.first(context.@input) + "." + stageName
+                }
+            }
+            else
+                context.defaultOutput = stageName
+        }
+        log.info("Stage $displayName : INPUT=${context.@input} OUTPUT=${context.defaultOutput}")
+        return displayName
+    }
+    
+    @CompileStatic
+    void removeIgnorableFiles(List<File> files) {
+       files.removeAll { File f -> 
+           f.isDirectory()  || 
+               IGNORE_NEW_FILE_PATTERNS.any { 
+                       Pattern p -> p.matcher(f.name).matches() 
+               } 
+       } 
     }
 
     /**
@@ -439,11 +472,24 @@ class PipelineStage {
      * @param oldFiles        List of {@link File} objects
      * @param timestamps    List of previous timestamps (long values) of the oldFiles files
      */
-    protected List<String> findNewFiles(List oldFiles, HashMap<File,Long> timestamps) {
-        def newFiles = (new File(context.outputDirectory).listFiles().grep {!it.isDirectory() }*.name) as Set
-		
-        newFiles.removeAll(oldFiles.collect { it.name })
-        newFiles.removeAll { n -> IGNORE_NEW_FILE_PATTERNS.any { n.matches(it) } }
+    protected List<String> findNewFiles(File outDir, long outDirTimestamp, List oldFiles, HashMap<File,Long> timestamps) {
+        
+        def newFiles = null
+        if(outDir.lastModified() == outDirTimestamp && (System.currentTimeMillis() - outDirTimestamp > 1000)) {
+            // skip scanning the directory because no new files were created because its timestamp has not
+            // been modified
+            newFiles = []
+        }
+        else {
+            newFiles = outDir.listFiles().grep {
+                if(it.isDirectory())
+                    return false
+            }*.name 
+            
+            newFiles.removeAll(oldFiles.collect { it.name })
+            
+            newFiles.removeAll { n -> IGNORE_NEW_FILE_PATTERNS.any { Pattern p -> p.matcher(n).matches() } }
+        }
 
         // If there are no new files, we can look at modified files instead
         if(!newFiles) {
