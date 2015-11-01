@@ -643,8 +643,9 @@ class Dependencies {
         
         // Add any "accompanying" outputs for the outputs that would be cleaned up
         graph.depthFirst { GraphEntry g ->
-            def accompanyingOutputs = g.values.grep { Properties p -> 
-                p.accompanies && p.accompanies in internalNodeFileNames 
+            def accompanyingOutputs = g.values.grep { OutputProperties p -> 
+                Properties pp = p.properties
+                pp.accompanies && pp.accompanies in internalNodeFileNames 
             }
             internalNodes += accompanyingOutputs
             accompanyingOutputFileNames += accompanyingOutputs*.outputFile*.name
@@ -693,7 +694,8 @@ class Dependencies {
         }
     }
     
-    long removeOutputFile(Properties outputFileProperties, boolean trash=false) {
+    long removeOutputFile(OutputProperties outputProperties, boolean trash=false) {
+        Properties outputFileProperties = outputProperties.properties
         outputFileProperties.cleaned = 'true'
         saveOutputMetaData(outputFileProperties)
         File outputFile = outputFileProperties.outputFile
@@ -738,9 +740,7 @@ class Dependencies {
                 println "\n" + " $arg ".center(Config.config.columns, "=")  + "\n"
                 println "\n" + filtered.dump()
                 
-                
-               Properties p = graph.propertiesFor(arg)
-               
+               Properties p = graph.propertiesFor(arg).properties
                
                String duration = "Unknown"
                String pendingDuration = "Unknown"
@@ -773,7 +773,7 @@ class Dependencies {
         List<OutputProperties> outputs = scanOutputFolder()
         int count = 0
         for(def arg in args) {
-            Properties output = outputs.find { it.outputPath == arg }
+            Properties output = outputs.find { it.outputPath == arg }?.properties
             if(!output) {
                 System.err.println "\nERROR: Cannot locate file $arg as a tracked output"
                 continue

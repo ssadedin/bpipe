@@ -1,15 +1,15 @@
 package bpipe
 
+import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;
 
 @Log
+@CompileStatic
 class OutputProperties implements Serializable {
     
     public static final long serialVersionUID = 0L
     
     File outputFile
-    
-    String outputPath
     
     boolean cleaned
     
@@ -33,6 +33,12 @@ class OutputProperties implements Serializable {
     
     String canonicalPath
     
+    String getOutputPath() {
+        return outputFile.path
+    }
+    
+    String propertiesFile = null
+    
     /**
      * Read the given file as an output meta data file, parsing
      * various expected properties to native form from string values.
@@ -44,47 +50,54 @@ class OutputProperties implements Serializable {
             return null
         
         OutputProperties result = new OutputProperties()
-        result.inputs = p.inputs
-        result.cleaned = p.cleaned
-        result.outputFile = p.outputFile
-        result.outputPath = p.outputPath
-        result.timestamp = p.timestamp
-        result.canonicalPath = p.canonicalPath
-        result.preserve = p.preserve
-        result.intermediate = p.intermediate
-        result.stopTimeMs = p.stopTimeMs
-        result.createTimeMs = p.createTimeMs
+        result.inputs = (List)p.inputs
+        result.cleaned = (boolean)p.cleaned
+        result.outputFile = (File)p.outputFile
+        result.timestamp = (long)p.timestamp
+        result.canonicalPath = (String)p.canonicalPath
+        result.preserve = (boolean)p.preserve
+        result.intermediate = (boolean)p.intermediate
+        result.stopTimeMs = (long)p.stopTimeMs
+        result.createTimeMs = (long)p.createTimeMs
+        result.propertiesFile = f.name
         return result
+    }
+    
+    Properties getProperties() {
+        readProperties(new File(".bpipe/outputs/$propertiesFile"))
     }
     
     /**
      * Read the given file as an output meta data file, parsing
      * various expected properties to native form from string values.
      */
+    @CompileStatic
     static Properties readProperties(File f) {
         log.info "Reading property file $f"
         def p = new Properties();
         new FileInputStream(f).withStream { p.load(it) }
-        p.inputs = p.inputs?p.inputs.split(",") as List : []
-        p.cleaned = p.containsKey('cleaned')?Boolean.parseBoolean(p.cleaned) : false
+        p.inputs = p.inputs? ((String)(p.inputs)).split(",") as List : []
+        p.cleaned = p.containsKey('cleaned')?Boolean.parseBoolean((String)p.cleaned) : false
         if(!p.outputFile)  {
             log.warning("Error: output meta data property file $f is missing essential outputFile property")
             System.err.println ("Error: output meta data property file $f is missing essential outputFile property")
             System.err.println ("Properties are: " + p)
             return null
         }
+        
+        File outputFile = new File((String)p.outputFile)
             
-        p.outputFile = new File(p.outputFile)
+        p.outputFile = outputFile;
         
         // Normalizing the slashes in the path is necessary for Cygwin compatibility
-        p.outputPath = p.outputFile.path.replaceAll("\\\\","/")
+//        p.outputPath = outputFile.path.replaceAll("\\\\","/")
         
         // If the file exists then we should get the timestamp from there
         // Otherwise just use the timestamp recorded
-        if(p.outputFile.exists())
-            p.timestamp = p.outputFile.lastModified()
+        if(outputFile.exists())
+            p.timestamp = outputFile.lastModified()
         else
-            p.timestamp = Long.parseLong(p.timestamp)
+            p.timestamp = Long.parseLong((String)p.timestamp)
 
         // The properties file may have a cached version of the "canonical path" to the
         // output file. However this is an absolute path, so we can only use it if the
@@ -99,12 +112,12 @@ class OutputProperties implements Serializable {
         if(!p.containsKey('intermediate'))
             p.intermediate = 'false'
             
-        p.preserve = Boolean.parseBoolean(p.preserve)
-        p.intermediate = Boolean.parseBoolean(p.intermediate)
+        p.preserve = Boolean.parseBoolean((String)p.preserve)
+        p.intermediate = Boolean.parseBoolean((String)p.intermediate)
         p.commandId = (p.commandId!=null)?p.commandId:"-1"
-        p.startTimeMs = (p.startTimeMs?:0).toLong()
-        p.createTimeMs = (p.createTimeMs?:0).toLong()
-        p.stopTimeMs = (p.stopTimeMs?:0).toLong()
+        p.startTimeMs = p.startTimeMs?Long.parseLong((String)p.startTimeMs):0
+        p.createTimeMs = p.createTimeMs?Long.parseLong((String)p.createTimeMs):0
+        p.stopTimeMs = p.stopTimeMs?Long.parseLong((String)p.stopTimeMs):0
         
         if(!p.containsKey("tools")) {
             p.tools = ""

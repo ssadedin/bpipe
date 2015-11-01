@@ -68,7 +68,7 @@ class ReportGenerator {
             
             PipelineContext ctx = n.attributes().stage.context
             List<String> outputs = (Utils.box(ctx.@output) + ctx.inferredOutputs).unique()
-            n.attributes().outputs = outputs.collect { outputGraph.propertiesFor(it) }
+            n.attributes().outputs = outputs.collect { outputGraph.propertiesFor(it)?.properties }
         }
         
         if(reportBinding == null) {
