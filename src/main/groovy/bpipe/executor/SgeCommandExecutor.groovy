@@ -98,7 +98,7 @@ class SgeCommandExecutor implements CommandExecutor {
         if(!jobDirFile.exists()) {
             jobDirFile.mkdirs()
         }
-
+ 
         // If an account is specified by the config then use that
         log.info "Using account: $config?.account"
 
@@ -119,7 +119,7 @@ class SgeCommandExecutor implements CommandExecutor {
         if( config?.sge_request_options ) {
             startCmd += config.sge_request_options + ' '
         }
-    
+        
             // at the end append the command script wrapped file name
             startCmd += "$jobDir/$CMD_SCRIPT_FILENAME"
     
@@ -131,30 +131,18 @@ class SgeCommandExecutor implements CommandExecutor {
         def cmdScript = new File(jobDir, CMD_FILENAME)
         cmdScript.text = cmd
     
-        def additional_options = ""
-    
-        if( config?.walltime )
-        {
-          additional_options += "#\$ -l h_rt=${config.walltime}\n"
-        }
-    
-        if( config?.procs && config.procs.toString().isInteger() )
-        {
-          additional_options +=  "#\$ -l slots=${config.procs}\n"
-        }
-        else if ( config?.procs )
-        {
-          additional_options += "#\$ -pe ${config.procs}\n"
-        }
-    
-        if( config?.memory )
-        {
-          /*
-          * Read more about SGE virtual_free vs mem_free at the following links
-          * http://gridengine.org/pipermail/users/2011-December/002215.html
-          * http://www.gridengine.info/tag/virtual_free/
-          */
-          additional_options += "#\$ -l virtual_free=${config.memory}\n"
+        
+        // This is providing backwards compatibility for the original format
+        // of the procs parameter supported in the form "orte 1"
+        if(config?.procs && !config.procs.toString().isInteger()) {
+            def parts = config.procs.toString().split(' ')
+            if(parts.size() == 1)
+                throw new Exception("Bad format for SGE procs parameter: " + config.procs + ". Expect either integer or form: '<pe> <integer>'")
+
+            // try not to mess with the original config - it could be used in other places
+            config = config.clone()
+            config.procs = parts[1].toInteger()
+            config.sge_pe = parts[0].trim()
         }
         
         String jobTemplateFile = "executor/sge-command.template.sh"
@@ -172,7 +160,7 @@ class SgeCommandExecutor implements CommandExecutor {
         SimpleTemplateEngine e  = new SimpleTemplateEngine()
         commandTemplate.withReader { r ->
             def template = e.createTemplate(r).make(config + [
-                additional_options : additional_options, 
+                config : config, 
                 cmd : cmd,
                 name : name,
                 jobDir : jobDir,
