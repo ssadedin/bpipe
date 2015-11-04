@@ -5,7 +5,14 @@
 #\$ -o $jobDir/$CMD_OUT_FILENAME
 #\$ -e $jobDir/$CMD_ERR_FILENAME
 #\$ -notify
-${additional_options}
+<%if(config?.walltime) {%>#\$ -l h_rt=${config.walltime} <%}%>
+<%if(config?.sge_pe && config?.procs) {%>
+#\$ -pe ${config.sge_pe} ${config.procs} <%}
+if( config?.procs && config.procs.toString().isInteger() ) { %>
+#\$ -l slots=${config.procs} <%}
+if(config?.memory) {%>
+#\$ -l virtual_free=${config.memory}
+<%}%>
 
 trap 'echo 255 > $jobDir/$CMD_EXIT_FILENAME;' HUP INT TERM QUIT KILL STOP USR1 USR2
 
