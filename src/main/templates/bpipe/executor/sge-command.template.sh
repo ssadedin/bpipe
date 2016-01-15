@@ -8,7 +8,7 @@
 <%if(config?.walltime) {%>#\$ -l h_rt=${config.walltime} <%}%>
 <%if(config?.sge_pe && config?.procs) {%>
 #\$ -pe ${config.sge_pe} ${config.procs} <%}
-if(config?.procs && config.procs.toString().isInteger() && !config.containsKey("sge_pe") ) { %>
+if(config?.procs && config.procs.toString().isInteger() && !config.containsKey("sge_pe") && config.procs.toString().toInteger()>1 ) { %>
 #\$ -l slots=${config.procs} <%}
 if(config?.memory) {%>
 #\$ -l virtual_free=${config.memory}
