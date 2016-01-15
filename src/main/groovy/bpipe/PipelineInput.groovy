@@ -244,15 +244,30 @@ class PipelineInput {
         resolveInputsEndingWithPatterns(exts.collect { it.replace('.','\\.')+'$' }, exts)
     }
     
+    List<String> probe(def pattern) {
+        if(pattern instanceof String)
+            pattern = pattern.replace('.','\\.')+'$' 
+        
+        // TODO: refactor the resolveInputsEndingWithPatterns method to not return a
+        // list with [null] when there is no result
+        List<String> result = resolveInputsEndingWithPatterns([pattern], [pattern], false)
+        if(result.size()==1 && result[0]  == null)
+            return []
+        return result
+    }
+    
     /**
      * Search the pipeline hierarchy backwards to find inputs matching the patterns specified 
      * in 'exts'.
+     * <p>
+     * Note: exts can be actual java.util.regex.Regex objects. However they are converted to
+     * Strings and parsed and manipulated, so take care in using them this way.
      * 
      * @param exts  pattern (regular expressions) to match
      * @param origs user friendly versions of the above to display in errors
      * @return  list of inputs matching given patterns
      */
-    List<String> resolveInputsEndingWithPatterns(def exts, def origs) {    
+    List<String> resolveInputsEndingWithPatterns(def exts, def origs, failIfNotFound=true) {    
         
         def orig = exts
         synchronized(stages) {
@@ -293,9 +308,10 @@ class PipelineInput {
 //	                    return o
 	            }
                 missingExts << origName
+                null
 	        }
             
-	        if(missingExts)
+	        if(missingExts && failIfNotFound)
 	            throw new InputMissingError("Unable to locate one or more specified inputs from pipeline with the following extension(s):\n\n" + missingExts*.padLeft(15," ").join("\n"))
 	            
 			log.info "Found files with exts $exts : $filesWithExts"
