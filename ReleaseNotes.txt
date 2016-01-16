@@ -1,3 +1,85 @@
+=========== Changes for Bpipe Version 0.9.9 ============
+
+
+   - SGE: Merge branch 'sge_fixes', including:
+
+     * Fix #156, #142, Bpipe may hang or ignore job cancel / delete
+       using SGE executor 
+
+     * add -terse to sge default command options
+
+     * change to support separate options:
+       'sge_pe' and 'procs' rather than combined.  
+       (Old combined form still supported for back compat.) 
+
+     * jobs are created using user modifiable command template,
+       specified via jobTemplate configuration parameter
+       which can be object with string value of path to template,
+       or a closure which will be executed dynamically to obtain the
+       path
+
+     * fix incorrect reporting that stop command
+       failed in sge 
+
+     * use Bpipe resolved working directory instead of $PWD since
+       it is not guaranteed to be defined
+        
+     * fix cases of failure due to string procs variable 
+       getting overridden with integer (dynamic calculation
+       of $threads variable)
+
+     * fix incorrectly sending slots as well as pe for some
+       configurations 
+
+     * support individual parameters for SGE options instead of compiling 
+       them into 'additional_options' 
+        
+   - Fix choosing "terminate" not working for some executors 
+     (issue #162) 
+     
+   - PBS-pro: combine multiple resource limits into single 
+     statement, add support for procs, memory requests
+     
+   - Experimental option for some executors to disable buffering of 
+     standard output, applies to torque, slurm, pbs-pro. Set "stdbuf" as 
+     option to have bpipe run commands using 'stdbuf' command to disable 
+     output buffering, when output from commands is delayed in appearing
+     in Bpipe log.
+
+   - Performance optimisations for large / complex pipelines:
+
+     * Cache output graph in serialised form to avoid reading property 
+       files at startup 
+     
+     * Reduce massive logging of outputs when large number of
+       inputs and outputs in single stage 
+    
+   - Add 'bpipe errors' and 'bpipe log -e' command to 
+     show output for failed commands 
+     
+   - Add support to display per command output using the 
+     bpipe log -c <cmd id> 
+
+   - Fix 'bpipe test' printing exceptions and hanging on 'multi'
+     statement 
+    
+   - Fix regression causing possible failure when stage has 
+     outputs but no inputs 
+     
+   - update gradle wrapper script, include changes omitted from
+     2.0 upgrade 
+     
+   - Fix files in subdirectory not resolved when whole file name 
+     matches input extension 
+     
+   - Fix variable specified with 'using' not overriding global value 
+     
+   - Fix 'check' results possibly leaking between branches 
+     
+   - Fix reading output.dir causing potential modification of
+     output directory 
+
+     
 =========== Changes for Bpipe Version 0.9.9_beta_1 ============
 
    - Fix content type not set causing errors with some smtp
@@ -8,7 +90,7 @@
    - Performance optimisations for large numbers of inputs /
      outputs 
     
-   - Should report error if is referenced and
+   - Should report error if $input is referenced and
      finds no inputs 
     
    - Give a hint about which 'from' clause
@@ -199,11 +281,10 @@
    
    - better log info about where config files are 
     
-   - allow memory to be integer for torque/slurm/etc, fix error
-     querying status in torque/slurm/etc, include queuing system
-     command id in bpipe status output 
+   - Allow memory to be integer for torque/slurm/etc (useful if
+     calculating it dynamically)
     
-   - show pending and waiting jobs with bpipe status, don't throw ugly error 
+   - Show pending and waiting jobs with bpipe status, don't throw ugly error 
      if no commands ever run 
     
    - Fix: downstream references to inputs
