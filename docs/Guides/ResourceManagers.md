@@ -21,9 +21,10 @@ resource manager - for example:
 
 ```groovy 
     executor="torque"
+    queue="default"
 ```
 
-With this line you will get all Bpipe commands passed to the Torque queue (via the "qsub" program)
+With this line you will get all Bpipe commands passed to the Torque queue called "default" (via the "qsub" program)
 using a default set of parameters and Bpipe will monitor the queue for you to pause until the job
 finishes and to retrieve the exit status from the command. If a Torque job fails or times out then
 Bpipe will abort the pipeline just like it normally would and commands such as 'bpipe stop' will
@@ -139,17 +140,21 @@ The configuration options available are the same as described above, with the ex
 
 The amount of memory to be reserved can be specified with the `memory` option. Values without any
 units are interpreted as number of bytes. Optionally it is possible to use `M` for mega-byte and `G`
-for giga-byte. Eg "100M" or "2G". 
+for giga-byte. Eg "100M" or "2G". This value is passed through to the "virtual_free" parameter when
+the job is submitted to SGE.
 
 ### Parallel environment
 
-To specify the parallel environment configuration, use the `procs` option
-providing the parallel environment name and the number of processes on which
-your parallel (MPI or OpenMP) application should run. For example: 
+Most SGE installations require a "parallel environment" for submission of 
+jobs that use multiple cores. You can specify the parallel environment to use 
+with the `sge_pe` option. This will then be passed through to SGE in the submitted 
+job, along with the value of the `procs` parameter to request the desired number of
+cores. For example:
 
 ```groovy 
    executor="sge"
-   procs="orte 8" 
+   procs=8
+   sge_pe="orte"
 ```
 
 ### Advanced configuration
@@ -168,7 +173,14 @@ example:
 
 The above example uses the `-v` parameter to define a variable named `VAR` in the target execution
 environment. Multiple parameters can be specified in the same option. Read more about the available
-parameters on the [qsub manual](http://gridscheduler.sourceforge.net/htmlman/htmlman1/qsub.html).
+parameters in the [qsub manual](http://gridscheduler.sourceforge.net/htmlman/htmlman1/qsub.html).
+
+### Job Submission Template
+
+For complete control over how jobs are submitted to SGE, you can modify the template that is
+used to create commands submitted by qsub. The template is found in the Bpipe installation directory
+at `templates/executor/sge-command.template.sh`. The template is implemented as a Groovy template,
+and thus allows full programmatic control.
 
 ## Platform LSF
 
