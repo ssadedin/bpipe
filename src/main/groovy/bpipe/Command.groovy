@@ -88,6 +88,11 @@ class Command implements Serializable {
     int exitCode = -1
     
     /**
+     * Whether the command has had resources allocated
+     */
+    boolean allocated = false
+    
+    /**
      * Internal configuration = accessed via getConfig()
      */
     private Map cfg

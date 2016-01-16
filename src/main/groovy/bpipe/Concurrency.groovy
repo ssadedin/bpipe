@@ -72,6 +72,10 @@ class ResourceUnit implements Serializable {
     String toString() {
         "$amount $key"
     }
+    
+    Object clone() {
+        new ResourceUnit(amount:amount, maxAmount:maxAmount, key:key)
+    }
 }
 
 class ResourceRequest implements Serializable {

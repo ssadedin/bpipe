@@ -1466,12 +1466,13 @@ class PipelineContext {
     
     final static int EXIT_ABORTED = -2
     
-    class CommandThread extends Thread {
+    class CommandThread extends Thread implements ResourceRequestor {
         Command toWaitFor
         PipelineTestAbort abort
         Pipeline pipeline
         void run() {
             Pipeline.currentRuntimePipeline.set(pipeline)
+            Concurrency.instance.registerResourceRequestor(this)
             try {
                 toWaitFor.exitCode = toWaitFor.executor.waitFor()
             }
@@ -1479,6 +1480,18 @@ class PipelineContext {
                 abort = e 
                 toWaitFor.exitCode = EXIT_ABORTED
             } 
+            finally {
+                Concurrency.instance.unregisterResourceRequestor(this)
+            }
+        }
+        
+        @Override
+        public boolean isBidding() {
+            return true;
+        }
+        
+        void writeLog() {
+            CommandLog.cmdLog.write(toWaitFor.command)
         }
     }
     
@@ -1526,6 +1539,16 @@ class PipelineContext {
           List<CommandThread> threads = execCmds.collect { new CommandThread(toWaitFor:it, pipeline:Pipeline.currentRuntimePipeline.get()) }
           threads*.start()
           
+         if(!Runner.opts.t) {
+              // Wait for them to have resources allocated
+              while(execCmds.any { !it.allocated }) {
+                  Thread.sleep(100)
+              }
+              
+              // Now we can log them to the command log, if they did not abort
+              threads.each { if(!it.abort) { it.writeLog() } }
+          }
+              
           while(true) {
               int stillRunning = threads.count { it.toWaitFor.exitCode == -1 }
               if(stillRunning) {
@@ -1533,6 +1556,7 @@ class PipelineContext {
               }
               else
                 break
+                
               Thread.sleep(2000)
           }
           
@@ -1659,7 +1683,10 @@ class PipelineContext {
                                        deferred, this.outputLog)
           }
           finally {
-              CommandLog.cmdLog.write(command.command)
+              // If deferred then the thread count is not allocated yet, so we can't 
+              // write the log line yet
+              if(!deferred)
+                  CommandLog.cmdLog.write(command.command)
           }
           
           // log.info "Command $command.id started with resources " + this.usedResources

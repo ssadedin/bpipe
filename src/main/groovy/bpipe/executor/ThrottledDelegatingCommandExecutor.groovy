@@ -50,7 +50,7 @@ class ThrottledDelegatingCommandExecutor {
         
         // Note that the sort here is vital to avoid deadlocks - it ensures 
         // that resources are always allocated in the same order
-        this.resources = resources.values().sort { it.key }
+        this.resources = resources.values()*.clone().sort { it.key }
         this.commandExecutor = delegateTo
     }
     
@@ -94,6 +94,8 @@ class ThrottledDelegatingCommandExecutor {
             cfg.procs = threadCount
 
         command.command = command.command.replaceAll(PipelineContext.THREAD_LAZY_VALUE, threadAmount)
+        
+        command.allocated = true
 
         bpipe.Pipeline.currentRuntimePipeline.get().isIdle = false
 
