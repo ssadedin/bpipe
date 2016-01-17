@@ -44,38 +44,10 @@ import bpipe.CommandStatus
  */
 @Mixin(ForwardHost)
 @Log
-class LsfCommandExecutor implements CommandExecutor {
-
-    private Map config;
-
-    private String id;
-
-    private String name;
-
-    /* The command to execute through the LSF 'bsub' command */
-    private String cmd;
-
-    /* The path in which the job will run */
-    private String jobDir;
-
-    /* Mark the job as stopped by the user */
-    private boolean stopped
-
-    /* The ID of the job as returned by the JOB scheduler */
-	private String commandId;
-    
-    private transient Command command
-	
-	private static String CMD_EXIT_FILENAME = "cmd.exit"
-	
-	private static String CMD_SCRIPT_FILENAME = "cmd.sh"
-
-    private static String CMD_OUT_FILENAME = "cmd.out"
+class LsfCommandExecutor extends TemplateBasedExecutor implements CommandExecutor {
 
     private static String CMD_LSF_OUT_FILENAME = "cmd.lsf.out"
-
-    private static String CMD_ERR_FILENAME = "cmd.err"
-
+    
 	/**
 	 * Start the execution of the command in the LSF environment.
 	 * <p> 
@@ -94,7 +66,6 @@ class LsfCommandExecutor implements CommandExecutor {
         this.id = command.id
         this.name = command.name;
         this.cmd = command.command ?.trim();
-        
         this.command = command
 
         this.jobDir = ".bpipe/commandtmp/$id"
@@ -106,20 +77,6 @@ class LsfCommandExecutor implements CommandExecutor {
         // If an account is specified by the config then use that
         log.info "Using account: $config?.account"
 		
-		/*
-		 * Create 'cmd.sh' wrapper used by the 'bsub' command
-		 */
-		def cmdWrapperScript = new File(jobDir, CMD_SCRIPT_FILENAME)
-		cmdWrapperScript.text =  
-			"""\
-			#!/bin/sh
-			(${cmd}) > $jobDir/$CMD_OUT_FILENAME
-			result=\$?
-			echo -n \$result > $jobDir/$CMD_EXIT_FILENAME
-			exit \$result
-			"""
-			.stripIndent()
-            
         // Allow user to override (or eliminate) the -cwd option. This sets the current
         // working directory, but is apparently not supported on OpenLava, 
         // which is an open source version of Platform LSF.
@@ -145,6 +102,20 @@ class LsfCommandExecutor implements CommandExecutor {
 		 */
 		def startCmd = "bsub $cwdOption -o $jobDir/$CMD_LSF_OUT_FILENAME -e $jobDir/$CMD_ERR_FILENAME "
         
+		/*
+		 * Create 'cmd.sh' wrapper used by the 'bsub' command
+		 */
+		def cmdWrapperScript = new File(jobDir, CMD_SCRIPT_FILENAME)
+		cmdWrapperScript.text =  
+			"""\
+			#!/bin/sh
+			(${cmd}) > $jobDir/$CMD_OUT_FILENAME
+			result=\$?
+			echo -n \$result > $jobDir/$CMD_EXIT_FILENAME
+			exit \$result
+			"""
+			.stripIndent()
+            
 		// add other parameters (if any)
 		if(config?.queue) {
 			startCmd += "-q ${config.queue} "
@@ -165,7 +136,7 @@ class LsfCommandExecutor implements CommandExecutor {
         if( config?.lsf_request_options ) {
             startCmd += config.lsf_request_options + ' '
         }
-
+        
 		// at the end append the command script wrapped file name
 		startCmd += "< $jobDir/$CMD_SCRIPT_FILENAME"
 		
@@ -227,11 +198,6 @@ class LsfCommandExecutor implements CommandExecutor {
 
         return null
     }
-	
-	void reportStartError(String cmd, def out, def err, int exitValue) {
-		log.severe "Error starting custom command using command line: " + cmd
-		System.err << "\nFailed to execute command using command line: $cmd\n\nReturned exit value $exitValue\n\nOutput:\n\n$out\n\n$err"
-	}
 
     @Override
     String status() {

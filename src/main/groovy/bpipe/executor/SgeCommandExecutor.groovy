@@ -41,39 +41,9 @@ import bpipe.CommandStatus
  */
 @Mixin(ForwardHost)
 @Log
-class SgeCommandExecutor implements CommandExecutor {
+class SgeCommandExecutor extends TemplateBasedExecutor implements CommandExecutor {
     
     public static final long serialVersionUID = 520230130470104528L;
-
-    private Map config;
-
-    private String id;
-
-    private String name;
-
-    /* The command to execute through SGE 'qsub' command */
-    private String cmd;
-
-    private String jobDir;
-
-    /* Mark the job as stopped by the user */
-    private boolean stopped
-
-    /* The ID of the job as returned by the JOB scheduler */
-    private String commandId;
-
-    /** Command object - only used for updating status */
-    Command command
-
-    private static String CMD_EXIT_FILENAME = "cmd.exit"
-
-    private static String CMD_FILENAME = "cmd_run.sh"
-    
-    private static String CMD_SCRIPT_FILENAME = "cmd.sh"
-
-    private static String CMD_OUT_FILENAME = "cmd.out"
-
-    private static String CMD_ERR_FILENAME = "cmd.err"
 
     /**
      * Start the execution of the command in the SGE environment.
@@ -121,18 +91,9 @@ class SgeCommandExecutor implements CommandExecutor {
             startCmd += config.sge_request_options + ' '
         }
         
-            // at the end append the command script wrapped file name
-            startCmd += "$jobDir/$CMD_SCRIPT_FILENAME"
+        // at the end append the command script wrapped file name
+        startCmd += "$jobDir/$CMD_SCRIPT_FILENAME"
     
-        /*
-         * Create '.cmd.sh' wrapper used by the 'qsub' command
-         */
-        def cmdWrapperScript = new File(jobDir, CMD_SCRIPT_FILENAME)
-        
-        def cmdScript = new File(jobDir, CMD_FILENAME)
-        cmdScript.text = cmd
-    
-        
         // This is providing backwards compatibility for the original format
         // of the procs parameter supported in the form "orte 1"
         if(config?.procs && !config.procs.toString().isInteger()) {
@@ -145,67 +106,7 @@ class SgeCommandExecutor implements CommandExecutor {
             config.procs = parts[1].toInteger()
             config.sge_pe = parts[0].trim()
         }
-        
-        String jobTemplateFile = "executor/sge-command.template.sh"
-        if(config?.jobTemplate) {
-            if(config.jobTemplate instanceof Closure) {
-                jobTemplateFile = String.valueOf(config.jobTemplate(config))
-            }
-            else 
-                jobTemplateFile = String.valueOf(config.jobTemplate)
-        }
-        
-        File commandTemplate = bpipe.ReportGenerator.resolveTemplateFile(jobTemplateFile)
-        
-        log.info "Generating output from command template ${commandTemplate.absolutePath} to $cmdWrapperScript.absolutePath"
-        SimpleTemplateEngine e  = new SimpleTemplateEngine()
-        commandTemplate.withReader { r ->
-            def template = e.createTemplate(r).make(config + [
-                config : config, 
-                cmd : cmd,
-                name : name,
-                jobDir : jobDir,
-                CMD_FILENAME : cmdScript,
-                CMD_OUT_FILENAME : CMD_OUT_FILENAME,
-                CMD_ERR_FILENAME : CMD_ERR_FILENAME,
-                CMD_EXIT_FILENAME : CMD_EXIT_FILENAME
-            ])
-            cmdWrapperScript.text = template.toString()
-        }
-
-        /*
-         * prepare the command to invoke
-         */
-        log.info "Starting command: '${startCmd}'"
-
-        ProcessBuilder pb = new ProcessBuilder("bash", "-c", startCmd)
-        Process p = pb.start()
-        Utils.withStreams(p) {
-            StringBuilder out = new StringBuilder()
-            StringBuilder err = new StringBuilder()
-            p.waitForProcessOutput(out, err)
-            int exitValue = p.waitFor()
-            if(exitValue != 0) {
-                reportStartError(startCmd, out,err,exitValue)
-                throw new PipelineError("Failed to start command:\n\n$cmd")
-            }
-            this.commandId = out.toString().trim()
-            if(this.commandId.isEmpty())
-                throw new PipelineError("Job runner ${this.class.name} failed to return a job id despite reporting success exit code for command:\n\n$startCmd\n\nRaw output was:[" + out.toString() + "]")
-
-            log.info "Started command with id $commandId"
-        }
-
-        // After starting the process, we launch a background thread that waits for the error
-        // and output files to appear and then forward those inputs
-        forward("$jobDir/$CMD_OUT_FILENAME", outputLog)
-        forward("$jobDir/$CMD_ERR_FILENAME", errorLog)
-    }
-
-
-    void reportStartError(String cmd, def out, def err, int exitValue) {
-        log.severe "Error starting custom command using command line: " + cmd
-        System.err << "\nFailed to execute command using command line: $cmd\n\nReturned exit value $exitValue\n\nOutput:\n\n$out\n\n$err"
+        submitJobTemplate(startCmd, cmd, "executor/sge-command.template.sh", outputLog, errorLog)
     }
 
     @Override
