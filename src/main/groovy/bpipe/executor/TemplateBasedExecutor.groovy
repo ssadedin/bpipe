@@ -9,6 +9,8 @@ import groovy.util.logging.Log;
 @Log
 class TemplateBasedExecutor {
     
+    public static final long serialVersionUID = 0L;
+    
     protected Map config;
 
     protected String id;
