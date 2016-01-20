@@ -48,7 +48,20 @@ class LsfCommandExecutor extends TemplateBasedExecutor implements CommandExecuto
 
     private static String CMD_LSF_OUT_FILENAME = "cmd.lsf.out"
     
-    private LsfArrayMonitor monitor = null
+    private static final int NO_EXIT_FILE_STATUS = -2
+    
+    /**
+     * The output from bjobs after the first successful query of the job status
+     * For a non-array job, this will only have one entry. However when an array
+     * job runs, it will have 'n' entries where 'n' is the number of jobs in the array
+     * Each entry is a job index (an integer number, although it is a string)
+     */
+    private List<String> jobIndexes
+    
+    /**
+     * Exit codes for all the jobs that ran
+     */
+    private List<Integer> exitCodes 
     
 	/**
 	 * Start the execution of the command in the LSF environment.
@@ -153,24 +166,95 @@ class LsfCommandExecutor extends TemplateBasedExecutor implements CommandExecuto
         String result = statusImpl()
         return this.command.status = result
     }
+    
+    private static LSF_ARRAY_JOB_PATTERN =  ~/[a-zA-Z0-9]*\[([0-9]*)\]/
  
     String statusImpl() {
+        
+        log.info "Querying status for LSF job $commandId"
 		
 		if( !new File(jobDir, CMD_SCRIPT_FILENAME).exists() ) {
 			return CommandStatus.UNKNOWN
 		}
 		
-		if( !commandId ) {
+		if(!commandId ) {
 			return CommandStatus.QUEUEING	
 		}
-		
-		File resultExitFile = new File(jobDir, CMD_EXIT_FILENAME )
-		if( !resultExitFile.exists() ) {
-			return CommandStatus.RUNNING
-		}  
-		
-		return CommandStatus.COMPLETE
-		
+        
+        if(this.jobIndexes == null) {
+            this.jobIndexes = queryJobIndexes(commandId)
+            log.info "Found job indexes $jobIndexes for LSF job"
+        }
+        
+        // I'm not sure if this is a valid state: it's been submitted and has
+        // a job id, but bjobs did not return any reference to the job?
+        if(!jobIndexes)
+            return CommandStatus.QUEUEING
+        
+        // For the job to be complete, all the exit files must exist
+        this.exitCodes = jobIndexes.collect { jobIndex ->
+            File jobExitFile = new File(jobDir, CMD_EXIT_FILENAME + "." + jobIndex)
+    		if(jobExitFile.exists()) {
+                try {
+                    jobExitFile.text.trim().toInteger()
+                }
+                catch(Exception e) {
+                    log.warning "Failed to parse LSF exit code file $jobExitFile"
+                    NO_EXIT_FILE_STATUS // parse exception? the file was half written?!
+                }
+            }
+            else {
+                NO_EXIT_FILE_STATUS
+            }
+        }
+        
+        int countRunning = exitCodes.count { it == NO_EXIT_FILE_STATUS }
+        if(countRunning>0) {
+            log.info "There are still $countRunning LSF jobs without an exit status (presumed still running)"
+            return CommandStatus.RUNNING
+        }
+        else
+            return CommandStatus.COMPLETE
+    }
+    
+    /**
+     * Query the job indexes for the given LSF / OpenLava job id.
+     * <p>
+     * Job indexes are assigned after the job id is assigned. For a non-array job, the
+     * job index is 0. However for an array job, the job indexes are assigned from
+     * the array pattern specified in the job name.
+     * 
+     * @param commandId     the LSF/OpenLava job id for the job
+     * @return  a list of strings representing the array indices (in practice, integers)
+     */
+    List<String> queryJobIndexes(String commandId) {
+        String bjobsCommand = "bjobs -w -a $commandId"
+        
+        String bjobsOutput = bjobsCommand.execute().text
+        if(bjobsOutput == null || bjobsOutput.trim().isEmpty()) {
+            log.warning "bjobs command [$bjobsCommand] did not return output"
+            return null
+        }
+        
+        log.info "Parsing bjobs output:\n\n$bjobsOutput\n"
+        
+        // Read the lines and parse into space separated fields
+        List<List> lines = bjobsOutput.split(/[\r\n]/)*.split(/[ \t]{1,}/)
+        
+        // Convert them to maps for easy reference
+        List<Map> jobs = lines[1..-1].collect { [ lines[0], it ].transpose().collectEntries() }
+        
+        // Now we have a list of all the jobs we need to wait for
+        return jobs.collect { Map job ->
+            log.info "Extracting job index from: $job"
+            def matches = LSF_ARRAY_JOB_PATTERN.matcher(job.JOB_NAME)
+            if(matches) {
+                matches[0][1]
+            }
+            else {
+                "0"
+            }
+        }
     }
 
     /**
@@ -179,30 +263,13 @@ class LsfCommandExecutor extends TemplateBasedExecutor implements CommandExecuto
      */
     @Override
     int waitFor() {
-		
-		int count=0
-		File exitFile = new File( jobDir, CMD_EXIT_FILENAME )
+        
 		while( !stopped ) {
-			
-			if( exitFile.exists() ) {
-				def val = exitFile.text?.trim()
-				if( val.isInteger() ) {
-					// ok. we get the value as integer
-                    command.status = CommandStatus.COMPLETE.name()
-					return new Integer(val)	
-				}	
-				
-				/*
-				 * This could happen if there are latency in the file system.
-				 * Try to wait and re-try .. if nothing change make it fail after a fixed amount of time
-				 */
-				Thread.sleep(500)
-				if( count++ < 10 ) { continue }
-				log.warn("Missing exit code value for command: '${id}'. Retuning -1 by default")
-				return -1
-			}
-			
-		
+            
+            String statusValue = status()
+            if(statusValue == "COMPLETE")
+                return this.exitCodes.find { it != 0 } ?: 0
+	
 			Thread.sleep(5000)	
 		}
 
