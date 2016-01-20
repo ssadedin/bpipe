@@ -303,7 +303,7 @@ class LsfCommandExecutor extends TemplateBasedExecutor implements CommandExecuto
 			exitValue = p.waitFor()
 		}
 		
-		if( !exitValue ) {
+		if(exitValue != 0 ) {
 			
 			def msg = "LSF failed to stop command $id, returned exit code $exitValue from command line: $cmd"
 			log.severe "Failed stop command produced output: \n$out\n$err"
