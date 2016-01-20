@@ -7,7 +7,7 @@ import groovy.text.SimpleTemplateEngine
 import groovy.util.logging.Log;
 
 @Log
-class TemplateBasedExecutor {
+abstract class TemplateBasedExecutor implements Serializable {
     
     public static final long serialVersionUID = 0L;
     
@@ -17,7 +17,7 @@ class TemplateBasedExecutor {
 
     protected String name;
 
-    /* The command to execute through SGE 'qsub' command */
+    /* The command to execute */
     protected String cmd;
 
     protected String jobDir;
@@ -121,7 +121,8 @@ class TemplateBasedExecutor {
                 reportStartError(submitCmd, out,err,exitValue)
                 throw new PipelineError("Failed to start command:\n\n$cmd")
             }
-            this.commandId = out.toString().trim()
+            
+            this.commandId = parseCommandId(out.toString())
             if(this.commandId.isEmpty())
                 throw new PipelineError("Job runner ${this.class.name} failed to return a job id despite reporting success exit code for command:\n\n$submitCmd\n\nRaw output was:[" + out.toString() + "]")
 
@@ -137,5 +138,15 @@ class TemplateBasedExecutor {
     void reportStartError(String cmd, def out, def err, int exitValue) {
         log.severe "Error starting custom command using command line: " + cmd
         System.err << "\nFailed to execute command using command line: $cmd\n\nReturned exit value $exitValue\n\nOutput:\n\n$out\n\n$err"
+    }
+    
+    abstract protected String parseCommandId(String text) 
+    
+    void cleanup() {
+        this.forwarders*.cancel()
+    }
+
+    List<String> getIgnorableOutputs() {
+        return null 
     }
 }

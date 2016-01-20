@@ -48,6 +48,8 @@ class LsfCommandExecutor extends TemplateBasedExecutor implements CommandExecuto
 
     private static String CMD_LSF_OUT_FILENAME = "cmd.lsf.out"
     
+    private LsfArrayMonitor monitor = null
+    
 	/**
 	 * Start the execution of the command in the LSF environment.
 	 * <p> 
@@ -77,17 +79,8 @@ class LsfCommandExecutor extends TemplateBasedExecutor implements CommandExecuto
         // If an account is specified by the config then use that
         log.info "Using account: $config?.account"
 		
-        // Allow user to override (or eliminate) the -cwd option. This sets the current
-        // working directory, but is apparently not supported on OpenLava, 
-        // which is an open source version of Platform LSF.
-        String cwdOption="-cwd \$PWD"
-        if(config?.lsf_cwd_option) {
-            cwdOption = config.lsf_cwd_option
-        }
-		
 		/*
 		 * Prepare the 'bsub' cmdline. The following options are used:
-		 * - cwd: defines the job working directory
 		 * - o: redirect the standard output to the specified file
 		 * - e: redirect the error output to the specified file
          *      NOTE: used to be -eo, but this is not compatible with OpenLava,
@@ -100,31 +93,13 @@ class LsfCommandExecutor extends TemplateBasedExecutor implements CommandExecuto
 		 * Note: since LSF append a noise report information to the standard out
 		 * we suppress it, and save the 'cmd' output in the above script
 		 */
-		def startCmd = "bsub $cwdOption -o $jobDir/$CMD_LSF_OUT_FILENAME -e $jobDir/$CMD_ERR_FILENAME "
+		def startCmd = "bsub -o $jobDir/$CMD_LSF_OUT_FILENAME -e $jobDir/$CMD_ERR_FILENAME "
         
-		/*
-		 * Create 'cmd.sh' wrapper used by the 'bsub' command
-		 */
-		def cmdWrapperScript = new File(jobDir, CMD_SCRIPT_FILENAME)
-		cmdWrapperScript.text =  
-			"""\
-			#!/bin/sh
-			(${cmd}) > $jobDir/$CMD_OUT_FILENAME
-			result=\$?
-			echo -n \$result > $jobDir/$CMD_EXIT_FILENAME
-			exit \$result
-			"""
-			.stripIndent()
-            
 		// add other parameters (if any)
 		if(config?.queue) {
 			startCmd += "-q ${config.queue} "
 		}
 
-        if(config?.jobname) {
-            startCmd += "-J ${config.jobname} "
-        }
-        
         if(config?.walltime) {
             startCmd += "-W ${config.walltime} "
         }
@@ -140,35 +115,9 @@ class LsfCommandExecutor extends TemplateBasedExecutor implements CommandExecuto
 		// at the end append the command script wrapped file name
 		startCmd += "< $jobDir/$CMD_SCRIPT_FILENAME"
 		
-		/*
-		 * prepare the command to invoke
-		 */
-		log.info "Starting command: ${startCmd}"
+		log.info "Submitting LSF job with command: ${startCmd}"
 		
-		ProcessBuilder pb = new ProcessBuilder("bash", "-c", startCmd)
-		Process p = pb.start()
-		Utils.withStreams(p) {
-			StringBuilder out = new StringBuilder()
-			StringBuilder err = new StringBuilder()
-			p.waitForProcessOutput(out, err)
-			int exitValue = p.waitFor()
-			if(exitValue != 0) {
-				reportStartError(startCmd, out,err,exitValue)
-				throw new PipelineError("Failed to start command:\n\n$cmd")
-			}
-
-            // Parse the 'bsub' standard output reading the job ID of the submitted job
-			this.commandId = parseCommandId(out.toString().trim())
-			if(this.commandId.isEmpty())
-				throw new PipelineError("Job runner ${this.class.name} failed to return a job id despite reporting success exit code for command:\n\n$startCmd\n\nRaw output was:[" + out.toString() + "]")
-				
-			log.info "Started command with id $commandId"
-		}
-
-        // After starting the process, we launch a background thread that waits for the error
-        // and output files to appear and then forward those inputs
-        forward("$jobDir/$CMD_OUT_FILENAME", outputLog)
-        forward("$jobDir/$CMD_ERR_FILENAME", errorLog)
+        submitJobTemplate(startCmd, cmd, "executor/lsf-command.template.sh", outputLog, errorLog)
     }
 
 
@@ -180,7 +129,7 @@ class LsfCommandExecutor extends TemplateBasedExecutor implements CommandExecuto
      * @param text The text as returned by the {@code bsub} command
      * @return The ID of the new newly submitted job
      */
-    private String parseCommandId(String text) {
+    protected String parseCommandId(String text) {
         def reader = new BufferedReader(new StringReader(text));
         def line
         try {
@@ -301,18 +250,7 @@ class LsfCommandExecutor extends TemplateBasedExecutor implements CommandExecuto
 		// Successful stop command
 		log.info "Successfully called script to stop command $id"
     }
-
-    @Override
-    void cleanup() {
-        this.forwarders*.cancel()
-    }
-
-    @Override
-    List<String> getIgnorableOutputs() {
-		//TODO ?? 
-        return null 
-    }
-
+    
     @Override
     public String statusMessage() {
         return "LSF [$name] JobID: $commandId, command: $cmd"

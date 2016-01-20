@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2012 MCRI, authors
  *
@@ -212,18 +211,12 @@ class SgeCommandExecutor extends TemplateBasedExecutor implements CommandExecuto
     }
 
     @Override
-    void cleanup() {
-        this.forwarders*.cancel()
-    }
-
-    @Override
-    List<String> getIgnorableOutputs() {
-        //TODO ??
-        return null
-    }
-
-    @Override
     public String statusMessage() {
         return "SGE Job ID: $commandId command: $cmd"
+    }
+
+    @Override
+    protected String parseCommandId(String text) {
+        return text.trim()
     }
 }
