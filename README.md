@@ -3,8 +3,8 @@ Welcome to Bpipe
 
 Bpipe provides a platform for running big bioinformatics jobs that consist of a series of processing stages - known as 'pipelines'.
 
-* August 25th - New! Bpipe 0.9.9 beta 1 released!
-* Download [latest](http://download.bpipe.org/versions/bpipe-0.9.8.7.tar.gz), [beta](http://download.bpipe.org/download/show/11),  [all](http://download.bpipe.org)
+* August 25th - New! Bpipe 0.9.9 released!
+* Download [latest](http://download.bpipe.org/versions/bpipe-0.9.9.tar.gz), [all](http://download.bpipe.org)
 * [Documentation](http://docs.bpipe.org)
 * [Mailing List](https://groups.google.com/forum/#!forum/bpipe-discuss) (Google Group)
 
@@ -28,4 +28,6 @@ By turning your shell scripts into Bpipe scripts, here are some of the features 
   * **Notifications by Email or Instant Message** - Bpipe can send you alerts to tell you when your pipeline finishes or even as each stage completes.
   * See how Bpipe compares to [similar tools](http://code.google.com/p/bpipe/wiki/ComparisonToWorkflowTools)
 
-Take a look at the [Overview](http://code.google.com/p/bpipe/wiki/Overview) to see Bpipe in action, work through the [Basic Tutorial](http://code.google.com/p/bpipe/wiki/GettingStarted) for simple first steps, see a step by step example of a [realistic pipeline](http://code.google.com/p/bpipe/wiki/RealPipelineTutorial) made using Bpipe, or take a look at the [Reference](http://code.google.com/p/bpipe/wiki/Reference) to see detailed documentation.
+Take a look at the [Overview](http://docs.bpipe.org/Overview/Introduction/) to see Bpipe in action, work through the [Basic Tutorial](http://docs.bpipe.org/Tutorials/Hello%2CWorld/) 
+for simple first steps, see a step by step example of a [realistic pipeline](http://docs.bpipe.org/Tutorials/RealPipelineTutorial/) made using Bpipe, or 
+take a look at the [Reference](http://docs.bpipe.org) to see all the documentation.
