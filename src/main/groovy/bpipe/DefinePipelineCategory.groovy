@@ -37,13 +37,13 @@ import groovy.util.logging.Log
 @Log
 class PipelineNode {
     
-	String name
+    String name
     
-	PipelineNode next
-	
+    PipelineNode next
+    
     PipelineNode parent 
-	
-	List<PipelineNode> children = []
+    
+    List<PipelineNode> children = []
 }
 */
 
@@ -61,7 +61,7 @@ class DefinePipelineCategory {
     static Node inputStage = null
     
     static List<Node> currentStage = null
-	
+    
     static def joiners = []
     
     
@@ -99,22 +99,23 @@ class DefinePipelineCategory {
         def result  = { 
             
             if(PipelineCategory.closureNames.containsKey(c)) {
-	            def newStage = new Node(null, PipelineCategory.closureNames[c])
-	            currentStage*.append(newStage)
+                def newStage = new Node(null, PipelineCategory.closureNames[c])
+                currentStage*.append(newStage)
                 currentStage = [newStage]
             }
                 
             if(c in joiners)
                 c()
             
-            if(PipelineCategory.closureNames.containsKey(other) && !Config.noDiagram.contains(PipelineCategory.closureNames[other])) {
-	            def newStage = new Node(null, PipelineCategory.closureNames[other])
-	            currentStage*.append(newStage)
+            if(PipelineCategory.closureNames.containsKey(other) 
+                && !Config.noDiagram.contains(PipelineCategory.closureNames[other])) {
+                def newStage = new Node(null, PipelineCategory.closureNames[other])
+                currentStage*.append(newStage)
                 currentStage = [newStage]
             }
                 
             if(other in joiners)
-	            other()
+                other()
         }
         joiners << result
         return result
@@ -131,8 +132,8 @@ class DefinePipelineCategory {
         
         def result = { inputs ->
           if(PipelineCategory.closureNames.containsKey(other)) {
-	            def newStage = new Node(null, PipelineCategory.closureNames[other])
-	            currentStage*.append(newStage)
+                def newStage = new Node(null, PipelineCategory.closureNames[other])
+                currentStage*.append(newStage)
                 currentStage = [newStage]
           }
           
@@ -143,21 +144,21 @@ class DefinePipelineCategory {
         }
         joiners << result
         return result
-	}
+    }
     
     static Object multiply(java.util.regex.Pattern pattern, List segments) {
         multiply("*", segments)
     }
     
-	static Object multiply(List chrs, List segments) {
+    static Object multiply(List chrs, List segments) {
         multiply("*", segments)
     }
     
-	static Object multiply(Set chrs, List segments) {
+    static Object multiply(Set chrs, List segments) {
         multiply("*", segments)
     }
     
-	static Object multiply(Map chrs, List segments) {
+    static Object multiply(Map chrs, List segments) {
         multiply("*", segments)
     }
     
@@ -172,10 +173,10 @@ class DefinePipelineCategory {
      * <p>
      * <code>"sample_%_*.txt" * [stage1 + stage2 + stage3]</code>
      */
-	static Object multiply(String pattern, List segments) {
-		def multiplyImplementation = { input ->
+    static Object multiply(String pattern, List segments) {
+        def multiplyImplementation = { input ->
             
-			log.info "multiply on input $input with pattern $pattern"
+            log.info "multiply on input $input with pattern $pattern"
             
             segments = segments.collect {
                 if(it instanceof List) {
@@ -185,12 +186,12 @@ class DefinePipelineCategory {
                     return it
             }
             
-			// Match the input
+            // Match the input
             InputSplitter splitter = new InputSplitter()
             Map samples = splitter.split(pattern, input)
-			
+            
             // Now we have all our samples, make a 
-			// separate pipeline for each one, and for each parallel stage
+            // separate pipeline for each one, and for each parallel stage
            def oldStages = currentStage
            def newStages = []
            
@@ -202,24 +203,24 @@ class DefinePipelineCategory {
                     newStages << currentStage[0]
                 }
                 else {
-				    def stageNode = new Node(null,PipelineCategory.closureNames[s])
-				    currentStage*.append(stageNode)
+                    def stageNode = new Node(null,PipelineCategory.closureNames[s])
+                    currentStage*.append(stageNode)
                     newStages << stageNode
                 }
            }
            currentStage = newStages
-		}
+        }
         
         joiners << multiplyImplementation
         
         return multiplyImplementation
         
-	}
+    }
     
     static Closure using(Closure c, Map params) {
         return c
     }
-	
+    
     static Closure using(Closure c, Object... args) {
         return c
     }
