@@ -177,6 +177,7 @@ class PipelineInput {
             childInp.resolvedInputs = this.resolvedInputs
             childInp.currentFilter = this.currentFilter
             childInp.extensionPrefix = this.extensionPrefix ? this.extensionPrefix+"."+name : name
+            childInp.defaultValueIndex = defaultValueIndex
             childInp.parentError = e
             log.info("No input resolved for property $name: returning child PipelineInput for possible double extension resolution")
             return childInp;
