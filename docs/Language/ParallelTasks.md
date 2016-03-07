@@ -61,7 +61,7 @@ In bioinformatics it is often possible to run operations simultaneously across m
 ```groovy 
 
 Bpipe.run {
-  chr(1..5) ** [ hello ]
+  chr(1..5) * [ hello ]
 }
 ```
 
@@ -77,7 +77,7 @@ Multiple ranges or single chromosomes can be specified:
 ```groovy 
 
 Bpipe.run {
-  chr(1..10, 'X','Y') ** [ hello ]
+  chr(1..10, 'X','Y') * [ hello ]
 }
 ```
 
@@ -91,7 +91,7 @@ Suppose we have 10 input files and we want all 10 files named input_1.txt to inp
 ```groovy 
 
 Bpipe.run {
-   "input_%.txt" ** [ hello + world ] + nice_to_see_you
+   "input_%.txt" * [ hello + world ] + nice_to_see_you
 }
 ```
 
@@ -116,7 +116,7 @@ The pattern matching used for grouping files is a substring match.  Therefore yo
 ```groovy 
 
 Bpipe.run {
-   "_%." ** [ hello + world ] + nice_to_see_you
+   "_%." * [ hello + world ] + nice_to_see_you
 }
 ```
 
