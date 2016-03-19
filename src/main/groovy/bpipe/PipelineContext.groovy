@@ -1543,12 +1543,14 @@ class PipelineContext {
           List<Command> execCmds = cmds.collect { cmd -> 
               // Could be map entry or direct string
               if(cmd instanceof Map.Entry) {
-                  async(cmd.value,true,cmd.key,true) 
+                  Utils.box(cmd.value).collect { nestedCommand ->
+                      async(nestedCommand,true,cmd.key,true) 
+                  }
               }
               else {
                   async(cmd,true,null,true) 
               }
-           }
+           }.flatten()
           
           List<Integer> exitValues = []
           List<CommandThread> threads = execCmds.collect { new CommandThread(toWaitFor:it, pipeline:Pipeline.currentRuntimePipeline.get()) }
