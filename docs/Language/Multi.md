@@ -8,6 +8,9 @@
     
       multiExec <Groovy list of commands>
     
+      multi <config>:<command>,
+            <config>:<command>,
+            ...
     
 
 ### Availability

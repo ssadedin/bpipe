@@ -28,7 +28,7 @@ Although the above is very easy, it will unfortunately not work for all jobs bec
 The following options are supported:
 
 - `walltime` - how long the job is allowed to run.  See below for format details
-- `procs` - number of processors
+- `procs` - number of processors - can be a Groovy range such as 1..5
 - `queue` - the queue to use (default = "batch")
 - `memory` - amount of memory to reserve (GB).  Eg:  "4"
 - `account` - the account under which to run the command
@@ -82,6 +82,15 @@ For more complicated cases you can override the configuration using a completely
 ```groovy 
     exec "time (bwa aln test.fastq > test.sai)","bwa"
 ```
+
+The bpipe [multi](../Language/Multi/) statement uses a slightly different syntax to specify a configuration for each command
+where for each command the configuration name is placed first and the command follows after colon (groovy Map syntax):
+```groovy
+    multi small_bwa: "bwa aln -t $threads small.fastq > test.small.sai",
+          big_bwa: "bwa aln -t $threads big.fastq.gz > test.large.sai"
+```
+The above runs BWA twice in parallel, but one has a configuration anmed "small_bwa" while the other has a configuration
+called "big_bwa".
 
 ## Sun Grid Engine options
 

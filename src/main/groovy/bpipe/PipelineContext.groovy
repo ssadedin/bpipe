@@ -1520,6 +1520,13 @@ class PipelineContext {
      */
     void multiExec(List cmds) {
         
+        // When the list is a Map it means the user used the syntax
+        // multi foo:"some command", bar:"some other command"
+        // which is how to assign a configuration to each command
+        if(cmds[0] instanceof Map) {
+            cmds = cmds[0].collect { it } 
+        }
+        
         // Each command will be assumed to use the full value of the currently
         // specified resource usage. This is unintuitive, so we scale them to achieve
         // the expected effect: the total used by all the commands will be equal 
@@ -1533,7 +1540,15 @@ class PipelineContext {
         log.info "Scaled resource use to ${usedResources.values()} to execute in multi block"
         
         try {
-          List<Command> execCmds = cmds.collect { async(it,true,null,true) }
+          List<Command> execCmds = cmds.collect { cmd -> 
+              // Could be map entry or direct string
+              if(cmd instanceof Map.Entry) {
+                  async(cmd.value,true,cmd.key,true) 
+              }
+              else {
+                  async(cmd,true,null,true) 
+              }
+           }
           
           List<Integer> exitValues = []
           List<CommandThread> threads = execCmds.collect { new CommandThread(toWaitFor:it, pipeline:Pipeline.currentRuntimePipeline.get()) }
