@@ -108,7 +108,7 @@ bpipe run helloworld.pipe input*.txt
 
 ### Input Splitting Patterns
 
-### =Splitting=
+### Splitting
 
 Bpipe uses a very simple wildcard pattern syntax to let you indicate how your files should be split into groups for processing.  In these patterns you simply replace the portion of file names that indicates what group the file belongs to with the percent character which acts as a wildcard (matches any number of characters).  Files that share the same grouping portion will be passed together to the the parallel pipeline stages to process.
 
@@ -124,7 +124,7 @@ This means Bpipe will look for the first (and shortest) token in the file name t
 
 *Note: files that mismatch the grouping operator pattern will be filtered out of the inputs altogether.  This feature can be useful by allowing you to have a directory full of files that you provide as input even if some of them are not real input files - Bpipe will filter out only the ones it needs based on the pattern you specified*.
 
-### =Ordering=
+### Ordering
 
 Bpipe supports one other special character in its input splitting patterns:  the `*` wildcard.  This also acts as a wildcard match but it *does not* split the input into groups.  Instead, it affects ordering within the groups that are split.  When Bpipe matches a `*` character in an input splitting pattern it first splits the files into their groups (based on the `%` match) and then sorts them based on the portions that match the `*` character.  This helps you ensure that even after splitting, your files are still in a sensible order.   For example, consider the following input files
 
@@ -171,6 +171,74 @@ run { branches * [ align ] }
 ```
 
 In this example the `align` stage will run three times in parallel and the files specified for each branch will be explicitly provided to it. Of course, in normal usage this technique would not be best applied by specifying them statically, but rather for when you want to read the information from a file or database or other source and construct the branch => file mapping from that.
+
+### Allocating Threads to Commands
+
+Sometimes you know in advance exactly how many threads you wish to use with a command. In that case, it makes sense
+to specify it using the `procs` attribute in a configuration, or to specify it directly in the pipeline stage
+with the [Uses](uses) clause.
+
+Other times, however, you want to be more flexible, and allow resources to be assigned more dynamically. This means
+that if more compute power is available, you can take advantage of it, and when less is available, your pipeline can
+scale down to run on what is available. Bpipe offers some capability for this through the special `$threads` variable.
+This variable can behave in two different ways:
+
+- when a `procs` configuration is available from the bpipe.config file, the `$threads` variable will
+  take that value.
+- when no `procs` configuration is specified by configuration, Bpipe will decide on a sensible value for
+  `$threads` based on the currently unutilised concurrency slots specified to Bpipe via the `-n` flag
+  (defaulting to the number of cores on the computer Bpipe is running on). Once assigned, `$threads` maps
+  to the `procs` configuration value for any commands that it is specified in.
+
+Example:
+
+```
+align_bwa = {
+  exec "bwa aln -t $threads ref.fa $input.fq"
+}
+```
+
+Here Bpipe will assign a value to $threads that tries to best utilise the total
+available concurrency. For example, if there are 32 cores on the computer you
+are using and there are 4 of these stages that execute in parallel, each one
+should get allocated 8 cores, as long as they start at approximately the same
+time.
+
+### Limiting Dynamic Concurrency
+
+Bpipe implements dynamic concurrency in a somewhat subtle manner. When a command asks
+for a value for `$threads`, Bpipe needs to decide what other tasks the current
+pool of available threads should be shared with. If it simply calculates this
+value immediately then the first command that tries to use $threads will get
+allocated all the remaining concurrency slots and others will have none
+available. To avoid this, when a command asks for `$threads`, Bpipe pauses the
+current branch and waits until all concurrently executing paths in the pipeline
+are either executing tasks or have also requested `$threads`. Then the threads
+are divided up among all the requestors, and allocated fairly. 
+
+
+In general, the above process results in a "fair" allocation of threads to
+competing tasks, but you should be aware that "greedy" behavior can still
+emerge for tasks that are scattered apart in time. For this reason, it can be
+useful to set an upper limit on how many threads Bpipe will give to any one
+task. You can do this by setting the `max_per_command_threads` variable in
+`bpipe.config`. This will limit the total number of threads that can be
+allocated.
+
+Another approach to this is to specify thread allocation ranges in the 
+configuration of your commands via the `procs` variable. For example, we
+can reserve between 2 and 8 threads for bwa in the previous example by 
+specifying in bpipe.config:
+
+```
+commands {
+    bwa {
+        procs=2..8
+    }
+}
+```
+This will allow Bpipe to set $threads to anything between 2 and 8.
+
 
 ### Limitations
 
