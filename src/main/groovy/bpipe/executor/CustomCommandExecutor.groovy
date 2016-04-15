@@ -227,6 +227,9 @@ class CustomCommandExecutor implements CommandExecutor {
             
         if(config?.nodes)
             env.NODES = String.valueOf(config.nodes)
+            
+        if(config?.mem_param)
+            env.MEM_PARAM = String.valueOf(config.mem_param)
     }
 	
 	static synchronized acquireLock(Map cfg) {

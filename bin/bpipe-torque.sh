@@ -124,9 +124,10 @@ make_pbs_script () {
    # handle the batch and smp queues specially with regards to memory and procs
    case $QUEUE in
       batch) if [[ -z $MEMORY ]]; then
-                memory_request="#PBS -l pvmem=${DEFAULT_BATCH_MEM}gb"
+                : ${MEM_PARAM:=pvmem}
+                memory_request="#PBS -l $MEM_PARAM=${DEFAULT_BATCH_MEM}gb"
              else
-                memory_request="#PBS -l pvmem=${MEMORY}gb"
+                memory_request="#PBS -l $MEM_PARAM=${MEMORY}gb"
              fi
              if [[ -z $PROCS ]]; then
                 set_procs $DEFAULT_BATCH_PROCS
@@ -136,7 +137,8 @@ make_pbs_script () {
       smp)   if [[ -z $MEMORY ]]; then
                 memory_request=""
              else
-                memory_request="#PBS -l mem=${MEMORY}gb" 
+                : ${MEM_PARAM:=mem}
+                memory_request="#PBS -l $MEM_PARAM=${MEMORY}gb" 
              fi
              # the SMP queue never requests cores (it gets a single node)
              procs_request="";;
@@ -144,7 +146,8 @@ make_pbs_script () {
        *)    if [[ -z $MEMORY ]]; then
                 memory_request=""
              else
-                memory_request="#PBS -l mem=${MEMORY}gb" 
+                : ${MEM_PARAM:=mem}
+                memory_request="#PBS -l $MEM_PARAM=${MEMORY}gb" 
              fi 
              if [[ -z $PROCS ]]; then
                 #procs_request="#PBS -l procs=$DEFAULT_BATCH_PROCS"
