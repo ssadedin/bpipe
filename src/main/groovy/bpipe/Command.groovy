@@ -25,10 +25,11 @@
 package bpipe
 
 import groovy.util.logging.Log;
-import bpipe.executor.CommandExecutor;
+import bpipe.executor.CommandExecutor
+import bpipe.executor.ProbeCommandExecutor;;
 
 @Log
-class Command implements Serializable {
+class Command implements Serializable { 
     
     public static final long serialVersionUID = 0L
     
