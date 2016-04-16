@@ -186,6 +186,10 @@ class Command implements Serializable {
        } 
     }
     
+    boolean isResourcesSatisfied() {
+        return this.allocated || (this.executor != null && this.executor instanceof ProbeCommandExecutor)
+    }
+    
     static Command readCommand(File saveFile) {
         saveFile.withObjectInputStream { ois ->
             CommandExecutor exe2 = ois.readObject()

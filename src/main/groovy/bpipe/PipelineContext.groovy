@@ -1474,6 +1474,7 @@ class PipelineContext {
             Pipeline.currentRuntimePipeline.set(pipeline)
             Concurrency.instance.registerResourceRequestor(this)
             try {
+                log.info "CommandThread entering command waitFor (executor=" + toWaitFor.executor.class.name + ")"
                 toWaitFor.exitCode = toWaitFor.executor.waitFor()
             }
             catch(PipelineTestAbort e) {
@@ -1481,6 +1482,7 @@ class PipelineContext {
                 toWaitFor.exitCode = EXIT_ABORTED
             } 
             finally {
+                log.info "Exiting command thread " + this + ", unregistering resource requestor"
                 Concurrency.instance.unregisterResourceRequestor(this)
             }
         }
@@ -1556,17 +1558,22 @@ class PipelineContext {
           List<CommandThread> threads = execCmds.collect { new CommandThread(toWaitFor:it, pipeline:Pipeline.currentRuntimePipeline.get()) }
           threads*.start()
           
-         if(!Runner.opts.t) {
+         if(!Runner.opts.t && !probeMode) {
               // Wait for them to have resources allocated
-              while(execCmds.any { !it.allocated }) {
+              long waitTimeMs = 0
+              while(execCmds.any { !it.resourcesSatisfied }) {
                   Thread.sleep(100)
+                  waitTimeMs += 100
+                  if(waitTimeMs > 10000 && waitTimeMs % 5000 == 0) {
+                      log.info "Waiting for thread allocation in multi block: " + execCmds.count { it.allocated } + " allocated / " + execCmds.size() + " exitCodes = " + execCmds*.exitCode + " probeMode = " + probeMode
+                  }
               }
               
               // Now we can log them to the command log, if they did not abort
               threads.each { if(!it.abort) { it.writeLog() } }
           }
               
-          while(true) {
+          while(!probeMode) {
               int stillRunning = threads.count { it.toWaitFor.exitCode == -1 }
               if(stillRunning) {
                   log.info "Waiting for $stillRunning commands in multi block"
@@ -1581,10 +1588,15 @@ class PipelineContext {
           if(aborts) {
               throw new PipelineTestAbort("Would execute multiple commands: \n\n" + [ 1..aborts.size(),aborts.collect { it.message.replaceAll("Would execute:","") }].transpose()*.join("\t").join("\n"))
           }
-         
-          List<String> failed = [cmds,threads*.toWaitFor*.exitCode].transpose().grep { it[1] }
-          if(failed) {
-              throw new PipelineError("Command(s) failed: \n\n" + failed.collect { "\t" + it[0] + "\n\t(Exit status = ${it[1]})\n"}.join("\n"))
+          
+          if(probeMode) {
+              log.info "Not checking command success because probe mode"
+          }
+          else {
+              List<String> failed = [cmds,threads*.toWaitFor*.exitCode].transpose().grep { it[1] }
+              if(failed) {
+                  throw new PipelineError("Command(s) failed: \n\n" + failed.collect { "\t" + it[0] + "\n\t(Exit status = ${it[1]})\n"}.join("\n"))
+              }
           }
         }
         finally {
@@ -1664,7 +1676,16 @@ class PipelineContext {
       def actualResolvedInputs = Utils.box(this.@inputWrapper?.resolvedInputs) + internalInputs
 
       log.info "Checking actual resolved inputs $actualResolvedInputs"
-      if(!probeMode && checkOutputs && Dependencies.instance.checkUpToDate(checkOutputs,actualResolvedInputs)) {
+      
+      if(probeMode) {
+          log.info "Skip check dependencies due to probe mode"
+      }
+      else
+      if(!checkOutputs) {
+          log.info "Skip check dependencies due to no outputs to check"
+      }
+      else
+      if(Dependencies.instance.checkUpToDate(checkOutputs,actualResolvedInputs)) {
           String message
           if(this.@input)
               message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " due to inferred outputs $checkOutputs newer than inputs ${this.@input}"
@@ -1716,6 +1737,7 @@ class PipelineContext {
           return command
       }
       else {
+          log.info("Skip command start for $command.command due to probe mode")
           return new Command(executor:new ProbeCommandExecutor())
       }
     }
