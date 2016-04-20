@@ -156,9 +156,9 @@ For example:
 
 // Create a data structure (Map) that maps branches to files
 def branches = [
-    sample1: ["sample1_2.fastq.gz"]("sample1_1.fastq.gz",),
-    sample2: ["sample2_2.fastq.gz"]("sample2_1.fastq.gz",),
-    sample3: ["sample3_2.fastq.gz"]("sample3_1.fastq.gz",)
+    sample1: ["sample1_2.fastq.gz"],
+    sample2: ["sample2_2.fastq.gz"],
+    sample3: ["sample3_2.fastq.gz"]
 ]
 
 align = {
