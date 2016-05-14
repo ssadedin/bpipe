@@ -2324,6 +2324,16 @@ class PipelineContext {
             }
         }
     }
+    
+    void debug() {
+        groovy.ui.Console console = new groovy.ui.Console();
+        console.setVariable("pipeline", bpipe.Pipeline.currentRuntimePipeline.get());
+        console.setVariable("context", this)
+        console.run()
+        while(console.frame.visible) {
+            Thread.sleep(1000);
+        }
+    }
 }
 
 
