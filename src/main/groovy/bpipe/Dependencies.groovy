@@ -438,8 +438,10 @@ class Dependencies {
      * about it such that it can be reliably loaded by this same stage
      * if the pipeline is re-executed.
      */
-    synchronized void saveOutputs(PipelineContext context, List<File> oldFiles, Map<File,Long> timestamps, List<String> inputs) {
+    synchronized void saveOutputs(PipelineStage stage, List<File> oldFiles, Map<File,Long> timestamps, List<String> inputs) {
 
+        PipelineContext context = stage.context
+        
         GraphEntry root = getOutputGraph()
         
         // Get the full branch path of this pipeline stage
@@ -487,6 +489,7 @@ class Dependencies {
                 p.commandId = command.id
                 p.branchPath = branchPath
                 p.stageName = context.stageName
+                p.stageId = stage.id
                 
                 def allInputs = context.getResolvedInputs()
                 
@@ -1113,6 +1116,11 @@ class Dependencies {
         if(!p.containsKey("stageName")) {
             p.stageName = ""
         }
+        
+        if(!p.containsKey("stageId")) {
+            p.stageId = ""
+        }
+         
         return p
     }
     
