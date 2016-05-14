@@ -34,7 +34,9 @@ import java.lang.management.OperatingSystemMXBean;
 import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
-import java.util.logging.FileHandler;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.FileHandler
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern
 
@@ -771,4 +773,20 @@ class Utils {
         fh.setFormatter(new BpipeLogFormatter())
         parentLog.addHandler(fh)
     }
+    
+   public static void configureVerboseLogging() {
+        ConsoleHandler console = new ConsoleHandler()
+        console.setFormatter(new BpipeLogFormatter())
+        console.setLevel(Level.FINE)
+        log.getParent().addHandler(console)
+    }
+   
+   public static resolveRscriptExe() {
+       String rscriptExe = "Rscript"
+       if(Config.userConfig.containsKey("R") && Config.userConfig.R.containsKey("executable")) {
+           rscriptExe = Config.userConfig.R.executable
+           log.info "Using custom R executable: $rscriptExe"
+       }
+       return rscriptExe
+   }
 }

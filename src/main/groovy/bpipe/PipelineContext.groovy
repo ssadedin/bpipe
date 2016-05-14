@@ -1409,14 +1409,7 @@ class PipelineContext {
        // but see here: 
        // http://stackoverflow.com/questions/20338162/how-can-i-launch-a-new-process-that-is-not-a-child-of-the-original-process
        String setSid = Utils.isLinux() ? " setsid " : ""
-       
-       String rscriptExe = "Rscript"
-       if(Config.userConfig.containsKey("R") && Config.userConfig.R.containsKey("executable")) {
-           rscriptExe = Config.userConfig.R.executable
-           log.info "Using custom R executable: $rscriptExe"
-       }
-           
-       
+       String rscriptExe = Utils.resolveRscriptExe()
        boolean oldEchoFlag = this.echoWhenNotFound
        try {
             this.echoWhenNotFound = true
