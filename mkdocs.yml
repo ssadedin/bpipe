@@ -1,6 +1,6 @@
 site_name: Bpipe
 repo_url: https://github.com/ssadedin/bpipe
-theme: Bootstrap
+theme: bootstrap
 pages:
 - ['index.md', 'Welcome!']
 - ['Overview/Introduction.md','Overview','Introduction']
