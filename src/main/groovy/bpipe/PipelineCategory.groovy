@@ -119,7 +119,7 @@ class PipelineCategory {
     
     
     static Object plus(List l, List other) {
-        if(!l.empty && !other.empty && l[0] instanceof Closure && other[1] instanceof Closure) {
+        if(!l.empty && !other.empty && l[0] instanceof Closure && other[0] instanceof Closure) {
             def j = {
                 return it
             }
@@ -242,6 +242,19 @@ class PipelineCategory {
 			Node branchPoint = parent.addBranchPoint("split")
             for(Closure s in segments) {
                 log.info "Processing segment ${s.hashCode()}"
+                
+                // ForkId is used to track distinct topological paths in the pipeline graph from 
+                // physical ones. That is, both of these run the same hello stage twice in parallel, but
+                // they are topologically different:
+                //
+                //     foo + [hello,hello]
+                //
+                //     ["a","b"] * [hello] 
+                //
+                // in the first case, they will receive different forkIds
+                // in the second case they'll have the same forkId
+                //
+                String forkId = null
                 chrs.each { chr ->
 					
 					if(!Config.config.branchFilter.isEmpty() && !Config.config.branchFilter.contains(chr)) {
@@ -250,7 +263,8 @@ class PipelineCategory {
 					}
                     
                     log.info "Creating pipeline to run on branch $chr"
-                    Pipeline child = Pipeline.currentRuntimePipeline.get().fork(branchPoint, chr.toString())
+                    Pipeline child = Pipeline.currentRuntimePipeline.get().fork(branchPoint, chr.toString(), forkId)
+                    forkId = child.id
                     currentStage.children << child
                     Closure segmentClosure = s
                     threads << {
@@ -425,8 +439,11 @@ class PipelineCategory {
         }
         
         PipelineStage currentStage = new PipelineStage(pipeline.createContext(), {})
-        Pipeline.currentRuntimePipeline.get().addStage(currentStage)
+        Pipeline parent = Pipeline.currentRuntimePipeline.get()
+        parent.addStage(currentStage)
         currentStage.context.setInput(input)
+        
+        parent.childCount = 0
             
         log.info "Created pipeline stage ${currentStage.hashCode()} for parallel block"
         
@@ -434,11 +451,12 @@ class PipelineCategory {
         // separate pipeline for each one, and for each parallel stage
         List<Pipeline> childPipelines = []
         List<Runnable> threads = []
-		Pipeline parent = Pipeline.currentRuntimePipeline.get()
 		Node branchPoint = parent.addBranchPoint("split")
         for(Closure s in segments) {
             log.info "Processing segment ${s.hashCode()}"
-
+            
+            // See note in multiply(Set objs, List segments) for details on the purpose of forkId
+            String forkId = null
             samples.each { id, files ->
                     
                 log.info "Creating pipeline to run parallel segment $id with files $files. Branch filter = ${Config.config.branchFilter}"
@@ -457,8 +475,9 @@ class PipelineCategory {
                     else
                         childName = id + "." + segmentNumber
                 }
-				
-                Pipeline child = parent.fork(branchPoint,childName)
+                
+                Pipeline child = parent.fork(branchPoint,childName, forkId)
+                forkId = child.id
                 currentStage.children << child
                 threads << {
                     try {
@@ -625,10 +644,13 @@ class PipelineCategory {
         
         log.info "Last merged outputs are $mergedOutputs"
         mergedContext.setRawOutput(mergedOutputs)
-        PipelineStage mergedStage = new PipelineStage(mergedContext, finalStages.find { it != null }.body)
-        mergedStage.stageName = Utils.removeRuns(finalStages*.stageName).join("_")+"_bpipe_merge"
+        PipelineStage mergedStage = new FlattenedPipelineStage(
+                mergedContext, 
+                finalStages.find { it != null }.body,
+                finalStages
+            )
         log.info "Merged stage name is $mergedStage.stageName"
-        parent.stages.add(mergedStage)
+        parent.addStage(mergedStage)
         
         return mergedOutputs
     }

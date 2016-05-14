@@ -40,6 +40,13 @@ class Command implements Serializable {
     String id
     
     /**
+     * The id of the stage that executed the command.
+     * 
+     * @see bpipe.PipelineStage#stageId
+     */
+    String stageId
+    
+    /**
      * Human readable short name for the command. Usually this is set to just
      * the stage name of the pipeline executing the command (so not guaranteed to
      * be unique!)
@@ -179,7 +186,6 @@ class Command implements Serializable {
             e = e.commandExecutor
   
        File saveFile = new File(dir, this.id)
-       
        Command me = this
        saveFile.withObjectOutputStream { ois ->
            ois.writeObject(e)

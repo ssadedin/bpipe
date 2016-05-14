@@ -24,6 +24,7 @@
  */
 package bpipe
 
+import groovy.json.JsonOutput;
 import groovy.text.GStringTemplateEngine;
 import groovy.text.GStringTemplateEngine.GStringTemplate;
 import groovy.time.TimeCategory
@@ -40,6 +41,7 @@ import java.util.logging.Level;
 import java.util.regex.Pattern;
 
 import org.codehaus.groovy.reflection.CachedMethod;
+import org.codehaus.groovy.runtime.ReverseListIterator
 
 import bpipe.graph.Graph;
 import static Utils.isContainer 
@@ -123,7 +125,12 @@ public class Pipeline implements ResourceRequestor {
      * List of past stages that have already produced outputs.  This 
      * list is built up progressively as pipeline stages execute.
      */
-    def stages = []
+    List<PipelineStage> stages = []
+    
+    /**
+     * List of pipeline stages executed by *this* pipeline
+     */
+    List<PipelineStage> myStages = []
     
     /**
      * A list of "dummy" stages that are actually used to link other stages together
@@ -146,6 +153,13 @@ public class Pipeline implements ResourceRequestor {
      * The number of children that have been forked from this parent
      */
     int childCount = 0
+    
+    /**
+     * The index of this child in the children of its parent
+     */
+    int childIndex = -1
+    
+    String id = "0"
     
     /**
      * Metadata about the branch within which this pipeline is running. 
@@ -600,28 +614,25 @@ public class Pipeline implements ResourceRequestor {
             initializeRunLogs(inputFile)
         }
         
-        Node pipelineStructure = launch ? diagram(host, pipeline) : null
+        Map pipelineStructure = launch ? diagram(host, pipeline) : null
         
         def constructedPipeline
         use(PipelineCategory) {
             
-           
             // Build the actual pipeline
             Pipeline.withCurrentUnderConstructionPipeline(this) {
-                
                 constructedPipeline = pipeline()
-                
                 // See bug #60
                 if(constructedPipeline instanceof List) {
                     currentRuntimePipeline.set(this)
                     constructedPipeline = PipelineCategory.splitOnFiles("*", constructedPipeline, false)
                 }
-            }
+            }   
             
             if(launch) {
                 EventManager.instance.signal(PipelineEvent.STARTED, "Pipeline started", [pipeline:pipelineStructure])
                 
-                launchPipeline(constructedPipeline, inputFile, startDate)
+                launchPipeline(constructedPipeline, inputFile, startDate) 
             }
         }
 
@@ -787,7 +798,7 @@ public class Pipeline implements ResourceRequestor {
      * Note:  the new pipeline is not run by this method; instead you have to
      *        call one of the {@link #run(Closure)} methods on the returned pipeline
      */
-    Pipeline fork(Node branchPoint, String childName) {
+    Pipeline fork(Node branchPoint, String childName, String id = null) {
         
         assert branchPoint in this.node.children()
         
@@ -797,6 +808,13 @@ public class Pipeline implements ResourceRequestor {
         p.joiners = [] + this.joiners
         p.aliases = this.aliases
         p.parent = this
+        p.childIndex = this.childCount
+        
+        if(id == null) 
+            p.id = this.stages[-1].id + "_" + this.childCount
+        else
+            p.id = id
+        
 //        branchPoint.appendNode(p.node)
         ++this.childCount
         return p
@@ -1075,7 +1093,7 @@ public class Pipeline implements ResourceRequestor {
      * @param pipeline  Closure that is to execute the pipeline
      * @return  A tree of Nodes reflecting the pipeline structure
      */
-    Node diagram(Object host, Closure pipeline) {
+    Map diagram(Object host, Closure pipeline) {
         
         // We have to manually add all the external variables to the outer pipeline stage
         this.externalBinding.variables.each {
@@ -1094,14 +1112,26 @@ public class Pipeline implements ResourceRequestor {
         use(DefinePipelineCategory) {
             def realizedPipeline = pipeline()
             Utils.box(realizedPipeline).each { realizedBranch ->
-                if(!(realizedBranch in PipelineCategory.closureNames)) {
-                    realizedBranch()
+                if(!(realizedBranch in PipelineCategory.closureNames) && (realizedBranch !=null)) {
+                    if(realizedBranch instanceof Closure) {
+                        realizedBranch()
+                    }
                 }
-                else
-                    DefinePipelineCategory.inputStage.appendNode(PipelineCategory.closureNames[realizedBranch])
+                else {
+                    DefinePipelineCategory.inputStage.appendNode(
+                        PipelineCategory.closureNames[realizedBranch])
+                    
+                    Node rootNode = DefinePipelineCategory.createNode(realizedBranch)
+                    DefinePipelineCategory.edges.add(
+                        new Edge(DefinePipelineCategory.inputStage, rootNode))
+                }
             }
         }
-        return DefinePipelineCategory.inputStage
+        return [
+            root : DefinePipelineCategory.inputStage, 
+            nodes: DefinePipelineCategory.nodes, 
+            edges: DefinePipelineCategory.edges*.toMap()
+        ]
     }
     
     final int dumpTabWidth = 8
@@ -1136,11 +1166,11 @@ public class Pipeline implements ResourceRequestor {
     /**
      * This method creates a diagram of the pipeline instead of running it
      */
-    void renderMxGraph(Node root, String fileName, boolean editor) {
+    void renderMxGraph(Map structure, String fileName, boolean editor) {
                
         // Now make a graph
         // println "Found stages " + DefinePipelineCategory.stages
-        Graph g = new Graph(root)
+        Graph g = new Graph(structure.root)
         if(editor) {
             g.display()
         }
@@ -1151,6 +1181,17 @@ public class Pipeline implements ResourceRequestor {
             String outputExtension = opts.f ? "."+opts.f : ".png"
             String outputFileName = fileName+outputExtension
             println "Creating diagram $outputFileName"
+            if(opts.f == "json")  {
+//                use(NodeListCategory) {
+//                    new File(outputFileName).text = root.toJson()
+//                }
+                
+                use(NodeListCategory) {
+                    new File(outputFileName).text =    
+                        JsonOutput.toJson(getNodeGraph(structure))
+                }
+            }
+            else
             if(opts.f == "svg") 
                 g.renderSVG(outputFileName)
             else
@@ -1162,11 +1203,38 @@ public class Pipeline implements ResourceRequestor {
     }
     
     /**
+     * Convert information from the Node representation of the pipeline into
+     * a list of nodes and edges suitable for export as a graph structure.
+     * 
+     * @param Map   map containing a list of nodes under key 'nodes' and a list 
+     *              of edges under entry 'edges'
+     * @return
+     */
+    static Map getNodeGraph(Map structure) {
+       [
+            nodes: structure.nodes.collect { 
+              [ 
+                  name: it.value.name(),
+                  id: it.value.attributes().id
+              ]
+           },
+           edges: structure.edges
+      ] 
+    }
+    
+    /**
      * Stores the given stage as part of the execution of this pipeline
      */
     void addStage(PipelineStage stage) {
         synchronized(this.stages) {
+           
+            String branchPrefix = (this.id == "0") ? "" : this.id + DefinePipelineCategory.stageSeparator
+            
+            stage.id = branchPrefix + myStages.count { it instanceof FlattenedPipelineStage || !it.synthetic }
+            
             this.stages << stage
+            this.myStages << stage
+            
             node.appendNode(stage.stageName, [type:'stage','stage' : stage])
         }
     }
@@ -1246,6 +1314,31 @@ public class Pipeline implements ResourceRequestor {
         }
         return branches
     }
+    
+    /**
+     * Compute a unique id for the current stage of this pipeline.
+     * <p>
+     * The id identifies the stage uniquely within the pipeline graph. Two separate
+     * instances of the same stage within a pipeline will receive separate ids, while
+     * two references at the same position in the graph (for example, executed in
+     * parallel) will receive the same id.
+     */
+    String getStageId() {
+        def result = stages.reverse().grep { PipelineStage stage ->
+            stage instanceof FlattenedPipelineStage ||
+                (!stage.synthetic && PipelineCategory.closureNames[stage.body])
+        }.collect { PipelineStage stage ->
+            if(stage instanceof FlattenedPipelineStage)
+                stage.merged*.stageName.join(DefinePipelineCategory.stageSeparator)
+            else
+                stage.stageName 
+        }.join(DefinePipelineCategory.stageSeparator)         
+        
+        println "Computed stage id: " + result
+        
+        return result
+    }
+    
     
     List<String> getUnappliedBranchNames() {
         if(nameApplied)

@@ -730,12 +730,16 @@ class Utils {
      *                  sequential recurrent values reduced to single instance
      */
     static List removeRuns(List<String> values) {
+        removeRuns(values,values)
+    }
+    
+    static List removeRuns(List<Object> target, List<String> values) {
         def last = new Object()
-        values.grep {
+        target[values.findIndexValues {
           def result = (last == null) || (last != it)
           last = it
           return result
-        }
+        }]
     }
     
     static HashMap<String,File> canonicalFiles = new ConcurrentHashMap<String, File>(1000)
