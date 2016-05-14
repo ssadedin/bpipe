@@ -12,6 +12,7 @@ pages:
 - ['Language/Check.md','Language','Check']
 - ['Language/Chr.md','Language','Chr']
 - ['Language/CleanupStatement.md','Language','Cleanup']
+- ['Language/Debug.md','Language','Debug']
 - ['Language/Directories.md','Language','Directories']
 - ['Language/Doc.md','Language','Doc']
 - ['Language/Exec.md','Language','Exec']
