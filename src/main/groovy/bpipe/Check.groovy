@@ -46,11 +46,11 @@ class Check {
     }
     
     void save() {
-        Properties p = new Properties(
-            branch: branch,
-            stage: stage,
-            passed: passed.toString()
-        )
+        
+        Properties p = new Properties()
+        p.branch = branch
+        p.stage = stage
+        p.passed = passed ? "true" : "false"
         
         if(message)
             p.message = message
