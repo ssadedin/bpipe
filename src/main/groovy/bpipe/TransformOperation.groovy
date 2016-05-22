@@ -121,7 +121,7 @@ class TransformOperation {
         // they map to, we repeat the last one to fill up the missing ones
         if(exts.size() < toPatterns.size()) {
             exts = exts.clone()
-            while(exts.size() < toPatterns.size()) {
+            while(exts.size() < toPatterns.size() && isPattern(exts[-1])) {
               exts.add( exts[-1] )
             }
         }
@@ -147,11 +147,21 @@ class TransformOperation {
                 
             PipelineInput input = new PipelineInput(originalFiles, this.ctx.pipelineStages, this.ctx.aliases)
             List<String> filesResolved = input.resolveInputsEndingWithPatterns([fromPattern + '$'], [fromPattern])
-            this.files.addAll(filesResolved)
-            
-            // Add a from pattern for every file that was resolved
-            fromPatterns.addAll([fromPattern] * filesResolved.size())
-            expandedToPatterns.addAll([toPattern] * filesResolved.size())
+            if(isPattern(fromPattern)) {
+                
+                this.files.addAll(filesResolved)
+                
+                // Add a from pattern for every file that was resolved
+                fromPatterns.addAll([fromPattern] * filesResolved.size())
+                expandedToPatterns.addAll([toPattern] * filesResolved.size())
+            }
+            else {
+                if(filesResolved) {
+                    this.files.add(filesResolved[0])
+                    fromPatterns.add(fromPattern)
+                    expandedToPatterns.add(toPattern)
+                }
+            }
         }
         
         // Replace the original list of from patterns with our expanded list
@@ -219,7 +229,6 @@ class TransformOperation {
         }
         
         int count = 0
-        
         def outFiles = exts.collect { String extension ->
             
             // In the simple case, only 1 from pattern exists - we always replace the file extension
@@ -264,8 +273,17 @@ class TransformOperation {
             ++count
             return txed
         }
-        
-        println "outFiles are $outFiles"
         return outFiles
+    }
+    
+    /**
+     * Return true if the extension given is a wildcard type expression that could
+     * match multiple files.
+     * @param ext
+     * @return
+     */
+    boolean isPattern(ext) {
+        boolean result = ext instanceof java.util.regex.Pattern || ext.indexOf('*')>=0
+        return result
     }
 }

@@ -19,19 +19,33 @@ file extension.   For example, if you have a command that converts
 a CSV file called *foo*.csv to an XML file, you can easily declare a section of your script
 to output *foo*.xml using a transform with the name 'xml'.
 
-The output(s) that are automatically deduced by *transform* will inherit all the behavior implied by the [produce](Language/Produce) statement.
+The output(s) that are automatically deduced by *transform* will inherit all
+the behavior implied by the [produce](Language/Produce) statement.
 
-Since version 0.9.8.4, transform has offered an extended form that allows you to do more than just replace the file extension. This form uses two parts, taking the form: 
+Since version 0.9.8.4, transform has offered an extended form that allows you
+to do more than just replace the file extension. This form uses two parts,
+taking the form: 
   
   `transform(<input file pattern>) to(<output file pattern>`) { ... }
 
-The input and output patterns are assumed to match to the end of the file name, but can include a regular expression pattern for matching the input files.
+The input and output patterns are assumed to match to the end of the file name,
+but can include a regular expression pattern for matching the input files.
 
-*Note*: input file patterns that contain no regular expression characters, or that end in "." followed by plain characters are treated as file extensions. ie: ".xml" is treated as ".xml", not "any character followed by xml".
+*Note*: input file patterns that contain no regular expression characters, or
+that end in "." followed by plain characters are treated as file extensions.
+ie: ".xml" is treated as literal ".xml", not "any character followed by xml".
+
+*Note*: when the form '*.ext' is used, all inputs with the given extension are 
+matched and their transforms become expected outputs. By contrast, the form
+'.ext' or 'ext' causes only the first input matching the extension '.ext' to 
+generate an expected output.
 
 ### Annotation
 
-You can also declare a whole pipeline stage as a transform by adding the Transform annotation prior to the stage in the form `@Transform(<filter name>)`. This form is a bit less flexible, but more concise when you don't need the flexibility.
+You can also declare a whole pipeline stage as a transform by adding the
+Transform annotation prior to the stage in the form `@Transform(<filter
+name>)`. This form is a bit less flexible, but more concise when you
+don't need the flexibility.
 
 ### Examples
 
