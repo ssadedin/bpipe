@@ -121,8 +121,9 @@ class TransformOperation {
         // they map to, we repeat the last one to fill up the missing ones
         if(exts.size() < toPatterns.size()) {
             exts = exts.clone()
-            while(exts.size() < toPatterns.size())
+            while(exts.size() < toPatterns.size()) {
               exts.add( exts[-1] )
+            }
         }
         
         // Similarly, if there are not enough to patterns, fill them up from
@@ -167,7 +168,35 @@ class TransformOperation {
      * with those set in the constructor by {@link #exts}.
      */
     void execute(List<String> fromPatterns = ['\\.[^\\.]*$'], List<String> providedToPatterns = null) {
-        def extensionCounts = [:]
+        
+        Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
+        
+        def outFiles = computeOutputFiles(ctx.applyName ? pipeline.name : null, ctx.stageName, fromPatterns, providedToPatterns)
+        
+        log.info "Transform using $exts produces outputs $outFiles"
+        
+        if(ctx.applyName)
+            pipeline.nameApplied = true
+           
+        ctx.checkAccompaniedOutputs(files)
+            
+        // Coerce any inputs coming from different folders to the correct output folder
+        outFiles = ctx.toOutputFolder(outFiles)
+        
+        if(providedToPatterns) {
+            ctx.withInputs(this.files) {
+                ctx.produceImpl(outFiles, body)
+            }
+        }
+        else 
+            ctx.produceImpl(outFiles, body)
+    }
+    
+    /**
+     * Compute a list of expected output file names from this transform's input files (files attribute)
+     */
+    List<String> computeOutputFiles(String applyBranchName, String stageName, List<String> fromPatterns = ['\\.[^\\.]*$'], List<String> providedToPatterns = null) {
+        Map extensionCounts = [:]
         for(def e in exts) {
             extensionCounts[e] = 0
         }
@@ -179,17 +208,18 @@ class TransformOperation {
               throw new PipelineError("Expected input but no input could be resolved matching pattern ${fromPatterns[0]}")
         }
         
-        def pipeline = Pipeline.currentRuntimePipeline.get()
+        Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
         
         // If the pipeline branched, we need to add a segment to the new files name
         // to differentiate it from other parallel branches
         String additionalSegment = ""
-        if(ctx.applyName) {
-            additionalSegment = '.'+pipeline.name 
-            log.info "Applying branch name $pipeline.name to pipeline segment because name is yet to be applied"
+        if(applyBranchName != null) {
+            additionalSegment = '.'+applyBranchName
+            log.info "Applying branch name $applyBranchName to pipeline segment because name is yet to be applied"
         }
         
         int count = 0
+        
         def outFiles = exts.collect { String extension ->
             
             // In the simple case, only 1 from pattern exists - we always replace the file extension
@@ -225,7 +255,7 @@ class TransformOperation {
             // A small hack that is designed to avoid a situation where an output 
             // receives the same name as an input file
             if(txed in files) {
-                txed = txed.replaceAll('\\.'+extension+'$', '.'+FastUtils.dotJoin(ctx.stageName,extension))
+                txed = txed.replaceAll('\\.'+extension+'$', '.'+FastUtils.dotJoin(stageName,extension))
             }
             
             if(txed.startsWith("."))
@@ -235,22 +265,7 @@ class TransformOperation {
             return txed
         }
         
-        log.info "Transform using $exts produces outputs $outFiles"
-        
-        if(ctx.applyName)
-            pipeline.nameApplied = true
-            
-        ctx.checkAccompaniedOutputs(files)
-            
-        // Coerce any inputs coming from different folders to the correct output folder
-        outFiles = ctx.toOutputFolder(outFiles)
-        
-        if(providedToPatterns) {
-            ctx.withInputs(this.files) {
-                ctx.produceImpl(outFiles, body)
-            }
-        }
-        else 
-            ctx.produceImpl(outFiles, body)
+        println "outFiles are $outFiles"
+        return outFiles
     }
 }
