@@ -31,7 +31,7 @@ import groovy.util.logging.Log;
  * <p>
  * A "transform" means that the input(s) are processed to output a new kind
  * of file (eg: .bam file in, .csv out). By modeling the idea of transforms as a 
- * first calss concept, Bpipe can enforce a convention for how such 
+ * first class concept, Bpipe can enforce a convention for how such 
  * operations name their file: the output file has the same name as the 
  * input file. The "execute()" method models this logic as the default
  * behavior. However a more advanced behavior is offered that allows any
@@ -124,14 +124,14 @@ class TransformOperation {
             while(exts.size() < toPatterns.size())
               exts.add( exts[-1] )
         }
-		
-		// Similarly, if there are not enough to patterns, fill them up from
-		// the first to pattern
-		if(toPatterns.size() < exts.size()) {
-			toPatterns = toPatterns.clone()
-			while(toPatterns.size() < exts.size())
-				toPatterns.add(toPatterns[-1])
-		}
+        
+        // Similarly, if there are not enough to patterns, fill them up from
+        // the first to pattern
+        if(toPatterns.size() < exts.size()) {
+            toPatterns = toPatterns.clone()
+            while(toPatterns.size() < exts.size())
+                toPatterns.add(toPatterns[-1])
+        }
         
         // In the advanced case, the "file extensions" are not file extensions, but
         // regular expressions for matching files to transform from
