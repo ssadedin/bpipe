@@ -121,7 +121,7 @@ class TransformOperation {
         // they map to, we repeat the last one to fill up the missing ones
         if(exts.size() < toPatterns.size()) {
             exts = exts.clone()
-            while(exts.size() < toPatterns.size() && isPattern(exts[-1])) {
+            while(exts.size() < toPatterns.size()) {
               exts.add( exts[-1] )
             }
         }
