@@ -335,11 +335,13 @@ class PipelineInput {
             pipeline = pipeline.parent
         }
         
+        PipelineStage currentStage = stages[-1]
         
-        def reverseOutputs = stages.reverse().grep { 
+        def reverseOutputs = stages.reverse().grep {  PipelineStage stage ->
             // Only consider outputs from threads that are related to us but don't consider our own
             // (yet to be created) outputs
-            it.context.threadId in relatedThreads && !inputBelongsToStage(it)
+            
+            !stage.is(currentStage) && stage.context.threadId in relatedThreads && !inputBelongsToStage(stage)
             
             // !this.is(it.context.@inputWrapper) && ( this.parent == null || !this.parent.is(it.context.@inputWrapper)    )
         }.collect { PipelineStage stage ->
