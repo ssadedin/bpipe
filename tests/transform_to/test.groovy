@@ -5,7 +5,7 @@ hello = {
 }
 
 world = {
-    transform('.fastq.gz','.xml')  to('_fastqc.zip','.tsv')  {
+    transform('*.fastq.gz','.xml')  to('_fastqc.zip','.tsv')  {
         exec """
             cat $input1.gz > $output1.zip
 
