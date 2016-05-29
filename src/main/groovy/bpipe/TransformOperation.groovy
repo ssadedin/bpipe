@@ -147,12 +147,12 @@ class TransformOperation {
                 
             PipelineInput input = new PipelineInput(originalFiles, this.ctx.pipelineStages, this.ctx.aliases)
             List<String> filesResolved = input.resolveInputsEndingWithPatterns([fromPattern + '$'], [fromPattern])
-            if(isPattern(fromPattern)) {
+            if(isGlobPattern(fromPattern)) {
                 
                 this.files.addAll(filesResolved)
                 
                 // Add a from pattern for every file that was resolved
-                fromPatterns.addAll([fromPattern] * filesResolved.size())
+                fromPatterns.addAll([fromPattern[1..-1]] * filesResolved.size())
                 expandedToPatterns.addAll([toPattern] * filesResolved.size())
             }
             else {
@@ -282,8 +282,8 @@ class TransformOperation {
      * @param ext
      * @return
      */
-    boolean isPattern(ext) {
-        boolean result = ext instanceof java.util.regex.Pattern || ext.indexOf('*')>=0
+    boolean isGlobPattern(ext) {
+        boolean result = ext instanceof String && ext.startsWith('*.')
         return result
     }
 }
