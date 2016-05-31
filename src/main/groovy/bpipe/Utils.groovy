@@ -30,7 +30,9 @@ import groovy.util.logging.Log;
 import groovy.xml.XmlUtil;
 
 import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
+import java.lang.management.OperatingSystemMXBean
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
@@ -784,12 +786,26 @@ class Utils {
     }
    
    public static resolveRscriptExe() {
-       String rscriptExe = "Rscript"
-       if(Config.userConfig.containsKey("R") && Config.userConfig.R.containsKey("executable")) {
-           rscriptExe = Config.userConfig.R.executable
-           log.info "Using custom R executable: $rscriptExe"
+       resolveExe("R", "Rscript")
+   }
+   
+   public static resolveExe(String name, String defaultExe) {
+       String resolvedExe = defaultExe
+       if(Config.userConfig.containsKey(name) && Config.userConfig[name].containsKey("executable")) {
+           resolvedExe = Config.userConfig[name].executable
+           File exeFile = new File(resolvedExe)
+           if(!exeFile.exists()) {
+               Path scriptParentDir = new File(Config.config.script).absoluteFile.parentFile.toPath()
+               Path relativeToPipeline = scriptParentDir.resolve(exeFile.toPath())
+               if(Files.exists(relativeToPipeline)) {
+                   String pathRelativeToPipeline = relativeToPipeline.toFile().absolutePath
+                   log.info "Interpreting tool path $resolvedExe as relative to pipeline: $pathRelativeToPipeline"
+                   resolvedExe = pathRelativeToPipeline
+               }
+           }
+           log.info "Using custom $name executable: $resolvedExe"
        }
-       return rscriptExe
+       return resolvedExe
    }
    
    static Pattern GROOVY_EXT = ~'\\.groovy$'
