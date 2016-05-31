@@ -32,9 +32,10 @@ import java.util.logging.Level
 import java.util.logging.Logger;
 
 import org.apache.commons.cli.Option
-
 import org.codehaus.groovy.runtime.StackTraceUtils;
 
+import bpipe.agent.AgentRunner
+import bpipe.cmd.Stop;
 import bpipe.worx.WorxEventListener;
 
 import groovy.transform.CompileStatic;
@@ -116,60 +117,32 @@ class Runner {
         String pid = resolvePID()
         
         Config.config.pid = pid
+        
         Config.config.outputLogPath = ".bpipe/logs/${pid}.log"
         
         // println "Starting Runner at ${new Date()}..."
             
         // PID of shell that launched Bpipe
         String parentPid = System.getProperty("bpipe.pid")
+        Config.config.parentPid = parentPid
         
         // Before we do anything else, add a shutdown hook so that termination of the process causes the job to 
         // to be removed from the user's folder
 //        log.info "Adding shutdown hook"
-        System.addShutdownHook { 
-            
-            if(!normalShutdown) {
-                if(new File(".bpipe/stopped/$pid").exists())
-                    System.err.println "MSG: Bpipe stopped by stop command: " + new Date()
-                else
-                    System.err.println "ERROR: Abnormal termination - check bpipe and operating system has enough memory!"
-                System.err.flush()
-            }
-            
-            def home = System.getProperty("user.home")
-            def jobFile = new File("$home/.bpipedb/jobs/$pid")
-            if(jobFile.exists()) {
-                log.info("Deleting job file $jobFile")
-                if(!jobFile.delete()) {
-                    log.warning("Unable to delete job file for job $pid")
-                    println("WARN: Unable to delete job file for job $pid")
-                }
-            }
-            
-            if(Config.config.eraseLogsOnExit && parentPid != null) {
-                new File(".bpipe/logs/${parentPid}.erase.log").text=""
-            }
-            
-            cleanupDirtyFiles()
-            
-            try {
-                // Call events listening for shutdown event
-                EventManager.instance.signal(PipelineEvent.SHUTDOWN, "Shutting down process $pid")
-            }
-            catch(Exception e) {
-                // This execption occurs whenever worx not configured?
-                // System.err.println "ERROR: Failure in shutdown hook!"
-            }
+        System.addShutdownHook(Runner.&shutdown)
+        
+        String mode = System.getProperty("bpipe.mode")
+        if(mode == "agent")  {
+           runAgent(args)
+           return 
         }
-                
-//        log.info "Initializing logging ..."
+        
         def parentLog = initializeLogging(pid)
         
         log.info "Initializing plugins ..."
         Config.initializePlugins()
         
         def cli 
-        String mode = System.getProperty("bpipe.mode")
         if(mode == "diagram")  {
             log.info("Mode is diagram")
             cli = diagramCli
@@ -222,9 +195,7 @@ class Runner {
         if(mode == "stopcommands") {
             log.info("Stopping running commands")
             cli = stopCommandsCli
-            Config.config["mode"] = "stopcommands"
-            int count = new CommandManager().stopAll()
-            println "Stopped $count commands"
+            new Stop(args as List).run(System.out)
             exit(0)
         } 
         else {
@@ -291,27 +262,17 @@ class Runner {
         // Note: configuration reading depends on the script, so this
         // needs to come first
         Config.config.script = opt.arguments()[0]
+        
+        Config.config.pguid = Utils.sha1(canonicalRunDirectory +'$'+Config.config.pid+'$'+Config.config.script) 
 
+        log.info "=================== GUID=${Config.config.pguid} PID=$pid (${Config.config.pid}) =============="
+        
         // read the configuration file, if available
-        log.info "Reading user config ... "
-        Utils.time ("Read user config") {
-            try {
-                Config.readUserConfig()
-            }
-            catch( Exception e ) {
-                def cause = e.getCause() ?: e
-                println("\nError parsing 'bpipe.config' file. Cause: ${cause.getMessage() ?: cause}\n")
-                reportExceptionToUser(e)
-                exit(1)
-            }
-        }
-            
+        readUserConfig()
+        
         opts = opt
         if(opts.v) {
-            ConsoleHandler console = new ConsoleHandler()
-            console.setFormatter(new BpipeLogFormatter())
-            console.setLevel(Level.FINE)
-            parentLog.addHandler(console)
+            Utils.configureVerboseLogging()
         }
         
         if(opts.d) {
@@ -436,21 +397,25 @@ class Runner {
             normalShutdown = false
             script.run()
             normalShutdown=true
+            EventManager.instance.signal(PipelineEvent.SHUTDOWN, "Shutting down process $pid")
         }
         catch(MissingPropertyException e)  {
             if(e.type?.name?.startsWith("script")) {
                 // Handle this as a user error in defining their script
                 // print a nicer error message than what comes out of groovy by default
                 handleMissingPropertyFromPipelineScript(e)
+                EventManager.instance.signal(PipelineEvent.SHUTDOWN, "Shutting down process $pid")
 		        exit(1)
             }
             else {
                 reportExceptionToUser(e)
+                EventManager.instance.signal(PipelineEvent.SHUTDOWN, "Shutting down process $pid")
 		        exit(1)
             }
         }
         catch(Throwable e) {
             reportExceptionToUser(e)
+            EventManager.instance.signal(PipelineEvent.SHUTDOWN, "Shutting down process $pid")
 	        exit(1)
         }
    }
@@ -543,6 +508,7 @@ class Runner {
         return parentLog
     }
     
+   
     /**
      * Try to determine the process id of this Java process.
      * Because the PID is read from a file that is created after
@@ -646,6 +612,69 @@ class Runner {
     }
     
     /**
+     * Centralised directory where in-progress jobs are linked
+     */
+    static final File CENTRAL_JOB_DIR = new File(System.getProperty("user.home") + "/.bpipedb/jobs/")
+    
+    /**
+     * Centralised directory where completed job links are linked
+     */
+    static final File COMPLETED_DIR = new File(System.getProperty("user.home") + "/.bpipedb/completed")
+    
+    /**
+     * The local directory where job information is stored
+     */
+    static final File LOCAL_JOB_DIR = new File(".bpipe/jobs")
+    
+    /**
+     * Perform essential cleanup when Bpipe process ends.
+     * <p>
+     * Note: This function is added as a shutdown hook. Therefore it executes in the very
+     *       limited context and constraints applied to Java shutdown hooks.
+     */
+    static void shutdown() {
+        
+        String pid = Config.config.pid
+        String parentPid = Config.config.parentPid
+            
+        // The normalShutdown flag is set to false by default, and only set to true
+        // when Bpipe executes through one of the normal / expected paths. In this 
+        // way we have a chance to detect when Bpipe dies through an abnormal 
+        // mechanism.
+        if(!normalShutdown) {
+            if(new File(".bpipe/stopped/$pid").exists())
+                System.err.println "MSG: Bpipe stopped by stop command: " + new Date()
+            else
+                System.err.println "ERROR: Abnormal termination - check bpipe and operating system has enough memory!"
+            System.err.flush()
+        }
+            
+        def home = System.getProperty("user.home")
+        File jobFile = new File(CENTRAL_JOB_DIR, "$pid")
+        if(jobFile.exists()) {
+            
+            if(!COMPLETED_DIR.exists())
+                COMPLETED_DIR.mkdirs()
+                
+            File completedFile = new File(COMPLETED_DIR, pid)
+            if(completedFile.exists())
+                completedFile.delete()
+            
+            log.info("Deleting job file $jobFile")
+            if(!jobFile.renameTo(completedFile)) {
+                log.warning("Unable to move job file for job $pid")
+                println("WARN: Unable to move job file for job $pid")
+            }
+        }
+            
+        if(Config.config.eraseLogsOnExit && parentPid != null) {
+            new File(".bpipe/logs/${parentPid}.erase.log").text=""
+        }
+            
+        cleanupDirtyFiles()
+    }
+    
+    /**
      * Check for any files that were marked dirty but could not be actively cleaned up 
      * during the pipeline run. We will make one more attempt to clean them up here,
      * and if that is not possible, print a verbose error for the user.
@@ -698,14 +727,8 @@ class Runner {
         }
         def opt = cli.parse(args)
         
-        // Cleanup uses some aspects of user config
-        try {
-            Config.readUserConfig()
-        }
-        catch(Exception e) {
-            println "WARNING: reading config files experienced error: $e"
-        }
-        
+        readUserConfig()
+       
         if(opt.y) {
             Config.userConfig.prompts.handler = { msg -> return "y"}
         }
@@ -732,6 +755,10 @@ class Runner {
     
     static void runStatus(def args) {
         new StatusCommand().execute(args)
+    }
+    
+    static void runAgent(def args) {
+        bpipe.agent.AgentRunner.main(args)
     }
     
     /**
@@ -871,6 +898,21 @@ class Runner {
         
         if(unit == "GB")
             return amount.toInteger() * 1000
+    }
+    
+    static void readUserConfig() {
+        log.info "Reading user config ... "
+        Utils.time ("Read user config") {
+            try {
+                Config.readUserConfig()
+            }
+            catch( Exception e ) {
+                def cause = e.getCause() ?: e
+                println("\nError parsing 'bpipe.config' file. Cause: ${cause.getMessage() ?: cause}\n")
+                reportExceptionToUser(e)
+                exit(1)
+            }
+        }
     }
 }
 
@@ -1037,4 +1079,6 @@ class ParamsBinding extends Binding {
             return super.getVariable(name)
         }
     }
+    
+    
 }

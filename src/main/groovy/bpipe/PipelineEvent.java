@@ -8,6 +8,9 @@ package bpipe;
  * @author ssadedin
  */
 public enum PipelineEvent {
+    
+    /* ----------------- Pipeline Level Events ----------------------- */
+    
 	/**
 	 * Supported
 	 */
@@ -33,8 +36,13 @@ public enum PipelineEvent {
 	 */
 	STAGE_STARTED,
 	
+    /* ----------------- Stage Level Events ----------------------- */
+    
 	/**
-	 * Supported
+	 * Stage has completed execution
+     * <p>
+	 * Note this is sent regardless of success or failure. To listen for
+	 * failure, see {@link #STAGE_FAILED}.
 	 */
 	STAGE_COMPLETED,
 	
@@ -42,7 +50,14 @@ public enum PipelineEvent {
 	 * Future
 	 */
 	STAGE_FAILED,
+    
+    /**
+     * Bpipe is exiting - Supported
+     */
+	SHUTDOWN,
 	
+    /* ----------------- Command Level Events ----------------------- */
+    
 	/**
 	 * A command is being checked to see if it needs
 	 * to be executed. eg. are inputs older than outputs?
@@ -64,10 +79,6 @@ public enum PipelineEvent {
 	 */
 	COMMAND_FAILED,
 	
-    /**
-     * Bpipe is exiting - Supported
-     */
-	SHUTDOWN,
 	
 	/**
 	 * A report has been generated (supported)

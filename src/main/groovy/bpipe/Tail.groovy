@@ -27,7 +27,8 @@ package bpipe
 
 import java.io.BufferedReader;
 
-import bpipe.executor.CommandExecutor;
+import bpipe.executor.CommandExecutor
+import groovy.util.logging.Log;;
 
 /**
  * Custom support for tailing the log file.
@@ -39,6 +40,7 @@ import bpipe.executor.CommandExecutor;
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+@Log
 class Tail {
     
     final static int DEFAULT_LINES = 72
@@ -50,14 +52,22 @@ class Tail {
             n longOpt: 'lines', 'number of lines to log', args:1
             t longOpt: 'threads', 'thread id to track', args:1
             c longOpt: 'command', 'command id to show output for', args:1
+            s longOpt: 'stageid', 'stage id to show output for', args:1
             e longOpt: 'errors', 'show output for commands that failed in the last run'
             f longOpt: 'follow', 'keep following file until user presses Ctrl+C'
             x longOpt: 'completed', 'show in context of completed pipeline with given pid', args:1
+            v longOpt: 'verbose', 'enable verbose logging'
+        }
+        
+        
+        def opts = logCli.parse(args)
+        if(!opts) {
+            System.exit(1)
         }
         
         Utils.configureSimpleLogging(".bpipe/bpipe.log")
-        
-        def opts = logCli.parse(args)
+        if(opts.v)
+            Utils.configureVerboseLogging()
         
         int lines = opts.n ? opts.n.toInteger() : DEFAULT_LINES
         String threadId = opts.t ?: null
@@ -77,6 +87,9 @@ class Tail {
         else
         if(opts.c) {
             showCommandLog(logFile, opts.c)
+        }
+        if(opts.s) {
+            showStageLog(logFile, opts.s)
         }
         else {
             showTail(logFile, lines, threadId, opts)
@@ -107,6 +120,46 @@ class Tail {
         }
     }
     
+    /**
+     * Scan the log file for commands executed by the given stage and dump their output.
+     * 
+     * @param logFile
+     * @param stageId
+     */
+    static void showStageLog(File logFile, String stageId) {
+        
+        log.info "Searching for commands for stage $stageId in log file " + logFile.absolutePath
+        
+        // Read all the commands
+        List<Command> commands = new CommandManager().getCommandsByStatus()
+        
+        // Find the ones that satisfy the stage spec
+        List<String> ids = commands.grep { it.stageId == stageId }.collect { Command cmd -> cmd.id }
+        
+        if(ids.empty) {
+            println "No commands match specified stage id: $stageId"
+        }
+        else {
+            log.info "Found commands: " + ids.join(',')
+        }
+        
+        logFile.withReader { r ->
+            OutputLogIterator i = new OutputLogIterator(r)
+            i.each {  OutputLogEntry e ->
+                if(e.commandId in ids) {
+                    println e.content
+                }
+            }
+        }            
+    }
+    
+    /**
+     * Identify the entries for the given command in the given log file and display them,
+     * along with other command information.
+     * 
+     * @param logFile
+     * @param commandId
+     */
     static void showCommandLog(File logFile, String commandId) {
         OutputLogEntry logEntry = logFile.withReader { r ->
             OutputLogIterator i = new OutputLogIterator(r)

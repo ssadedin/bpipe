@@ -32,3 +32,4 @@ local-lib/gridgain-hpc-5.1.2.jar
 test.out
 test.src.out
 
+/eclipse-build/
