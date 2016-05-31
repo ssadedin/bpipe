@@ -502,12 +502,17 @@ class Runner {
         fh.setFormatter(new BpipeLogFormatter())
         parentLog.addHandler(fh)
 
-        // Another log file for history
-        new File(".bpipe/logs").mkdirs()
-        Handler pidLog = pid == "tests" ? new ConsoleHandler() : new FileHandler(".bpipe/logs/${pid}.bpipe.log")
-        pidLog.setFormatter(new BpipeLogFormatter())
-        parentLog.addHandler(pidLog)
-
+        try {
+            // Another log file for history
+            new File(".bpipe/logs").mkdirs()
+            Handler pidLog = pid == "tests" ? new ConsoleHandler() : new FileHandler(".bpipe/logs/${pid}.bpipe.log")
+            pidLog.setFormatter(new BpipeLogFormatter())
+            parentLog.addHandler(pidLog)
+        }
+        catch(Exception e) {
+            log.info "Error initializing logging: " + e
+        }
+    
 		Properties p = System.properties
         log.info("Starting")
         log.info("OS: " + p['os.name'] + " (" + p['os.version'] + ") Java: " + p['java.version'] + " Vendor: " + p["java.vendor"] )
