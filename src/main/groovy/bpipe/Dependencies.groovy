@@ -778,57 +778,6 @@ class Dependencies {
         return outputSize
     }
     
-    /**
-     * Display a dump of the dependency graph for the given files
-     * 
-     * @param args  list of file names to display dependencies for
-     */
-    void queryOutputs(def args) {
-        // Start by scanning the output folder for dependency files
-        List<OutputMetaData> outputs = scanOutputFolder()
-        GraphEntry graph = computeOutputGraph(outputs)
-        
-        if(args) {
-            for(String arg in args) {
-                GraphEntry filtered = graph.filter(arg)
-                if(!filtered) {
-                    System.err.println "\nError: cannot locate output $arg in output dependency graph"
-                    continue
-                }
-                println "\n" + " $arg ".center(Config.config.columns, "=")  + "\n"
-                println "\n" + filtered.dump()
-                
-                
-               OutputMetaData p = graph.propertiesFor(arg)
-               
-               
-               String duration = "Unknown"
-               String pendingDuration = "Unknown"
-               
-               if(p.stopTimeMs > 0) {
-                   duration = TimeCategory.minus(new Date(p.stopTimeMs),new Date(p.startTimeMs)).toString()
-                   pendingDuration = TimeCategory.minus(new Date(p.startTimeMs),new Date(p.createTimeMs)).toString()
-               }
-               
-               println """
-                   Created:             ${new Date(p.timestamp)}
-                   Pipeline Stage:      ${p.stageName?:'Unknown'}
-                   Pending Time:        ${pendingDuration}
-                   Running Time:        ${duration}
-                   Inputs used:         ${p.inputs.join(',')}
-                   Command:             ${p.command}
-                   Preserved:           ${p.preserve?'yes':'no'}
-                   Intermediate output: ${p.intermediate?'yes':'no'}
-               """.stripIndent()
-               
-               println("\n" + ("=" * Config.config.columns))
-            }
-        }
-        else {
-               println "\nDependency graph is: \n\n" + graph.dump()
-        }
-    }
-    
     void preserve(def args) {
         List<OutputMetaData> outputs = scanOutputFolder()
         int count = 0
