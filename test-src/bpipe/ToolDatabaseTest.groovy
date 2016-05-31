@@ -38,6 +38,7 @@ class ToolDatabaseTest {
 		
 		ConfigObject cfg = new ConfigObject()
 		cfg.put("probe", "echo 1.0")
+        
 		
 		Tool t = new Tool("foo", cfg)
 		
@@ -52,4 +53,13 @@ class ToolDatabaseTest {
 		t = new Tool("GenomeAnalysisTK", cfg)
 		assert "C:/cygwin/home/ssadedin/gatk/workspace/gatks/GenomeAnalysisTK-1.5-32-g2761da9/GenomeAnalysisTK.jar" == t.expandToolName("java -jar C:/cygwin/home/ssadedin/gatk/workspace/gatks/GenomeAnalysisTK-1.5-32-g2761da9/GenomeAnalysisTK.jar -T Help")
 	}
+    
+    @Test
+    void testExpandWithExe() {
+        def coniferCfg = new ConfigObject()
+        coniferCfg.put("installExe","conifer.py")
+        Tool t = new Tool("conifer", coniferCfg)
+        
+        assert t.expandToolName("python tools/conifer/0.2.2/conifer.py") == "tools/conifer/0.2.2/conifer.py"
+    }
 }

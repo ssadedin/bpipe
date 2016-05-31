@@ -456,6 +456,7 @@ elif [ "$COMMAND" == "cleanup" ] || \
          [ "$COMMAND" == "status" ] || \
          [ "$COMMAND" == "query" ] || \
          [ "$COMMAND" == "preserve" ] || \
+         [ "$COMMAND" == "install" ] || \
          [ "$COMMAND" == "diagram" ] || \
          [ "$COMMAND" == "diagrameditor" ]  || \
          [ "$COMMAND" == "documentation" ];

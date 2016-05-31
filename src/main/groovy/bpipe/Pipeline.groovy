@@ -498,6 +498,7 @@ public class Pipeline implements ResourceRequestor {
         if(!(host instanceof Binding))
             PipelineCategory.addStages(pipelineBuilder.binding)
             
+        pipeline.loadToolVariables()
         pipeline.loadExternalStages()
         pipeline.joiners += segmentJoiners
 

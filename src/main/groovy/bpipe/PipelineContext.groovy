@@ -1460,7 +1460,6 @@ class PipelineContext {
         """.stripIndent(), false, config)    
     }
   
-    
     void groovy(String groovyCommand) {
         groovy("", groovyCommand)
     }

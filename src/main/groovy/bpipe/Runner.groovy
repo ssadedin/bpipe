@@ -176,9 +176,15 @@ class Runner {
         else 
         if(mode == "query") {
             log.info("Showing dependency graph for " + args)
-            Dependencies.instance.queryOutputs(args)
+            new bpipe.cmd.QueryCommand(args as List).run(System.out)
             exit(0)
         }         
+        else 
+        if(mode == "install") {
+            log.info("Installing tools [args=" + args + "]")
+            new bpipe.cmd.InstallToolsCommand(args as List).run(System.out)
+            exit(0)
+        }        
         else
         if(mode == "preserve") {
             log.info("Preserving " + args)
