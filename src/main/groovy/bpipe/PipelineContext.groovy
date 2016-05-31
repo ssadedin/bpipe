@@ -1596,6 +1596,12 @@ class PipelineContext {
           this.usedResources = oldResources
         }
     }
+    
+    /**
+     * Regular expression for identifying string matching a range of integers,
+     * eg: 10 - 30
+     */
+    final static Pattern INT_RANGE_PATTERN = ~/([0-9]*) *- *([0-9]*)$/
      
     /**
      * Asynchronously executes the given command by creating a CommandExecutor
@@ -1635,7 +1641,7 @@ class PipelineContext {
           int maxProcs = 0
           if(procs instanceof String) {
              // Allow range of integers
-             def intRangeMatch = (procs =~ /([0-9]*) *- *([0-9]*)$/)
+             Matcher intRangeMatch = INT_RANGE_PATTERN.matcher(procs)
              if(intRangeMatch) {
                  procs = intRangeMatch[0][1].toInteger()
                  maxProcs = intRangeMatch[0][2].toInteger()

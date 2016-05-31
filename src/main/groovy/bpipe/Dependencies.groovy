@@ -29,6 +29,7 @@ import groovy.util.logging.Log;
 import groovyx.gpars.GParsPool
 import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
+import java.nio.file.Path
 
 /**
  * A node in the dependency graph representing a set of outputs
@@ -438,7 +439,7 @@ class Dependencies {
      * about it such that it can be reliably loaded by this same stage
      * if the pipeline is re-executed.
      */
-    synchronized void saveOutputs(PipelineStage stage, List<File> oldFiles, Map<File,Long> timestamps, List<String> inputs) {
+    synchronized void saveOutputs(PipelineStage stage, Map<String,Long> timestamps, List<String> inputs) {
 
         PipelineContext context = stage.context
         
@@ -460,7 +461,7 @@ class Dependencies {
                 File file = context.getOutputMetaData(o)
                 
                 // Check if the output file existed before the stage ran. If so, we should not save meta data, as it will already be there
-                if(timestamps[oldFiles.find { it.name == o }] == new File(o).lastModified()) { 
+                if(timestamps[o] == new File(o).lastModified()) { 
                     // There are a couple of reasons the file might have the same time stamp
                     // It might be that the outputs were up to date, so didn't need to be modified
                     // Or it could be that they weren't really produced at all - the user lied to us

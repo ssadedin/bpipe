@@ -111,7 +111,7 @@ class Command implements Serializable {
             
         // How to run the job?  look in user config
         if(!configName)
-            configName = command.trim().split(/\s/)[0].trim()
+            configName = command.trim().tokenize(' \t')[0].trim()
         
         log.info "Checking for configuration for command $configName"
         

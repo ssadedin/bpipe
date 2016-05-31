@@ -25,7 +25,13 @@
  */
 package bpipe
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log
+
+import java.nio.file.DirectoryStream
+import java.nio.file.Files;
+import java.nio.file.Path
+import java.util.regex.Pattern
 
 class PipelineBodyCategory {
 	static String getPrefix(String value) {
@@ -89,12 +95,10 @@ class PipelineStage {
         this.id = id;
     }
     
-    /**
-     * When new files are autodetected by the pipeline manager certain files
-     * are treated as being unlikely to be actual outputs from the pipeline
-     * that should be passed to next stages
-     */
-    static IGNORE_NEW_FILE_PATTERNS = ["commandlog.txt", ".*\\.log"]
+    @CompileStatic
+    boolean isNonExcludedOutput(Path path) {
+        return NewFileFilter.isNonExcludedOutput(path.getFileName().toString(), path)
+    }
     
     PipelineStage(PipelineContext context) {
     }
@@ -183,10 +187,10 @@ class PipelineStage {
         }
         
         succeeded = false
-        List<File> oldFiles = new File(context.outputDirectory).listFiles() as List
-        oldFiles = oldFiles?:[]
-        boolean joiner = (body in this.context.pipelineJoiners)
         
+        List<Path> oldPaths = NewFileFilter.scanOutputDirectory(context.outputDirectory, null)
+        
+        boolean joiner = (body in this.context.pipelineJoiners)
         if(!joiner)
             this.synthetic = false
         
@@ -194,8 +198,7 @@ class PipelineStage {
 		String displayName = "Unknown Stage"
         try {
             try {
-                oldFiles.removeAll { File f -> IGNORE_NEW_FILE_PATTERNS.any { f.name.matches(it) } || f.isDirectory() }
-                def modified = oldFiles.inject([:]) { result, f -> result[f] = f.lastModified(); return result }
+                Map<String,Long> modified = getFileTimestamps(oldPaths)
                 
                 if(!joiner) {
                     stageName = 
@@ -203,8 +206,7 @@ class PipelineStage {
     	            context.stageName = stageName
                     
     //                this.id = pipeline.getStageId()
-    				
-    				displayName = pipeline.name ? "$stageName [" + pipeline.name.replaceAll('\\.[^.]*$','') + "]" : stageName
+                    displayName = getDisplayName(pipeline)
                         
                     context.outputLog.flush("\n"+" Stage ${displayName} ".center(Config.config.columns,"="))
                     CommandLog.cmdLog << "# Stage $displayName"
@@ -253,8 +255,7 @@ class PipelineStage {
                     
                 context.uncleanFilePath.text = ""
                 
-                def newFiles = findNewFiles(oldFiles, modified)
-                def nextInputs = determineForwardedFiles(newFiles)
+                def nextInputs = determineForwardedFiles()
                     
                 if(!this.context.@output) {
                     log.info "No explicit output on stage ${this.hashCode()} context ${this.context.hashCode()} so output is nextInputs $nextInputs"
@@ -266,7 +267,7 @@ class PipelineStage {
                 context.nextInputs = nextInputs
                 
                 // Save the output meta data
-                Dependencies.instance.saveOutputs(this, oldFiles, modified, Utils.box(this.context.@input))
+                Dependencies.instance.saveOutputs(this, modified, Utils.box(this.context.@input))
             }
             catch(UserTerminateBranchException e) {
                 throw e
@@ -279,11 +280,11 @@ class PipelineStage {
                 if(!succeeded && !joiner) 
                     EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")
                 
-                log.info("Retaining pre-existing files $oldFiles from outputs")
+                log.info("Retaining pre-existing files $oldPaths from outputs")
                 
                 log.severe "Cleaning up outputs due to error"
                 log.throwing("PipelineStage", "run", e)
-                cleanupOutputs(oldFiles)
+                cleanupOutputs(oldPaths)
                 throw e
             }
             finally {
@@ -332,6 +333,14 @@ class PipelineStage {
         }
         
         return context.nextInputs
+    }
+    
+    @CompileStatic
+    Map<String,Long> getFileTimestamps(List<Path> paths) {
+       (Map<String,Long>)paths.inject((Map<String,Long>)[:]) { Map<String,Long> result, Path f -> 
+           result[f.fileName.toString()] = Files.getLastModifiedTime(f).toMillis(); 
+           return result 
+       } 
     }
 
     /**
@@ -403,22 +412,15 @@ class PipelineStage {
      * This implemented using the following heuristics:
      * 
      * 1.  if outputs were specified explicitly then use those
-     * 2.  if no outputs were specified but we observe new files were created
-     *     by the pipeline stage, then use those as long as they don't look
-     *     like files that should never be used as input (*.log, *.bai, etc.)
-     * 3.  if we still don't have anything, default to using the inputs
+     *
+     * 2.  if we still don't have anything, default to using the inputs
      *     from the previous stage, assuming that this stage was just
      *     producing "side effects"
      *
-     * If after everything we still don't have any outputs, we look to see if 
-     * any files were created
-     * 
-     * @param newFiles    Files that were created or modified in the execution
-     *                     of this pipeline stage
      * @return String|List<String>    a list of files to send to the next pipeline stage
      *                                 as default inputs
      */
-    private determineForwardedFiles(List newFiles) {
+    private determineForwardedFiles() {
         
         this.resolveOutputs()
         
@@ -432,28 +434,7 @@ class PipelineStage {
             log.info "Inputs are NOT being inferred from context.output (context.nextInputs=$context.nextInputs)"
         }
 
-        // No output OR forward inputs were specified by the pipeline stage?!
-        // well, we have one last, very special case resort: if a file was created
-        // that exactly matches the unique file name we WOULD have generated IF the 
-        // user had referenced $output - then we accept this
-        // @TODO: review possibly remove this if it does not break any obvious
-        //        useful functionality.
         def nextInputs = context.nextInputs
-        if(nextInputs == null || Utils.isContainer(nextInputs) && !nextInputs) {
-            log.info "Removing inferred outputs matching $context.outputMask"
-            newFiles.removeAll {  fn -> context.outputMask.any { fn ==~ '^.*' + it } }
-
-            if(newFiles) {
-                // If the default output happens to be one of the created files,
-                // prefer to use that
-                log.info "Comparing default output $context.defaultOutput to new files $newFiles"
-                if(context.defaultOutput in newFiles) {
-                    nextInputs = context.defaultOutput
-                    log.info("Found default output $context.defaultOutput among detected new files:  using it")
-                }
-            }
-        }
-
         if(!nextInputs) {
             log.info("Inferring nextInputs from inputs $context.@input")
             nextInputs = this.context.@input
@@ -490,12 +471,16 @@ class PipelineStage {
      *       recorded in the <code>timestamps</code> hash
      *     
      * Certain predetermined files are ignored and never returned
-     * (see IGNORE_NEW_FILE_PATTERNS).
+     * (see NewFileFilter class).
      * 
      * @param oldFiles        List of {@link File} objects
      * @param timestamps    List of previous timestamps (long values) of the oldFiles files
      */
-    protected List<String> findNewFiles(List oldFiles, HashMap<File,Long> timestamps) {
+    protected List<String> findNewFiles(List<Path> oldFiles, HashMap<String,Long> timestamps) {
+
+        List<Path> newPaths = NewFileFilter.scanOutputDirectory(context.outputDirectory, timestamps)
+        
+        /*
         def newFiles = (new File(context.outputDirectory).listFiles().grep {!it.isDirectory() }*.name) as Set
 		
         newFiles.removeAll(oldFiles.collect { it.name })
@@ -508,7 +493,10 @@ class PipelineStage {
 
         // Since we operated on local file names only so far, we have to restore the
         // output directory to the name
-        return newFiles.collect { context.outputDirectory + "/" + it }
+         * 
+         * 
+         */
+        return newPaths.collect { context.outputDirectory + "/" + it.fileName.toString() }
     }
     
     /**
@@ -516,7 +504,7 @@ class PipelineStage {
      * 
      * @param keepFiles    Files that should not be removed
      */
-    void cleanupOutputs(List<File> keepFiles) {
+    void cleanupOutputs(List<Path> keepFiles) {
         
         // Before cleaning up, make sure we resolve the final outputs
         this.resolveOutputs()
@@ -526,10 +514,15 @@ class PipelineStage {
         if(this.context.@output != null) {
             def newOutputFiles = Utils.box(this.context.@output).collect { it.toString() }.unique()
             newOutputFiles.removeAll { fn ->
-                def canonical = new File(fn).canonicalPath
-                keepFiles.any {
+                Path canonical = new File(fn).toPath()
+                keepFiles.any { Path keepPath ->
                     // println "Checking $it vs $fn :" + (it.canonicalPath ==  canonical)
-                    return it.canonicalPath == canonical
+                    try {
+                        return Files.isSameFile(canonical,keepPath)
+                    }
+                    catch(java.nio.file.NoSuchFileException e) {
+                        return true
+                    }
                 }
             }
             log.info("Cleaning up: $newOutputFiles")
@@ -561,13 +554,34 @@ class PipelineStage {
         this.body in this.context.pipelineJoiners
     }
     
+    private static Pattern REMOVE_TRAILING_DOT_SECTIONS_PATTERN = ~'\\.[^.]*$'
+    
+    @CompileStatic
+    String getDisplayName(Pipeline pipeline) {
+       if(pipeline.name) {
+           String sanitisedPipelineName = pipeline.name.replaceAll(REMOVE_TRAILING_DOT_SECTIONS_PATTERN,'')
+           if(sanitisedPipelineName.isNumber() && pipeline.branch.parent != null) {
+               sanitisedPipelineName = pipeline.branch.parent.name + "/" + sanitisedPipelineName
+           }
+           else {
+               return "$stageName [" + sanitisedPipelineName + "]" 
+           }
+       }
+       else {
+           return stageName 
+       }
+    }
+    
     Map toProperties() {
         return [
+                id : this.id,
                 stageName : this.stageName,
                 startMs : this.startDateTimeMs,
                 endMs : this.endDateTimeMs,
                 branch: this.context.branch.toString(),
-                threadId: this.context.threadId
+                threadId: this.context.threadId,
+                succeeded: this.succeeded
             ]
     }
+    
 }
