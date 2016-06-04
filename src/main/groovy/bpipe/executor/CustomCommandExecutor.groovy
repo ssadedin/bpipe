@@ -175,7 +175,7 @@ class CustomCommandExecutor implements CommandExecutor {
     	        }
     	        this.commandId = out.toString().trim()
     	        if(this.commandId.isEmpty())
-    	            throw new PipelineError("Job runner ${this.class.name} failed to return a job id despite reporting success exit code for command:\n\n$startCmd\n\nRaw output was:[" + out.toString() + "]")
+    	            throw new PipelineError("Job runner ${this.class.name} failed to return a job id for job $id ($name) despite reporting success exit code for command:\n\n$startCmd\n\nRaw output was:[" + out.toString() + "]")
     	            
     	        log.info "Started command with id $commandId"
 	        }
