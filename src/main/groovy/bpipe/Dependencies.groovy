@@ -42,7 +42,7 @@ class GraphEntry implements Serializable {
     
     public static final long serialVersionUID = 0L
     
-    List<Properties> values
+    List<OutputMetaData> values
     List<GraphEntry> parents = []
     List<GraphEntry> children = []
     
@@ -70,7 +70,7 @@ class GraphEntry implements Serializable {
             Map<String, GraphEntry> indexTmp = new HashMap(sizeHint)
             depthFirst { GraphEntry e ->
                 if(e.values) {
-                    for(Properties p in e.values) {
+                    for(OutputMetaData p in e.values) {
                         indexTmp[(String)p.canonicalPath] = e
                     }
                 }
@@ -78,10 +78,10 @@ class GraphEntry implements Serializable {
         }
     }
     
-    List<Properties> findAllOutputsBy(Closure c) {
+    List<OutputMetaData> findAllOutputsBy(Closure c) {
         
         
-        List<Properties> results = []
+        List<OutputMetaData> results = []
         
         if(this.values != null)
             results.addAll(this.values.grep { c(it)})
@@ -110,7 +110,9 @@ class GraphEntry implements Serializable {
         if(entry)
             return entry
         // In case of non-default output directory, the outputFile itself may be in a directory
-        findBy { Properties p -> canonicalPathFor(p) == canonicalPath  }
+        findBy { OutputMetaData p -> 
+            canonicalPathFor(p) == canonicalPath  
+        }
     }
     
      /**
@@ -121,19 +123,19 @@ class GraphEntry implements Serializable {
      * @return
      */
     @CompileStatic
-    static String canonicalPathFor(Properties p) {
+    static String canonicalPathFor(OutputMetaData p) {
         synchronized(p) {
-            if(p.containsKey("canonicalPath"))
-                return p["canonicalPath"]        
+            if(p.canonicalPath != null)
+                return p.canonicalPath
                 
-            p["canonicalPath"] = Utils.canonicalFileFor(((File)p["outputFile"]).path).path
+            p.canonicalPath = Utils.canonicalFileFor(p.outputFile.path).path
         }
     }
     
     /**
-     * Search the graph for properties for the given output file
+     * Search the graph for OutputMetaData for the given output file
      */
-    Properties propertiesFor(String outputFile) { 
+    OutputMetaData propertiesFor(String outputFile) { 
        // In case of non-default output directory, the outputFile itself may be in a directory
        String outputFilePath = Utils.canonicalFileFor(outputFile).path
        def values = entryForCanonicalPath(outputFilePath)?.values
@@ -205,7 +207,7 @@ class GraphEntry implements Serializable {
      * inputs.
      * @return
      */
-    def groupOutputs(List<Properties> outputs = null) {
+    def groupOutputs(List<OutputMetaData> outputs = null) {
         def outputGroups = [:]
         if(outputs == null)
             outputs = this.values
@@ -237,7 +239,7 @@ class GraphEntry implements Serializable {
     /**
      * Render this graph entry as a tree
      */
-    String dumpChildren(int indent = 0, List<Properties> filter = null) {
+    String dumpChildren(int indent = 0, List<OutputMetaData> filter = null) {
         
        
         def valuesToDump = filter != null ? filter : values
@@ -280,7 +282,7 @@ class Dependencies {
     /**
      * The file to which the output graph is saved between runs
      */
-    final static File OUTPUT_GRAPH_CACHE_FILE = new File(".bpipe/outputs/outputGraph.ser")
+    final static File OUTPUT_GRAPH_CACHE_FILE = new File(".bpipe/outputs/outputGraph2.ser")
     
     GraphEntry outputGraph
     
@@ -375,7 +377,7 @@ class Dependencies {
             if(Utils.fileExists(f))
                 return false // not missing
                 
-            Properties p = graph.propertiesFor(f.path)
+            OutputMetaData p = graph.propertiesFor(f.path)
             if(!p) {
                 log.info "There are no properties for $f.path and file is missing"
                 return true
@@ -423,15 +425,22 @@ class Dependencies {
     
     synchronized GraphEntry getOutputGraph() {
         if(this.outputGraph == null) {
-            List<Properties> propertiesFiles = scanOutputFolder()
-            this.outputGraph = computeOutputGraph(propertiesFiles)
-            this.outputGraph.index(propertiesFiles.size()*2)
+            List<OutputMetaData> outputMetaDataFiles = scanOutputFolder()
+            this.outputGraph = computeOutputGraph(outputMetaDataFiles)
+            this.outputGraph.index(outputMetaDataFiles.size()*2)
         }
         return this.outputGraph
     }
     
     void reset() {
         this.outputGraph = null
+    }
+    
+    void flushOutputGraphCache() {
+        if(OUTPUT_GRAPH_CACHE_FILE.exists()) {
+            log.info "Deleting output graph cache file $OUTPUT_GRAPH_CACHE_FILE.absolutePath"
+            OUTPUT_GRAPH_CACHE_FILE.delete()
+        }
     }
     
     /**
@@ -458,7 +467,8 @@ class Dependencies {
                 if(!o)
                     continue
                     
-                File file = context.getOutputMetaData(o)
+                OutputMetaData p = new OutputMetaData(o)
+                p.stageName = context.stageName
                 
                 // Check if the output file existed before the stage ran. If so, we should not save meta data, as it will already be there
                 if(timestamps[o] == new File(o).lastModified()) { 
@@ -471,7 +481,7 @@ class Dependencies {
                     // An exception to the rule: if the met data file didn't exist at all then
                     // we DO create the meta data because it's probably missing (as in, user copied their files
                     // to new directory, upgraded Bpipe, something similar).
-                    if(file.exists() || this.outputFilesGenerated.contains(o) || Utils.box(context.@input).contains(o)) {
+                    if(p.exists() || this.outputFilesGenerated.contains(o) || Utils.box(context.@input).contains(o)) {
                         log.info "Ignoring output $o because it was not created or modified by stage ${context.stageName}"
                         continue
                     }
@@ -479,9 +489,8 @@ class Dependencies {
                 
                 this.outputFilesGenerated << o
                 
-                Properties p = new Properties()
-                if(file.exists()) {
-                    p = readOutputPropertyFile(file)?:p
+                if(p.exists()) {
+                    p.read()
                 }
                 
                 String hash = Utils.sha1(cmd+"_"+o)
@@ -489,96 +498,41 @@ class Dependencies {
                 p.command = cmd
                 p.commandId = command.id
                 p.branchPath = branchPath
-                p.stageName = context.stageName
                 p.stageId = stage.id
                 
                 def allInputs = context.getResolvedInputs()
                 
                 log.info "Context " + context.hashCode() + " for stage " + context.stageName + " has resolved inputs " + allInputs
                 
-                p.propertyFile = file.name
-                p.inputs = allInputs.join(',')?:''
-                p.outputFile = o
+                p.inputs = allInputs?:[]
+                p.outputFile = new File(o)
                 p.basePath = Runner.runDirectory
                 p.canonicalPath = new File(o).canonicalPath
                 p.fingerprint = hash
                 
                 p.tools = context.documentation["tools"].collect { name, Tool tool -> tool.fullName + ":"+tool.version }.join(",")
                 
-                if(!p.containsKey("cleaned"))
+                if(p.cleaned == null)
                     p.cleaned = false
                 
-                p.preserve = String.valueOf(context.preservedOutputs.contains(o))
-                p.intermediate = String.valueOf(context.intermediateOutputs.contains(o))
+                p.preserve = (o in context.preservedOutputs)
+                
+                p.intermediate = context.intermediateOutputs.contains(o)
                 if(context.accompanyingOutputs.containsKey(o))
                     p.accompanies = context.accompanyingOutputs[o]
                     
                 p.startTimeMs = command.startTimeMs
                 p.createTimeMs = command.createTimeMs
                 p.stopTimeMs = command.stopTimeMs
-                
                 saveOutputMetaData(p)
             }
         }
     }
     
-    /**
-     * Store the given properties file as an output meta data file
-     */
-    void saveOutputMetaData(Properties p) {
-        p = p.clone()
-        
-        File file = new File(PipelineContext.OUTPUT_METADATA_DIR, p.propertyFile)
-        
-        // Ideally we would update the file, but as a stop gap,
-        // ensure it is deleted if any file gets updated.
-        // In the normal course of events 
-        if(OUTPUT_GRAPH_CACHE_FILE.exists()) {
-            log.info "Deleting output graph cache file $OUTPUT_GRAPH_CACHE_FILE.absolutePath due to update of properties $file"
-            OUTPUT_GRAPH_CACHE_FILE.delete()
-        }
-        
-        // Undo possible format conversions so everything is strings
-        if(p.inputs instanceof List)
-            p.inputs = p.inputs.join(",")
-        
-        p.cleaned = String.valueOf(p.cleaned)
-        
-        if(p.outputFile instanceof File)
-            p.outputFile = p.outputFile.path
-            
-        File outputFile = new File(p.outputFile)
-        
-        if(outputFile.exists())    
-            p.timestamp = String.valueOf(outputFile.lastModified())
-        else
-        if(!p.timestamp)
-            p.timestamp = "0"
-        else
-            p.timestamp = String.valueOf(p.timestamp)
-            
-        p.createTimeMs = p.createTimeMs ? String.valueOf(p.createTimeMs) : "0"
-        p.stopTimeMs = p.stopTimeMs ? String.valueOf(p.stopTimeMs) : "0"
-            
-        // upToDate and maxTimestamp are "virtual" properties, computed at load time
-        // they should not be stored
-        if(p.containsKey('upToDate'))
-            p.remove('upToDate')
-            
-        if(p.containsKey('maxTimestamp'))
-            p.remove('maxTimestamp')
-            
-        log.info "Saving output file details to file $file for command " + Utils.truncnl(p.command, 20)
-        
-        for(k in p.keySet()) {
-            p[k] = String.valueOf(p[k])
-        }
-        
-        file.withOutputStream { ofs ->
-            p.save(ofs, "Bpipe Output File Meta Data")
-        }
+    void saveOutputMetaData(OutputMetaData p) {
+        flushOutputGraphCache()
+        p.save()
     }
-    
     
     /**
      * Computes the files that are created as non-final products of the pipeline and 
@@ -590,7 +544,7 @@ class Dependencies {
         
         log.info "Executing cleanup with arguments $arguments"
         
-        List<Properties> outputs = scanOutputFolder() 
+        List<OutputMetaData> outputs = scanOutputFolder() 
         
         // Start by scanning the output folder for dependency files
         def graph
@@ -646,7 +600,7 @@ class Dependencies {
         
         // Add any "accompanying" outputs for the outputs that would be cleaned up
         graph.depthFirst { GraphEntry g ->
-            def accompanyingOutputs = g.values.grep { Properties p -> 
+            def accompanyingOutputs = g.values.grep { OutputMetaData p -> 
                 p.accompanies && p.accompanies in internalNodeFileNames 
             }
             internalNodes += accompanyingOutputs
@@ -696,10 +650,10 @@ class Dependencies {
         }
     }
     
-    long removeOutputFile(Properties outputFileProperties, boolean trash=false) {
-        outputFileProperties.cleaned = 'true'
-        saveOutputMetaData(outputFileProperties)
-        File outputFile = outputFileProperties.outputFile
+    long removeOutputFile(OutputMetaData outputFileOutputMetaData, boolean trash=false) {
+        outputFileOutputMetaData.cleaned = true
+        saveOutputMetaData(outputFileOutputMetaData)
+        File outputFile = outputFileOutputMetaData.outputFile
         long outputSize = outputFile.size()
         if(trash) {
             File trashDir = new File(".bpipe/trash")
@@ -728,7 +682,7 @@ class Dependencies {
      */
     void queryOutputs(def args) {
         // Start by scanning the output folder for dependency files
-        List<Properties> outputs = scanOutputFolder()
+        List<OutputMetaData> outputs = scanOutputFolder()
         def graph = computeOutputGraph(outputs)
         
         if(args) {
@@ -742,7 +696,7 @@ class Dependencies {
                 println "\n" + filtered.dump()
                 
                 
-               Properties p = graph.propertiesFor(arg)
+               OutputMetaData p = graph.propertiesFor(arg)
                
                
                String duration = "Unknown"
@@ -773,10 +727,10 @@ class Dependencies {
     }
     
     void preserve(def args) {
-        List<Properties> outputs = scanOutputFolder()
+        List<OutputMetaData> outputs = scanOutputFolder()
         int count = 0
         for(def arg in args) {
-            Properties output = outputs.find { it.outputPath == arg }
+            OutputMetaData output = outputs.find { it.outputPath == arg }
             if(!output) {
                 System.err.println "\nERROR: Cannot locate file $arg as a tracked output"
                 continue
@@ -814,12 +768,12 @@ class Dependencies {
      *     <li>Calculate tree below layer (recursive call)
      *     <li>Compute up-to-date flag for layer
      * 
-     * @param outputs   a List of properties objects, loaded from the properties files
+     * @param outputs   a List of OutputMetaData objects, loaded from the OutputMetaData files
      *                  saved by Bpipe as each stage executed (see {@link #saveOutputs(PipelineContext)})
      *                  
      * @return          the root node in the graph of outputs
      */
-    GraphEntry computeOutputGraph(List<Properties> outputs, GraphEntry rootTree = null, GraphEntry topRoot=null, List handledOutputs=[]) {
+    GraphEntry computeOutputGraph(List<OutputMetaData> outputs, GraphEntry rootTree = null, GraphEntry topRoot=null, List handledOutputs=[]) {
         
         // Special case: no outputs at all
         if(!outputs) {
@@ -842,7 +796,7 @@ class Dependencies {
         def outputsWithExternalInputs = outputs.grep { p -> ! p.inputs.any { allOutputs.contains(it) } }
         
         // NOTE: turning this log on can be expensive for large numbers of inputs and outputs
-        // log.info "External inputs: " + outputsWithExternalInputs*.inputs + " for outputs " + outputsWithExternalInputs*.outputPath
+//        log.info "External inputs: " + outputsWithExternalInputs*.inputs + " for outputs " + outputsWithExternalInputs*.outputPath
         
         handledOutputs.addAll(outputsWithExternalInputs)
         
@@ -872,7 +826,7 @@ class Dependencies {
                
             // Attach each output as a child of the respective input nodes
             // in existing tree
-            outputsWithExternalInputs.each { Properties out ->
+            outputsWithExternalInputs.each { OutputMetaData out ->
                 
                 GraphEntry entry = new GraphEntry(values: [out])
                 log.info "New entry for ${out.outputPath}"
@@ -937,7 +891,7 @@ class Dependencies {
             
             List inputValues = entry.parents*.values.flatten().grep { it != null }
             
-            for(Properties p in entry.values) {
+            for(OutputMetaData p in entry.values) {
                 
                 // No entry is up to date if one of its inputs is newer
                 log.info " $p.outputFile / entry ${entry.hashCode()} ".center(40,"-")
@@ -997,8 +951,8 @@ class Dependencies {
         return rootTree
     }
     
-    List<Properties> findNewerInputs(Properties p, List<Properties> inputValues) {
-        inputValues.grep { Properties inputProps ->
+    List<OutputMetaData> findNewerInputs(OutputMetaData p, List<OutputMetaData> inputValues) {
+        inputValues.grep { OutputMetaData inputProps ->
                     
             if(!p.inputs.contains(inputProps.outputPath)) // Not an input used to produce this output
                 return false
@@ -1033,98 +987,34 @@ class Dependencies {
     }
     
     /**
-     * Read all the properties files in the output folder
+     * Read all the OutputMetaData files in the output folder
      * @return
      */
-    List<Properties> scanOutputFolder() {
+    List<OutputMetaData> scanOutputFolder() {
         int concurrency = (Config.userConfig?.outputScanConcurrency)?:5
         List result = []
         Utils.time("Output folder scan (concurrency=$concurrency)") {
             GParsPool.withPool(concurrency) { 
                 List<File> files = 
-                               new File(PipelineContext.OUTPUT_METADATA_DIR).listFiles()
+                               new File(OutputMetaData.OUTPUT_METADATA_DIR).listFiles()
                                ?.toList()
-                                .grep { !it.name.startsWith(".") && !it.isDirectory() && !it.name.equals("outputGraph.ser") } // ignore files starting with ., 
+                                .grep { !it.name.startsWith(".") && !it.isDirectory() && !it.name.equals("outputGraph.ser") && !it.name.equals("outputGraph2.ser") } // ignore files starting with ., 
                                                                    // added as a convenience because I occasionally
                                                                    // edit files in output folder when debugging and it causes
                                                                    // Bpipe to fail!
                                 
                 if(!files)
                     return []
-                result.addAll(files.collectParallel { readOutputPropertyFile(it) }.grep { it != null }.sort { it.timestamp })
+                result.addAll(files.collectParallel { 
+                    OutputMetaData omd = new OutputMetaData(null)
+                    omd.read(it)
+                    return omd
+                }.grep { it != null }.sort { it.timestamp })
             }
         }
         return result
     }
-    
-    /**
-     * Read the given file as an output meta data file, parsing
-     * various expected properties to native form from string values.
-     */
-    Properties readOutputPropertyFile(File f) {
-        log.info "Reading property file $f"
-        def p = new Properties();
-        new FileInputStream(f).withStream { p.load(it) }
-        p.inputs = p.inputs?p.inputs.split(",") as List : []
-        p.cleaned = p.containsKey('cleaned')?Boolean.parseBoolean(p.cleaned) : false
-        if(!p.outputFile)  {
-            log.warning("Error: output meta data property file $f is missing essential outputFile property")
-            System.err.println ("Error: output meta data property file $f is missing essential outputFile property")
-            System.err.println ("Properties are: " + p)
-            return null
-        }
-            
-        p.outputFile = new File(p.outputFile)
-        
-        // Normalizing the slashes in the path is necessary for Cygwin compatibility
-        p.outputPath = p.outputFile.path.replaceAll("\\\\","/")
-        
-        // If the file exists then we should get the timestamp from there
-        // Otherwise just use the timestamp recorded
-        if(p.outputFile.exists())
-            p.timestamp = p.outputFile.lastModified()
-        else
-            p.timestamp = Long.parseLong(p.timestamp)
 
-        // The properties file may have a cached version of the "canonical path" to the
-        // output file. However this is an absolute path, so we can only use it if the
-        // base directory is still the same as when this property file was saved.
-        if(!p.containsKey("basePath") || (p["basePath"] != Runner.runDirectory)) {
-            p.remove("canonicalPath")
-        }
-        
-        if(!p.containsKey('preserve'))
-            p.preserve = 'false'
-            
-        if(!p.containsKey('intermediate'))
-            p.intermediate = 'false'
-            
-        p.preserve = Boolean.parseBoolean(p.preserve)
-        p.intermediate = Boolean.parseBoolean(p.intermediate)
-        p.commandId = (p.commandId!=null)?p.commandId:"-1"
-        p.startTimeMs = (p.startTimeMs?:0).toLong()
-        p.createTimeMs = (p.createTimeMs?:0).toLong()
-        p.stopTimeMs = (p.stopTimeMs?:0).toLong()
-        
-        if(!p.containsKey("tools")) {
-            p.tools = ""
-        }
-        
-        if(!p.containsKey("branchPath")) {
-            p.branchPath = ""
-        }
-        
-        if(!p.containsKey("stageName")) {
-            p.stageName = ""
-        }
-        
-        if(!p.containsKey("stageId")) {
-            p.stageId = ""
-        }
-         
-        return p
-    }
-    
     /**
      * Return a list of GraphEntry objects whose outputs
      * do not appear as inputs for any other entries. These
@@ -1137,10 +1027,10 @@ class Dependencies {
     List<GraphEntry> findLeaves(GraphEntry graph) {
         def result = []
         def outputs = [] as Set
-        graph.depthFirst {
-            if(it.children.isEmpty() && it.values*.outputPath.every { !outputs.contains(it) } ) {
-              result << it
-              outputs += it.values*.outputPath
+        graph.depthFirst { GraphEntry e ->
+            if(e.children.isEmpty() && e.values*.outputPath.every { !outputs.contains(it) } ) {
+              result << e
+              outputs += e.values*.outputPath
             }
         }
         return result
