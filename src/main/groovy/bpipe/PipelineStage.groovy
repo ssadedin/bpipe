@@ -554,18 +554,10 @@ class PipelineStage {
         this.body in this.context.pipelineJoiners
     }
     
-    private static Pattern REMOVE_TRAILING_DOT_SECTIONS_PATTERN = ~'\\.[^.]*$'
-    
     @CompileStatic
     String getDisplayName(Pipeline pipeline) {
-       if(pipeline.name) {
-           String sanitisedPipelineName = pipeline.name.replaceAll(REMOVE_TRAILING_DOT_SECTIONS_PATTERN,'')
-           if(sanitisedPipelineName.isNumber() && pipeline.branch.parent != null) {
-               sanitisedPipelineName = pipeline.branch.parent.name + "/" + sanitisedPipelineName
-           }
-           else {
-               return "$stageName [" + sanitisedPipelineName + "]" 
-           }
+       if(pipeline.branch) {
+           return stageName + " ("  + pipeline.branch.getFirstNonTrivialName() + ")"
        }
        else {
            return stageName 
