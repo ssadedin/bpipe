@@ -1,6 +1,7 @@
 package bpipe;
 
 import static org.junit.Assert.*;
+import static FastUtils.*
 
 import static FastUtils.globToRegex as gtr
 
@@ -29,5 +30,13 @@ class FastUtilsTest {
         assert !gtr("x*.txt").matcher(x).matches()
         assert !gtr("hello.wx*.txt").matcher(x).matches()
     }
-
+    
+    @Test
+    void testTrim() {
+        
+        assert FastUtils.strip('.foo.','.') == 'foo'
+        assert FastUtils.strip('..','.') == ''
+        assert FastUtils.strip('...','.') == ''
+        assert FastUtils.strip('','.') == ''
+    }
 }

@@ -27,7 +27,6 @@ package bpipe
 
 import groovy.transform.CompileStatic;
 import groovy.util.logging.Log
-import groovyjarjarantlr.StringUtils;
 
 import java.util.regex.Pattern
 
@@ -320,7 +319,7 @@ class PipelineOutput {
         // eg: foo.csv.bar => foo.baz.csv
         List branchSegment = branchName ? ['.' + branchName] : [] 
         String segments = (branchSegment + [stageName] + extraSegments + [name]).collect { 
-            StringUtils.stripFrontBack(it, '.','.')
+            FastUtils.strip(it,'.')
          }.join(".")
         if(stageName.equals(this.output)) {
            this.outputUsed = FastUtils.dotJoin(([this.defaultOutput] + branchSegment + [name]) as String[])

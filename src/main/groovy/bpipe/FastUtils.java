@@ -101,4 +101,23 @@ public class FastUtils {
         }
         return result.toString(); 
     }    
+    
+    public static String strip(String value, String c) {
+        
+        char trimChar = c.charAt(0);
+        
+        int trimStart = 0;
+        while(trimStart<value.length() && value.charAt(trimStart) == trimChar)
+            ++trimStart;
+        
+        int trimEnd = value.length()-1;
+        while(trimEnd>=0 && value.charAt(trimEnd) == trimChar)
+            --trimEnd;
+        
+        if(trimEnd<=trimStart)
+            return "";
+        
+        return value.substring(trimStart,trimEnd+1);
+    }
+    
 }
