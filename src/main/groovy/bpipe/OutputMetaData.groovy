@@ -298,7 +298,7 @@ class OutputMetaData implements Serializable {
         if(outputPath.startsWith("./"))
             outputPath = outputPath.substring(2)
         
-        return  new File(outputsDir,this.stageName + "." + outputPath.replaceAll('/', "_").replace('\\','_') + ".properties")
+        return  new File(outputsDir,this.stageName + "." + outputPath.replace('/', "_").replace('\\','_') + ".properties")
     }
     
     /**

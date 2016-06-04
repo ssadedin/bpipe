@@ -66,7 +66,7 @@ class InputSplitter {
             if(withDir)  {
                 // When the pattern explicitly contains a directory, we match on the
                 // full file name
-                fileName = new File(inp).canonicalPath.replaceAll("\\\\","/")
+                fileName = new File(inp).canonicalPath.replace('\\',"/")
             }
             else {
                 // If no directory (ie. / ) in pattern, 
@@ -217,11 +217,11 @@ class InputSplitter {
                 leftFlank.append(pattern[lpos-1]) 
                 --lpos
             }
-            leftFlank = leftFlank.toString().reverse().replaceAll(/\./,/\\./) 
+            leftFlank = leftFlank.toString().reverse().replace('.','\\.') 
            
             //			def leftFlank = c && (lastPos < 0 || (c-1 != lastPos+1)) ? pattern[c-1] : ""
             
-			def rightFlank = c<pattern.size()-1 ? pattern[c+1].replaceAll(/\./,/\\./) : ""
+			def rightFlank = c<pattern.size()-1 ? pattern[c+1].replace('.','\\.') : ""
             
             log.fine "Position $c : left=$leftFlank right=$rightFlank"
             

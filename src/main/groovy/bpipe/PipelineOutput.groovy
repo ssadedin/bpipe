@@ -26,7 +26,10 @@
 package bpipe
 
 import groovy.transform.CompileStatic;
-import groovy.util.logging.Log;
+import groovy.util.logging.Log
+import groovyjarjarantlr.StringUtils;
+
+import java.util.regex.Pattern
 
 /**
  * Represents a "magic" output object that automatically 
@@ -217,7 +220,7 @@ class PipelineOutput {
 
         String result = parentDir.absoluteFile.canonicalPath
         if(Utils.isWindows())
-            result  = result.replaceAll('\\\\', '/')
+            result  = result.replace('\\', '/')
         return result
     }
     
@@ -265,6 +268,8 @@ class PipelineOutput {
         return po
     }
     
+    static Pattern FILE_EXT_PATTERN = ~'\\.[^.]*$'
+    
     def selectFromOverrides(String name) {
         String result = this.overrideOutputs.find { it.toString().endsWith('.' + name) }
         def replaced = null
@@ -274,11 +279,10 @@ class PipelineOutput {
                 
                 replaced = this.overrideOutputs[0]
                 
-                // result = this.overrideOutputs[0].replaceAll('\\.[^.]*$',"." + name)
                 String baseInput = this.resolvedInputs.find {it.endsWith(name)}
                 if(!baseInput) {
                     baseInput = this.overrideOutputs[0]
-                    result = baseInput.replaceAll('\\.[^.]*$',"." + name)
+                    result = baseInput.replaceAll(FILE_EXT_PATTERN,"." + name)
                 }
                 else {
                     log.info "Recomputing filter on base input $baseInput to achieve match with output extension $name"
@@ -290,7 +294,8 @@ class PipelineOutput {
         }
         
         if(!result) {
-            if(!overrideOutputs.any { it ==~ /.*\./+name+/\..*/ }) {
+            String dottedName = '.' + name + '.'
+            if(!overrideOutputs.any { it.contains(dottedName) }) {
                 throw new PipelineError("An output containing or ending with '." + name + "' was referenced.\n\n"+
                                         "However such an output was not in the outputs specified by an enclosing transform / filter / produce statement.\n\n" +
                                         "Valid outputs according to the enclosing block are: ${overrideOutputs.join('\n')}")
@@ -314,7 +319,9 @@ class PipelineOutput {
         // input then this is more like a filter; remove the previous output extension from the path
         // eg: foo.csv.bar => foo.baz.csv
         List branchSegment = branchName ? ['.' + branchName] : [] 
-        String segments = (branchSegment + [stageName] + extraSegments + [name]).collect { it.replaceAll("^\\.","").replaceAll("\\.\$","") }.join(".")
+        String segments = (branchSegment + [stageName] + extraSegments + [name]).collect { 
+            StringUtils.stripFrontBack(it, '.','.')
+         }.join(".")
         if(stageName.equals(this.output)) {
            this.outputUsed = FastUtils.dotJoin(([this.defaultOutput] + branchSegment + [name]) as String[])
         }
@@ -336,6 +343,8 @@ class PipelineOutput {
         return this.outputUsed
     }
     
+    private static Pattern DOT_NUMBER_PATTERN = ~'\\.[^\\.]*(\\.[0-9]*){0,1}$'
+    
     /**
      * Compute a name for the output based on the assumption it is 
      * doing something like a 'transform' operation.
@@ -347,7 +356,9 @@ class PipelineOutput {
     String computeOutputUsedAsTransform(String extension, String segments) {
         
         // First remove the stage name, if it is at the end
-        String result = this.defaultOutput.replaceAll('\\.'+stageName+'$', '')
+        String result = this.defaultOutput
+        if(result.endsWith(stageName) && result.endsWith('.'+stageName))
+            result = defaultOutput.substring(0,result.size() - stageName.size()-1)
             
         // If the branch name is now at the end and there is a suffix we can remove the suffix
         // eg: from test.chr1.txt produce test.chr1.hello.csv rather than test.txt.chr1.hello.csv
@@ -362,7 +373,7 @@ class PipelineOutput {
                 // occur when the use uses multiple outputs ($output1.csv, $output2.csv) and 
                 // the same output file is generated for the outputs - such file names get 
                 // a numeric index inserted. eg: test1.txt, test1.txt.2
-                result = result.replaceAll('\\.[^\\.]*(\\.[0-9]*){0,1}$', '$1.'+segments)
+                result = result.replaceAll(DOT_NUMBER_PATTERN, '$1.'+segments)
             else
                 result = result + "." + segments
         }
