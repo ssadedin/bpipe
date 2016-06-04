@@ -457,6 +457,8 @@ class Dependencies {
         // Get the full branch path of this pipeline stage
         def pipeline = Pipeline.currentRuntimePipeline.get()
         String branchPath = pipeline.branchPath.join("/")
+        String outputDir = stage.context.outputDirectory
+        OutputDirectoryWatcher odw = OutputDirectoryWatcher.getDirectoryWatcher(outputDir)
         
         context.trackedOutputs.each { String id, Command command ->
             
@@ -471,18 +473,11 @@ class Dependencies {
                 p.stageName = context.stageName
                 
                 // Check if the output file existed before the stage ran. If so, we should not save meta data, as it will already be there
-                if(timestamps[o] == new File(o).lastModified()) { 
-                    // There are a couple of reasons the file might have the same time stamp
-                    // It might be that the outputs were up to date, so didn't need to be modified
-                    // Or it could be that they weren't really produced at all - the user lied to us
-                    // with a 'produce' statement. Even if they did, we don't want to save the 
-                    // meta data file because it will cause a cyclic dependency.
-                    
-                    // An exception to the rule: if the met data file didn't exist at all then
-                    // we DO create the meta data because it's probably missing (as in, user copied their files
-                    // to new directory, upgraded Bpipe, something similar).
+                // Note: saving two meta data files for the same output can produce a circular dependency (exception
+                // when loading output graph).
+                if(odw.isPreexisting(o) && !timestamps.containsKey(o)) { 
                     if(p.exists() || this.outputFilesGenerated.contains(o) || Utils.box(context.@input).contains(o)) {
-                        log.info "Ignoring output $o because it was not created or modified by stage ${context.stageName}"
+                        log.info "Not overwriting meta data for $o because it was not created or modified by stage ${context.stageName}"
                         continue
                     }
                 }

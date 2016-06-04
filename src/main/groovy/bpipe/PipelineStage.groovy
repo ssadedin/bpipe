@@ -268,7 +268,14 @@ class PipelineStage {
                 OutputDirectoryWatcher watcher = OutputDirectoryWatcher.getDirectoryWatcher(context.outputDirectory)
                 
                 // Save the output meta data
-                Dependencies.instance.saveOutputs(this, watcher.modifiedSince(startDateTimeMs), Utils.box(this.context.@input))
+                Map<String,Long> modifiedFiles = watcher.modifiedSince(startDateTimeMs)
+                if(modifiedFiles.size()<20) {
+                    log.info "Files modified since $startDateTimeMs in $stageName are $modifiedFiles"
+                }
+                else {
+                    log.info "${modifiedFiles.size()} files modified since $startDateTimeMs in $stageName"
+                }
+                Dependencies.instance.saveOutputs(this, modifiedFiles, Utils.box(this.context.@input))
             }
             catch(UserTerminateBranchException e) {
                 throw e
