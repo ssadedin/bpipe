@@ -57,11 +57,6 @@ class PipelineContext {
     public static File UNCLEAN_FILE_PATH = new File(".bpipe/inprogress")
     
     /**
-     * Directory where metadata for pipeline stage outputs will be written
-     */
-    public final static String OUTPUT_METADATA_DIR = ".bpipe/outputs/"
-    
-    /**
      * This value is returned when a $thread variable is evaluated in a GString
      * (eg. a command from the user).  The reason for this is that Groovy eagerly
      * evaluates GStrings prior to passing them to a function. That means we can't
@@ -1789,7 +1784,13 @@ class PipelineContext {
        // rather than searching backwards for a previous match
        reverseOutputs.add(0,Utils.box(this.@input))
        
-       log.info "Input list to check:  $reverseOutputs"
+       int outputCount = reverseOutputs*.size().sum()
+       if(outputCount<20) {
+           log.info "Input list to check:  $reverseOutputs"
+       }
+       else {
+           log.info "Input list to check has $outputCount entries (" + $reverseOutputs[0].size() + " in tier 1"
+       }
        
        exts = Utils.box(exts).collect { (it instanceof PipelineOutput || it instanceof PipelineInput) ? it.toString() : it }
        
