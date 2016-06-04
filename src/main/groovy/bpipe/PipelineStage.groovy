@@ -482,9 +482,16 @@ class PipelineStage {
         // Out of caution we don't remove output files if they existed before this stage ran.
         // Otherwise we might destroy existing data
         if(this.context.@output != null) {
+            
+            OutputDirectoryWatcher odw = OutputDirectoryWatcher.getDirectoryWatcher(context.outputDirectory)
+            odw.sync()
+             
             def newOutputFiles = Utils.box(this.context.@output).collect { it.toString() }.unique()
             newOutputFiles.removeAll { fn ->
-                OutputDirectoryWatcher.getDirectoryWatcher(context.outputDirectory).isPreexisting()
+                boolean keep = odw.isPreexisting(fn)
+                if(keep)
+                    log.info "Keeping $fn because determined as pre-existing"
+                return keep;
             }
             log.info("Cleaning up: $newOutputFiles")
             List<String> failed = Utils.cleanup(newOutputFiles)

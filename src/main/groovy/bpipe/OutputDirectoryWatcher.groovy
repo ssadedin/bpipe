@@ -121,6 +121,12 @@ class OutputDirectoryWatcher extends Thread {
                 processEvent(kind, path)
             }
             
+            // trigger notification for any threads sync() methods
+            // waiting for files to appear
+            synchronized(timestamps) {
+                timestamps.notify()
+            }
+            
             if(!key.reset()) {
                 log.warning("WARNING: watch key for directory $directory expired")
                 return
@@ -158,7 +164,7 @@ class OutputDirectoryWatcher extends Thread {
             
             if(kind == ENTRY_CREATE) {
                 log.info "File $path was created in directory $directory"
-                createdFiles.add(path)
+                createdFiles.add(fileName)
                 fileCreationListeners*.add(path)
             }
                         
@@ -223,8 +229,35 @@ class OutputDirectoryWatcher extends Thread {
         return watcher
     }
     
+    /**
+     * Sleep until we have high confidence that this directory watcher has received
+     * all notifications for its directory. 
+     * <p>
+     * This is achieved by actually creating a file and waiting for the notification
+     * of that file to be received.
+     */
+    void sync() {
+        // create tmp file
+        // wait until we are notified about it
+        // return 
+        int rand = new Random().nextInt()
+        File tmpFile = new File(directory.toFile(),".bpipe.tmp-"+rand)
+        tmpFile.text = ""
+        boolean created = createdFiles.contains(tmpFile.name)
+        while(!created) {
+            synchronized(this.timestamps) {
+                this.timestamps.wait(300)
+                created = createdFiles.contains(tmpFile.name)
+            }
+        }
+        tmpFile.delete()
+    }
+    
     @CompileStatic
     boolean isPreexisting(String fileName) {
-        return !this.createdFiles.contains(fileName)
+        synchronized(this.timestamps) {
+            boolean created = this.createdFiles.contains(fileName)
+            return !created;
+        }
     }
 }
