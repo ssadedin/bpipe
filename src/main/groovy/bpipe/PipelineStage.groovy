@@ -188,8 +188,6 @@ class PipelineStage {
         
         succeeded = false
         
-        List<Path> oldPaths = NewFileFilter.scanOutputDirectory(context.outputDirectory, null)
-        
         boolean joiner = (body in this.context.pipelineJoiners)
         if(!joiner)
             this.synthetic = false
@@ -198,8 +196,6 @@ class PipelineStage {
 		String displayName = "Unknown Stage"
         try {
             try {
-                Map<String,Long> modified = getFileTimestamps(oldPaths)
-                
                 if(!joiner) {
                     stageName = 
                         PipelineCategory.closureNames.containsKey(body) ? PipelineCategory.closureNames[body] : "${stageCount}"
@@ -266,8 +262,10 @@ class PipelineStage {
                 log.info "Setting next inputs $nextInputs on stage ${this.hashCode()}, context ${context.hashCode()} in thread ${Thread.currentThread().id}"
                 context.nextInputs = nextInputs
                 
+                OutputDirectoryWatcher watcher = OutputDirectoryWatcher.getDirectoryWatcher(context.outputDirectory)
+                
                 // Save the output meta data
-                Dependencies.instance.saveOutputs(this, modified, Utils.box(this.context.@input))
+                Dependencies.instance.saveOutputs(this, watcher.modifiedSince(startDateTimeMs), Utils.box(this.context.@input))
             }
             catch(UserTerminateBranchException e) {
                 throw e
@@ -280,18 +278,15 @@ class PipelineStage {
                 if(!succeeded && !joiner) 
                     EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")
                 
-                log.info("Retaining pre-existing files $oldPaths from outputs")
-                
                 log.severe "Cleaning up outputs due to error"
                 log.throwing("PipelineStage", "run", e)
-                cleanupOutputs(oldPaths)
+                cleanupOutputs()
                 throw e
             }
             finally {
                 if(!joiner) {
                     if(!context.uncleanFilePath.delete())
                         log.warning("Unable to delete in-progress command file $context.uncleanFilePath")
-                        
                 }
             }
         
@@ -355,6 +350,9 @@ class PipelineStage {
             log.info "Overriding body for $stageName due to branch variable of type Closure ${context.branch[stageName].hashCode()} containing stage name (new body = " +
                      PipelineCategory.closureNames[body] + "," + PipelineCategory.closureNames[context.branch[stageName]] + ")"
          }
+        
+        // Make sure there is a watcher for the output directory
+        OutputDirectoryWatcher.getDirectoryWatcher(context.outputDirectory)
         
         PipelineDelegate.setDelegateOn(context,body)
         try {
@@ -462,49 +460,11 @@ class PipelineStage {
     }
 
     /**
-     * Finds either:
-     * <ul>
-     *   <li>all the files in the output directory not in the
-     *      specified <code>oldFiles</code> List
-     *   <li><b>or</b> all the files in the <code>oldFiles</code>
-     *       list that have been modified since the timestamps
-     *       recorded in the <code>timestamps</code> hash
-     *     
-     * Certain predetermined files are ignored and never returned
-     * (see NewFileFilter class).
-     * 
-     * @param oldFiles        List of {@link File} objects
-     * @param timestamps    List of previous timestamps (long values) of the oldFiles files
-     */
-    protected List<String> findNewFiles(List<Path> oldFiles, HashMap<String,Long> timestamps) {
-
-        List<Path> newPaths = NewFileFilter.scanOutputDirectory(context.outputDirectory, timestamps)
-        
-        /*
-        def newFiles = (new File(context.outputDirectory).listFiles().grep {!it.isDirectory() }*.name) as Set
-		
-        newFiles.removeAll(oldFiles.collect { it.name })
-        newFiles.removeAll { n -> IGNORE_NEW_FILE_PATTERNS.any { n.matches(it) } }
-
-        // If there are no new files, we can look at modified files instead
-        if(!newFiles) {
-            newFiles = oldFiles.grep { it.lastModified() > timestamps[it] }.collect { it.name }
-        }
-
-        // Since we operated on local file names only so far, we have to restore the
-        // output directory to the name
-         * 
-         * 
-         */
-        return newPaths.collect { context.outputDirectory + "/" + it.fileName.toString() }
-    }
-    
-    /**
      * Cleanup output files (ie. move them to trash folder).
      * 
      * @param keepFiles    Files that should not be removed
      */
-    void cleanupOutputs(List<Path> keepFiles) {
+    void cleanupOutputs() {
         
         // Before cleaning up, make sure we resolve the final outputs
         this.resolveOutputs()
@@ -514,16 +474,7 @@ class PipelineStage {
         if(this.context.@output != null) {
             def newOutputFiles = Utils.box(this.context.@output).collect { it.toString() }.unique()
             newOutputFiles.removeAll { fn ->
-                Path canonical = new File(fn).toPath()
-                keepFiles.any { Path keepPath ->
-                    // println "Checking $it vs $fn :" + (it.canonicalPath ==  canonical)
-                    try {
-                        return Files.isSameFile(canonical,keepPath)
-                    }
-                    catch(java.nio.file.NoSuchFileException e) {
-                        return true
-                    }
-                }
+                OutputDirectoryWatcher.getDirectoryWatcher(context.outputDirectory).isPreexisting()
             }
             log.info("Cleaning up: $newOutputFiles")
             List<String> failed = Utils.cleanup(newOutputFiles)

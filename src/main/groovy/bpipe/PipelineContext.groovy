@@ -144,12 +144,6 @@ class PipelineContext {
      */
     boolean customThreadResources = false
    
-    /**
-     * File patterns that will be excluded as inferred output files because they may be created 
-     * frequently as side effects that are not intended to be outputs
-     */
-    Set<String> outputMask = ['\\.bai$', '\\.log$'] as Set
-
     File uncleanFilePath
     
     /**
@@ -1730,9 +1724,7 @@ class PipelineContext {
           
           trackedOutputs[command.id] = command              
           List outputFilter = command.executor.ignorableOutputs
-          if(outputFilter) {
-              this.outputMask.addAll(outputFilter)
-          }
+
           return command
       }
       else {
@@ -1990,32 +1982,6 @@ class PipelineContext {
     }
     
     /**
-     * Return a {@link File} that indicates the path where
-     * metadata for the specified output & file should be stored.
-     * 
-     * @param outputFile The name of the output file
-     */
-    File getOutputMetaData(String outputFile) {
-        File outputsDir = new File(OUTPUT_METADATA_DIR)
-        if(!outputsDir.exists()) 
-            outputsDir.mkdirs()
-            
-        String outputPath = new File(outputFile).path
-        
-        // If the output path starts with the run directory, trim it off
-        if(outputPath.indexOf(Runner.canonicalRunDirectory)==0) {
-            outputPath = outputPath.substring(Runner.canonicalRunDirectory.size()+1)
-        }
-        
-        if(outputPath.startsWith("./"))
-            outputPath = outputPath.substring(2)
-        
-//        println "output path = " + outputPath
-        
-        return  new File(outputsDir,this.stageName + "." + outputPath.replaceAll("[/\\\\]", "_") + ".properties")
-    }
-    
-    /**
      * A convenience to allow the user to reference the number of threads for a command
      * simply by typing "$threads" in their command. 
      * @return
@@ -2139,6 +2105,8 @@ class PipelineContext {
             this.@output = toOutputFolder(this.@output)
             
         this.setDefaultOutput(this.@defaultOutput)
+        
+        OutputDirectoryWatcher.getDirectoryWatcher(directoryName)
         
         log.info "Output set to $directoryName (new default output = ${this.@defaultOutput})"
     }
@@ -2295,14 +2263,14 @@ class PipelineContext {
             
             List resultFiles = results.collect { new File(it) }
             
-            List<Properties> props = Dependencies.instance.scanOutputFolder()
+            List<OutputMetaData> props = Dependencies.instance.scanOutputFolder()
             
             List<File> cleaned = []
             for(File result in resultFiles) {
                 
                 // Note we protect attempt to resolve canonical path with 
                 // the file name equality because it is very slow!
-                Properties resultProps = props.find { (it.outputFile.name == result.name) && (GraphEntry.canonicalPathFor(it) == result.canonicalPath) }
+                OutputMetaData resultProps = props.find { (it.outputFile.name == result.name) && (GraphEntry.canonicalPathFor(it) == result.canonicalPath) }
                 
                 if(resultProps == null) {
                     log.warning "Unable to file matching known output $result.name"
