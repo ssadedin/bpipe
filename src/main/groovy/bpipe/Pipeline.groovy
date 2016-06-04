@@ -1304,14 +1304,22 @@ public class Pipeline implements ResourceRequestor {
         return f
     }
     
+    List<String> cachedBranchPath = null
+    
+    @CompileStatic
     List<String> getBranchPath() {
+        
+        if(cachedBranchPath != null)
+            return cachedBranchPath
+        
         Pipeline current = this
-        List branches = this.name ? [this.name] : []
+        List<String> branches = this.name ? (List<String>)[this.name] : (List<String>)[]
         while(current.parent != null && current.parent != current) {
             if(current.parent.name)
                 branches.add(current.parent.name)
             current = current.parent
         }
+        cachedBranchPath = branches
         return branches
     }
     

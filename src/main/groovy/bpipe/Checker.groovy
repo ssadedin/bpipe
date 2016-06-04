@@ -25,6 +25,7 @@
 package bpipe
 
 import groovy.util.logging.Log;
+import java.util.regex.Pattern
 
 @Log
 class Checker {
@@ -55,6 +56,8 @@ class Checker {
         this.name = name
     }
     
+    private static Pattern EXCLUDED_CHECK_NAME_STAGES = ~'_.*inputs$'
+    
     void otherwise(Closure otherwiseClause) {
         log.info("Evaluating otherwise clause for Check $ctx.stageName / $name")
         
@@ -62,14 +65,17 @@ class Checker {
         
         // Legacy compatibility: if a check is saved with only the branch name,
         // accept that
-        if(Check.getFile(ctx.stageName, this.name, ctx.branch.toString()).exists())
+        if(Check.getFile(ctx.stageName, this.name, ctx.branch.toString()).exists()) {
             check = Check.getCheck(ctx.stageName, this.name, ctx.branch.toString())
+        }
         else {
             Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
-            String branchPath = ctx.pipelineStages.grep { it.stageName && it.stageName != "Unknown" && !(it ==~ '_.*inputs$') }*.stageName.join("_")  
-            if(branchPath.size() > 40) {
+            String stagePath = ctx.pipelineStages.grep { it.stageName && it.stageName != "Unknown" && !it.stageName.matches(EXCLUDED_CHECK_NAME_STAGES) }*.stageName.join("_")
+            String branchPath = pipeline.branchPath.join("_") + '_' + stagePath
+            if(branchPath.size() > 60) {
                 branchPath = Utils.sha1(branchPath) + "_" + ctx.branch.toString()
             }
+            log.info "Computing check based on branchPath $branchPath"
             check = Check.getCheck(ctx.stageName, this.name, branchPath);
         }
         
