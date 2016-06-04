@@ -52,6 +52,19 @@ class GraphEntry implements Serializable {
      */
     transient Map<String, GraphEntry> index = null
     
+    public static int GRAPH_ENTRY_COUNT = 0
+    
+    /*
+    GraphEntry() {
+        ++GRAPH_ENTRY_COUNT
+    }
+    
+    GraphEntry(Map props) {
+        super(props)
+        ++GRAPH_ENTRY_COUNT
+    }
+    */
+    
     @CompileStatic
     GraphEntry findBy(Closure c) {
         if(this.values != null && values.any { c(it) })
@@ -475,7 +488,7 @@ class Dependencies {
                 // Check if the output file existed before the stage ran. If so, we should not save meta data, as it will already be there
                 // Note: saving two meta data files for the same output can produce a circular dependency (exception
                 // when loading output graph).
-                if(odw.isPreexisting(o) && !timestamps.containsKey(o)) { 
+                if(!timestamps.containsKey(o)) { 
                     if(p.exists() || this.outputFilesGenerated.contains(o) || Utils.box(context.@input).contains(o)) {
                         log.info "Not overwriting meta data for $o because it was not created or modified by stage ${context.stageName}"
                         continue
