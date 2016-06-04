@@ -34,8 +34,11 @@ import java.nio.file.Path
 import java.util.regex.Pattern
 
 class PipelineBodyCategory {
+    
+    private static final Pattern PREFIX_PATTERN = ~'\\.[^\\.]*?$'
+    
 	static String getPrefix(String value) {
-		return value.replaceAll('\\.[^\\.]*?$', '')
+		return value.replaceAll(PREFIX_PATTERN, '')
 	}
     
     static int indexOf(String value, RegionValue other) {
