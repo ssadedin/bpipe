@@ -200,13 +200,14 @@ class Utils {
      * Normalize a single input and array into a collection, 
      * return existing collections as is
      */
+    @CompileStatic
     static Collection box(outputs) {
         
         if(outputs == null)
             return []
         
         if(outputs instanceof Collection)
-            return outputs
+            return (Collection)outputs
         
         if(outputs.class.isArray())    
             return outputs as List
