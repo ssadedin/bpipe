@@ -32,6 +32,7 @@ import bpipe.GraphEntry
 import bpipe.Command;
 import bpipe.CommandManager;
 import bpipe.Config
+import bpipe.OutputMetaData
 import groovy.json.JsonOutput;
 import groovy.time.TimeCategory;
 import groovy.util.logging.Log;
@@ -104,7 +105,7 @@ class QueryCommand extends BpipeCommand {
         Dependencies deps = Dependencies.instance
         
         // Start by scanning the output folder for dependency files
-        List<Properties> outputs = deps.scanOutputFolder()
+        List<OutputMetaData> outputs = deps.scanOutputFolder()
         GraphEntry graph = deps.computeOutputGraph(outputs)
         List results = []
         for(String arg in outputFiles) {
@@ -119,7 +120,7 @@ class QueryCommand extends BpipeCommand {
                 out.println "\n" + filtered.dump()
             }
                
-           Properties p = graph.propertiesFor(arg)
+           OutputMetaData p = graph.propertiesFor(arg)
            String duration = "Unknown"
            String pendingDuration = "Unknown"
                
@@ -164,7 +165,7 @@ class QueryCommand extends BpipeCommand {
         Dependencies deps = Dependencies.instance
         
         // Start by scanning the output folder for dependency files
-        List<Properties> outputs = deps.scanOutputFolder()
+        List<OutputMetaData> outputs = deps.scanOutputFolder()
         GraphEntry graph = deps.computeOutputGraph(outputs)
         out.println "\nDependency graph is: \n\n" + graph.dump()
     }
