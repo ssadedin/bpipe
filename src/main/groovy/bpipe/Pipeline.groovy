@@ -1413,7 +1413,7 @@ public class Pipeline implements ResourceRequestor {
     
     List<String> cachedBranchPath = null
     
-//    @CompileStatic
+    @CompileStatic 
     List<String> getBranchPath() {
         
         if(cachedBranchPath != null)
