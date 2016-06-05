@@ -42,8 +42,14 @@ class GraphEntry implements Serializable {
     
     public static final long serialVersionUID = 0L
     
+    /**
+     * The outputs that this node represents. In practise, each graph entry corresponds to 
+     * a single output
+     */
     List<OutputMetaData> values
+    
     List<GraphEntry> parents = []
+    
     List<GraphEntry> children = []
     
     /**
@@ -281,6 +287,10 @@ class GraphEntry implements Serializable {
         }
         return me + filteredChildren*.dumpChildren(indent+(names.collect{it.size()}.max()?:0)).join('\n')
     }
+    
+    String toString() {
+        "GraphEntry [outputs=" + values*.outputPath + ", inputs="+values*.inputs + " with ${children.size()} children]"
+    }
 }
 
 /**
@@ -439,6 +449,16 @@ class Dependencies {
     synchronized GraphEntry getOutputGraph() {
         if(this.outputGraph == null) {
             List<OutputMetaData> outputMetaDataFiles = scanOutputFolder()
+            if(outputMetaDataFiles.isEmpty()) {
+                def inps = Pipeline.rootPipeline.stages[0].context.@input
+                outputMetaDataFiles = Utils.box(inps).collect { inputFile ->
+                    String inputFileValue = String.valueOf(inputFile)
+                    OutputMetaData omd = new OutputMetaData(inputFileValue)
+                    omd.timestamp = new File(inputFileValue).lastModified()
+                    omd.outputFile = new File(inputFile)
+                    omd
+                }
+            }
             this.outputGraph = computeOutputGraph(outputMetaDataFiles)
             this.outputGraph.index(outputMetaDataFiles.size()*2)
         }
@@ -537,9 +557,18 @@ class Dependencies {
         }
     }
     
+    int numberOfGeneratedOutputs() {
+        return this.outputFilesGenerated.size();
+    }
+    
     void saveOutputMetaData(OutputMetaData p) {
         flushOutputGraphCache()
         p.save()
+        
+        synchronized(outputGraph) {
+            log.info "Adding file $p.outputPath to output graph"
+            computeOutputGraph([p], outputGraph, outputGraph, [],false)
+        }
     }
     
     /**
@@ -781,14 +810,16 @@ class Dependencies {
      *                  
      * @return          the root node in the graph of outputs
      */
-    GraphEntry computeOutputGraph(List<OutputMetaData> outputs, GraphEntry rootTree = null, GraphEntry topRoot=null, List handledOutputs=[]) {
+    GraphEntry computeOutputGraph(List<OutputMetaData> outputs, GraphEntry rootTree = null, GraphEntry topRoot=null, List handledOutputs=[], boolean computeUpToDate=true) {
         
         // Special case: no outputs at all
+        /*
         if(!outputs) {
             if(!rootTree)
                 rootTree = new GraphEntry(values:[])
             return rootTree
         }
+        */
         
         // Here we are using a recursive algorithm. First we find the "edge" outputs -
         // these are ones that are created inputs that are "external" - ie. not
@@ -834,7 +865,7 @@ class Dependencies {
                
             // Attach each output as a child of the respective input nodes
             // in existing tree
-            outputsWithExternalInputs.each { OutputMetaData out ->
+            for(OutputMetaData out in outputsWithExternalInputs) {
                 
                 GraphEntry entry = new GraphEntry(values: [out])
                 log.info "New entry for ${out.outputPath}"
@@ -865,7 +896,7 @@ class Dependencies {
         if(topRoot == null)
             topRoot = rootTree
         
-        if(!outputsWithExternalInputs)
+        if(!outputs.isEmpty() && !outputsWithExternalInputs)
             throw new PipelineError("Unable to identify any outputs with only external inputs in: " + outputs*.outputFile.join('\n') + "\n\nThis may indicate a circular dependency in your pipeline")
         
 //        log.info "There are ${outputGroups.size()} output groups: ${outputGroups.values()*.outputPath}"
@@ -886,6 +917,9 @@ class Dependencies {
             remainingOutputs.removeAll(handledOutputs)
             log.info "There are ${remainingOutputs.size()} remaining outputs"
         }
+        
+        if(!computeUpToDate)
+            return rootTree
                 
         // After computing the child tree, use child information to mark this output as
         // "up to date" or "not up to date"

@@ -34,6 +34,7 @@ import java.nio.file.WatchEvent
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService
 import java.util.concurrent.TimeUnit
+import java.util.regex.Pattern
 
 import com.sun.nio.file.SensitivityWatchEventModifier;
 
@@ -259,5 +260,34 @@ class OutputDirectoryWatcher extends Thread {
             boolean created = this.createdFiles.contains(fileName)
             return !created;
         }
+    }
+    
+    static int countGlobalGlobMatches(List<String> globs) {
+        List<Pattern> patterns = globs.collect { FastUtils.globToRegex(it) }
+        return countGlobalPatternMatches(patterns)
+    }
+    
+    /**
+     * Return the total count of files matching the given glob observed
+     * in ALL output directories
+     * 
+     * @param glob
+     * @return
+     */
+    @CompileStatic
+    static int countGlobalPatternMatches(List<Pattern> patterns) {
+        int result = 0
+        for(Map.Entry<String,OutputDirectoryWatcher> watcher in watchers) {
+            synchronized(watcher.value.timestamps) {
+                for(String key in watcher.value.files.keySet()) {
+                    for(Pattern pattern in patterns) {
+                        if(key.matches(pattern))    {
+                            ++result
+                        }
+                    }
+                }
+            }
+        }
+        return result
     }
 }
