@@ -1789,7 +1789,7 @@ class PipelineContext {
            log.info "Input list to check:  $reverseOutputs"
        }
        else {
-           log.info "Input list to check has $outputCount entries (" + $reverseOutputs[0].size() + " in tier 1"
+           log.info "Input list to check has $outputCount entries (" + reverseOutputs[0].size() + ") in tier 1"
        }
        
        exts = Utils.box(exts).collect { (it instanceof PipelineOutput || it instanceof PipelineInput) ? it.toString() : it }
@@ -2262,16 +2262,42 @@ class PipelineContext {
         log.info "Attempting to cleanup files: $results"
         if(results) {
             
+            // Are there actually existing files matching the patterns? If not, we can avoid the 
+//            // expensive process of scanning the output folder for them
+//            int countMatches = OutputDirectoryWatcher.countGlobalGlobMatches(patterns.grep { it instanceof String }) +
+//                               OutputDirectoryWatcher.countGlobalPatternMatches(patterns.grep { it instanceof Pattern })
+//                
+//            if(countMatches == 0) {
+//                log.info "Skipping cleanup process because no files observed to match patters: $patterns"
+//                return
+//            }
+//            else {
+//                log.info "Estimate of files matching cleanup patterns is $countMatches"
+//            }
+//                               
             List resultFiles = results.collect { new File(it) }
             
-            List<OutputMetaData> props = Dependencies.instance.scanOutputFolder()
+//            List<OutputMetaData> props = Dependencies.instance.scanOutputFolder()
             
             List<File> cleaned = []
             for(File result in resultFiles) {
                 
                 // Note we protect attempt to resolve canonical path with 
                 // the file name equality because it is very slow!
-                OutputMetaData resultProps = props.find { (it.outputFile.name == result.name) && (GraphEntry.canonicalPathFor(it) == result.canonicalPath) }
+//                OutputMetaData resultProps = props.find { (it.outputFile.name == result.name) && (GraphEntry.canonicalPathFor(it) == result.canonicalPath) }
+                
+                GraphEntry graph = Dependencies.instance.outputGraph
+                
+                OutputMetaData resultProps 
+                synchronized(graph) {
+                    GraphEntry resultEntry = graph.entryFor(result)
+                    if(!resultEntry) {
+                        log.warning("Unable to find output graph entry for output file $result. Will not clean up this file.")
+                        continue
+                    }
+                    
+                   resultProps = resultEntry.values.find { it.outputPath = result.path }
+                }
                 
                 if(resultProps == null) {
                     log.warning "Unable to file matching known output $result.name"
