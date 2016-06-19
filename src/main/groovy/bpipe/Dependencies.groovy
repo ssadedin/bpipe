@@ -524,10 +524,12 @@ class Dependencies {
         if(this.outputGraph == null) {
             List<OutputMetaData> outputMetaDataFiles = scanOutputFolder()
             if(outputMetaDataFiles.isEmpty()) {
+                // Seed the output graph with a first stage of inputs that are
+                // essentially dummy "outputs" created from the pipeline raw inputs
                 def inps = Pipeline.rootPipeline?.stages?.getAt(0)?.context?.@input
                 if(inps == null)
                     inps = []
-                
+
                 outputMetaDataFiles = Utils.box(inps).collect { inputFile ->
                     String inputFileValue = String.valueOf(inputFile)
                     OutputMetaData omd = new OutputMetaData(inputFileValue)
