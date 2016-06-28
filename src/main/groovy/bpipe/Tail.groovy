@@ -57,12 +57,18 @@ class Tail {
             f longOpt: 'follow', 'keep following file until user presses Ctrl+C'
             x longOpt: 'completed', 'show in context of completed pipeline with given pid', args:1
             v longOpt: 'verbose', 'enable verbose logging'
+            h longOpt: 'help', 'show help'
         }
         
         
         def opts = logCli.parse(args)
         if(!opts) {
             System.exit(1)
+        }
+        
+        if(opts.h) {
+            logCli.usage()
+            System.exit(0)
         }
         
         Utils.configureSimpleLogging(".bpipe/bpipe.log")
