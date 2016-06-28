@@ -56,7 +56,7 @@ class ReportGenerator {
         def docStages = [ [] ]
         pipeline.fillDocStages(docStages)
         
-        GraphEntry outputGraph = Dependencies.instance.computeOutputGraph(Dependencies.instance.scanOutputFolder())  
+        GraphEntry outputGraph = Dependencies.instance.getOutputGraph()
         
         // We fill in the outputs for each node that is a pipeline stage
         pipeline.node.breadthFirst().each { Node n ->
