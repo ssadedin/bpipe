@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import groovy.util.logging.Log;
 import groovy.xml.MarkupBuilder;
+import groovy.transform.CompileStatic;
 
 import java.util.logging.Level;
 import java.util.regex.Pattern;
