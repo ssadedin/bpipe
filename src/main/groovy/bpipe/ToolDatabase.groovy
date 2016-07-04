@@ -117,7 +117,10 @@ class Tool {
             
             log.info "Probing version of tool using probe command $realizedCommand"
             
-            Process process = Runtime.getRuntime().exec((String[])(['bash','-c',"$realizedCommand"].toArray()))
+            File dir = new File(Config.config.script).absoluteFile.parentFile
+            ProcessBuilder pb = new ProcessBuilder(['bash','-c',realizedCommand] as String[]).directory(dir)
+            Process process = pb.start()
+            
             StringWriter output = new StringWriter()
             StringWriter errorOutput = new StringWriter()
             process.consumeProcessOutput(output, errorOutput)
