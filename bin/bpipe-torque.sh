@@ -158,6 +158,16 @@ make_pbs_script () {
              fi
              ;;
    esac
+   
+    mods_request = ""
+    #handle the module specifications. - Simon Gladman 2014
+    if [[  ! -z $MODULES ]]; then
+        for MOD in $MODULES
+        do
+            mods_request="${mods_request}
+module load $MOD"
+        done
+    fi
 
    # write out the job script to a file
    cat > $job_script_name << HERE
@@ -170,6 +180,7 @@ $procs_request
 #PBS -q $QUEUE
 set -e;
 $CUSTOM
+$mods_request
 cd \$PBS_O_WORKDIR
 $COMMAND
 HERE

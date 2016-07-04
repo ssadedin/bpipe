@@ -230,6 +230,12 @@ class CustomCommandExecutor implements CommandExecutor {
             
         if(config?.mem_param)
             env.MEM_PARAM = String.valueOf(config.mem_param)
+            
+        // modules since we may need to load modules before the command... - Simon Gladman (slugger70) 2014
+        if(config?.modules) {
+            log.info "Using modules: $config?.modules"
+            env.MODULES = config.modules
+        }
     }
 	
 	static synchronized acquireLock(Map cfg) {
