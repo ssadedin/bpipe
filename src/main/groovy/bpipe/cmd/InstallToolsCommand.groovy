@@ -1,0 +1,44 @@
+package bpipe.cmd
+
+class InstallToolsCommand  extends BpipeCommand { 
+    
+    public InstallToolsCommand(List<String> args) {
+        super("install", args); 
+    }
+
+    public void run(PrintStream out) {
+        
+        CliBuilder cli = new CliBuilder(usage: "bpipe install [options] <pipeline>")
+        
+        cli.with {
+            v 'Verbose logging'
+        }
+        
+        def opts = cli.parse(args)
+        if(opts.arguments().size() > 0)
+            bpipe.Config.config.script = opts.arguments()[0]
+            
+        if(opts.v)
+            bpipe.Utils.configureVerboseLogging()
+            
+        bpipe.Runner.readUserConfig()
+        bpipe.ToolDatabase.instance.init(bpipe.Config.userConfig)
+
+        
+        ConfigObject cfg = bpipe.Config.userConfig
+        if("title" in cfg.install) {
+            println ""
+            println "*" *  bpipe.Tool.PRINT_WIDTH
+            println "$cfg.install.title Install Script"
+            println "*" * bpipe.Tool.PRINT_WIDTH
+            println "" 
+        }
+        
+        if(!("install" in cfg)) {
+            out.println "No tools are currently configured in the tool database. Please check your installation for the tool database configuration"
+            return
+        }
+        
+        bpipe.ToolDatabase.instance.installTools(cfg.install.tools)
+    }
+}
