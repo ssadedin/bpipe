@@ -434,6 +434,9 @@ class PipelineContext {
     *                   $output.bam
     */
    void onNewOutputReferenced(Pipeline pipeline, Object o, String replaced = null) {
+       
+       assert o != null
+       
        if(!allInferredOutputs.contains(o)) 
            allInferredOutputs << o; 
        if(!inferredOutputs.contains(o)) 

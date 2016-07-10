@@ -312,7 +312,7 @@ class PipelineOutput {
         log.info "Selected output $result with extension $name from expected outputs $overrideOutputs"
           
         this.outputUsed = result
-        if(this.outputChangeListener != null) {
+        if(this.outputChangeListener != null && result != null) {
             this.outputChangeListener(result,replaced)
         }
         
