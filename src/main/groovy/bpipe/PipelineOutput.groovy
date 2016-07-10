@@ -240,7 +240,7 @@ class PipelineOutput {
         // the outputs,  so the output extension acts as a selector from
         // those rather than a synthesis of a new name
         if(this.overrideOutputs) {
-           result = selectFromOverrides(name)  
+           return selectFromOverrides(name)  
         }
         else 
            result = synthesiseFromName(name)
@@ -269,7 +269,7 @@ class PipelineOutput {
     
     static Pattern FILE_EXT_PATTERN = ~'\\.[^.]*$'
     
-    def selectFromOverrides(String name) {
+    PipelineOutput selectFromOverrides(String name) {
         String result = this.overrideOutputs.find { it.toString().endsWith('.' + name) }
         def replaced = null
         if(!result) {
@@ -292,24 +292,31 @@ class PipelineOutput {
             }
         }
         
+       PipelineOutput childOutput = this.createChildOutput(result, name) 
+       
         if(!result) {
             String dottedName = '.' + name + '.'
-            if(!overrideOutputs.any { it.contains(dottedName) }) {
+            
+            List<String> filteredResults = overrideOutputs.grep { it.contains(dottedName) }
+            
+            if(filteredResults.isEmpty()) {
                 throw new PipelineError("An output containing or ending with '." + name + "' was referenced.\n\n"+
                                         "However such an output was not in the outputs specified by an enclosing transform / filter / produce statement.\n\n" +
                                         "Valid outputs according to the enclosing block are: ${overrideOutputs.join('\n')}")
             }
-        }
-        else {
-            log.info "Selected output $result with extension $name from expected outputs $overrideOutputs"
-          
-            this.outputUsed = result
-            if(this.outputChangeListener != null) {
-                this.outputChangeListener(result,replaced)
+            else {
+                childOutput.overrideOutputs = filteredResults
             }
         }
         
-        return result
+        log.info "Selected output $result with extension $name from expected outputs $overrideOutputs"
+          
+        this.outputUsed = result
+        if(this.outputChangeListener != null) {
+            this.outputChangeListener(result,replaced)
+        }
+        
+        return childOutput
     }
     
     def synthesiseFromName(String name) {
