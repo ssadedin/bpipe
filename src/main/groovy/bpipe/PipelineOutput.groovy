@@ -155,7 +155,7 @@ class PipelineOutput {
             }
         }
         
-        if(this.outputChangeListener)
+        if(this.outputChangeListener && firstOutput != null)
           this.outputChangeListener(firstOutput,replaceOutput)
         return String.valueOf(firstOutput) 
     }
