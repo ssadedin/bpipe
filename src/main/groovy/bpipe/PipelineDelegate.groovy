@@ -202,22 +202,6 @@ class PipelineDelegate {
             return context.get().invokeMethod("getInputByIndex", [n-1] as Object[])
         }
         else
-        if(name == "region") {
-            def genome = Pipeline.genomes.values()[0]
-            if(!genome) 
-                throw new PipelineError("You referenced a region without defining a genome first. Please specify a genome, eg, using:\n\n\tgenome \"hg19\"\n")
-                
-            // Construct the regions in Samtools format
-            // We filter out "unusual" chromosomes by default
-            String regionValue = genome.sequences.values().grep { !it.name.contains('_') }
-                                                           .collect { it.name + ':' +it.range.from + '-' +it.range.to }
-                                                           .join(" ")
-            ctx.localVariables["region"] = 
-                new RegionValue(value:regionValue)
-            
-            return ctx.localVariables.region
-        }
-        else
         if(Runner.binding.variables.containsKey(name)) {
             return Runner.binding.variables[name]
         }

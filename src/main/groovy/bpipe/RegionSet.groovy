@@ -147,7 +147,7 @@ class RegionSet implements Serializable {
         def (large,small) = largest.splitInTwo()
         float ratio = (float)large.size() / (float)small.size()
         
-        assert ratio > 1.0f
+        assert ratio >= 1.0f : "Ratio of large region to small is > 1 (ratio = $ratio)"
         if(ratio > 0.1 && ratio < 10) {
             results.remove(largest)
             
@@ -181,8 +181,6 @@ class RegionSet implements Serializable {
      */
     List splitInTwo() {
         List<Sequence> ordered = ([] + sequences.values()).sort { it.size() }.reverse()
-        
-        println "Sequences ordered by size are $ordered"
         
         RegionSet result1 = new RegionSet()
         RegionSet result2 = new RegionSet()

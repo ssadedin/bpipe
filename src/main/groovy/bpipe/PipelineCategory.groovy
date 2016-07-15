@@ -315,14 +315,29 @@ class PipelineCategory {
                                 
                             log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
                             child.addStage(dummyPriorStage)
-                            def region = chr instanceof Chr ? chr.region : ""
-                            child.variables += [chr: region]
-                            child.variables += [region: region]
                             
-                            String branchName = chr instanceof Chr ? chr.name : chr
-                            child.branch = new Branch(name:branchName)
-                            if(chr instanceof Chr)
-                                child.branch.chr = branchName
+                            
+                            child.branch = new Branch()
+                            String branchName
+                            if(chr instanceof Chr) {
+                                child.variables.chr = chr
+                                child.branch.name = chr.name
+                            }
+                            else
+                            if(chr instanceof RegionSet) {
+                                RegionValue regionValue = 
+                                    new RegionValue(value: chr.sequences.collect { 
+                                        it.value.toString() 
+                                    }.flatten().join(" "))
+                                        
+                                child.variables.region = regionValue
+                                child.branch.region = regionValue
+                                branchName = regionValue
+                            }
+                            else {
+                                child.name = String.valueOf(chr)
+                            }
+                            
                             child.runSegment(childInputs, segmentClosure)
                         }
                         catch(Exception e) {

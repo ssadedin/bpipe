@@ -145,6 +145,6 @@ class Sequence implements Serializable {
     }
     
     String toString() {
-        "$name[$range.from-$range.to]"
+        "$name:$range.from-$range.to"
     }
 }
