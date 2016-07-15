@@ -238,8 +238,8 @@ class PipelineCategory {
             // separate pipeline for each one, and execute each parallel segment
             List<Pipeline> childPipelines = []
             List<Runnable> threads = []
-			Pipeline parent = Pipeline.currentRuntimePipeline.get()
-			Node branchPoint = parent.addBranchPoint("split")
+            Pipeline parent = Pipeline.currentRuntimePipeline.get()
+            Node branchPoint = parent.addBranchPoint("split")
             for(Closure s in segments) {
                 log.info "Processing segment ${s.hashCode()}"
                 
@@ -256,11 +256,11 @@ class PipelineCategory {
                 //
                 String forkId = null
                 chrs.each { chr ->
-					
-					if(!Config.config.branchFilter.isEmpty() && !Config.config.branchFilter.contains(chr)) {
-						System.out.println "Skipping branch $chr because not in branch filter ${Config.config.branchFilter}"
-						return
-					}
+                    
+                    if(!Config.config.branchFilter.isEmpty() && !Config.config.branchFilter.contains(chr)) {
+                        System.out.println "Skipping branch $chr because not in branch filter ${Config.config.branchFilter}"
+                        return
+                    }
                     
                     log.info "Creating pipeline to run on branch $chr"
                     Pipeline child = Pipeline.currentRuntimePipeline.get().fork(branchPoint, chr.toString(), forkId)
