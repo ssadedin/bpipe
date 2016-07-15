@@ -217,28 +217,36 @@ class PipelineCategory {
     
     static Object multiply(Set objs, List segments) {
         
-        if(!objs) 
-            throw new PipelineError("Multiply syntax requires a non-empty list of files, strings, or chromosomes, but no entries were in the supplied set")
-            
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
         
         def multiplyImplementation = { input ->
             
             log.info "multiply on input $input on set " + objs
             
+            
             def currentStage = new PipelineStage(Pipeline.currentRuntimePipeline.get().createContext(), {})
             Pipeline.currentRuntimePipeline.get().addStage(currentStage)
             currentStage.context.setInput(input)
-            
-            List chrs = []
-            chrs.addAll(objs)
-            chrs.sort()
             
             // Now we have all our inputs, make a 
             // separate pipeline for each one, and execute each parallel segment
             List<Pipeline> childPipelines = []
             List<Runnable> threads = []
             Pipeline parent = Pipeline.currentRuntimePipeline.get()
+            
+            if(!objs) {
+                if(parent.branch?.name && parent.branch.name != "all") {
+                    println "MSG: Parallel segment inside branch $branch.name will not execute because the list to parallelise over is empty"
+                }
+                else {
+                    println "MSG: Parallel segment will not execute because the list to parallelise over is empty"
+                }
+            }
+            
+            List chrs = []
+            chrs.addAll(objs)
+            chrs.sort()
+            
             Node branchPoint = parent.addBranchPoint("split")
             for(Closure s in segments) {
                 log.info "Processing segment ${s.hashCode()}"
@@ -564,6 +572,10 @@ class PipelineCategory {
                 }
                 e.summary = true
                 throw e
+            }
+            else
+            if(pipelines.isEmpty()) {
+                return null
             }
             else {
                 if(pipelines.every { it.aborted }) {
