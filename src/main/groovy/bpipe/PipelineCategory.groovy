@@ -318,7 +318,11 @@ class PipelineCategory {
                             def region = chr instanceof Chr ? chr.region : ""
                             child.variables += [chr: region]
                             child.variables += [region: region]
-                            child.branch = new Branch(name:chr instanceof Chr ? chr.name : chr)
+                            
+                            String branchName = chr instanceof Chr ? chr.name : chr
+                            child.branch = new Branch(name:branchName)
+                            if(chr instanceof Chr)
+                                child.branch.chr = branchName
                             child.runSegment(childInputs, segmentClosure)
                         }
                         catch(Exception e) {
