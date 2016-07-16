@@ -344,7 +344,7 @@ class PipelineCategory {
                                 branchName = regionValue
                             }
                             else {
-                                child.branch.name = String.valueOf(chr)
+                                child.branch.@name = String.valueOf(chr)
                             }
                             
                             child.runSegment(childInputs, segmentClosure)
