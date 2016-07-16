@@ -330,6 +330,7 @@ class PipelineCategory {
                             if(chr instanceof Chr) {
                                 child.variables.chr = chr
                                 child.branch.name = chr.name
+                                child.branch.chr = chr.name
                             }
                             else
                             if(chr instanceof RegionSet) {
