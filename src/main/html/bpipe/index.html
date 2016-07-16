@@ -290,8 +290,11 @@
                            if(levels[childDepth])
                                childDepth+=1
                        }
-                       childWidths.add(branchWidths.max())
-                       usedWidth+=branchWidths.max()
+                       def bwMax = branchWidths.max()
+                       if(bwMax != null) {
+                           childWidths.add(branchWidths.max())
+                           usedWidth+=branchWidths.max()
+                       }
                    }
                    else
                    if(attr.type == 'stage' && !attr.stage.synthetic) {
