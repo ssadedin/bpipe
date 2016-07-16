@@ -565,9 +565,12 @@ class Dependencies {
         flushOutputGraphCache()
         p.save()
         
-        synchronized(outputGraph) {
-            log.info "Adding file $p.outputPath to output graph"
-            computeOutputGraph([p], outputGraph, outputGraph, [],false)
+        // If there is a cached outputgraph, update it
+        if(outputGraph != null) {
+            synchronized(outputGraph) {
+                log.info "Adding file $p.outputPath to output graph"
+                computeOutputGraph([p], outputGraph, outputGraph, [],false)
+            }
         }
     }
     
@@ -720,7 +723,7 @@ class Dependencies {
     void queryOutputs(def args) {
         // Start by scanning the output folder for dependency files
         List<OutputMetaData> outputs = scanOutputFolder()
-        def graph = computeOutputGraph(outputs)
+        GraphEntry graph = computeOutputGraph(outputs)
         
         if(args) {
             for(String arg in args) {
