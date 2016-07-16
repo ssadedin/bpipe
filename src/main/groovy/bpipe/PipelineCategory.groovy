@@ -328,7 +328,7 @@ class PipelineCategory {
                             child.branch = new Branch()
                             String branchName
                             if(chr instanceof Chr) {
-                                child.variables.chr = chr
+                                child.variables.chr = chr.name
                                 child.branch.name = chr.name
                                 child.branch.chr = chr.name
                             }
