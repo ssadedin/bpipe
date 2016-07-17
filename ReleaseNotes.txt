@@ -1,3 +1,146 @@
+=========== Changes for Bpipe Version 0.9.9.2 ============
+
+   - Large scale refactoring for performance with
+     large numbers of inputs / outputs.
+     Bpipe now requires Java 1.7!
+
+   - Issue #180: bpipe doesn't allow empty branch list 
+
+   - Issue #184: chr not passed to nested parallel pipeline 
+
+   - fix wrong output referenced for 2nd double ext in
+     produce eg: $output.bar.txt 
+
+   - support for modules in TorqueCommandExecutor 
+
+   - fix potential failure to cleanup files on error 
+
+   - Issue #175: Check state can be confused b/w branches 
+
+   - Handle errors in log init so that log fail doesn't prevent
+     ability to run Bpipe (java logging tries to obtain exclusive 
+     locks which aren't supported on some file systems. 
+
+   - Update to groovy 2.4.6 (helps performance)
+
+   - Fix ambiguous behavior of transform() when multiple inputs
+     match transform pattern. New behavior requires transform('*.ext') to
+     match upstream multiple files ending with .ext (minor possibilty for 
+     backwards incompatibility)
+
+   - Fix output resolved as input for produce+double ext + numbered input 
+
+   - Fix exception  when check saved without pass/fail set 
+
+   - Fix leak of tail / sed processes under OSX in some
+     situations
+
+   - Fix bootstrap theme for docs not recognised 
+
+   - Support to open a debugger Groovy console at any point 
+     in a pipeline using debug() function
+
+   - Add settings.gradle to stop build failing if
+     checked out to directory other than 'bpipe' 
+
+   - Fix possible hang when multi command used inside
+     produce(...) 
+
+   - support for "mem_param" for torque executor
+     this allows to choose which parameter Bpipe should use
+     between "mem", "pvmem", etc.  by setting mem_param="mem"
+     in a command config 
+
+   - Issue #176: support multiple commands per config in multi 
+
+   - Various documentation fixes and cleanups
+
+   - fix double file extension on input not resolving second and
+     later input (eg: when referenced in form $input2.foo.bar)
+
+Changes for Bpipe Version 0.9.9 
+==============================
+
+**NOTE:** see 0.9.9_beta_1 changes for further changes since previous release
+
+   - SGE: Merge branch 'sge_fixes', including:
+
+     * Fix #156, #142, Bpipe may hang or ignore job cancel / delete
+       using SGE executor 
+
+     * add -terse to sge default command options
+
+     * change to support separate options:
+       'sge_pe' and 'procs' rather than combined.  
+       (Old combined form still supported for back compat.) 
+
+     * jobs are created using user modifiable command template,
+       specified via jobTemplate configuration parameter
+       which can be object with string value of path to template,
+       or a closure which will be executed dynamically to obtain the
+       path
+
+     * fix incorrect reporting that stop command
+       failed in sge 
+
+     * use Bpipe resolved working directory instead of $PWD since
+       it is not guaranteed to be defined
+        
+     * fix cases of failure due to string procs variable 
+       getting overridden with integer (dynamic calculation
+       of $threads variable)
+
+     * fix incorrectly sending slots as well as pe for some
+       configurations 
+
+     * support individual parameters for SGE options instead of compiling 
+       them into 'additional_options' 
+        
+   - Fix choosing "terminate" not working for some executors 
+     (issue #162) 
+     
+   - PBS-pro: combine multiple resource limits into single 
+     statement, add support for procs, memory requests
+     
+   - Experimental option for some executors to disable buffering of 
+     standard output, applies to torque, slurm, pbs-pro. Set "stdbuf" as 
+     option to have bpipe run commands using 'stdbuf' command to disable 
+     output buffering, when output from commands is delayed in appearing
+     in Bpipe log.
+
+   - Performance optimisations for large / complex pipelines:
+
+     * Cache output graph in serialised form to avoid reading property 
+       files at startup 
+     
+     * Reduce massive logging of outputs when large number of
+       inputs and outputs in single stage 
+    
+   - Add 'bpipe errors' and 'bpipe log -e' command to 
+     show output for failed commands 
+     
+   - Add support to display per command output using the 
+     bpipe log -c <cmd id> 
+
+   - Fix 'bpipe test' printing exceptions and hanging on 'multi'
+     statement 
+    
+   - Fix regression causing possible failure when stage has 
+     outputs but no inputs 
+     
+   - update gradle wrapper script, include changes omitted from
+     2.0 upgrade 
+     
+   - Fix files in subdirectory not resolved when whole file name 
+     matches input extension 
+     
+   - Fix variable specified with 'using' not overriding global value 
+     
+   - Fix 'check' results possibly leaking between branches 
+     
+   - Fix reading output.dir causing potential modification of
+     output directory 
+
 =========== Changes for Bpipe Version 0.9.9_beta_1 ============
 
    - Fix content type not set causing errors with some smtp
@@ -637,7 +780,6 @@
      
    - allow global resource limits (as supported by -l flag 
      to bpipe) to be specified in bpipe.config as well 
-   - 
    - support for sending emails and
      instant message notifications explicitly 
      from script, using syntax: send text 'hello' to gtalk, 
