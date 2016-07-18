@@ -3,8 +3,8 @@ Welcome to Bpipe
 
 Bpipe provides a platform for running big bioinformatics jobs that consist of a series of processing stages - known as 'pipelines'.
 
-* January 20th, 2016 - New! Bpipe 0.9.9 released!
-* Download [latest](http://download.bpipe.org/versions/bpipe-0.9.9.tar.gz), [all](http://download.bpipe.org)
+* January 20th, 2016 - New! Bpipe 0.9.9.2 released!
+* Download [latest](http://download.bpipe.org/versions/bpipe-0.9.9.2.tar.gz), [all](http://download.bpipe.org)
 * [Documentation](http://docs.bpipe.org)
 * [Mailing List](https://groups.google.com/forum/#!forum/bpipe-discuss) (Google Group)
 

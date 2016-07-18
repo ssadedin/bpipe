@@ -1,4 +1,46 @@
-=========== Changes for Bpipe Version 0.9.9.2 ============
+Changes for Bpipe Version 0.9.9.2 
+===================================
+
+This release has focused primarily on performance, especially
+for pipelines involving high concurrency and large numbers
+of inputs and outputs. To achieve this, Bpipe now depends
+on new Java APIs available in Java 1.7. This means that
+Bpipe now requires Java 1.7 and will not work any longer
+with Java 1.6.
+
+Additionally, a range of small bugs have been fixed and 
+smaller features added. 
+
+## Backwards Compatibility
+
+Of note, there is one change that can
+affect backwards compatibility. This relates to use of the 
+'transform' construct when multiple files of the same type are
+transformed to multiple files of a different type. In the past
+you could write a single transform such as:
+
+```
+transform('.txt') to('.csv') {
+    ...
+}
+```
+
+Previously this would transform every text file in the inputs
+to a corresponding CSV file as output. From 0.9.9.2 forward
+this will only transform a single input file. For multiple files, the
+transform must now be specified as:
+
+```
+transform('*.txt') to('.csv') {
+    ...
+}
+```
+
+This change has been made to resolve ambiguity, since there was no 
+way previously to specify that a stage transforms exactly 1 input file
+of a given type.
+
+## Change list
 
    - Large scale refactoring for performance with
      large numbers of inputs / outputs.
