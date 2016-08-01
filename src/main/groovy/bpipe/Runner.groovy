@@ -31,6 +31,8 @@ import java.util.logging.Handler;
 import java.util.logging.Level
 import java.util.logging.Logger;
 
+import org.apache.commons.cli.Option
+
 import org.codehaus.groovy.runtime.StackTraceUtils;
 
 import bpipe.worx.WorxEventListener;
@@ -247,6 +249,7 @@ class Runner {
                  u longOpt:'until', 'run until stage given',args:1
                  p longOpt: 'param', 'defines a pipeline parameter, or file of paramaters via @<file>', args: 1, argName: 'param=value', valueSeparator: ',' as char
                  b longOpt: 'branch', 'Comma separated list of branches to limit execution to', args:1
+                 s longOpt: 'source', 'Load the given pipeline file(s) before running / executing', args: 1
                  'L' longOpt: 'interval', 'the default genomic interval to execute pipeline for (samtools format)',args: 1
             }
             
@@ -258,7 +261,7 @@ class Runner {
         def opt = cli.parse(args)
         if(!opt) 
             exit(1)
-            
+        
         if(!opt.arguments()) {
             println versionInfo
             cli.usage()
@@ -343,14 +346,16 @@ class Runner {
         if(Config.userConfig.worx.enable) {
             new WorxEventListener().start()
         }
-
+        
+        String loadArgs = opt.source ? '\n'+opt.source.split(',').collect { "load '$it'\n"}.join("") : ""
+        
         def pipelineArgs = null
         String pipelineSrc
         if(mode == "execute") {
-            pipelineSrc = 'Bpipe.run { ' + opt.arguments()[0] + '}'
+            pipelineSrc = Pipeline.PIPELINE_IMPORTS + loadArgs + ' Bpipe.run { ' + opt.arguments()[0] + '}'
         }
         else {
-            pipelineSrc = loadPipelineSrc(cli, opt.arguments()[0])
+            pipelineSrc = loadPipelineSrc(cli, opt.arguments()[0], loadArgs)
         }
         
         if(opt.arguments().size() > 1)
@@ -595,7 +600,7 @@ class Runner {
      * @param srcFilePath
      * @return
      */
-    static String loadPipelineSrc(def cli, def srcFilePath) {
+    static String loadPipelineSrc(def cli, def srcFilePath, String preamble) {
         File pipelineFile = new File(srcFilePath)
         if(!pipelineFile.exists()) {
             println "\nCould not understand command $pipelineFile or find it as a file\n"
@@ -608,9 +613,10 @@ class Runner {
         // we want any errors in parsing the script to report the correct line number
         // matching what the user sees in their script
         String pipelineSrc = Pipeline.PIPELINE_IMPORTS + 
-					"bpipe.Pipeline.scriptNames['$pipelineFile.name']=this.class.name;" +
-					 pipelineFile.text
-					 
+                    "bpipe.Pipeline.scriptNames['$pipelineFile.name']=this.class.name;" +
+                    preamble + 
+                    pipelineFile.text
+                     
         if(pipelineFile.text.indexOf("return null") >= 0) {
             println """
                        ================================================================================================================
