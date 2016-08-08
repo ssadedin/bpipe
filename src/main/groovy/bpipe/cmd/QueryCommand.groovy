@@ -115,7 +115,7 @@ class QueryCommand extends BpipeCommand {
                 continue
             }
             
-            if(format == "text") {
+            if(format == "txt") {
                 out.println "\n" + " $arg ".center(Config.config.columns, "=")  + "\n"
                 out.println "\n" + filtered.dump()
             }
@@ -129,7 +129,7 @@ class QueryCommand extends BpipeCommand {
                pendingDuration = TimeCategory.minus(new Date(p.startTimeMs),new Date(p.createTimeMs)).toString()
            }
                
-           if(format == "text") {
+           if(format == "txt") {
                out.println """
                    Created:             ${new Date(p.timestamp)}
                    Pipeline Stage:      ${p.stageName?:'Unknown'}
