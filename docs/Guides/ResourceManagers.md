@@ -115,6 +115,16 @@ your parallel (MPI or OpenMP) application should run. For example:
    procs="orte 8" 
 ```
 
+The parallel environment can also be specified separately:
+
+```groovy 
+   procs=8
+   sge_pe='orte'
+```
+
+This latter method enables more flexible assignment of processors for different commands if
+you want to share the same parallel environment between them.
+
 ### Advanced configuration
 
 Bpipe submits jobs requests to the SGE resource manager through the `qsub`
