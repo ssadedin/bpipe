@@ -258,6 +258,11 @@ class OutputMetaData implements Serializable {
     }
     
     @CompileStatic
+    String getBranchPath() {
+        return branchPath == null ? "" : branchPath
+    }
+    
+    @CompileStatic
     Path getPropertyFilePath() {
         /*
         if(this.@propertyFilePath == null) {
