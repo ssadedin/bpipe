@@ -88,9 +88,22 @@ class LocalCommandExecutor implements CommandExecutor {
               log.info "Converted $origCmd to $cmd to account for broken Java argument escaping"
           }
           
+          List commandLines = []
+          
+          // Write out the pid to file
+          commandLines << "echo \$\$ > ${CommandManager.DEFAULT_COMMAND_DIR}/${command.id}.pid;"
+          
+          if(cfg.use) 
+              commandLines << "use $cfg.use;"
+          
+          if(cfg.modules)
+              commandLines << "module load $cfg.modules"
+          
+          commandLines << cmd
+          
           this.runningCommand = cmd
           this.startedAt = new Date()
-          process = Runtime.getRuntime().exec((String[])(['bash','-e','-c',"echo \$\$ > ${CommandManager.DEFAULT_COMMAND_DIR}/${command.id}.pid;\n$cmd"].toArray()))
+          process = Runtime.getRuntime().exec((String[])(['bash','-e','-c',commandLines.join('\n')].toArray()))
           command.status = CommandStatus.RUNNING.name()
           command.startTimeMs = System.currentTimeMillis()
           this.id = command.id.toInteger()
