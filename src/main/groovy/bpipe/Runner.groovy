@@ -429,17 +429,17 @@ class Runner {
         System.err.println(" Bpipe Error ".center(Config.config.columns,"="))
         
         System.err.println("\nAn error occurred executing your pipeline:\n\n${msg.center(Config.config.columns,' ')}\n")
-		
+        
         if(!(e instanceof ValueMissingError)) {
             System.err.println("\nPlease see the details below for more information.\n")
             System.err.println(" Error Details ".center(Config.config.columns, "="))
             System.err.println()
             Throwable sanitized = StackTraceUtils.deepSanitize(e)
-			StringWriter sw = new StringWriter()
+            StringWriter sw = new StringWriter()
             sanitized.printStackTrace(new PrintWriter(sw))
-			String stackTrace = sw.toString()
-			Pipeline.scriptNames.each { fileName, internalName -> stackTrace = stackTrace.replaceAll(internalName, fileName) }
-			System.err.println(stackTrace)
+            String stackTrace = sw.toString()
+            Pipeline.scriptNames.each { fileName, internalName -> stackTrace = stackTrace.replaceAll(internalName, fileName) }
+            System.err.println(stackTrace)
             System.err.println()
             System.err.println "=" * Config.config.columns
             System.err.println("\nMore details about why this error occurred may be available in the full log file .bpipe/bpipe.log\n")
