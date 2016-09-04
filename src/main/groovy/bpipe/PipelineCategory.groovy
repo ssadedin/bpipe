@@ -528,7 +528,7 @@ class PipelineCategory {
                     }
                     catch(Exception e) {
                         log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
-                        StackTraceUtils.sanitize(e).printStackTrace()
+                        println(Utils.prettyStackTrace(e))
                         child.failExceptions << e
                         child.failed = true
                     }

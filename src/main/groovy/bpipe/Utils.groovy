@@ -39,6 +39,7 @@ import java.util.logging.FileHandler
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern
+import org.codehaus.groovy.runtime.StackTraceUtils
 
 /**
  * Miscellaneous internal utilities used by Bpipe
@@ -790,4 +791,26 @@ class Utils {
        }
        return rscriptExe
    }
+   
+   static Pattern GROOVY_EXT = ~'\\.groovy$'
+   
+   /**
+    * Compute a nicely formatted stack trace, with groovy generated script names 
+    * replaced with corresponding bpipe script names 
+    * 
+    * @param t  Exception to format
+    * @return   String value of stack trace, nicely formatted
+    */
+    @CompileStatic
+    private static String prettyStackTrace(Throwable t) {
+        
+        Throwable sanitized = StackTraceUtils.deepSanitize(t)
+        StringWriter sw = new StringWriter()
+        sanitized.printStackTrace(new PrintWriter(sw))
+        String stackTrace = sw.toString()
+        Pipeline.scriptNames.each { fileName, internalName -> 
+            stackTrace = stackTrace.replaceAll(internalName, fileName.replaceAll(GROOVY_EXT,'')) 
+        }
+        return stackTrace
+    }
 }

@@ -478,7 +478,7 @@ class Runner {
         
         // A bit of a hack: the parsed script ends up with a class name like script123243242...
         // so search for that in the stack trace to find the line number
-        int lineNumber = e.stackTrace.find { it.className ==~ /script[0-9]{1,}/ }.lineNumber
+        int lineNumber = e.stackTrace.find { it.className ==~ /script[0-9]{1,}/ }?.lineNumber ?: -1
 
         println """
                     Pipeline Failed!
