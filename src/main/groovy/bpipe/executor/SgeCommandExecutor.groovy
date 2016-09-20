@@ -231,6 +231,10 @@ class SgeCommandExecutor implements CommandExecutor {
         if( !commandId ) {
             return CommandStatus.QUEUEING
         }
+        
+        if(!new File(jobDir,CMD_OUT_FILENAME).exists()) {
+            return CommandStatus.WAITING
+        }
 
         File resultExitFile = new File(jobDir, CMD_EXIT_FILENAME )
         if( !resultExitFile.exists() ) {
