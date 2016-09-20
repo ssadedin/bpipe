@@ -86,9 +86,9 @@ class Tail {
     static void showFailedCommands(File logFile) {
         
         // Open the most recent results file
-        def results = new File(".bpipe/results").listFiles().max { it.lastModified() }
+        def results = new File(".bpipe/results").listFiles()?.max { it.lastModified() }
         if(!results) {
-            println "\nNo Bpipe pipeline results were found in this directory.\n"
+            println "\nNo Bpipe pipeline results were found yet in this directory.\n"
             return
         }
         
