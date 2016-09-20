@@ -253,6 +253,7 @@ class SgeCommandExecutor implements CommandExecutor {
 
         int count=0
         File exitFile = new File( jobDir, CMD_EXIT_FILENAME )
+        log.info "SGE executor waiting for command $commandId, complete when file $exitFile exists"
         while( !stopped ) {
 
             if( exitFile.exists() ) {
@@ -269,7 +270,7 @@ class SgeCommandExecutor implements CommandExecutor {
                  */
                 Thread.sleep(500)
                 if( count++ < 10 ) { continue }
-                log.warn("Missing exit code value for command: '${id}'. Retuning -1 by default")
+                log.warning("Missing exit code value for command: '${id}'. Retuning -1 by default")
                 return -1
             }
 
