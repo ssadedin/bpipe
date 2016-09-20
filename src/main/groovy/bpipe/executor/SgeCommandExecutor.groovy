@@ -110,19 +110,21 @@ class SgeCommandExecutor implements CommandExecutor {
          * - o: define the file to which redirect the standard output
          * - e: define the file to which redirect the error output
          */
-        def startCmd = "qsub -V -notify -terse "
+        
+        def startCmd = "qsub -V -notify -terse ".tokenize(" ")
         
         // add other parameters (if any)
         if(config?.queue) {
-            startCmd += "-q ${config.queue} "
+            startCmd += ["-q", config.queue]
         }
         
-        if( config?.sge_request_options ) {
-            startCmd += config.sge_request_options + ' '
+        if(config.containsKey('sge_request_options') && config.sge_request_options) {
+            // todo: spaces in sge options?
+            startCmd += config.sge_request_options.tokenize(' ')
         }
         
-            // at the end append the command script wrapped file name
-            startCmd += "$jobDir/$CMD_SCRIPT_FILENAME"
+        // at the end append the command script wrapped file name
+        startCmd << "$jobDir/$CMD_SCRIPT_FILENAME".toString()
     
         /*
          * Create '.cmd.sh' wrapper used by the 'qsub' command
@@ -178,11 +180,14 @@ class SgeCommandExecutor implements CommandExecutor {
          */
         log.info "Starting command: '${startCmd}'"
 
-        ProcessBuilder pb = new ProcessBuilder("bash", "-c", startCmd)
+        ProcessBuilder pb = new ProcessBuilder(startCmd*.toString())
         Process p = pb.start()
         Utils.withStreams(p) {
             StringBuilder out = new StringBuilder()
             StringBuilder err = new StringBuilder()
+            
+            // Note: observed issue with hang here on Broad cluster
+            // seems to be related to hang inside OS / NFS call. Maybe use forwarder for this?
             p.waitForProcessOutput(out, err)
             int exitValue = p.waitFor()
             if(exitValue != 0) {
@@ -203,7 +208,7 @@ class SgeCommandExecutor implements CommandExecutor {
     }
 
 
-    void reportStartError(String cmd, def out, def err, int exitValue) {
+    void reportStartError(def cmd, def out, def err, int exitValue) {
         log.severe "Error starting custom command using command line: " + cmd
         System.err << "\nFailed to execute command using command line: $cmd\n\nReturned exit value $exitValue\n\nOutput:\n\n$out\n\n$err"
     }
