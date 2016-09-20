@@ -1,5 +1,6 @@
 package bpipe
 
+import java.util.regex.Pattern
 import java.util.zip.GZIPInputStream;
 
 import groovy.util.logging.Log;
@@ -42,12 +43,17 @@ class RegionSet implements Serializable {
             addSequence(s)
         }
     }
+    
+    private static Pattern LEADING_CHR = ~/^chr/
 
     /**
      * Read a tab separated file in the format provided by UCSC for genes
      * to infer a genome model as a set of regions.
+     * 
+     * @param stream                input stream to read from
+     * @param convertChromosomes    whether to strip 'chr' from chromosome names
      */
-    static RegionSet index(InputStream stream) {
+    static RegionSet index(InputStream stream, boolean convertChromosomes) {
 
         RegionSet g = new RegionSet()
         int count = 0
@@ -57,6 +63,10 @@ class RegionSet implements Serializable {
             List cols = line.split("\t")
             // println  "Gene name = " + cols[12] + " Chr = " + cols[2] + " tx start = " + cols[4] + " tx end = " + cols[5]
             String chr = cols[2]
+            
+            if(convertChromosomes)
+                chr = chr.replaceAll(LEADING_CHR, '')
+            
             Sequence s = g.sequences[chr]
             if(!s) {
                 s = new Sequence(name:chr)
@@ -257,6 +267,27 @@ class RegionSet implements Serializable {
 		// Combine the two smallest and add them back in as a single RegionSet
 		results.add(new RegionSet(smallest.sequences.values() + secondSmallest.sequences.values()))
 	}
+     
+    private static Pattern ALTERNATE_HAPLOTYPE_PATTERN = ~'.*_hap[0-9]*$'
+     
+    /**
+     * Remove all sequences that do not belong to a major chromosome.
+     * This is interpreted as:
+     * <ul>
+     *  <li>Starts with "Un"
+     *  <li>Ends with "random"
+     *  <li>Ends with "_hap[number]"
+     */
+    void removeMinorContigs() {
+        
+        Closure notMajorChromosome = { chr ->
+            chr.startsWith('Un_') ||
+            chr.endsWith('_random') || 
+            chr.matches(ALTERNATE_HAPLOTYPE_PATTERN)
+        }
+        
+        this.sequences = this.sequences.grep { !notMajorChromosome(it.key) }.collectEntries()
+    }
     
     long size() {
         // Note: we don't use built in sum() because of worry about int overflow

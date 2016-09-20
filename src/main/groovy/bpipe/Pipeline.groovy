@@ -978,40 +978,74 @@ public class Pipeline implements ResourceRequestor {
     }
     
     /**
+     * These genomes are automatically converted from UCSC format if specified.
+     * That is, we still download gene / genome definitions from UCSC in UCSC format,
+     * but strip off the 'chr' from sequence names. No liftover is performed.
+     */
+    static Map CONVERTED_GENOMES = [
+                                    'GRCh37' : 'hg19',
+                                    'GRCh38': 'hg38'
+                                   ] 
+    
+    static synchronized void genome(String name) {
+        genome(contigs:false, name)
+    }
+    
+    /**
      * Load the specified genome model into memory, possibly downloading it from UCSC
      * if necessary
      */
-    static synchronized void genome(String name) {
+    static synchronized void genome(Map options, String name) {
         File genomesDir = new File(System.getProperty("user.home"), ".bpipedb/genomes")
         if(!genomesDir.exists())
             if(!genomesDir.mkdirs())
                 throw new IOException("Unable to create directory to store genomes. Please check permissions for $genomesDir")
                 
-        
         // Construct a UCSC URL based on the given name and then download the genes from there
         File cachedGenome = new File(genomesDir, "${name}.ser.gz")
-        RegionSet genome
-        if(cachedGenome.exists()) {
-            log.info "Loading cached genome : $cachedGenome"
-            long startTimeMs = System.currentTimeMillis()
-            genome = RegionSet.load(cachedGenome) 
-            println "Finished loading genome $cachedGenome in ${System.currentTimeMillis() - startTimeMs} ms"
+        if(!cachedGenome.exists()) {
+            String ucscName = name
+            boolean convertChromosomes = false
+            if(name in CONVERTED_GENOMES) {
+                ucscName = CONVERTED_GENOMES[name]
+                convertChromosomes = true
+            }
             
-        } 
-        else {
-            String url = "http://hgdownload.soe.ucsc.edu/goldenPath/$name/database/ensGene.txt.gz"
+            String url = "http://hgdownload.soe.ucsc.edu/goldenPath/$ucscName/database/ensGene.txt.gz"
             log.info "Downloading genome from $url"
+            println "MSG: Downloading genome from $url"
             new URL(url).openStream().withStream { stream ->
-                genome = RegionSet.index(stream) 
+                genome = RegionSet.index(stream, convertChromosomes) 
                 genome.name = name
                 new FileOutputStream(cachedGenome).withStream { outStream ->
                     new ObjectOutputStream(outStream) << genome
                 }
             }
         }
-                
-        Pipeline.genomes[name] = genome
+        
+        Pipeline.genomes[name] = loadCachedGenome(cachedGenome, options.contig?true:false)
     }
+    
+    /**
+     * Load a genome from the given file, which should be a serialized RegionSet object.
+     * 
+     * @param cachedGenome  The file to load from
+     * @param loadContigs   If true, unassembled contigs will be included, otherwise only
+     *                      major chromosomes will be loaded.
+     * @return  A regionset containing the entire genome which can be referenced in the 
+     *          pipeline
+     */
+    static RegionSet loadCachedGenome(File cachedGenome, boolean loadContigs) {
+        log.info "Loading cached genome : $cachedGenome"
+        long startTimeMs = System.currentTimeMillis()
+        RegionSet genome = RegionSet.load(cachedGenome) 
+        if(!loadContigs) {
+            genome.removeMinorContigs()
+        }
+        println "Finished loading genome $cachedGenome in ${System.currentTimeMillis() - startTimeMs} ms"
+        return genome
+    }
+    
     
     /**
      * This method creates documentation for a pipeline based on the 

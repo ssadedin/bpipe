@@ -7,18 +7,23 @@ package bpipe
  */
 class RegionValue implements Serializable {
     
+    public static File REGIONS_DIR = new File(".bpipe/regions")
+    
     public static final long serialVersionUID = 0L
     
     String value
     
     def propertyMissing(String name) {
        if(name == "bed") {
-           def fn = new File(".bpipe",Utils.sha1(value)+".bed")
+           
+           if(!REGIONS_DIR.exists()) {
+               REGIONS_DIR.mkdirs()
+           }
+           
+           def fn = new File(REGIONS_DIR,Utils.sha1(value)+".bed")
            if(!fn.exists()) {
                
-               def regions = value.split(" ").collect {
-               }
-               
+               def regions = value.tokenize(" ")
                fn.text = value.replaceAll("-","\t").replaceAll(":","\t").split(" ").join("\n")
            }
            return fn.absolutePath
