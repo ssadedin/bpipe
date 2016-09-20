@@ -545,7 +545,7 @@ public class Pipeline implements ResourceRequestor {
                 aborted = true
             }
             catch(PipelineError e) {
-                log.info "Pipeline segment failed (2): " + e.message
+                log.info "Pipeline segment in thread ${Thread.currentThread().id} failed (2): " + e.message
 //                System.err << "Pipeline failed! (2) \n\n"+e.message << "\n\n"
                 
                 if(!e.summary) {
@@ -571,13 +571,13 @@ public class Pipeline implements ResourceRequestor {
                 // This is important to prevent the parent from allowing the pipeline to continue
                 // in the face of things like OutOfMemoryError etc.
                 failed = true 
-                log.severe "Internal error: " + e.toString()
+                log.severe "Internal error in thread ${Thread.currentThread().id}: " + e.toString()
                 System.err.println "Internal error: " + e.toString()
                 throw e
             }
         }
         finally {
-            log.info "Finished running segment for inputs $inputs"
+            log.info "Finished running segment in thread ${Thread.currentThread().id} for inputs $inputs"
             Concurrency.instance.unregisterResourceRequestor(this)
         }
     }

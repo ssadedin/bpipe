@@ -220,7 +220,7 @@ class Concurrency {
                   
                   int value = runningCount.decrementAndGet()
                   
-                  log.info "Decremented running count to $value in thread " + Thread.currentThread().name
+                  log.info "Decremented running count to $value in thread " + Thread.currentThread().id
                   
                   // Notify parent that will be waiting on this count
                   // for each decrement
@@ -352,7 +352,7 @@ class Concurrency {
         
        int amount = resourceUnit.amount
         
-       log.info "Thread " + Thread.currentThread().getName() + 
+       log.info "Thread " + Thread.currentThread().id + 
            " requesting for $amount concurrency permit(s) type $resourceUnit.key with " + resource.availablePermits() + " available"
            
        long startTimeMs = System.currentTimeMillis()
@@ -366,10 +366,10 @@ class Concurrency {
        
        long durationMs = startTimeMs - System.currentTimeMillis()
        if(durationMs > 1000) {
-           log.info "Thread " + Thread.currentThread().getName() + " blocked for $durationMs ms waiting for resource $resourceUnit.key amount(s) $amount"
+           log.info "Thread " + Thread.currentThread().id + " blocked for $durationMs ms waiting for resource $resourceUnit.key amount(s) $amount"
        }
        else
-           log.info "Thread " + Thread.currentThread().getName() + " acquired resource $resourceUnit.key in amount $amount"
+           log.info "Thread " + Thread.currentThread().id + " acquired resource $resourceUnit.key in amount $amount"
    }
 
    /**
@@ -425,10 +425,10 @@ class Concurrency {
             while(true) {
                tryAuction(resource, startTimeMs) 
                 if(request.allocated == null) {
-                    log.info "Thread ${Thread.currentThread().name} waiting for resource allocation ($resourceUnit)"
+                    log.info "Thread ${Thread.currentThread().id} waiting for resource allocation ($resourceUnit)"
                 }
                 else {
-                    log.info "Thread ${Thread.currentThread().name} allocated $request.allocated resources after " + (System.currentTimeMillis() - startTimeMs) + " ms"
+                    log.info "Thread ${Thread.currentThread().id} allocated $request.allocated resources after " + (System.currentTimeMillis() - startTimeMs) + " ms"
                     amount = request.allocated.amount
                     break
                 }
@@ -450,17 +450,18 @@ class Concurrency {
      * @return  true if an auction was held
      */
     boolean tryAuction(Semaphore resource, long startTimeMs) {
+        int maxThreads = Config.config.maxThreads
         int numBidders = registeredResourceRequestors.count { it.bidding }
-        int auctionThreshold = Math.min(numBidders, Config.config.maxThreads)
+        int auctionThreshold = Math.min(numBidders, maxThreads)
         
         if(resourceRequests.size() >= auctionThreshold) { 
-            log.info "Taking over resource allocation because requested/bidders = ${resourceRequests.size()} / $auctionThreshold"
+            log.info "Taking over resource allocation because requested/bidders = ${resourceRequests.size()} / min(numBidders=$numBidders,$maxThreads)=$auctionThreshold"
             this.allocateResources(resource)
             return true
         }        
         
         if(System.currentTimeMillis()-startTimeMs > AUCTION_TIMEOUT_MS) {
-            log.info "Assuming over resource allocation because requested/bidders = ${resourceRequests.size()} / $auctionThreshold"
+            log.info "Assuming over resource allocation / delayed bidders because requested/bidders = ${resourceRequests.size()} / min(numBidders=$numBidders,$maxThreads)=$auctionThreshold"
             this.allocateResources(resource)
             return true
         }
@@ -560,7 +561,7 @@ class Concurrency {
         }
         
        resource.release(resourceUnit.amount)
-       log.info "Thread " + Thread.currentThread().getName() + " releasing $resourceUnit.amount $resourceUnit.key"
+       log.info "Thread " + Thread.currentThread().id + " releasing $resourceUnit.amount $resourceUnit.key"
    }
    
    void setLimit(String resourceName, int amount) {
