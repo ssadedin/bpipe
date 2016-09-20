@@ -40,6 +40,13 @@ class ThrottledDelegatingCommandExecutor {
     
     @Delegate CommandExecutor commandExecutor
     
+    
+    /**
+     * This lock controls concurrency so that we do not try to launch too many concurrent jobs.
+     * On some scheduling systems this can cause failures in an of itself.
+     */
+    private static Object jobLaunchLock = new Object()
+    
     // Stored parameters that are cached from the original "start" command
     // and used when "waitFor" is called
     Map cfg
@@ -108,7 +115,13 @@ class ThrottledDelegatingCommandExecutor {
                 throw new bpipe.PipelineTestAbort("$msg\n\n                using $commandExecutor with config $cfg")
             }
         }
-        commandExecutor.start(cfg, this.command, outputDirectory, outputLog, errorLog)
+        
+        synchronized(jobLaunchLock) {
+            if(cfg.containsKey('jobLaunchSeparationMs')) {
+                Thread.sleep(cfg.jobLaunchSeparationMs)
+            }
+            commandExecutor.start(cfg, this.command, outputDirectory, outputLog, errorLog)
+        }
         
         this.command.save()
     }
