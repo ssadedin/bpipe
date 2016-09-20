@@ -213,8 +213,11 @@ class OutputMetaData implements Serializable {
         // todo: should use the LATER of these two!
         if(this.outputFile.exists())
             this.timestamp = outputFile.lastModified() // todo: performance
-        else
-            this.timestamp = Long.parseLong(p.timestamp)
+        else {
+            if(p.timestamp != null) {
+                this.timestamp = Long.parseLong(p.timestamp)
+            }
+        }
 
         // The properties file may have a cached version of the "canonical path" to the
         // output file. However this is an absolute path, so we can only use it if the
