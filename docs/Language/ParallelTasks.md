@@ -83,9 +83,28 @@ Bpipe.run {
 
 This would run 12 parallel stages, passing 'chr1' through to 'chr10' and 'chrX' and 'chrY' as the the `chr` variable to all the different stages.
 
+_Note_: Bpipe also makes available the `$region` variable. If no genome is declared (see below) Bpipe will emit a region in the form:
+`chrN:0-0` for statements inside the pipeline. Many tools accept this as meaning to include the entire chromosome. However if you declare a genome
+(see below) then Bpipe will omit a region that includes the entire chromosome with the correct range for that chromosome.
+
+### Alternative Genomes
+
+When parallelizing by chromosome the format of the reference sequence (eg: chromosome) can vary according to which
+underlying reference genome is used. The default configuration of Bpipe is that it uses the UCSC style convention
+of including 'chr' as a prefix before reference sequences. To omit this, as well as inform Bpipe about other aspects
+of the genomes, declare the genome you are using at the start of your pipeline:
+
+```
+genome 'GRCh37'
+```
+For genomes recognized by Bpipe that do not include the 'chr' prefix, Bpipe will use the correct style in 
+when evaluating the `$chr` and `$region` variable.
+
 ## Executing Multiple Stages Simultaneously on Different Data
 
-In the above examples each parallel stage received the same input files and operated on them together.  Sometimes however what you really want is to have each input file or groups of your input files processed independently through the same stage (or stages).   Bpipe calls this *input splitting* and gives you a concise and simple way to achieve it.
+In the above examples each parallel stage received the same input files and operated on them together.  Sometimes however what you really 
+want is to have each input file or groups of your input files processed independently through the same stage (or stages).   Bpipe calls 
+this *input splitting* and gives you a concise and simple way to achieve it.
 
 Suppose we have 10 input files and we want all 10 files named input_1.txt to input_10.txt to be processed at the same time.  Here is how it looks:
 ```groovy 
