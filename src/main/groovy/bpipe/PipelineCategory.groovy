@@ -328,9 +328,7 @@ class PipelineCategory {
                             child.branch = new Branch()
                             String branchName
                             if(chr instanceof Chr) {
-                                child.variables.chr = chr.name
-                                child.branch.name = chr.name
-                                child.branch.chr = chr.name
+                                initChildFromChr(child,chr.name)
                             }
                             else
                             if(chr instanceof RegionSet) {
@@ -366,6 +364,21 @@ class PipelineCategory {
         pipeline.joiners << multiplyImplementation
         
         return multiplyImplementation
+    }
+    
+    static void initChildFromChr(Pipeline child, String chrName) {
+        child.variables.chr = chrName
+        child.branch.name = chrName
+        child.branch.chr = chrName
+        if(Pipeline.defaultGenome) {
+            Map<String,Integer> chromSizes = Pipeline.genomeChromosomeSizes[Pipeline.defaultGenome]
+            log.info "Checking if chromosome sizes available for " + Pipeline.defaultGenome + " (chromSizes[$chrName]=${chromSizes[chrName]})"
+            if(chromSizes && chromSizes[chrName]) {
+                child.branch.region = chrName + ':0-' + chromSizes[chrName]
+                
+                log.info "Set child branch region for chr $chrName to $child.branch.region based on " + chromSizes[chrName]
+            }
+        }
     }
     
     static Object multiply(java.util.regex.Pattern pattern, List segments) {

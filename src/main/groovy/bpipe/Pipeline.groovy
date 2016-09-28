@@ -32,7 +32,8 @@ import groovy.transform.CompileStatic
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.lang.reflect.Method;
+import java.lang.reflect.Method
+import java.nio.file.Files;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import groovy.util.logging.Log;
@@ -41,6 +42,7 @@ import groovy.transform.CompileStatic;
 
 import java.util.logging.Level;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream
 
 import org.codehaus.groovy.reflection.CachedMethod;
 import org.codehaus.groovy.runtime.ReverseListIterator
@@ -408,12 +410,12 @@ public class Pipeline implements ResourceRequestor {
             
             if(o instanceof Range) {
                 for(r in o) {
-                    result << new Chr('chr'+r, cfg)
+                    result << new Chr(defaultGenomeChrPrefix+r, cfg)
                 }
             }
             else 
             if(o instanceof String || o instanceof Integer) {
-                result << new Chr('chr'+o, cfg)
+                result << new Chr(defaultGenomeChrPrefix+o, cfg)
             }
         }
         
@@ -933,6 +935,8 @@ public class Pipeline implements ResourceRequestor {
      */
     static Map<String,RegionSet> genomes = [:]
     
+    static Map<String, Map<String,Integer>> genomeChromosomeSizes = [:]
+    
     /**
      * Include pipeline stages from the specified path into the pipeline
      * @param path
@@ -987,6 +991,10 @@ public class Pipeline implements ResourceRequestor {
                                     'GRCh38': 'hg38'
                                    ] 
     
+    static String defaultGenome = 'hg19'
+    
+    static String defaultGenomeChrPrefix = 'chr'
+    
     static synchronized void genome(String name) {
         genome(contigs:false, name)
     }
@@ -1003,27 +1011,51 @@ public class Pipeline implements ResourceRequestor {
                 
         // Construct a UCSC URL based on the given name and then download the genes from there
         File cachedGenome = new File(genomesDir, "${name}.ser.gz")
+        File chromFile = new File(genomesDir,"chromInfo.${name}.txt")
+        
+        // Since we use UCSC as a data source we need to intelligently convert to a
+        // corresponding UCSC genome identifier as well as record wither 'chr' is
+        // prepended to chromosome symbols
+        String ucscName = name
+        boolean convertChromosomes = false
+        if(name in CONVERTED_GENOMES) {
+            ucscName = CONVERTED_GENOMES[name]
+            convertChromosomes = true
+            Pipeline.defaultGenomeChrPrefix = ''
+        }
+        else {
+            Pipeline.defaultGenomeChrPrefix = 'chr'
+        }
+        
         if(!cachedGenome.exists()) {
-            String ucscName = name
-            boolean convertChromosomes = false
-            if(name in CONVERTED_GENOMES) {
-                ucscName = CONVERTED_GENOMES[name]
-                convertChromosomes = true
-            }
-            
             String url = "http://hgdownload.soe.ucsc.edu/goldenPath/$ucscName/database/ensGene.txt.gz"
-            log.info "Downloading genome from $url"
+            log.info "Downloading ensembl gene database from $url"
             println "MSG: Downloading genome from $url"
             new URL(url).openStream().withStream { stream ->
-                genome = RegionSet.index(stream, convertChromosomes) 
+                RegionSet genome = RegionSet.index(stream, convertChromosomes) 
                 genome.name = name
                 new FileOutputStream(cachedGenome).withStream { outStream ->
                     new ObjectOutputStream(outStream) << genome
                 }
             }
+            
+            // Download chromosome sizes for specified genome
+            url = "http://hgdownload.soe.ucsc.edu/goldenPath/$ucscName/database/chromInfo.txt.gz"
+            log.info "Downloading chromosome sizes from $url"
+            println "MSG: Downloading chromosome sizes from $url"
+            new GZIPInputStream(new URL(url).openStream()).withStream { stream ->
+                chromFile.withOutputStream { outStream ->
+                    Files.copy(stream,outStream)
+                }
+            }
         }
         
         Pipeline.genomes[name] = loadCachedGenome(cachedGenome, options.contig?true:false)
+        
+        Pipeline.genomeChromosomeSizes[name] = 
+            chromFile.readLines()*.tokenize('\t').collectEntries { [ convertChromosomes ? it[0].replaceAll('^chr','') :  it[0], it[1].toInteger() ]}
+        
+        Pipeline.defaultGenome = name
     }
     
     /**
