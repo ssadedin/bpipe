@@ -30,6 +30,7 @@ import groovyx.gpars.GParsPool
 import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
 import java.nio.file.Path
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * A node in the dependency graph representing a set of outputs
@@ -41,6 +42,18 @@ import java.nio.file.Path
 class GraphEntry implements Serializable {
     
     public static final long serialVersionUID = 0L
+    
+    /**
+     * Optional lock - if lock is non-null, this class will lock read operations
+     * using the read lock for the lock provided. The idea is that you can set
+     * a lock on the top level (root) entry, while leaving lower entries unlocked
+     * 
+     * NOT CURRENTLY USED - because I'm worried about the overhead of the 
+     * locking occuring at fine grained level that will happen if locks are acquired
+     * and released for each method call. Trying out locking at higher level to see
+     * how easy it is to contain things there.
+     */
+    ReentrantReadWriteLock lock = null
     
     /**
      * The outputs that this node represents. In practise, each graph entry corresponds to 
@@ -157,7 +170,21 @@ class GraphEntry implements Serializable {
     OutputMetaData propertiesFor(String outputFile) { 
        // In case of non-default output directory, the outputFile itself may be in a directory
        String outputFilePath = Utils.canonicalFileFor(outputFile).path
-       def values = entryForCanonicalPath(outputFilePath)?.values
+       
+       List<OutputMetaData> values 
+       if(this.lock != null) {
+           this.lock.readLock().lock()
+           try {
+               values = entryForCanonicalPath(outputFilePath)?.values
+           }
+           finally{
+               this.lock.readLock().unlock()
+           }
+       }
+       else {
+           values = entryForCanonicalPath(outputFilePath)?.values
+       }
+       
        if(!values)
            return null
            
@@ -307,6 +334,8 @@ class Dependencies {
      */
     final static File OUTPUT_GRAPH_CACHE_FILE = new File(".bpipe/outputs/outputGraph2.ser")
     
+    ReentrantReadWriteLock outputGraphLock = new ReentrantReadWriteLock()
+    
     GraphEntry outputGraph
     
     /**
@@ -355,22 +384,29 @@ class Dependencies {
         
         GraphEntry graph = this.getOutputGraph()
         
-        def outDated = older.collect { it.canonicalPath }.grep { out ->
-             def p = graph.propertiesFor(out); 
-             if(!p || !p.cleaned)  {
-                 if(!p)
-                     log.info "Output properties file is not available for $out: assume NOT cleaned up"
-                 else
-                     log.info "Output properties are available, indicating file was NOT cleaned up"
-                     
-                 return true 
-             }
-             else {
-                 log.info "File $out has output properties available: upToDate=$p.upToDate"
-                 return !p.upToDate
-             }
+        def outDated 
+        outputGraphLock.readLock().lock()
+        try {
+            outDated = older.collect { it.canonicalPath }.grep { out ->
+                 def p = graph.propertiesFor(out); 
+                 if(!p || !p.cleaned)  {
+                     if(!p)
+                         log.info "Output properties file is not available for $out: assume NOT cleaned up"
+                     else
+                         log.info "Output properties are available, indicating file was NOT cleaned up"
+                         
+                     return true 
+                 }
+                 else {
+                     log.info "File $out has output properties available: upToDate=$p.upToDate"
+                     return !p.upToDate
+                 }
+            }
         }
-        
+        finally {
+            outputGraphLock.readLock().unlock()
+        }
+            
         if(!outDated) {
             log.info "All missing files are up to date"
             return true
@@ -391,21 +427,26 @@ class Dependencies {
      */
     void checkFiles(def fileNames, Aliases aliases, type="input") {
         
-        log.info "Checking $type (s) " + fileNames
+        List<String> boxedInputs = Utils.box(fileNames).grep { String.valueOf(it) != "null" }
+        
+        log.info "Checking ${boxedInputs.size()} $type (s) " + fileNames
         
         GraphEntry graph = this.getOutputGraph()
-        List missing = Utils.box(fileNames).grep { String.valueOf(it) != "null" }.collect { new File(aliases[it.toString()]) }.grep { File f ->
-            
-            log.info " Checking file $f"
+        
+        List<File> inputFiles = boxedInputs.collect { new File(aliases[it.toString()]) }
+        
+        Closure checkInput = { File f ->
+                
+            log.info "Checking file $f"
             if(Utils.fileExists(f))
                 return false // not missing
-                
+                    
             OutputMetaData p = graph.propertiesFor(f.path)
             if(!p) {
                 log.info "There are no properties for $f.path and file is missing"
                 return true
             }
-            
+                
             if(p.cleaned) {
                 log.info "File $f.path [$type] does not exist but has a properties file indicating it was cleaned up"
                 return false
@@ -415,9 +456,24 @@ class Dependencies {
                 return true
             }
         }
-       
-        if(missing)
-            throw new PipelineError("Expected $type file ${missing[0]} could not be found")
+        
+        outputGraphLock.readLock().lock()
+        try { 
+            List missing
+            if(inputFiles.size()>40) {
+                log.info "Using parallelized file check for checking ${inputFiles.size()} inputs ..."
+                int concurrency = (Config.userConfig?.outputScanConcurrency)?:5
+                missing = GParsPool.withPool(concurrency) { inputFiles.grepParallel(checkInput) }
+            }
+            else {
+                missing = inputFiles.grep(checkInput)
+            }
+            if(missing)
+                throw new PipelineError("Expected $type file ${missing[0]} could not be found")
+        }
+        finally {
+            outputGraphLock.readLock().unlock()
+        }
     }
     
     synchronized saveOutputGraphCache() {
@@ -567,9 +623,13 @@ class Dependencies {
         
         // If there is a cached outputgraph, update it
         if(outputGraph != null) {
-            synchronized(outputGraph) {
+            outputGraphLock.writeLock().lock()
+            try {
                 log.info "Adding file $p.outputPath to output graph"
                 computeOutputGraph([p], outputGraph, outputGraph, [],false)
+            }
+            finally {
+                outputGraphLock.writeLock().unlock()
             }
         }
     }
@@ -1079,5 +1139,15 @@ class Dependencies {
             }
         }
         return result
+    }
+    
+    public withOutputGraph(Closure c) {
+        this.outputGraphLock.readLock().lock()
+        try {
+            c(this.outputGraph) 
+        }
+        finally {
+            this.outputGraphLock.readLock().unlock()
+        }
     }
 }

@@ -2290,9 +2290,11 @@ class PipelineContext {
 //                OutputMetaData resultProps = props.find { (it.outputFile.name == result.name) && (GraphEntry.canonicalPathFor(it) == result.canonicalPath) }
                 
                 GraphEntry graph = Dependencies.instance.outputGraph
-                
+                Lock lock = Dependencies.instance.outputGraphLock.readLock()
                 OutputMetaData resultProps 
-                synchronized(graph) {
+                
+                lock.lock()
+                try {
                     GraphEntry resultEntry = graph.entryFor(result)
                     if(!resultEntry) {
                         log.warning("Unable to find output graph entry for output file $result. Will not clean up this file.")
@@ -2300,6 +2302,9 @@ class PipelineContext {
                     }
                     
                    resultProps = resultEntry.values.find { it.outputPath = result.path }
+                }
+                finally {
+                    lock.unlock()
                 }
                 
                 if(resultProps == null) {
