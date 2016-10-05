@@ -28,6 +28,8 @@ package bpipe
 import groovy.util.logging.Log;
 import groovy.xml.MarkupBuilder
 
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Matcher
 import java.util.regex.Pattern;
 
