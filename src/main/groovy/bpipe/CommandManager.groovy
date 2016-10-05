@@ -242,7 +242,7 @@ class CommandManager {
                 }
             }
             catch(PipelineError e) {
-              System.err.println("Failed to stop command: $exec.\n\n${Utils.indent(e.message)}\n\nThe job may already be stopped; use 'bpipe cleancommands' to clear old commands.")      
+              System.err.println("Failed to stop command: $cmd.id\n\n${Utils.indent(e.message)}\n\nThe job may already be stopped; use 'bpipe cleancommands' to clear old commands.")      
             }
             catch(Throwable t) {
               System.err.println("An unexpected error occured while stopping command: $exec.\n\n${Utils.indent(t.message)}\n\nThe job may already be stopped; use 'bpipe cleancommands' to clear old commands.")      
@@ -330,16 +330,20 @@ class CommandManager {
     }
     
     public static List<Command> getCurrentCommands() {
+        File commandsDir = new File(DEFAULT_COMMAND_DIR)
+        List<String> statuses = [CommandStatus.RUNNING, CommandStatus.QUEUEING, CommandStatus.WAITING]*.name()
+        getCommands(commandsDir, statuses)
+    }
+    
+    public static List<Command> getCommands(File commandsDir, List<String> statuses = null) {
         
         List<Command> result = []
         
-        File commandsDir = new File(DEFAULT_COMMAND_DIR)
         if(!commandsDir.exists()) {
             log.info "No commands directory exists: empty status results"
             return result
         }
         
-        List<String> statuses = [CommandStatus.RUNNING, CommandStatus.QUEUEING, CommandStatus.WAITING]*.name()
         commandsDir.eachFileMatch(~/[0-9]+/) { File f ->
             log.info "Loading command info from $f.absolutePath"
             CommandExecutor cmdExec
@@ -363,7 +367,7 @@ class CommandManager {
                     }
                     
                     // Update the status
-                    if(status in statuses) {
+                    if((statuses != null) && (status in statuses)) {
                         cmd.status = CommandStatus.valueOf(status)
                         result.add(cmd) 
                     }

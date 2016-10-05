@@ -35,6 +35,42 @@ class StatusCommand {
     
     void execute(def args) {
         
+        CliBuilder cli = new CliBuilder()
+        cli.with {
+            's' 'Show summary of commands', longOpt:'summary', args: 0
+        }
+        
+        def opts= cli.parse(args)
+        if(opts.s) {
+            
+            println ""
+            println "Analyzing executed commands ...."
+            println ""
+            List<Command> commands = CommandManager.getCurrentCommands()
+            
+            commands += CommandManager.getCommands(new File(CommandManager.DEFAULT_EXECUTED_DIR))
+            
+            Map<CommandStatus,Command> grouped = commands.groupBy {
+                it.status
+            }
+            
+            println "-" * Config.config.columns
+            
+            println "Waiting: ".padRight(12) + String.valueOf(grouped[CommandStatus.WAITING]?.size()?:0).padLeft(8)
+            println "Running: ".padRight(12) + String.valueOf(grouped[CommandStatus.RUNNING]?.size()?:0).padLeft(8)
+            println "Completed: ".padRight(12) + String.valueOf(grouped[CommandStatus.COMPLETE]?.size()?:0).padLeft(8)
+            println "Failed: ".padRight(12) + String.valueOf(commands.count { it.exitCode != 0 }).padLeft(8)
+            
+            println "-" * Config.config.columns
+        }
+        else {
+            showCurrent()
+        }
+    
+    }
+    
+    void showCurrent() {
+        
         // List all the commands in the commands folder
         List<Command> commands = CommandManager.getCurrentCommands()
         
