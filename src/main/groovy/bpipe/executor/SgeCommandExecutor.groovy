@@ -179,27 +179,18 @@ class SgeCommandExecutor implements CommandExecutor {
          * prepare the command to invoke
          */
         log.info "Starting command: '${startCmd}'"
-
-        ProcessBuilder pb = new ProcessBuilder(startCmd*.toString())
-        Process p = pb.start()
-        Utils.withStreams(p) {
-            StringBuilder out = new StringBuilder()
-            StringBuilder err = new StringBuilder()
-            
-            // Note: observed issue with hang here on Broad cluster
-            // seems to be related to hang inside OS / NFS call. Maybe use forwarder for this?
-            p.waitForProcessOutput(out, err)
-            int exitValue = p.waitFor()
-            if(exitValue != 0) {
-                reportStartError(startCmd, out,err,exitValue)
-                throw new PipelineError("Failed to start command:\n\n$cmd")
-            }
-            this.commandId = out.toString().trim()
-            if(this.commandId.isEmpty())
-                throw new PipelineError("Job runner ${this.class.name} failed to return a job id despite reporting success exit code for command:\n\n$startCmd\n\nRaw output was:[" + out.toString() + "]")
-
-            log.info "Started command with id $commandId"
+        
+        Map<String,Object> startResult = Utils.executeCommand(startCmd)
+        
+        if(startResult.exitValue != 0) {
+            reportStartError(startCmd, startResult.out,startResult.err,startResult.exitValue)
+            throw new PipelineError("Failed to start command:\n\n$cmd")
         }
+        this.commandId = startResult.out.toString().trim()
+        if(this.commandId.isEmpty())
+            throw new PipelineError("Job runner ${this.class.name} failed to return a job id despite reporting success exit code for command:\n\n$startCmd\n\nRaw output was:[" + out.toString() + "]")
+
+        log.info "Started command with id $commandId"
 
         // After starting the process, we launch a background thread that waits for the error
         // and output files to appear and then forward those inputs

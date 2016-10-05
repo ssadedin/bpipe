@@ -813,4 +813,30 @@ class Utils {
         }
         return stackTrace
     }
+    
+    /**
+     * Execute the given command and return back a map with the exit code,
+     * the standard output, and std err 
+     * 
+     * @param startCmd  List of objects (will be converted to strings) as args to command
+     * @return Map with exitValue, err and out keys
+     */
+    static Map<String,Object> executeCommand(List<Object> startCmd) {
+        ProcessBuilder pb = new ProcessBuilder(startCmd*.toString())
+        Process p = pb.start()
+        Map result = [:]
+        Utils.withStreams(p) {
+            StringBuilder out = new StringBuilder()
+            StringBuilder err = new StringBuilder()
+            
+            // Note: observed issue with hang here on Broad cluster
+            // seems to be related to hang inside OS / NFS call. Maybe use forwarder for this?
+            p.waitForProcessOutput(out, err)
+            
+            result.exitValue = p.waitFor()
+            result.err = err
+            result.out = out
+        }        
+        return result
+    }
 }
