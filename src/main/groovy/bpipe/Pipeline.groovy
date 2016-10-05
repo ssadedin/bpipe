@@ -991,7 +991,7 @@ public class Pipeline implements ResourceRequestor {
                                     'GRCh38': 'hg38'
                                    ] 
     
-    static String defaultGenome = 'hg19'
+    static String defaultGenome = null
     
     static String defaultGenomeChrPrefix = 'chr'
     
@@ -1414,7 +1414,6 @@ public class Pipeline implements ResourceRequestor {
         return result
     }
     
-    
     List<String> getUnappliedBranchNames() {
         if(nameApplied)
             return []
@@ -1427,4 +1426,5 @@ public class Pipeline implements ResourceRequestor {
         }
         return branches
     }
+    
 }
