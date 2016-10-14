@@ -65,15 +65,9 @@ class SgeCommandExecutor implements CommandExecutor {
     /** Command object - only used for updating status */
     Command command
 
-    private static String CMD_EXIT_FILENAME = "cmd.exit"
-
     private static String CMD_FILENAME = "cmd_run.sh"
     
     private static String CMD_SCRIPT_FILENAME = "cmd.sh"
-
-    private static String CMD_OUT_FILENAME = "cmd.out"
-
-    private static String CMD_ERR_FILENAME = "cmd.err"
 
     /**
      * Start the execution of the command in the SGE environment.
@@ -198,7 +192,6 @@ class SgeCommandExecutor implements CommandExecutor {
         forward("$jobDir/$CMD_ERR_FILENAME", errorLog)
     }
 
-
     void reportStartError(def cmd, def out, def err, int exitValue) {
         log.severe "Error starting custom command using command line: " + cmd
         System.err << "\nFailed to execute command using command line: $cmd\n\nReturned exit value $exitValue\n\nOutput:\n\n$out\n\n$err"
@@ -228,11 +221,60 @@ class SgeCommandExecutor implements CommandExecutor {
         }
 
         File resultExitFile = new File(jobDir, CMD_EXIT_FILENAME )
-        if( !resultExitFile.exists() ) {
-            return CommandStatus.RUNNING
+        if(!resultExitFile.exists() ) {
+            
+            // try to probe actual state of command
+            CommandStatus newStatus = probeStatus()
+            return newStatus
         }
 
         return CommandStatus.COMPLETE
+    }
+    
+    CommandStatus probeStatus() {
+        
+        List probeCommand = ["qstat","-j", commandId]
+        
+        log.info "Probing state of command $commandId using command $probeCommand"
+        
+        Map probeResult = Utils.executeCommand(probeCommand)
+        if(probeResult.exitValue != 0) {
+            
+            String err = String.valueOf(probeResult.err)
+            if(err.contains("do not exist")) {
+                log.info "Probe for status of command $commandId returned non-zero exit code with message: '$err'. command is likely finished"
+                return CommandStatus.COMPLETE
+            }
+            else {
+                println "Probe for job $commandId returned error code $probeResult.exitValue with message $err."
+                return CommandStatus.UNKNOWN
+            }
+        }
+        
+        try {
+            String state = probeResult.out.toString().readLines().grep { it.startsWith('job_state') }[0].tokenize(' ')[-1]
+            
+            switch(state) {
+                case 'r':
+                    return CommandStatus.RUNNING
+                    
+                case 'dr':
+                case 'd':
+                case 'c':
+                    return CommandStatus.COMPLETE
+                    
+                default:
+                    println "Unrecognized command state: " + state
+                    return CommandStatus.UNKNOWN
+            }
+        }
+        catch(Exception e) {
+            println "Unrecognized format for qstat output in status probe for command $commandId (see log for output)"
+            log.info "Received unexpected output from qstat\n: $probeResult"
+            return CommandStatus.UNKNOWN
+        }
+        
+        return probeResult
     }
 
     /**

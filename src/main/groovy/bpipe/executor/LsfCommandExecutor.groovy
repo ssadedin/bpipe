@@ -66,15 +66,9 @@ class LsfCommandExecutor implements CommandExecutor {
     
     private transient Command command
 	
-	private static String CMD_EXIT_FILENAME = "cmd.exit"
-	
 	private static String CMD_SCRIPT_FILENAME = "cmd.sh"
 
-    private static String CMD_OUT_FILENAME = "cmd.out"
-
     private static String CMD_LSF_OUT_FILENAME = "cmd.lsf.out"
-
-    private static String CMD_ERR_FILENAME = "cmd.err"
 
 	/**
 	 * Start the execution of the command in the LSF environment.

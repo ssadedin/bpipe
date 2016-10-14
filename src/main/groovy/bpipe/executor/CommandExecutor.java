@@ -50,6 +50,21 @@ import bpipe.Command;
  */
 public interface CommandExecutor extends Serializable {
     
+    /**
+     * Convenience constant for executors that need to capture output by forwarding to a file
+     */
+    static String CMD_OUT_FILENAME = "cmd.out";
+
+    /**
+     * Convenience constant for executors that need to capture output by forwarding to a file
+     */
+    static String CMD_ERR_FILENAME = "cmd.err";
+    
+    /**
+     * Convenience constant for executors that need to capture exit code to a file
+     */
+    static String CMD_EXIT_FILENAME = "cmd.exit";
+
     void start(Map cfg, Command cmd, File outputDirectory, Appendable outputLog, Appendable errorLog);
     
     String status();

@@ -26,10 +26,14 @@
 package bpipe.executor
 
 import groovy.util.logging.Log
+
+import java.lang.ProcessBuilder.Redirect;
+
 import bpipe.Command;
 import bpipe.OutputLog;
 import bpipe.Utils
-import bpipe.CommandStatus;
+import bpipe.CommandStatus
+import bpipe.ForwardHost;
 import bpipe.CommandManager;
 
 /**
@@ -39,6 +43,7 @@ import bpipe.CommandManager;
  * @author simon.sadedin@mcri.edu.au
  */
 @Log
+@Mixin(ForwardHost)
 class LocalCommandExecutor implements CommandExecutor {
     
     public static final long serialVersionUID = 0L
@@ -65,6 +70,8 @@ class LocalCommandExecutor implements CommandExecutor {
      */
     boolean destroyed = false
     
+    String jobDir
+    
     LocalCommandExecutor() {
     }
     
@@ -88,29 +95,49 @@ class LocalCommandExecutor implements CommandExecutor {
               log.info "Converted $origCmd to $cmd to account for broken Java argument escaping"
           }
           
+          // Create the job directory
+          this.id = command.id.toInteger()
+          this.jobDir = ".bpipe/commandtmp/$id"
+          new File(jobDir).mkdirs()
+          
+          // Build the command line with preamble and postamble content
           List commandLines = []
           
           // Write out the pid to file
           commandLines << "echo \$\$ > ${CommandManager.DEFAULT_COMMAND_DIR}/${command.id}.pid;"
           
-          if(cfg.use) 
-              commandLines << "use $cfg.use;"
+          if('use' in cfg)  {
+              if('use_prefix' in cfg)
+                  commandLines << cfg.use_prefix
+              
+              commandLines << "use $cfg.use || true;" // added || true because it fails when packages already loaded
+          }
           
           if(cfg.modules)
               commandLines << "module load $cfg.modules"
           
           commandLines << cmd
+          commandLines << ""
+          commandLines << "echo -n \$? > $jobDir/${CMD_EXIT_FILENAME}.tmp; mv $jobDir/${CMD_EXIT_FILENAME}.tmp $jobDir/${CMD_EXIT_FILENAME}"
           
           this.runningCommand = cmd
           this.startedAt = new Date()
-          process = Runtime.getRuntime().exec((String[])(['bash','-e','-c',commandLines.join('\n')].toArray()))
+//          process = Runtime.getRuntime().exec((String[])(['bash','-e','-c',commandLines.join('\n')].toArray()))
+          
+          String joinedCmd = commandLines.join('\n')
+          ProcessBuilder pb = new ProcessBuilder(['bash','-e','-c',joinedCmd])
+          pb.redirectOutput(Redirect.to(new File(jobDir, CMD_OUT_FILENAME)))
+          pb.redirectError(Redirect.to(new File(jobDir, CMD_ERR_FILENAME)))
+          
+          forward("$jobDir/$CMD_OUT_FILENAME", outputLog)
+          forward("$jobDir/$CMD_ERR_FILENAME", errorLog)
+          
+          process = pb.start()
+          
           command.status = CommandStatus.RUNNING.name()
           command.startTimeMs = System.currentTimeMillis()
-          this.id = command.id.toInteger()
           command.save()
-
-          Thread t1 = process.consumeProcessOutputStream(outputLog);
-          Thread t2 = process.consumeProcessErrorStream(errorLog)
+          
           exitValue = process.waitFor()
 
           // Make sure to wait until the output streams are actually closed
@@ -157,10 +184,18 @@ class LocalCommandExecutor implements CommandExecutor {
                         return CommandStatus.RUNNING.name()
                     }
                 }
+                
+                // Not found? look at exit code if we can
+                Integer storedExitCode = readStoredExitCode()
+                if(storedExitCode != null) {
+                    exitValue = storedExitCode
+                    return CommandStatus.COMPLETE
+                }
             }
             catch(Exception e) {
-                
+                log.info "Exception occurred while probing status of command $id: $e"
             }
+            
             return CommandStatus.UNKNOWN
         }
         else
@@ -176,12 +211,33 @@ class LocalCommandExecutor implements CommandExecutor {
      * @return
      */
     int waitFor() {
+        
+        if(!this.process && this.pid != -1L) {
+            Integer exitCode =  readStoredExitCode()
+            if(exitCode != null) {
+                this.exitValue = exitCode
+                return exitValue
+            }
+        }
+        
         while(true) {
             if(status() == CommandStatus.COMPLETE.name())
                 return exitValue
              synchronized(this) {
                  this.wait(500)
              }
+        }
+    }
+    
+    Integer readStoredExitCode() {
+        File exitFile = new File(".bpipe/commandtmp/$id/$CMD_EXIT_FILENAME")
+        if(exitFile.exists()) {
+            log.info "Exit file $exitFile exists: reading exit code"
+            return exitFile.text.trim().toInteger()
+        }
+        else {
+            log.info "Exit file $exitFile does not exist yet"
+            return null
         }
     }
     
@@ -198,10 +254,16 @@ class LocalCommandExecutor implements CommandExecutor {
         // the children any more (a bug)
     }
     
+    @Override
     void cleanup() {
+        
+        log.info "Cleanup command $id"
+        
+        this.stopForwarding()
     }
     
     String statusMessage() {
         "$runningCommand, running since $startedAt (local command, pid=$pid)"
     }
+    
 }

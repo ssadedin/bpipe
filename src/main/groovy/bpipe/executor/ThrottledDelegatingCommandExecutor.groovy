@@ -14,7 +14,7 @@ import bpipe.ResourceUnit;
  * @author ssadedin
  */
 @Log
-class ThrottledDelegatingCommandExecutor {
+class ThrottledDelegatingCommandExecutor implements CommandExecutor {
     
     public static final long serialVersionUID = 4057750835163512598L
     
