@@ -1009,8 +1009,16 @@ class PipelineContext {
           }
         }
         
+        List boxedOutputs = Utils.box(this.@output)
+        
+        // If resuming, the command may actually be running
+        // In that case we want to wait for it and then skip if it executed
+        if(Config.config.mode == "resume") {
+            doExecute = waitForResumableOutputs(boxedOutputs)
+        }
+        
         if(doExecute) {
-            if(Utils.box(this.@output)) {
+            if(boxedOutputs) {
                 this.output = Utils.box(fixedOutputs) +  Utils.box(this.@output).grep { ! (it in fixedOutputs) }
                 this.output.removeAll { it in replacedOutputs  || toOutputFolder(it) in replacedOutputs}
             }
@@ -1679,16 +1687,7 @@ class PipelineContext {
       }
       else
       if(Dependencies.instance.checkUpToDate(checkOutputs,actualResolvedInputs)) {
-          String message
-          if(this.@input)
-              message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " due to inferred outputs $checkOutputs newer than inputs ${this.@input}"
-          else
-              message = "Skipping command " + Utils.truncnl(joined, 30).trim() + " because outputs $checkOutputs already exist (no inputs referenced)"
-          
-          log.info message
-          msg message
-          
-          return new Command(executor:new ProbeCommandExecutor())
+          return createUpToDateExecutor(command, checkOutputs)
       }
           
       // Reset the inferred outputs - once they are used the user should have to refer to them
@@ -1733,6 +1732,68 @@ class PipelineContext {
       }
     }
     
+    /**
+     * Create an executor for the command given its outputs appear newer than its 
+     * input. The executor may be a probe or the original executor if resume is
+     * specified.
+     * 
+     * @param m
+     */
+    Command createUpToDateExecutor(Command command, List checkOutputs) {
+      // If resuming, the input may be up to date but still in process of being created
+      if(Config.config.mode == "resume") {
+          if(waitForResumableOutputs(checkOutputs)) {
+              return new Command(executor:new ProbeCommandExecutor())
+          }
+      }
+          
+      String message
+      if(this.@input)
+          message = "Skipping command " + Utils.truncnl(command.command, 30).trim() + " due to inferred outputs $checkOutputs newer than inputs ${this.@input}"
+      else
+          message = "Skipping command " + Utils.truncnl(command.command, 30).trim() + " because outputs $checkOutputs already exist (no inputs referenced)"
+          
+      log.info message
+      msg message
+          
+      return new Command(executor:new ProbeCommandExecutor())
+    }
+    
+    /**
+     * Check if any of the given outputs are currently being created and if so,
+     * waits for their process to finish and throws an error if it fails.
+     * 
+     */
+    boolean waitForResumableOutputs(List boxedOutputs) {
+        List<String> boxedOutputPaths = boxedOutputs*.toString()
+        List<Command> commandsForMyOutputs = Runner.runningCommands.grep { cmd -> cmd.outputs?.any { it in boxedOutputPaths } }
+        if(!commandsForMyOutputs.isEmpty()) {
+            log.info "Resume will wait for commands ${commandsForMyOutputs*.id} that produce files overlapping with outputs $boxedOutputPaths"
+                
+            for(Command waitCommand in commandsForMyOutputs) {
+                msg "Resuming command ${waitCommand.id} in stage $stageName to create ${boxedOutputPaths.join(',')} ..."
+                outputLog.flush()
+                
+                CommandStatus waitCommandStatus = waitCommand.executor.status()
+                if(waitCommandStatus == CommandStatus.RUNNING) {
+                    // NOTE: race condition - command could finish right here - what to do?
+                    waitCommand.exitCode = waitCommand.executor.waitFor()
+                    this.commandManager.cleanup(waitCommand.id)
+                    if(waitCommand.exitCode != 0) {
+                        throw new PipelineError("Resumed command $waitCommand.id failed with error $waitCommand.exitCode:\n\n$waitCommand.command")
+                    }
+                }
+                else {
+                    log.info "Command $waitCommand.id in state $waitCommandStatus != RUNNING at time of wait: assume completed."
+                }
+            }
+            return true
+        }
+        else {
+            log.info "No running commands overlap outputs for stage $stageName"
+            return false
+        }
+    }
     
     /**
      * Write a message to the output of the current stage

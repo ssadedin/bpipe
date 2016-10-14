@@ -506,7 +506,10 @@ class Dependencies {
         if(this.outputGraph == null) {
             List<OutputMetaData> outputMetaDataFiles = scanOutputFolder()
             if(outputMetaDataFiles.isEmpty()) {
-                def inps = Pipeline.rootPipeline.stages[0].context.@input
+                def inps = Pipeline.rootPipeline?.stages?.getAt(0)?.context?.@input
+                if(inps == null)
+                    inps = []
+                
                 outputMetaDataFiles = Utils.box(inps).collect { inputFile ->
                     String inputFileValue = String.valueOf(inputFile)
                     OutputMetaData omd = new OutputMetaData(inputFileValue)

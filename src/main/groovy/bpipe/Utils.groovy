@@ -822,7 +822,12 @@ class Utils {
      * @return Map with exitValue, err and out keys
      */
     static Map<String,Object> executeCommand(List<Object> startCmd) {
-        ProcessBuilder pb = new ProcessBuilder(startCmd*.toString())
+        
+        List<String> stringified = startCmd*.toString()
+        
+        log.info "Executing command: " + stringified.join(' ')
+        
+        ProcessBuilder pb = new ProcessBuilder(stringified)
         Process p = pb.start()
         Map result = [:]
         Utils.withStreams(p) {

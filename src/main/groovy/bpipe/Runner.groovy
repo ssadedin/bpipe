@@ -62,10 +62,13 @@ class Runner {
     final static String canonicalRunDirectory = new File(runDirectory).canonicalPath
     
     final static ParamsBinding binding = new ParamsBinding()
+    
+    static List<Command> runningCommands = null
 	
     final static String DEFAULT_HELP = """
         bpipe [run|test|debug|execute] [options] <pipeline> <in1> <in2>...
               retry [test]
+              resume
               stop
               history 
               log
@@ -225,12 +228,17 @@ class Runner {
         } 
         else {
             
-            if(mode == "retry") {
+            if(mode == "retry" || mode == "resume") {
+                
+                if(mode == "resume")
+                    runningCommands = CommandManager.getCurrentCommands()
+                
                 // Substitute arguments from prior command 
                 // to re-run it
                 def retryInfo = parseRetryArgs(args)
                 args = retryInfo[1]
                 mode = retryInfo[0]
+                Config.config["mode"] = mode
             }
             
             cli = runCli

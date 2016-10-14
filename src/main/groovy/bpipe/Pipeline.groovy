@@ -497,7 +497,7 @@ public class Pipeline implements ResourceRequestor {
         pipeline.joiners += segmentJoiners
 
         def mode = Config.config.mode 
-        if(mode == "run" || mode == "documentation" || mode == "register") // todo: documentation should be its own mode! but can't support that right now
+        if(mode in ["run","documentation","register","resume"]) // todo: documentation should be its own mode! but can't support that right now
             pipeline.execute(inputFile, host, pipelineBuilder)
         else
         if(mode in ["diagram","diagrameditor"])
