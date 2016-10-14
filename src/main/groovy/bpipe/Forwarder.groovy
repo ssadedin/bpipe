@@ -24,6 +24,8 @@
 */
 package bpipe
 
+import java.util.logging.Level;
+
 import groovy.util.logging.Log
 
 /**
@@ -124,7 +126,9 @@ class Forwarder extends TimerTask {
             try {
                 scanFiles = files.clone().grep { it.exists() }
                 byte [] buffer = new byte[8096]
-                log.info "Scanning ${scanFiles.size()} / ${files.size()} files "
+                if(log.isLoggable(Level.FINE)) 
+                    log.fine "Scanning ${scanFiles.size()} / ${files.size()} files "
+                    
                 for(File f in scanFiles) {
                     try {
                         f.withInputStream { ifs ->
