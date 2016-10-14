@@ -195,4 +195,8 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         this.commandExecutor.statusMessage()
     }
     
+    @Override
+    void cleanup() {
+        this.commandExecutor.cleanup()
+    }
 }

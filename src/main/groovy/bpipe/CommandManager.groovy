@@ -207,6 +207,11 @@ class CommandManager {
         return wrapped
     }
     
+    void adoptCommand(Command command) {
+        this.executedCommands << command.executor
+        this.commandIds[command.executor] = command.id
+    }
+    
     /**
      * Stop all known commands.
      * <p>
@@ -282,6 +287,8 @@ class CommandManager {
         if(e instanceof ThrottledDelegatingCommandExecutor)
             e = e.commandExecutor
         
+        e.cleanup()
+            
 		if(!commandIds.containsKey(e))
 			throw new IllegalStateException("Attempt to clean up commmand $e that was not launched by this command manager / context")
 			
