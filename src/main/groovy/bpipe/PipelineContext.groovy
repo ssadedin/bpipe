@@ -461,6 +461,7 @@ class PipelineContext {
        // Used to 'box' the result, but now this is a PipelineOutput that supports direct access by index, 
        // so should not need it
 //       def result =  Utils.box(raw)
+       raw.multiple = true
        return raw
    }
    

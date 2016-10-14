@@ -113,6 +113,8 @@ class PipelineOutput {
      */
     PipelineOutput parentOutput = null
     
+    boolean multiple = false
+    
     /**
      * Create a pipeline output wrapper
      * 
@@ -136,28 +138,54 @@ class PipelineOutput {
     
     String toString() {
         
-        // Value set by parent, and we have not resolved
-        // any different value ourselves
-        if(stringValue != null) {
-            this.outputChangeListener(stringValue, parentOutput?.stringValue)
-            return stringValue
-        }
-        
-        String firstOutput = Utils.first(output)
-        String replaceOutput = null
-        
-        // If $output is referenced without extension, we may have to reset the outputs 
-        // if the output is based on an alternative input to the default one that was set
-        // when the filter() was executed
-        if(this.overrideOutputs && this.currentFilter != null && !(firstOutput in overrideOutputs)) {
-            if(Utils.ext(firstOutput) in currentFilter.exts) {
-                replaceOutput = this.overrideOutputs[0]
+        if(multiple) {
+            this.outputUsed = String.valueOf(Utils.first(output))
+            List boxed = Utils.box(output).unique()
+            for(String o in boxed) {
+                
+            String replaceOutput = null
+            
+            // If $output is referenced without extension, we may have to reset the outputs 
+            // if the output is based on an alternative input to the default one that was set
+            // when the filter() was executed
+            if(this.overrideOutputs && this.currentFilter != null && !(o in overrideOutputs)) {
+                if(Utils.ext(o) in currentFilter.exts) {
+                    replaceOutput = this.overrideOutputs[0]
+                }
             }
+            
+            if(this.outputChangeListener && o != null)
+              this.outputChangeListener(o,replaceOutput)                
+            }
+            
+            return boxed.join(" ")
         }
-        
-        if(this.outputChangeListener && firstOutput != null)
-          this.outputChangeListener(firstOutput,replaceOutput)
-        return String.valueOf(firstOutput) 
+        else {
+            
+            // Value set by parent, and we have not resolved
+            // any different value ourselves
+            if(stringValue != null) {
+                this.outputChangeListener(stringValue, parentOutput?.stringValue)
+                return stringValue
+            }
+            
+            String firstOutput = Utils.first(output)
+            String replaceOutput = null
+            
+            // If $output is referenced without extension, we may have to reset the outputs 
+            // if the output is based on an alternative input to the default one that was set
+            // when the filter() was executed
+            if(this.overrideOutputs && this.currentFilter != null && !(firstOutput in overrideOutputs)) {
+                if(Utils.ext(firstOutput) in currentFilter.exts) {
+                    replaceOutput = this.overrideOutputs[0]
+                }
+            }
+            
+            if(this.outputChangeListener && firstOutput != null)
+              this.outputChangeListener(firstOutput,replaceOutput)
+              
+            return String.valueOf(firstOutput) 
+        }
     }
    
     /**
@@ -403,6 +431,35 @@ class PipelineOutput {
         if(this.outputChangeListener != null) 
             this.outputChangeListener(this.outputUsed,null)
         return PipelineCategory.getPrefix(this.outputUsed);
+    } 
+    
+   /**
+     * Return the outputs with each one prefixed by the specified flag
+     * <p>
+     * If the flag ends with "=" then no space is included between the flag
+     * and the option. Otherwise, a space is included.
+     * 
+     * @param flag name of flag, including dashes (eg: "-I" or "--input")
+     * @return  string containing each matching input prefixed by the flag and a space
+     */
+    public String withFlag(String flag) {
+        
+       this.outputUsed = String.valueOf(Utils.first(output))
+        
+       List boxed = Utils.box(output).unique()
+       if(!multiple)
+           boxed = [boxed[0]]
+       
+       for(String o in boxed) {
+           if(this.outputChangeListener != null) 
+               this.outputChangeListener(o,null)
+       }
+            
+       if(flag.endsWith("=")) {
+           return boxed.collect { "${flag}${it}" }.join(" ") 
+       }
+       else
+           return boxed.collect { "$flag $it" }.join(" ")
     } 
     
 }
