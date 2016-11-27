@@ -552,6 +552,12 @@ public class Pipeline implements ResourceRequestor {
                 println "${new Date()} MSG: Branch ${branch=='all'?'':branch} completed: $e.message"
                 aborted = true
             }
+            catch(PipelinePausedException e) {
+                log.info "Pipeline segment ${this.branch} has terminated by user initiated pause"
+                
+                println "${new Date()} MSG: Branch ${branch=='all'?'':branch} aborted due to user initiated pause"
+                aborted = true
+            }
             catch(PipelineError e) {
                 log.info "Pipeline segment in thread ${Thread.currentThread().id} failed (2): " + e.message
 //                System.err << "Pipeline failed! (2) \n\n"+e.message << "\n\n"
