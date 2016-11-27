@@ -104,7 +104,9 @@ class Runner {
      * is not "normal" in the shutdown handler and write directly to stderr.
      */
     static boolean normalShutdown = true
-	
+    
+    public static final File PAUSE_FLAG_FILE = new File(".bpipe/pause")
+
     public static OptionAccessor opts = runCli.parse([])
     
     public static void main(String [] args) {
@@ -136,7 +138,7 @@ class Runner {
            runAgent(args)
            return 
         }
-        
+
         def parentLog = initializeLogging(pid)
         
         log.info "Initializing plugins ..."
@@ -363,6 +365,9 @@ class Runner {
         if(!opts.t) {
             Config.config.eraseLogsOnExit = false
             appendCommandToHistoryFile(mode, args, pid)
+            
+            // If we were paused, remove that
+            PAUSE_FLAG_FILE.delete()
         }
         
         if(opts.u) {
@@ -920,6 +925,12 @@ class Runner {
             }
         }
     }
+
+    static boolean isPaused() {
+        if(PAUSE_FLAG_FILE.exists()) {
+            throw new PipelinePausedException()
+        }
+    }
 }
 
 /**
@@ -1085,6 +1096,6 @@ class ParamsBinding extends Binding {
             return super.getVariable(name)
         }
     }
-    
-    
 }
+
+

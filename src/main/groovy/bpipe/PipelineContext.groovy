@@ -2452,8 +2452,15 @@ class PipelineContext {
         }
     }
     
+    String memory(Object memoryValue) {
+        int memoryAmountMB = Integer.parseInt(String.valueOf(memoryValue)) * 1000
+        this.usedResources["memory"] = 
+            new ResourceUnit(key:"memory", amount: memoryAmountMB, maxAmount: memoryAmountMB)
+        return String.valueOf(memoryValue)
+    }
+    
     void debug() {
-        groovy.ui.Console console = new groovy.ui.Console();
+//        groovy.ui.Console console = new groovy.ui.Console();
         console.setVariable("pipeline", bpipe.Pipeline.currentRuntimePipeline.get());
         console.setVariable("context", this)
         console.run()

@@ -156,21 +156,9 @@ class CommandManager {
                 throw new PipelineError( "Cannot instantiate command executor: ${executor}", e )
             }
         }
-
         
-        if(Runner.opts.t || Config.config.breakTriggered) {
-            
-            /*
-          String msg = command.branch.name ? "Branch $command.branch.name would execute: $cmd" : "Would execute $cmd"
-          if(cmdExec instanceof LocalCommandExecutor)
-              throw new PipelineTestAbort(msg)
-          else {
-              if(cfg && command.configName) {
-                  cfg.name = configName
-              }
-              throw new PipelineTestAbort("$msg\n\n                using $cmdExec with config $cfg")
-          }
-          */
+        if(Runner.isPaused()) {
+            throw new PipelinePausedException()
         }
         
         if(!(cmdExec instanceof LocalCommandExecutor)) {
