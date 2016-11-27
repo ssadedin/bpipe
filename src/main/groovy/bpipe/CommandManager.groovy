@@ -346,9 +346,10 @@ class CommandManager {
         
         List<Command> result = []
         
+        
+        File commandsDir = new File(DEFAULT_COMMAND_DIR)
         if(!commandsDir.exists()) {
-            log.info "No commands directory exists: empty status results"
-            return result
+            log.info "No commands directory exists"
         }
         
         commandsDir.eachFileMatch(~/[0-9]+/) { File f ->
