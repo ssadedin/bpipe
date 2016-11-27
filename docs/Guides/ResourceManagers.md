@@ -185,4 +185,29 @@ integrated with Bpipe's automated concurrency management. For example, if you us
 -n to control total concurrency, Bpipe won't know about the value embedded in your
 select statement, unless you specify it explicitly (eg: with "using").
 
+## Module Loading
+
+Some environments provide ability to add and remove tools from the environment in a modular 
+fashion. Bpipe supports two such frameworks: 
+
+ * dotkit
+ * module
+
+These allow you to specify modules to load with each command, or to specify a default set for your
+whole pipeline. This is achieved in the bpipe.config file (or equivalent):
+
+```groovy
+// Load Java 1.8 and Perl 5.18.1 for all commands using "module"
+modules="Java/1.8,Perl/5.18.1"
+```
+
+Alternatively:
+
+```groovy
+// Load Java 1.8 and Perl 5.18.1 for all commands using "use"
+use="Java/1.8,Perl/5.18.1"
+```
+
+These can also be specified separately for any given command.
+
 
