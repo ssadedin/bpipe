@@ -1429,6 +1429,68 @@ class PipelineContext {
        }
     }
     
+    void python(String pythonCommand) {
+        String python = resolveExe("python","python")
+        exec("""
+        $python <<!
+        $pythonCommand
+        !
+        """.stripIndent(), false)    
+    }
+    
+    /**
+     * Execute the given sqlite command against the given database
+     * <p>
+     * The main reason this was implemented is because sqlite 
+     * attaches to the parent process group signal so it terminates on
+     * control-c unless we use setSid - see below. So it gets annoying to run
+     * it in Bpipe without this helper.
+     * 
+     * @param db
+     * @param sqlCommand
+     */
+    void sqlite(def db, String sqlCommand, String config = null) {
+        
+        String setSid = Utils.isLinux() ? " setsid " : ""
+        String sqliteCommand = resolveExe("sqlite","sqlite3")
+        exec("""
+        $setSid $sqliteCommand $db <<!
+        $sqlCommand
+        !
+        """.stripIndent(), false, config)    
+    }
+  
+    
+    void groovy(String groovyCommand) {
+        groovy("", groovyCommand)
+    }
+    
+    void groovy(String opts, String groovyCommand) {
+        
+        String cp = ""
+        if(Config.userConfig.containsKey("libs")) {
+            cp = "-cp ${Config.userConfig.libs}"
+        }
+        
+        String javaExe = Utils.resolveExe("java", null)
+        String SET_JH = ""
+        if(javaExe != null) {
+           String javaHome = new File(javaExe).absoluteFile.parentFile.parentFile 
+           SET_JH="""unset JAVA_HOME; export PATH="$javaHome/bin:\$PATH";"""
+        } 
+        
+        String groovyExe = Utils.resolveExe("groovy","groovy")
+        String groovyHome = new File(groovyExe).absoluteFile.parentFile.parentFile 
+        
+        exec("""
+        $SET_JH
+        unset GROOVY_HOME
+        JAVA_OPTS='$opts' $groovyExe $cp -e '
+        $groovyCommand
+        '
+        """.stripIndent(), false)    
+    } 
+    
     /**
      * Undocumented feature: run a command and capture its output into a pipeline variable
      * This currently just runs the command directly.
