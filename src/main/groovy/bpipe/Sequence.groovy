@@ -13,6 +13,10 @@ class Gene implements Serializable {
     private static final long serialVersionUID = 1L;
     String name
     GenomicRange location
+    
+    String toString() {
+        "$name:$location.from-$location.to"
+    }
 }
 
 /**
@@ -102,34 +106,45 @@ class Sequence implements Serializable {
      */
     List<Sequence> split() {
         
-        int middle = (this.range.to - this.range.from) / 2
+        log.info("Split of $range.from-$range.to (size=${range.to-range.from})")
+        int middle = this.range.from + (this.range.to - this.range.from) / 2
         
         // The gap between features that we will try to bisect
         GenomicRange gap = range(this.range.from..this.range.to)
         
+        log.info "Looking for nearest lower feature to $middle"
+        
          // Try not to bisect a feature
         Gene lower = this.genes.lowerEntry(middle)?.value
         if(lower) {
-            log.fine "Lower feature is $lower.name from $lower.location.from - $lower.location.to middle is $middle"
+            log.info "Lower feature is $lower.name from $lower.location.from - $lower.location.to middle is $middle"
             gap.from = lower.location.to
             
             if(middle in lower.location)
-                log.fine "Split bisects gene"
-         }
+                log.info "Split bisects gene $lower"
+        }
+        else {
+            log.info "No lower feature found (search from $middle)"    
+        }
         
-        Gene higher = this.genes.higherEntry(middle)?.value
+        int searchFrom = middle
+        if(lower && lower.location.to < this.range.to-1) 
+            searchFrom = lower.location.to
+        
+        Gene higher = this.genes.higherEntry(searchFrom)?.value
         if(higher) {
             gap.to = higher.location.from
             if(higher.is(lower)) {
+                log.info "Higher and lower feature are the same: $higher"
                 lower = this.genes.lowerEntry(middle-1)?.value
                 gap.from = lower ? lower.location.to : this.range.from
             }
-            log.fine "Higher gene is $higher.name from $higher.location.from - $higher.location.to"
+            log.info "Higher feature is $higher.name from $higher.location.from - $higher.location.to"
         }
        
         middle = gap.to + (gap.from - gap.to) / 2
         if(lower && middle <= lower.location.to)
-            throw new IllegalStateException("Bisecting distance between genes produced a location inside the lower gene. Please report this as a bug.")
+            throw new IllegalStateException("Bisecting distance between features $lower and $higher produced a location inside $lower. Please report this as a bug.")
         
         if(higher && lower && higher.location.from - lower.location.to < 10000) 
             log.warning "Bisecting genes $lower.name and $higher.name produced a split < 5kb apart"

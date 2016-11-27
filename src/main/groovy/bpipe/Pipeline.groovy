@@ -423,8 +423,9 @@ public class Pipeline implements ResourceRequestor {
         // check for overlap
         if(Config.userConfig.region) {
             if(result.any { it.name == Config.userConfig.region.value }) {
-              result.clear()
-              result.add(new Chr(Config.userConfig.region.value, cfg))
+                log.info "Overriding pipeline regions with region specified on command line: ${Config.userConfig.region}"
+                result.clear()
+                result.add(new Chr(Config.userConfig.region.value, cfg))
             }
             else {
                 println "WARNING: region specified on command line or configuration (${Config.userConfig.region})  does not overlap regions specified in pipeline: $objs"
@@ -483,6 +484,10 @@ public class Pipeline implements ResourceRequestor {
         }
         
         Pipeline pipeline = new Pipeline()
+        
+        if(Config.userConfig.region != null) {
+            pipeline.branch.region = Config.userConfig.region
+        }
         
         // To make life easier when a single argument is passed in,
         // debox it from the array so that pipeline stages that 

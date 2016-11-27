@@ -326,20 +326,12 @@ class PipelineCategory {
                             
                             
                             child.branch = new Branch()
-                            String branchName
                             if(chr instanceof Chr) {
                                 initChildFromChr(child,chr.name)
                             }
                             else
                             if(chr instanceof RegionSet) {
-                                RegionValue regionValue = 
-                                    new RegionValue(value: chr.sequences.collect { 
-                                        it.value.toString() 
-                                    }.flatten().join(" "))
-                                        
-                                child.variables.region = regionValue
-                                child.branch.region = regionValue
-                                branchName = regionValue
+                                initChildFromRegionSet(child, chr)
                             }
                             else {
                                 child.branch.@name = String.valueOf(chr)
@@ -366,6 +358,19 @@ class PipelineCategory {
         return multiplyImplementation
     }
     
+    static void initChildFromRegionSet(Pipeline child, RegionSet chr) {
+        RegionValue regionValue = 
+            new RegionValue(value: chr.sequences.collect { 
+                it.value.toString() 
+            }.flatten().join(" "))
+                                        
+        child.variables.region = regionValue
+        child.branch.region = regionValue
+        child.branch.chr = chr.sequences.keySet().iterator().next()
+        
+        log.info "Set region value for $child to $regionValue"
+    }
+    
     static void initChildFromChr(Pipeline child, String chrName) {
         child.variables.chr = chrName
         child.branch.name = chrName
@@ -375,7 +380,7 @@ class PipelineCategory {
             log.info "Checking if chromosome sizes available for " + Pipeline.defaultGenome + " (chromSizes[$chrName]=${chromSizes[chrName]})"
             if(chromSizes && chromSizes[chrName]) {
                 child.branch.region = chrName + ':0-' + chromSizes[chrName]
-                
+                child.variables.region = chrName + ':0-' + chromSizes[chrName]
                 log.info "Set child branch region for chr $chrName to $child.branch.region based on " + chromSizes[chrName]
             }
         }

@@ -95,6 +95,13 @@ class RegionSet implements Serializable {
     }
     
     
+    Set<RegionSet> split(List<Object> sequences, int parts) {
+        
+        List<String> sequenceValues = sequences*.toString()
+        
+        new RegionSet(this.sequences.grep { it.key in sequenceValues }*.value).split(parts)
+    }
+    
     /**
      * A synonym for {@link #group(int)}
      */
@@ -192,6 +199,10 @@ class RegionSet implements Serializable {
     List splitInTwo() {
         List<Sequence> ordered = ([] + sequences.values()).sort { it.size() }.reverse()
         
+        // Start by sorting the regions into two piles by ordering by size
+        // and then putting alternating region sets into each pile
+        // This should give a good start at approximately even sized piles
+        
         RegionSet result1 = new RegionSet()
         RegionSet result2 = new RegionSet()
         while(ordered) {
@@ -203,7 +214,12 @@ class RegionSet implements Serializable {
                 result2.addSequence(s)
         }
         
+        // Make a second set of ordered sequences from result1
+        // We expect result1 to be bigger, so we will even up the piles
+        // by splitting regions from result1 and giving them to result2
         List<Sequence> ordered2 = ([] + result1.sequences.values()).sort { it.size() }.reverse()
+        
+        log.info("Will check ${ordered2.size()} regions to reassign to other split in case of size bias")
         
         // This loop exits when every sequence from result1 has been tried as a 
         // split candidate OR when the results are sufficiently balanced
@@ -233,6 +249,9 @@ class RegionSet implements Serializable {
                     }
                     else
                         log.info "Ratio $ratio of split ${split[0]} and ${split[1]} to low/high to justify"
+                }
+                else {
+                    log.info("Split of $largest produced zero size second region: ignoring")
                 }
             }
             if(!ordered2)

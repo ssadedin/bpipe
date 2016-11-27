@@ -405,7 +405,6 @@ class Runner {
         
         if(opts.L) { 
             Config.userConfig.region = new RegionValue(value: opts.L)
-            binding.setParam("region", Config.userConfig.region)
         }
 
         initThreads*.join(20000)
