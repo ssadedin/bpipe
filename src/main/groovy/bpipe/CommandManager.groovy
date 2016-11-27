@@ -345,9 +345,6 @@ class CommandManager {
     public static List<Command> getCommands(File commandsDir, List<String> statuses = null) {
         
         List<Command> result = []
-        
-        
-        File commandsDir = new File(DEFAULT_COMMAND_DIR)
         if(!commandsDir.exists()) {
             log.info "No commands directory exists"
         }
