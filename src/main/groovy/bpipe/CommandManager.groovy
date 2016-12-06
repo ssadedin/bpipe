@@ -324,21 +324,21 @@ class CommandManager {
         }
     }
     
-    public static List<Command> getCurrentCommands() {
+    public List<Command> getCurrentCommands() {
         getCommandsByStatus([CommandStatus.RUNNING, CommandStatus.QUEUEING, CommandStatus.WAITING])
     }
     
-    public static List<Command> getCommandsByStatus(List<CommandStatus> statusEnums) {
+    public List<Command> getCommandsByStatus(List<CommandStatus> statusEnums) {
         
         List<Command> result = []
-        if(!commandsDir.exists()) {
+        if(!commandDir.exists()) {
             log.info "No commands directory exists"
         }
         
         File executedDir = new File(DEFAULT_EXECUTED_DIR)
         
         List<String> statuses = statusEnums == null ? null : statusEnums*.name()
-        [executedDir, commandsDir].grep {it.exists()}*.eachFileMatch(~/[0-9]+/) { File f ->
+        [executedDir, commandDir].grep {it.exists()}*.eachFileMatch(~/[0-9]+/) { File f ->
             log.info "Loading command info from $f.absolutePath"
             CommandExecutor cmdExec
             Command cmd
