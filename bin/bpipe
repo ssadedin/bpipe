@@ -549,6 +549,11 @@ then
     shift 1
     COMMAND="run"
     MODEFLAG="-Dbpipe.mode=retry"
+elif [ "$COMMAND" == "remake" ];
+then
+    shift 1
+    COMMAND="run"
+    MODEFLAG="-Dbpipe.mode=remake" 
 elif [ "$COMMAND" == "resume" ];
 then
     shift 1

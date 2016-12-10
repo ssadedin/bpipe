@@ -67,7 +67,8 @@ class Runner {
 	
     final static String DEFAULT_HELP = """
         bpipe [run|test|debug|execute] [options] <pipeline> <in1> <in2>...
-              retry [test]
+              retry [job id] [test]
+              remake <file1> <file2>...
               resume
               stop
               history 
@@ -228,16 +229,26 @@ class Runner {
         } 
         else {
             
-            if(mode == "retry" || mode == "resume") {
+            if(mode == "retry" || mode == "resume" || mode == "remake") {
                 
                 if(mode == "resume")
                     runningCommands = CommandManager.getCurrentCommands()
                 
+                // remake is like retry, but we preserve the args to invalidate
+                // their timestamps
+                if(mode == "remake") {
+                    log.info "Remaking $args"
+                    Dependencies.instance.remakeFiles(args as List)
+                    args = [] as String[]
+                    mode = "retry"
+                }
+
                 // Substitute arguments from prior command 
                 // to re-run it
                 def retryInfo = parseRetryArgs(args)
                 args = retryInfo[1]
                 mode = retryInfo[0]
+                
                 Config.config["mode"] = mode
             }
             

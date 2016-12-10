@@ -344,6 +344,13 @@ class Dependencies {
     List<String> outputFilesGenerated = []
     
     /**
+     * List of files whose timestamps are overridden, so that their real
+     * timestamp is ignored until they are recreated. This is used by the
+     * remake function.
+     */
+    Map<String,Long> overrideTimestamps = [:]
+    
+    /**
      * Return true iff all the outputs and downstream outputs for which
      * they are dependencies are present and up to date.
      * 
@@ -352,7 +359,7 @@ class Dependencies {
      * @return  true iff file is newer than all inputs, but older than all 
      *          non-up-to-date outputs
      */
-    boolean checkUpToDate(def outputs, def inputs) {
+    boolean checkUpToDate(List outputs, def inputs) {
         
         inputs = Utils.box(inputs)
         
@@ -360,6 +367,17 @@ class Dependencies {
         if(!outputs)
             return true
         
+        // Outputs are forcibly out of date if specified by remake
+        if(!overrideTimestamps.isEmpty() && outputs.any { o ->
+            String path = o instanceof File ? o.path : o
+            File cf = Utils.canonicalFileFor(path)
+            Long ts = overrideTimestamps[cf.path]
+            
+            // If the timestamps are the same then we consider the timestamp overridden
+            ts == cf.lastModified()
+        })
+            return false
+            
         // If the outputs are created from nothing (no inputs)
         // then they are up to date as long as they exist
         if(!inputs)  {
@@ -1151,6 +1169,18 @@ class Dependencies {
         }
         finally {
             this.outputGraphLock.readLock().unlock()
+        }
+    }
+    
+    /**
+     * List of files to rebuild
+     * 
+     * @param filePaths
+     */
+    @CompileStatic
+    void remakeFiles(List<String> filePaths) {
+        filePaths.collect { Utils.canonicalFileFor(it) }.each { File f ->
+            overrideTimestamps[f.absolutePath] = f.lastModified()
         }
     }
 }
