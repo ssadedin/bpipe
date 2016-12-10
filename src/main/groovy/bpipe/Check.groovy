@@ -70,7 +70,7 @@ class Check {
      */
     boolean isUpToDate(def inputs) {
        File checkFile = getFile(stage, name, branch)
-       checkFile.exists() && Dependencies.instance.checkUpToDate(checkFile.absolutePath, inputs) 
+       checkFile.exists() && Dependencies.instance.checkUpToDate([checkFile.absolutePath], inputs) 
     }
     
     /**
