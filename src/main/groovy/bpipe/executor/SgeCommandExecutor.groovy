@@ -105,7 +105,11 @@ class SgeCommandExecutor implements CommandExecutor {
          * - e: define the file to which redirect the error output
          */
         
-        def startCmd = "qsub -V -notify -terse ".tokenize(" ")
+        String passEnv = "-V"
+        if(config?.containsKey("pass_env") && config.pass_env == false)
+            passEnv = ""
+        
+        def startCmd = "qsub $passEnv -notify -terse ".tokenize(" ")
         
         // add other parameters (if any)
         if(config?.queue) {
