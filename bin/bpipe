@@ -472,6 +472,18 @@ then
     shift 1
     display_log -e $*
     exit
+elif [ "$COMMAND" == "pause" ];
+then
+    get_last_run_pid
+    
+    echo
+    echo "Stopping Bpipe process $LAST_PID while leaving commands running."
+    echo
+    echo "Note: Bpipe will continue as idle process until commands finish."
+    echo
+    touch .bpipe/pause # creation of this file is noticed by Bpipe Java process
+    exit 0
+    
 elif [ "$COMMAND" == "stop" ];
 then
     shift 1

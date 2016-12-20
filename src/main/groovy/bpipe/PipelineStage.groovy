@@ -283,6 +283,9 @@ class PipelineStage {
             catch(PipelineTestAbort e) {
                 throw e
             }
+            catch(PipelinePausedException e) {
+                throw e
+            }
             catch(Throwable e) {
                 
                 if(!succeeded && !joiner) 
