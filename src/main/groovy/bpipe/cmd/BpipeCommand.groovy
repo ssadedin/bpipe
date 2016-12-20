@@ -2,6 +2,7 @@ package bpipe.cmd
 
 import bpipe.Utils;
 import bpipe.agent.PipelineInfo
+import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;;
 
 @Log
@@ -59,5 +60,34 @@ abstract class BpipeCommand {
             log.info "Executed command with output: " + output
         }
         return output
+    }
+    
+    /**
+     * Returns the PID of the currently running Bpipe in the local directory, 
+     * or -1 if no pipeline is found to be running.
+     * @return
+     */
+    @CompileStatic
+    String getLastLocalPID() {
+        File pidFile = new File(".bpipe/run.pid")
+        if(!pidFile.exists()) {
+            return "-1"
+        }
+        
+        // Find the pid of the running Bpipe instance
+        String pid = pidFile.text.trim() 
+        return pid
+    }
+    
+    boolean isRunning(String pid=null) {
+        
+        if(pid == null)
+            pid = getLastLocalPID()
+        
+        String processInfo = "ps -p $pid".execute().text
+        if(processInfo.contains("bpipe.Runner"))
+            return true
+        else
+            return false
     }
 }

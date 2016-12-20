@@ -25,15 +25,24 @@
  */ 
 package bpipe
 
-import groovy.time.TimeCategory;
+import groovy.time.TimeCategory
+import groovy.util.slurpersupport.GPathResult;
+import bpipe.cmd.BpipeCommand;
 import bpipe.executor.CommandExecutor;
 
-class StatusCommand {
+class StatusCommand extends BpipeCommand {
 
     public StatusCommand() {
+        // hack
+        super("",[])
     }
     
     void execute(def args) {
+        this.args = args
+        run(System.out)
+    }
+    
+    void run(PrintStream out) {
         
         CliBuilder cli = new CliBuilder()
         cli.with {
@@ -43,45 +52,72 @@ class StatusCommand {
         def opts= cli.parse(args)
         if(opts.s) {
             
-            println ""
-            println "Analyzing executed commands ...."
-            println ""
-            List<Command> commands = CommandManager.getCurrentCommands()
+            CommandManager mgr = new CommandManager()
             
-            commands += CommandManager.getCommands(new File(CommandManager.DEFAULT_EXECUTED_DIR))
+            out.println ""
+            out.println "Analyzing executed commands ...."
+            out.println ""
+            List<Command> commands = mgr.getCurrentCommands()
+            
+            commands += mgr.getCommandsForDir(new File(CommandManager.DEFAULT_EXECUTED_DIR))
             
             Map<CommandStatus,Command> grouped = commands.groupBy {
                 it.status
             }
             
-            println "-" * Config.config.columns
+            out.println "-" * Config.config.columns
             
-            println "Waiting: ".padRight(12) + String.valueOf(grouped[CommandStatus.WAITING]?.size()?:0).padLeft(8)
-            println "Running: ".padRight(12) + String.valueOf(grouped[CommandStatus.RUNNING]?.size()?:0).padLeft(8)
-            println "Completed: ".padRight(12) + String.valueOf(grouped[CommandStatus.COMPLETE]?.size()?:0).padLeft(8)
-            println "Failed: ".padRight(12) + String.valueOf(commands.count { it.exitCode != 0 }).padLeft(8)
+            out.println "Waiting: ".padRight(12) + String.valueOf(grouped[CommandStatus.WAITING]?.size()?:0).padLeft(8)
+            out.println "Running: ".padRight(12) + String.valueOf(grouped[CommandStatus.RUNNING]?.size()?:0).padLeft(8)
+            out.println "Completed: ".padRight(12) + String.valueOf(grouped[CommandStatus.COMPLETE]?.size()?:0).padLeft(8)
+            out.println "Failed: ".padRight(12) + String.valueOf(commands.count { it.exitCode != 0 }).padLeft(8)
             
-            println "-" * Config.config.columns
+            out.println "-" * Config.config.columns
+        }
+        else
+        if(isRunning()) {
+            showCurrent(out)
         }
         else {
-            showCurrent()
+            String pid = getLastLocalPID()
+            File resultFile = new File(".bpipe/results/${pid}.xml")
+            
+            if(!resultFile.exists()) {
+                out.prinlnt """
+                    Error: no result file exists for the most recent Bpipe run.
+                
+                    This may indicate that the Bpipe process was terminated in an unexpected manner.
+                """
+                System.exit(1)
+            }
+            
+            GPathResult dom = new XmlSlurper().parse(resultFile)
+            dom.commands.command.each { cmdNode ->
+                out.println " ${cmdNode.id.text()} ".center(Config.config.columns,"=")
+                out.println "Stage: \t${cmdNode.stage.text()}"
+                out.println "Create: \t${cmdNode.start.text()}"
+                out.println "Start: \t${cmdNode.start.text()}"
+                out.println "End: \t${cmdNode.end.text()}"
+                out.println "Exit Code: ${cmdNode.exitCode.text()}"
+            }
         }
-    
     }
     
-    void showCurrent() {
+    void showCurrent(PrintStream out) {
+        
+        CommandManager mgr = new CommandManager()
         
         // List all the commands in the commands folder
-        List<Command> commands = CommandManager.getCurrentCommands()
+        List<Command> commands = mgr.getCurrentCommands()
         
-        println "\nFound ${commands.size()} currently executing commands:\n"
+        out.println "\nFound ${commands.size()} currently executing commands:\n"
         
         Date now = new Date()
         
         commands.eachWithIndex { cmd, i -> 
-            println Utils.indent("${i+1}.".padRight(6) + cmd.executor.statusMessage())
-            println Utils.indent("      " + cmd.status.name() + " for " + TimeCategory.minus(now,new Date(cmd.createTimeMs)))
-            println ""
+            out.println Utils.indent("${i+1}.".padRight(6) + cmd.executor.statusMessage())
+            out.println Utils.indent("      " + cmd.status.name() + " for " + TimeCategory.minus(now,new Date(cmd.createTimeMs)))
+            out.println ""
         }
     }
 }
