@@ -1460,7 +1460,6 @@ class PipelineContext {
         """.stripIndent(), false, config)    
     }
   
-    
     void groovy(String groovyCommand) {
         groovy("", groovyCommand)
     }
@@ -1770,6 +1769,7 @@ class PipelineContext {
 
           command.branch = this.branch
           command.outputs = checkOutputs.unique()
+          command.stageId = this.pipelineStages[-1].id
           try {
               commandManager.start(stageName, command, config, Utils.box(this.input), 
                                        new File(outputDirectory), this.usedResources,

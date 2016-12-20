@@ -76,14 +76,21 @@ class OutputDirectoryWatcher extends Thread {
     
     OutputDirectoryWatcher(Path directory) {
         this.directory = directory
+        if(!Files.exists(directory))
+            directory.toFile().mkdirs()
+            
         this.watcher = FileSystems.getDefault().newWatchService();
     }
     
     @Override
     public void run() {
         try {
+            if(!Files.exists(this.directory))
+                this.directory.toFile().mkdirs()
+                
             this.watchKey = 
                 this.directory.register(watcher, [ENTRY_CREATE, ENTRY_MODIFY] as WatchEvent.Kind[],  com.sun.nio.file.SensitivityWatchEventModifier.HIGH)
+                
             log.info "Using high sensitivity file watcher for $directory"
         }
         catch(Throwable t) {
@@ -136,7 +143,13 @@ class OutputDirectoryWatcher extends Thread {
     }
     
     void processEvent(WatchEvent.Kind kind, Path path) {
-        long timestamp = Files.getLastModifiedTime(this.directory.resolve(path)).toMillis()
+        Path resolvedPath = this.directory.resolve(path)
+        if(!Files.exists(resolvedPath)) {
+            log.warning "Watcher notified about path $resolvedPath which doesn't exist: ignoring" 
+            return
+        }
+        
+        long timestamp = Files.getLastModifiedTime(resolvedPath).toMillis()
         synchronized(timestamps) {
             // Known file?
             String fileName = path.fileName.toString()

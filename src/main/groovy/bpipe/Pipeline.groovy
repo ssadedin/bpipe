@@ -498,6 +498,7 @@ public class Pipeline implements ResourceRequestor {
         if(!(host instanceof Binding))
             PipelineCategory.addStages(pipelineBuilder.binding)
             
+        pipeline.loadToolVariables()
         pipeline.loadExternalStages()
         pipeline.joiners += segmentJoiners
 
@@ -665,6 +666,12 @@ public class Pipeline implements ResourceRequestor {
         String failureMessage = null
         try {
             this.checkRequiredInputs(Utils.box(inputFile))
+            
+            if(!Runner.opts.t) {
+                new File(".bpipe/run.pid").text = Config.config.pid
+                File jobFile = new File(Runner.LOCAL_JOB_DIR, Config.config.pid)
+                jobFile.append("-----------------------\npguid: " + Config.config.pguid+"\n")
+            }
             runSegment(inputFile, constructedPipeline)
                     
             if(failed) {
@@ -717,7 +724,7 @@ public class Pipeline implements ResourceRequestor {
             println "\nWARNING: ${failedChecks.size()} check(s) failed. Use 'bpipe checks' to see details.\n"
         }
         
-        saveResultState(failed, allChecks, failedChecks) 
+        log.info "Sending FINISHED event"
                 
         EventManager.instance.signal(PipelineEvent.FINISHED, "Pipeline " + (failed?"Failed":"Succeeded"), 
             [ 
@@ -728,6 +735,8 @@ public class Pipeline implements ResourceRequestor {
                 finishDate:finishDate,
                 commands: CommandManager.executedCommands
             ])
+        
+        saveResultState(failed, allChecks, failedChecks) 
         
         if(!failed) {
             summarizeOutputs(stages)
@@ -825,7 +834,33 @@ public class Pipeline implements ResourceRequestor {
         
 //        branchPoint.appendNode(p.node)
         ++this.childCount
+            
         return p
+    }
+    
+    private void loadToolVariables() {
+        if('install' in Config.userConfig) {
+            ConfigObject toolsCfg = Config.userConfig.install.tools
+            for(String toolName in toolsCfg.keySet()) {
+                String toolVariable = toolName.toUpperCase()
+                if(externalBinding.variables.containsKey(toolVariable)) {
+                    log.info "Skip setting tool variable $toolVariable because already defined"
+                    continue
+                }
+                    
+                Tool tool = ToolDatabase.instance.tools[toolName]
+                if(!tool) {
+                    throw new PipelineError("A tool $toolName was referenced in the install section but is not a known tool in the tool database. Please define this tool in your 'tools' section.")
+                }
+                
+                if(tool.config.containsKey("installExe") && tool.config.containsKey("installPath")) {
+                    File scriptParentDir = new File(Config.config.script).absoluteFile.parentFile
+                    File exeFile = new File(scriptParentDir, tool.config.installPath + "/" + tool.config.installExe)
+                    log.info "Setting tool variable $toolVariable automatically to $exeFile.absolutePath based on install section of config"
+                    externalBinding.variables.put(toolVariable,exeFile.absolutePath)
+                }
+            }
+        }
     }
     
     private void loadExternalStages() {
@@ -1378,7 +1413,7 @@ public class Pipeline implements ResourceRequestor {
     
     List<String> cachedBranchPath = null
     
-//    @CompileStatic
+    @CompileStatic 
     List<String> getBranchPath() {
         
         if(cachedBranchPath != null)

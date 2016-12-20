@@ -315,7 +315,8 @@ print_jobs() {
                     # Since the process is not running, it was 
                     # probably hard killed somehow, so 
                     # just clean up the file quietly 
-                    rm -f ~/.bpipedb/jobs/$base
+                    mkdir -p ~/.bpipe/completed
+                    mv ~/.bpipedb/jobs/$base ~/.bpipedb/completed/$base
                     rm -f .bpipe/jobs/$base
                  fi
              else
@@ -455,6 +456,7 @@ elif [ "$COMMAND" == "cleanup" ] || \
          [ "$COMMAND" == "status" ] || \
          [ "$COMMAND" == "query" ] || \
          [ "$COMMAND" == "preserve" ] || \
+         [ "$COMMAND" == "install" ] || \
          [ "$COMMAND" == "diagram" ] || \
          [ "$COMMAND" == "diagrameditor" ]  || \
          [ "$COMMAND" == "documentation" ];
@@ -539,6 +541,12 @@ then
       fi
     fi
     shift 1
+elif [ "$COMMAND" == "agent" ];
+then
+    shift 1
+    MODEFLAG="-Dbpipe.mode=agent"
+    COMMAND="run"
+    launch_in_foreground agent $*
 elif [ "$COMMAND" == "test" ];
 then
     shift 1
@@ -677,7 +685,8 @@ echo "$0 $COMMAND $*" >> .bpipe/jobs/$BPIPE_PID
 
 # Save the job in the user's home .bpipe folder - this allows the user to query
 # what jobs they have running from anywhere
-# Note that it is up to the Java code to remove this when it shuts down
+# Note that the Java code moves this to the .bpipedb/completed directory when 
+# the job completes
 (
     if [ ! -e .bpipedb/jobs ];
     then
