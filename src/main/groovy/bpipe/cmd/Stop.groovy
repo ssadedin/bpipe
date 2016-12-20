@@ -29,9 +29,11 @@ import java.util.List
 
 import bpipe.CommandManager;
 import bpipe.Config
+import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;;;
 
 @Log
+@CompileStatic
 class Stop extends BpipeCommand {
     
     public Stop(List<String> args) {
@@ -41,15 +43,34 @@ class Stop extends BpipeCommand {
     @Override
     public void run(PrintStream out) {
         Config.config["mode"] = "stopcommands"
-        int count = new CommandManager().stopAll()
-        out.println "Stopped $count commands"
+        
+        println ""
         
         // Find the pid of the running Bpipe instance
-        String pid = new File(".bpipe/run.pid").text.trim()
+        String pid = getLastLocalPID()
+        
+        if(pid == "-1") {
+            out.println "No bpipe pipeline found running in this directory!"
+            return
+        }
+        
+        if(!isRunning(pid)) {
+            out.println "The pipeline in this directory has already terminated"
+            System.exit(0)
+        }
+        
+        out.println "Stopping Bpipe process $pid"
         
         // Try to kill the bpipe process (ourselves!)
         String output = ("kill $pid").execute().text
+        if(output)
+            out.println "Output from kill: $output"
         
-        println "Output from kill: $output"
+        // Give it a tiny window to happen
+        Thread.sleep(100)
+            out.println "Sending stop signal to commands"
+                
+        int count = new CommandManager().stopAll()
+        out.println "Stopped $count commands"
     }
 }
