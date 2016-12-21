@@ -13,18 +13,34 @@ class RegionValue implements Serializable {
     
     String value
     
+    String regions
+    
+    String getRegions() {
+        if(regions == null) {
+            if(value.endsWith(".bed")) {
+                File bedFile = new File(value)
+                if(!bedFile.exists()) 
+                    throw new FileNotFoundException(value, "The file $value was specified as the region for the pipeline but does not exist or could not be accessed")
+                    
+                regions = bedFile.readLines().collect { line -> def fields = line.tokenize('\t'); fields[0] + ":" + fields[1] + "-" + fields[2] }.join(" ")
+            }
+            else
+                regions = value
+        }
+        return regions
+    }
+    
     def propertyMissing(String name) {
+        
        if(name == "bed") {
            
            if(!REGIONS_DIR.exists()) {
                REGIONS_DIR.mkdirs()
            }
            
-           def fn = new File(REGIONS_DIR,Utils.sha1(value)+".bed")
+           def fn = new File(REGIONS_DIR,Utils.sha1(getRegions())+".bed")
            if(!fn.exists()) {
-               
-               def regions = value.tokenize(" ")
-               fn.text = value.replaceAll("-","\t").replaceAll(":","\t").split(" ").join("\n")
+               fn.text = getRegions().replaceAll("-","\t").replaceAll(":","\t").split(" ").join("\n") + "\n"
            }
            return fn.absolutePath
        } 
@@ -44,6 +60,6 @@ class RegionValue implements Serializable {
     }
     
     String toString() {
-        return value   
+        return getRegions()
     }
 }
