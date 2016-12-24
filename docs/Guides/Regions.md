@@ -2,17 +2,30 @@
 
 ## Genomic Regions
 
-It is often the case that you wish to run your pipeline but limit it to a particular genomic interval. For example, it may be that you wish to parallelize the pipeline over separate parts of the genome, or it might be that you are only interested in a subset of the genome to begin with.
+It is often the case that you wish to run your pipeline but limit it to a
+particular genomic interval. For example, it may be that you wish to
+parallelize the pipeline over separate parts of the genome, or it might be that
+you are only interested in a subset of the genome to begin with.
 
 One way to do this with Bpipe would be to simply pass in a region as a parameter, for example:
+
 ```groovy 
 
 bpipe run -p region=chr1:10000-20000 pipeline.groovy ...
 ```
 
-A problem with this is that some commands won't accept a region given in this form - they may require a BED file to be supplied instead. On the other hand, other commands won't accept a BED file and require a genomic region directly. In general, you might have a mix of these in your pipeline, and you'll end up creating both a BED file and a region variable. If you're wanting to parallelize inside Bpipe over these regions it gets more complicated.
+A problem with this is that some commands won't accept a region given in this
+form - they may require a BED file to be supplied instead. On the other hand,
+other commands won't accept a BED file and require a genomic region
+directly. In general, you might have a mix of these in your pipeline, and
+you'll end up creating both a BED file and a region variable. If you're
+wanting to parallelize inside Bpipe over these regions it gets more
+complicated.
 
-Bpipe simplifies all this by supporting genomic regions and ranges as a first class citizen in Bpipe pipelines. You can specify a single region to run your pipeline over with the -L flag on the command line:
+Bpipe simplifies all this by supporting genomic regions and ranges as a first
+class citizen in Bpipe pipelines. You can specify a single region to run your
+pipeline over with the -L flag on the command line:
+
 ```groovy 
 
 bpipe run -L chr1:10000-20000 pipeline.groovy ...
@@ -27,8 +40,30 @@ This has a few different effects:
 
 The last point might be a little hard to understand, but it is tremendously useful in allowing you to create generic pipelines that can parallelize over the whole genome, while still letting the user limit the pipeline to a specific region at the time of running the pipeline. This is particularly useful during testing, since running 20 parallel paths of your pipeline just to find out if one of them is going to work can be a cumbersome way to debug your pipeline.
 
-*Note*: You can specify multiple regions with the -L flag by enclosing the argument in quotes and separating regions with spaces:
+
+## Multiple Regions
+
+What about if your pipeline runs on multiple separate regions?
+
+One thing you can do is specify multiple regions with the -L flag by enclosing
+the argument in quotes and separating regions with spaces:
+
 ```groovy 
 
 bpipe run -L "chr1:1000-2000 chr2:1000-3000" pipeline.groovy ...
 ```
+
+If you then reference `$region.bed` in your pipeline, Bpipe will create a temporary BED file containing
+those regions, while still making the `$region` variable available with these regions in it.
+
+But what about if you have too many regions for that? You can put your regions into a BED file
+and reference that instead:
+
+```groovy 
+
+bpipe run -L my_regions.bed pipeline.groovy ...
+```
+
+Now Bpipe will do the opposite: if you reference `$regions` it will parse the BED file and create a 
+space-concatenated string of regions to use with command line tools that require that, while giving you back
+the BED file if you reference `$regions.bed`.
