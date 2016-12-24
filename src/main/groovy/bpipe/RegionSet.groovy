@@ -109,6 +109,16 @@ class RegionSet implements Serializable {
         group(parts)
     }
     
+    Set<RegionSet> partition(int sizeBp) {
+        this.sequences.collect { String name, Sequence s ->
+            (s.range.from..s.range.to).step(sizeBp).collect { int startBp ->
+                Sequence seq = new Sequence(s.name)
+                seq.range = new GenomicRange(startBp..Math.min(startBp+sizeBp,s.range.to))
+                new RegionSet(seq)
+            }
+        }.flatten() as Set
+    }
+    
     /**
      * Group this set of regions into <code>num</code> pieces for processing.
      * 
