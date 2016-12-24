@@ -311,6 +311,9 @@ class RegionSet implements Serializable {
         
         Closure notMajorChromosome = { chr ->
             chr.startsWith('Un_') ||
+            chr.startsWith('chrUn_') ||
+            chr.startsWith('M') ||
+            chr.startsWith('chrM') ||
             chr.endsWith('_random') || 
             chr.matches(ALTERNATE_HAPLOTYPE_PATTERN)
         }
