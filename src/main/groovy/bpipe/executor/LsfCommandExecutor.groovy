@@ -140,24 +140,30 @@ class LsfCommandExecutor implements CommandExecutor {
         def startCmd = "bsub $cwdOption -o $jobDir/$CMD_LSF_OUT_FILENAME -e $jobDir/$CMD_ERR_FILENAME "
         
         // add other parameters (if any)
-        if(config?.queue) {
-            startCmd += "-q ${config.queue} "
-        }
-
-        if(config?.jobname) {
-            startCmd += "-J ${config.jobname} "
-        }
-        
-        if(config?.walltime) {
-            startCmd += "-W ${config.walltime} "
-        }
-                
-        if(config?.procs) {
-            startCmd += "-n $config.procs "
-        }
-
-        if( config?.lsf_request_options ) {
-            startCmd += config.lsf_request_options + ' '
+        if(config != null) {
+            if(config.queue) {
+                startCmd += "-q ${config.queue} "
+            }
+    
+            if(config.jobname) {
+                startCmd += "-J ${config.jobname} "
+            }
+            
+            if(config.walltime) {
+                startCmd += "-W ${config.walltime} "
+            }
+                    
+            if(config.procs) {
+                startCmd += "-n $config.procs "
+            }
+    
+            if(config.lsf_request_options ) {
+                startCmd += config.lsf_request_options + ' '
+            }
+            
+            if('custom_submit_options' in config) {
+                startCmd += String.valueOf(config.custom_submit_options) + " "
+            }
         }
 
         // at the end append the command script wrapped file name
