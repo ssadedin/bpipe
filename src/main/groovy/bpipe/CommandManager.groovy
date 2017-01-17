@@ -324,13 +324,6 @@ class CommandManager {
         }
     }
     
-<<<<<<< HEAD
-    public static List<Command> getCurrentCommands() {
-        getCommandsByStatus([CommandStatus.RUNNING, CommandStatus.QUEUEING, CommandStatus.WAITING])
-    }
-    
-    public static List<Command> getCommandsByStatus(List<CommandStatus> statusEnums) {
-=======
     public List<Command> getCurrentCommands() {
         getCommandsByStatus([CommandStatus.RUNNING, CommandStatus.QUEUEING, CommandStatus.WAITING])
     }
