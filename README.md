@@ -26,7 +26,7 @@ By turning your shell scripts into Bpipe scripts, here are some of the features 
   * **Audit Trail** - Bpipe keeps a journal of exactly which commands executed and what their inputs and outputs were.
   * **Integration with Cluster Resource Managers** - if you use Torque PBS, Oracle Grid Engine or Platform LSF then Bpipe will make your life easier by allowing pure Bpipe scripts to run on your cluster virtually unchanged from how you run them locally.
   * **Notifications by Email or Instant Message** - Bpipe can send you alerts to tell you when your pipeline finishes or even as each stage completes.
-  * See how Bpipe compares to [similar tools](http://code.google.com/p/bpipe/wiki/ComparisonToWorkflowTools)
+  * See how Bpipe compares to [similar tools](http://docs.bpipe.org/Overview/ComparisonToWorkflowTools/)
 
 Take a look at the [Overview](http://docs.bpipe.org/Overview/Introduction/) to see Bpipe in action, work through the [Basic Tutorial](http://docs.bpipe.org/Tutorials/Hello%2CWorld/) 
 for simple first steps, see a step by step example of a [realistic pipeline](http://docs.bpipe.org/Tutorials/RealPipelineTutorial/) made using Bpipe, or 
