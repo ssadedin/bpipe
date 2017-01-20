@@ -5,13 +5,13 @@ The field of tools for managing computational workflows is quite crowded.  With 
 
 ## Feature Comparison Table
 
-  |Tool|GUI|Command Line (`**`)|Audit Trail|Built in Cluster Support|Workflow Sharing|Online Data Source Integration|Need Programming Knowledge?|Easy Shell Script Portability|
-  |:------|:-----:|:----:|:-----:|:----:|:-----:|:----:|:-----:|:----:| 
-  |Bpipe|No|Yes|Yes|Yes|No|No|No|Yes|
-  |Ruffus|No|Yes|Yes|No|No|No|Yes|No|
-  |Galaxy|Yes|No|Yes|Yes|Yes|Yes|No|No|
-  |Taverna|Yes|No|Yes|Yes|Yes|Yes|No|No|
-  |Pegasus|Yes|Yes|Yes|Yes|Yes|Yes|Yes|No|
+|Tool|GUI|Command Line (`**`)|Audit Trail|Built in Cluster Support|Workflow Sharing|Online Data Source Integration|Need Programming Knowledge?|Easy Shell Script Portability|
+|:------|:-----:|:----:|:-----:|:----:|:-----:|:----:|:-----:|:----:| 
+|Bpipe|No|Yes|Yes|Yes|No|No|No|Yes|
+|Ruffus|No|Yes|Yes|No|No|No|Yes|No|
+|Galaxy|Yes|No|Yes|Yes|Yes|Yes|No|No|
+|Taverna|Yes|No|Yes|Yes|Yes|Yes|No|No|
+|Pegasus|Yes|Yes|Yes|Yes|Yes|Yes|Yes|No|
 
 
 `**` Nearly all the tools have ways to execute things from the command line; what we are meaning here is whether that is the native way supported for the tool, and thus whether it is very easy and natural to use the tool that way.
