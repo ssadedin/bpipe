@@ -171,7 +171,7 @@ class Sender {
        String contentHash = (content instanceof File) ? content.absolutePath + content.length() : content
        
        File sentFile = new File(sentFolder, cfgName + "." + ctx.stageName + "." + Utils.sha1(this.details.subject + content))
-       if(sentFile.exists() && Dependencies.instance.checkUpToDate(sentFile.absolutePath, ctx.@input)) {
+       if(sentFile.exists() && Dependencies.instance.checkUpToDate([sentFile.absolutePath], ctx.@input)) {
            log.info "Sent file $sentFile.absolutePath already exists - skipping send of this message"
            if(onSend != null) {
              onSend(details)
