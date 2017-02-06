@@ -1,8 +1,9 @@
 package bpipe
 
 import java.util.regex.Pattern
-import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPInputStream
 
+import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;
 
 @Log
@@ -307,9 +308,12 @@ class RegionSet implements Serializable {
      *  <li>Ends with "random"
      *  <li>Ends with "_hap[number]"
      */
+    @CompileStatic
     void removeMinorContigs() {
         
-        Closure notMajorChromosome = { chr ->
+        Closure notMajorChromosome = { String chr ->
+            chr.startsWith('NC_') ||
+            chr.startsWith('GL') ||
             chr.startsWith('Un_') ||
             chr.startsWith('chrUn_') ||
             chr.startsWith('M') ||
@@ -318,7 +322,7 @@ class RegionSet implements Serializable {
             chr.matches(ALTERNATE_HAPLOTYPE_PATTERN)
         }
         
-        this.sequences = this.sequences.grep { !notMajorChromosome(it.key) }.collectEntries()
+        this.sequences = this.sequences.grep { Map.Entry<String,Sequence> e -> !notMajorChromosome(e.key) }.collectEntries()
     }
     
     long size() {
