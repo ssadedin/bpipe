@@ -32,10 +32,13 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 public class NewFileFilter implements DirectoryStream.Filter<Path>{
     
     Map<String,Long> timestamps;
+    
+    static Logger log = Logger.getLogger("NewFileFilter");
     
     public NewFileFilter(Map<String, Long> timestamps) {
         super();
@@ -52,7 +55,6 @@ public class NewFileFilter implements DirectoryStream.Filter<Path>{
             if(timestamp == null)
                 return true; // must be a new file
             
-            
             if(timestamp >= Files.getLastModifiedTime(entry).toMillis())
                 return false;
         }
@@ -65,6 +67,14 @@ public class NewFileFilter implements DirectoryStream.Filter<Path>{
                   || fileName.endsWith(".log") || Files.isDirectory(path));
     }
     
+    /**
+     * Scan the given directory and return only files that have newer timestamps than those given
+     * 
+     * @param dir
+     * @param timestamps
+     * @return
+     * @throws IOException
+     */
     static List<Path> scanOutputDirectory(String dir, Map<String,Long> timestamps) throws IOException {
         File dirFile = new File(dir);
         if(!dirFile.exists())
