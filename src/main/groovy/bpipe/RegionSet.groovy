@@ -308,7 +308,7 @@ class RegionSet implements Serializable {
      *  <li>Ends with "random"
      *  <li>Ends with "_hap[number]"
      */
-    @CompileStatic
+    // @CompileStatic <= causes strange error at runtime in chr_region test
     void removeMinorContigs() {
         
         Closure notMajorChromosome = { String chr ->
