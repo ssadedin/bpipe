@@ -84,6 +84,63 @@ class OutputDirectoryWatcher extends Thread {
     
     @Override
     public void run() {
+        
+        if(Config.userConfig.usePollerFileWatcher) {
+            log.info "Watching directories using manual poller"
+            runUsingManuallPoller()
+        }
+        else {
+            log.info "Watching directories using native watcher"
+            runUsingNativeWatcher()
+        }
+    }
+    
+    Object manualPollerWaitLock = new Object()
+    
+    void runUsingManuallPoller() {
+        
+        this.initialize()
+        
+        long manualPollerSleepTime = Config.userConfig.get("manualPollerSleepTime",30000)
+        
+        Map<String,Long> oldPaths = NewFileFilter.scanOutputDirectory(directory.toFile().path, null).collectEntries { Path p ->
+            [p.fileName.toString(), Files.getLastModifiedTime(p).toMillis()]
+        }
+        
+        log.info "Found existing paths: " + oldPaths
+        
+        for(;;) {
+            synchronized(manualPollerWaitLock) {
+                manualPollerWaitLock.wait(manualPollerSleepTime) 
+            }
+            
+            List<Path> newPaths = NewFileFilter.scanOutputDirectory(directory.toFile().path, oldPaths)
+            
+            for(Path newPath in newPaths) {
+                log.info "Manual poller detected $newPath.fileName"
+                this.processEvent(ENTRY_CREATE, newPath)
+            }
+            
+            // trigger notification for any threads sync() methods
+            // waiting for files to appear
+            synchronized(timestamps) {
+                timestamps.notify()
+            }
+            
+            long nowMs = System.currentTimeMillis()
+            oldPaths += newPaths.collectEntries { p ->
+                try {
+                    [p.fileName.toString(), Files.getLastModifiedTime(p).toMillis()]
+                }
+                catch(java.nio.file.NoSuchFileException e) {
+                    log.info "File $p.fileName removed after detection?"
+                    [p.fileName.toString(), nowMs]
+                }
+            }
+        }
+    }
+    
+    void runUsingNativeWatcher() {
         try {
             if(!Files.exists(this.directory))
                 this.directory.toFile().mkdirs()
@@ -192,7 +249,7 @@ class OutputDirectoryWatcher extends Thread {
     void initialize() {
         List<Path> oldPaths = NewFileFilter.scanOutputDirectory(directory.toFile().path, null)
         
-        log.info "Initialising watcher for $directory with ${oldPaths.size()} paths}"
+        log.info "Initialising watcher for $directory with ${oldPaths.size()} paths"
         for(Path path in oldPaths) {
             long timestamp = Files.getLastModifiedTime(path).toMillis()
             String fileName = path.fileName
@@ -258,6 +315,9 @@ class OutputDirectoryWatcher extends Thread {
         File tmpFile = new File(directory.toFile(),".bpipe.tmp-"+rand)
         tmpFile.text = ""
         boolean created = createdFiles.contains(tmpFile.name)
+        synchronized(manualPollerWaitLock) {
+            manualPollerWaitLock.notify()
+        }
         while(!created) {
             synchronized(this.timestamps) {
                 this.timestamps.wait(300)
