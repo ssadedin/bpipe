@@ -357,11 +357,20 @@ class PipelineStage {
      */
 	private runBody() {
 		this.running = true
-        
-        if(context.branch.getProperty(stageName) && context.branch[stageName] instanceof Closure) {
-            body = context.branch[stageName]
-            log.info "Overriding body for $stageName due to branch variable of type Closure ${context.branch[stageName].hashCode()} containing stage name (new body = " +
-                     PipelineCategory.closureNames[body] + "," + PipelineCategory.closureNames[context.branch[stageName]] + ")"
+        def stageBranchProp = context.branch.getProperty(stageName)
+        if(stageBranchProp && stageBranchProp instanceof Closure) {
+            
+            // Note: if the original closure is actually the same, DON'T override
+            Closure original = body
+            if(body instanceof ParameterizedClosure)  {
+                original = ((ParameterizedClosure)body).getBody()
+            }
+            
+            if(original.class.name != stageBranchProp.class.name) {
+                body = context.branch[stageName]
+                log.info "Overriding body for $stageName due to branch variable of type Closure ${context.branch[stageName].hashCode()} containing stage name (new body = " +
+                         PipelineCategory.closureNames[body] + "," + PipelineCategory.closureNames[context.branch[stageName]] + ")"
+            }
          }
         
         // Make sure there is a watcher for the output directory
