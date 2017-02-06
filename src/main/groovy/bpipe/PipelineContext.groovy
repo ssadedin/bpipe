@@ -1470,6 +1470,8 @@ class PipelineContext {
             cp = "-cp ${Config.userConfig.libs}"
         }
         
+        opts = "-noverify " + opts
+        
         String javaExe = Utils.resolveExe("java", null)
         String SET_JH = ""
         if(javaExe != null) {
