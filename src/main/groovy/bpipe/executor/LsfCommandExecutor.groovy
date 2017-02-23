@@ -103,10 +103,19 @@ class LsfCommandExecutor implements CommandExecutor {
         /*
          * Create 'cmd.sh' wrapper used by the 'bsub' command
          */
+        // If a shell is specified by the config then use that
+        def lsf_shell = "#!/bin/sh"
+        if(config?.lsf_shell) {
+            lsf_shell = config.lsf_shell
+            if(lsf_shell.take(2) != "#!") {
+                lsf_shell = "#!" + lsf_shell
+            }
+        }
+
         def cmdWrapperScript = new File(jobDir, CMD_SCRIPT_FILENAME)
         cmdWrapperScript.text =  
             """\
-            #!/bin/sh
+            $lsf_shell
             (${cmd}) > $jobDir/$CMD_OUT_FILENAME
             result=\$?
             echo -n \$result > $jobDir/$CMD_EXIT_FILENAME
