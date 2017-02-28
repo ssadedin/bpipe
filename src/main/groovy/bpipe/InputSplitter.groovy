@@ -66,7 +66,7 @@ class InputSplitter {
             if(withDir)  {
                 // When the pattern explicitly contains a directory, we match on the
                 // full file name
-                fileName = new File(inp).canonicalPath.replace('\\',"/")
+                fileName = new File(inp).absolutePath.replace('\\',"/")
             }
             else {
                 // If no directory (ie. / ) in pattern, 
