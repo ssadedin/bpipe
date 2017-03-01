@@ -24,9 +24,6 @@
  */
 package bpipe.executor;
 
-import groovy.lang.Closure;
-
-import java.io.File;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
@@ -64,8 +61,13 @@ public interface CommandExecutor extends Serializable {
      * Convenience constant for executors that need to capture exit code to a file
      */
     static String CMD_EXIT_FILENAME = "cmd.exit";
+    
+    /**
+     * The file name of the script containing the actual command that should be executed.
+     */
+    static String CMD_FILENAME = "cmd_run.sh";
 
-    void start(Map cfg, Command cmd, File outputDirectory, Appendable outputLog, Appendable errorLog);
+    void start(Map cfg, Command cmd, Appendable outputLog, Appendable errorLog);
     
     String status();
     

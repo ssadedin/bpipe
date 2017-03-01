@@ -82,7 +82,7 @@ class LsfCommandExecutor implements CommandExecutor {
      *   the job exit code. To monitor for job termination will will wait for that file to exist
      */
     @Override
-    void start(Map cfg, Command command, File outputDirectory, Appendable outputLog, Appendable errorLog) {
+    void start(Map cfg, Command command, Appendable outputLog, Appendable errorLog) {
         
         this.config = cfg
         this.id = command.id

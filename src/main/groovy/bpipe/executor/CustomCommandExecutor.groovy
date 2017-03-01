@@ -130,7 +130,7 @@ class CustomCommandExecutor implements CommandExecutor {
      * launching the specified command.
      */
     @Override
-    void start(Map cfg, Command command, File outputDirectory, Appendable outputLog, Appendable errorLog) {
+    void start(Map cfg, Command command, Appendable outputLog, Appendable errorLog) {
 		
         this.command = command
 		this.config = cfg

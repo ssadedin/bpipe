@@ -67,8 +67,6 @@ class SgeCommandExecutor implements CommandExecutor {
 
     private static String CMD_FILENAME = "cmd_run.sh"
     
-    private static String CMD_SCRIPT_FILENAME = "cmd.sh"
-
     /**
      * Start the execution of the command in the SGE environment.
      * <p>
@@ -81,7 +79,7 @@ class SgeCommandExecutor implements CommandExecutor {
      *   the job exit code. To monitor for job termination will will wait for that file to exist
      */
     @Override
-    void start(Map cfg, Command command, File outputDirectory, Appendable outputLog, Appendable errorLog) {
+    void start(Map cfg, Command command, Appendable outputLog, Appendable errorLog) {
         this.config = cfg
         this.id = command.id
         this.name = command.name;
@@ -126,17 +124,11 @@ class SgeCommandExecutor implements CommandExecutor {
         }
         
         // at the end append the command script wrapped file name
-        startCmd << "$jobDir/$CMD_SCRIPT_FILENAME".toString()
+        startCmd << "$jobDir/$CommandTemplate.CMD_SCRIPT_FILENAME".toString()
     
-        /*
-         * Create '.cmd.sh' wrapper used by the 'qsub' command
-         */
-        def cmdWrapperScript = new File(jobDir, CMD_SCRIPT_FILENAME)
-        
         def cmdScript = new File(jobDir, CMD_FILENAME)
         cmdScript.text = cmd
     
-        
         // This is providing backwards compatibility for the original format
         // of the procs parameter supported in the form "orte 1"
         if(config?.procs && !config.procs.toString().isInteger()) {
@@ -150,21 +142,7 @@ class SgeCommandExecutor implements CommandExecutor {
             config.sge_pe = parts[0].trim()
         }
         
-        String jobTemplateFile = "executor/sge-command.template.sh"
-        if(config?.jobTemplate) {
-            if(config.jobTemplate instanceof Closure) {
-                jobTemplateFile = String.valueOf(config.jobTemplate(config))
-            }
-            else 
-                jobTemplateFile = String.valueOf(config.jobTemplate)
-        }
-        
-        File commandTemplate = bpipe.ReportGenerator.resolveTemplateFile(jobTemplateFile)
-        
-        log.info "Generating output from command template ${commandTemplate.absolutePath} to $cmdWrapperScript.absolutePath"
-        SimpleTemplateEngine e  = new SimpleTemplateEngine()
-        commandTemplate.withReader { r ->
-            def template = e.createTemplate(r).make(config + [
+        Map props = config + [
                 config : config, 
                 cmd : cmd,
                 name : name,
@@ -173,10 +151,10 @@ class SgeCommandExecutor implements CommandExecutor {
                 CMD_OUT_FILENAME : CMD_OUT_FILENAME,
                 CMD_ERR_FILENAME : CMD_ERR_FILENAME,
                 CMD_EXIT_FILENAME : CMD_EXIT_FILENAME
-            ])
-            cmdWrapperScript.text = template.toString()
-        }
-
+        ]
+        
+        new CommandTemplate().populateCommandTemplate(jobDir, "executor/sge-command.template.sh", props)
+        
         /*
          * prepare the command to invoke
          */
@@ -216,7 +194,7 @@ class SgeCommandExecutor implements CommandExecutor {
      */
     String statusImpl() {
 
-        if( !new File(jobDir, CMD_SCRIPT_FILENAME).exists() ) {
+        if( !new File(jobDir,CommandTemplate.CMD_SCRIPT_FILENAME).exists() ) {
             return CommandStatus.UNKNOWN
         }
 

@@ -59,7 +59,7 @@ class PbsproCommandExecutor extends CustomCommandExecutor implements CommandExec
      * These appear as files in the local directory.
      */
     @Override
-    void start(Map cfg, Command command, File outputDirectory, Appendable outputLog, Appendable errorLog) {
+    void start(Map cfg, Command command, Appendable outputLog, Appendable errorLog) {
 
         this.command = command
         this.config = cfg

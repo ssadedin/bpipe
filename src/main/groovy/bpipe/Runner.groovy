@@ -349,14 +349,14 @@ class Runner {
         if(opt.arguments().size() > 1)
             pipelineArgs = opt.arguments()[1..-1]
                 
-
         log.info "Loading tool database ... "
         def initThreads = [
                            { ToolDatabase.instance.init(Config.userConfig) },
                            { /* Add event listeners that come directly from configuration */ EventManager.instance.configure(Config.userConfig) },
                            { Concurrency.instance.initFromConfig() },
                            { if(!opts.t) { NotificationManager.instance.configure(Config.userConfig); configureReportsFromUserConfig() } },
-                           { Dependencies.instance.preloadOutputGraph() }
+                           { Dependencies.instance.preloadOutputGraph() },
+                           { if(!opts.t) { ExecutorPool.initPools(ExecutorFactory.instance, Config.userConfig) } }
                            ].collect{new Thread(it)}
         initThreads*.start()
 
@@ -408,6 +408,7 @@ class Runner {
             normalShutdown = false
             script.run()
             normalShutdown=true
+            ExecutorPool.shutdownAll()
             EventManager.instance.signal(PipelineEvent.SHUTDOWN, "Shutting down process $pid")
         }
         catch(MissingPropertyException e)  {
@@ -647,6 +648,8 @@ class Runner {
         
         String pid = Config.config.pid
         String parentPid = Config.config.parentPid
+        
+        ExecutorPool.shutdownAll()
             
         // The normalShutdown flag is set to false by default, and only set to true
         // when Bpipe executes through one of the normal / expected paths. In this 

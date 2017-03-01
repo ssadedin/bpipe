@@ -61,9 +61,9 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
      * These appear as files in the local directory.
      */
     @Override
-    void start(Map cfg, Command command, File outputDirectory, Appendable outputLog, Appendable errorLog) {
+    void start(Map cfg, Command command, Appendable outputLog, Appendable errorLog) {
         
-        super.start(cfg, command, outputDirectory, outputLog, errorLog);
+        super.start(cfg, command, outputLog, errorLog);
         
         // After starting the process, we launch a background thread that waits for the error
         // and output files to appear and then forward those inputs

@@ -72,7 +72,7 @@ abstract class AbstractGridBashExecutor implements CommandExecutor {
 
 
     @Override
-    void start(Map cfg, Command command, File outputDirectory, Appendable outputLog, Appendable errorLog) {
+    void start(Map cfg, Command command, Appendable outputLog, Appendable errorLog) {
 
         this.cfg = cfg
         this.id = command.id
@@ -88,7 +88,7 @@ abstract class AbstractGridBashExecutor implements CommandExecutor {
         log.info "Executing command '${cmd}' with ${provider.getName()}"
         executor = provider.getExecutor()
         def bashCmd = new BashCallableCommand(cmd)
-        bashCmd.outputDirectory = outputDirectory
+        bashCmd.outputDirectory = new File(".")
         task = executor.submit( bashCmd );
     }
 
