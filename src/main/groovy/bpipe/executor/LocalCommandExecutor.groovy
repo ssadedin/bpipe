@@ -27,6 +27,7 @@ package bpipe.executor
 
 import groovy.util.logging.Log
 
+import java.beans.PropertyChangeEvent
 import java.lang.ProcessBuilder.Redirect;
 
 import bpipe.Command;
@@ -48,6 +49,7 @@ class LocalCommandExecutor implements CommandExecutor {
     
     public static final long serialVersionUID = 0L
     
+   
     transient Process process
     
     /**
@@ -75,7 +77,13 @@ class LocalCommandExecutor implements CommandExecutor {
     LocalCommandExecutor() {
     }
     
-    void start(Map cfg, Command command, File outputDirectory, Appendable outputLog, Appendable errorLog) {
+    /**
+     * Starts a command using a process on the local machine.
+     * <p>
+     * If command.command is null, the command is started in "waiting" mode and
+     * will only run when "activated" by .
+     */
+    void start(Map cfg, Command command, Appendable outputLog, Appendable errorLog) {
         
       String cmd = command.command
       new Thread({
@@ -100,32 +108,39 @@ class LocalCommandExecutor implements CommandExecutor {
           this.jobDir = ".bpipe/commandtmp/$id"
           new File(jobDir).mkdirs()
           
-          // Build the command line with preamble and postamble content
-          List commandLines = []
-          
-          // Write out the pid to file
-          commandLines << "echo \$\$ > ${CommandManager.DEFAULT_COMMAND_DIR}/${command.id}.pid;"
-          
-          if('use' in cfg)  {
-              if('use_prefix' in cfg)
-                  commandLines << cfg.use_prefix
-              
-              commandLines << "use $cfg.use || true;" // added || true because it fails when packages already loaded
+          File cmdScript = new File(jobDir, CMD_FILENAME)
+          if(cmd != null) {
+              log.info "No preallocated command executor: running command $id directly"
+              cmdScript.text = cmd
+          }
+          else {
+              log.info "Local command executor is preallocated: will wait for command"
+              command.commandListener =  { Command e ->
+                  log.info "Local pooled command executor now executing: " + e.command
+              }
           }
           
-          if(cfg.modules)
-              commandLines << "module load $cfg.modules"
-          
-          commandLines << cmd
-          commandLines << ""
-          commandLines << "echo -n \$? > $jobDir/${CMD_EXIT_FILENAME}.tmp; mv $jobDir/${CMD_EXIT_FILENAME}.tmp $jobDir/${CMD_EXIT_FILENAME}"
+          Map props = cfg + [
+            config : cfg,
+            cmd : cmd,
+            name : command.name,
+            jobDir : jobDir,
+            CMD_FILENAME : cmdScript.path,
+            CMD_PID_FILE : "${CommandManager.DEFAULT_COMMAND_DIR}/${command.id}.pid",
+            CMD_OUT_FILENAME : CMD_OUT_FILENAME,
+            CMD_ERR_FILENAME : CMD_ERR_FILENAME,
+            CMD_EXIT_FILENAME : CMD_EXIT_FILENAME
+          ]
+
+          File wrapperScript = 
+              new CommandTemplate().populateCommandTemplate(new File(jobDir), "executor/local-command.template.sh", props)
           
           this.runningCommand = cmd
           this.startedAt = new Date()
-//          process = Runtime.getRuntime().exec((String[])(['bash','-e','-c',commandLines.join('\n')].toArray()))
           
-          String joinedCmd = commandLines.join('\n')
-          ProcessBuilder pb = new ProcessBuilder(['bash','-e','-c',joinedCmd])
+          log.info "Launching command wrapper script ${wrapperScript.path}"
+          
+          ProcessBuilder pb = new ProcessBuilder(['bash','-e',wrapperScript.path])
           pb.redirectOutput(Redirect.to(new File(jobDir, CMD_OUT_FILENAME)))
           pb.redirectError(Redirect.to(new File(jobDir, CMD_ERR_FILENAME)))
           
@@ -155,6 +170,7 @@ class LocalCommandExecutor implements CommandExecutor {
               this.notifyAll()
           }
       }).start()
+      
       while(!process) 
         Thread.sleep(100)
     }
@@ -167,13 +183,8 @@ class LocalCommandExecutor implements CommandExecutor {
     String statusImpl() {
         
         // Try to read PID
-        if(pid == -1L && id != null) {
-            File pidFile = new File("${CommandManager.DEFAULT_COMMAND_DIR}/${id}.pid")
-            if(pidFile.exists()) {
-                pid = pidFile.text.trim().toInteger()
-            }
-        }
-        
+        readPID()
+       
         if(!this.process && this.pid != -1L) {
             try {
                 String info = "ps -o ppid,ruser -p ${this.pid}".execute().text
@@ -229,6 +240,17 @@ class LocalCommandExecutor implements CommandExecutor {
         }
     }
     
+    void readPID() {
+        if(pid == -1L && id != null) {
+            File pidFile = new File("${CommandManager.DEFAULT_COMMAND_DIR}/${id}.pid")
+            log.info "Checking for pid file $pidFile for local command $id"
+            if(pidFile.exists()) {
+                pid = pidFile.text.trim().toInteger()
+                log.info "Read pid=$pid for local command $id"
+            }
+        }
+    }
+    
     Integer readStoredExitCode() {
         File exitFile = new File(".bpipe/commandtmp/$id/$CMD_EXIT_FILENAME")
         if(exitFile.exists()) {
@@ -246,12 +268,14 @@ class LocalCommandExecutor implements CommandExecutor {
     }
     
     void stop() {
-        // Not implemented.  Java is too stupid to stop a process it previously started.
-        // So how do commands get stopped then? Well, the 'bpipe stop' first calls the 
-        // Java way (necessary for other executors), then it scans the processes
-        // that are a child of the Bpipe process and kills them too. This means
-        // if the Bpipe process dies another way, it's possible that we can't stop
-        // the children any more (a bug)
+        
+        // There are scenarios where we could try to stop a command before it got to read
+        // its own PID (note PID is only read lazily above as part of status call)
+        readPID()
+        
+        log.info "Shutting down local job $id with pid $pid"
+        
+        "kill $pid".execute()
     }
     
     @Override

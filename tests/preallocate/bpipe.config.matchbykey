@@ -1,0 +1,21 @@
+
+preallocate {
+    berry {
+        jobs=1
+    }
+
+    juice {
+        jobs=1
+    }
+
+}
+
+commands {
+    berry {
+        memory="1g"
+    }
+
+    juice {
+        memory="4g"
+    }
+}

@@ -29,6 +29,8 @@ import java.io.IOException;
 import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;
 
+
+
 /**
  * Responsible for printing messages to the main output log, allowing
  * some messages to be buffered until explicitly flushed, or an
@@ -139,4 +141,19 @@ class OutputLog implements Appendable {
         this.flush()
         return this;
     }
+}
+
+/**
+ * An output log that simply forwards to another output log.
+ * 
+ * @author Simon Sadedin
+ */
+class ForwardingOutputLog extends OutputLog {
+    
+    ForwardingOutputLog() {
+        super('PooledExecutor')
+    }
+    
+    @Delegate
+    OutputLog wrapped
 }

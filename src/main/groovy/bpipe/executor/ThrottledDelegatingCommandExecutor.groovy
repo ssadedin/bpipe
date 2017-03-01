@@ -51,7 +51,6 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
     // and used when "waitFor" is called
     Map cfg
     Command command
-    File outputDirectory
     
     ThrottledDelegatingCommandExecutor(CommandExecutor delegateTo, Map resources) {
         
@@ -66,20 +65,19 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
      * the delegate {@link CommandExecutor#start(java.util.Map, String, String, String, java.io.File)}
      */
     @Override
-    void start(Map cfg, Command cmd, File outputDirectory, Appendable outputLog, Appendable errorLog) {
+    void start(Map cfg, Command cmd, Appendable outputLog, Appendable errorLog) {
         this.command = cmd
         this.outputLog = outputLog
         this.errorLog = errorLog
         if(deferred) {
           this.cfg = cfg
-          this.outputDirectory = outputDirectory
         }
         else {
-            doStart(cfg,cmd,outputDirectory)
+            doStart(cfg,cmd)
         }
     }
     
-    void doStart(Map cfg, Command cmd, File outputDirectory) {
+    void doStart(Map cfg, Command cmd) {
         
         ResourceUnit threadResource = resources.find { it.key == "threads" }
 
@@ -120,7 +118,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
             if(cfg.containsKey('jobLaunchSeparationMs')) {
                 Thread.sleep(cfg.jobLaunchSeparationMs)
             }
-            commandExecutor.start(cfg, this.command, outputDirectory, outputLog, errorLog)
+            commandExecutor.start(cfg, this.command, outputLog, errorLog)
         }
         
         this.command.save()
@@ -133,7 +131,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
     @Override
     int waitFor() {
         if(deferred) {
-            doStart(cfg,this.command,outputDirectory)
+            doStart(cfg,this.command)
         }
         
         try {

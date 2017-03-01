@@ -1757,43 +1757,42 @@ class PipelineContext {
       // again to re-invoke them
       this.inferredOutputs = []
       
-      if(!probeMode) {
-          // Check the command for versions of tools it uses
-          if(!Runner.opts.t) { // Don't execute probes if the user is just testing the pipeline
-            def toolsDiscovered = ToolDatabase.instance.probe(cmd)
-          
-            // Add the tools to our documentation
-            if(toolsDiscovered)
-                this.doc(["tools" : toolsDiscovered])
-          }
-          
-
-          command.branch = this.branch
-          command.outputs = checkOutputs.unique()
-          command.stageId = this.pipelineStages[-1].id
-          try {
-              commandManager.start(stageName, command, config, Utils.box(this.input), 
-                                       new File(outputDirectory), this.usedResources,
-                                       deferred, this.outputLog)
-          }
-          finally {
-              // If deferred then the thread count is not allocated yet, so we can't 
-              // write the log line yet
-              if(!deferred)
-                  CommandLog.cmdLog.write(command.command)
-          }
-          
-          // log.info "Command $command.id started with resources " + this.usedResources
-          
-          trackedOutputs[command.id] = command              
-          List outputFilter = command.executor.ignorableOutputs
-
-          return command
-      }
-      else {
+      if(probeMode) {
           log.info("Skip command start for $command.command due to probe mode")
           return new Command(executor:new ProbeCommandExecutor())
+      } 
+      
+      // Check the command for versions of tools it uses
+      if(!Runner.opts.t) { // Don't execute tool probes if the user is just testing the pipeline
+        def toolsDiscovered = ToolDatabase.instance.probe(cmd)
+          
+        // Add the tools to our documentation
+        if(toolsDiscovered)
+            this.doc(["tools" : toolsDiscovered])
       }
+          
+
+      command.branch = this.branch
+      command.outputs = checkOutputs.unique()
+      command.stageId = this.pipelineStages[-1].id
+      try {
+          command = commandManager.start(stageName, command, config, Utils.box(this.input), 
+                                         this.usedResources,
+                                         deferred, this.outputLog)
+      }
+      finally {
+          // If deferred then the thread count is not allocated yet, so we can't 
+          // write the log line yet
+          if(!deferred)
+              CommandLog.cmdLog.write(command.command)
+      }
+          
+      // log.info "Command $command.id started with resources " + this.usedResources
+          
+      trackedOutputs[command.id] = command              
+      List outputFilter = command.executor.ignorableOutputs
+
+      return command
     }
     
     /**

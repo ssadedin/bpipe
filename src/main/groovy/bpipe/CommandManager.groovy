@@ -68,6 +68,11 @@ class CommandManager {
     File completedDir
     
     /**
+     * Factory used to create executors
+     */
+    ExecutorFactory executorFactory = ExecutorFactory.instance
+    
+    /**
      * A global list of commands executed by all command managers in this run
      */
     static List<Command> executedCommands = Collections.synchronizedList([])
@@ -98,65 +103,30 @@ class CommandManager {
      *                  on the resulting command executor
      * @return the {@link CommandExecutor} that is executing the job.
      */
-    CommandExecutor start(String name, Command command, String configName, Collection inputs, File outputDirectory, Map resources, boolean deferred, Appendable outputLog) {
+    Command start(String name, Command command, String configName, Collection inputs, Map resources, boolean deferred, Appendable outputLog) {
         
         String cmd = command.command
         Map cfg = command.getConfig(inputs)
+        
+        // Create a command id for the job
+        command.id = CommandId.newId()
         
         // Record this as the time the command is "created" (which is
         // really relevant to queuing systems - we wish to be able to see
         // later how much time the command waited in the queue)
         command.createTimeMs = System.currentTimeMillis()
 
-        String executor = cfg.executor
-        
         log.info "Using config $cfg for command"
         
-        // Try and resolve the executor several ways
-        // It can be a file on the file system,
-        // or it can map to a class
-        CommandExecutor cmdExec = null
-        File executorFile = new File(executor)
-        String name1 = "bpipe.executor."+executor.capitalize()
-        if(executorFile.exists()) {
-            cmdExec = new CustomCommandExecutor(executorFile)
-        }
-        else {
-            /* find out the command executor class */
-            Class cmdClazz = null
-            try {
-                cmdClazz = Class.forName(name1)
-            }
-            catch(ClassNotFoundException e) {
-                String name2 = "bpipe.executor."+executor.capitalize() + "CommandExecutor"
-                try {
-                    cmdClazz = Class.forName(name2)
-                }
-                catch(ClassNotFoundException e2) {
-                    log.info("Unable to create command executor using class $name2 : $e2")
-                    String name3 = executor
-                    try {
-                        cmdClazz = Class.forName(name3)
-                    }
-                    catch(ClassNotFoundException e3) {
-                        throw new PipelineError("Could not resolve specified command executor ${executor} as a valid file path or a class named any of $name1, $name2, $name3")
-                    }
-                }
-            }
+        OutputLog commandLog = new OutputLog(outputLog, command.id)
 
-            /* let's instantiate the found command executor class */
-            try {
-                cmdExec = cmdClazz.newInstance()
-            }
-            catch( PipelineError e ) {
-                // just re-trow
-                throw e
-            }
-            catch( Exception e ) {
-                throw new PipelineError( "Cannot instantiate command executor: ${executor}", e )
-            }
-        }
+        // Note: the command returned back may be a new command object,
+        // it is important that we replace the original with it and return
+        // the new one back to the caller.
+        command = createExecutor(command, cfg, outputLog)
         
+        CommandExecutor cmdExec = command.executor
+       
         if(Runner.isPaused()) {
             throw new PipelinePausedException()
         }
@@ -167,15 +137,8 @@ class CommandManager {
             }
         }
         
-        
-        // Create a command id for the job
-        command.id = CommandId.newId()
-        
         log.info "Created bpipe command id " + command.id
         
-        // Temporary hack until we figure out design for how output log gets passed through
-        OutputLog commandLog = new OutputLog(outputLog, command.id)
-
         ThrottledDelegatingCommandExecutor wrapped = new ThrottledDelegatingCommandExecutor(cmdExec, resources)
         if(deferred)
             wrapped.deferred = true
@@ -184,7 +147,7 @@ class CommandManager {
         command.executor = wrapped
         command.dir = this.commandDir
         
-        wrapped.start(cfg, command, outputDirectory, commandLog, commandLog)
+        wrapped.start(cfg, command, commandLog, commandLog)
     		
 		this.commandIds[cmdExec] = command.id
 		this.commandIds[wrapped] = command.id
@@ -192,9 +155,37 @@ class CommandManager {
         
         command.save()
         
-        return wrapped
+        return command
     }
     
+    /**
+     * Attempt to create and assign an executor to the given command.
+     * <p>
+     * First, the pool of pre-allocated executors will be checked for
+     * a compatible executor. If no compatible executor is available in 
+     * the pre-allocated pool, a new executor will be created using the
+     * executorFactory.
+     * 
+     * @param cmd   Command to execute
+     * @param cfg   Configuration of command
+     * 
+     * @return  A Command object (which may be different to the original 
+     *          command object supplied) which has an executor 
+     *          assigned
+     */
+    Command createExecutor(Command cmd, Map cfg, OutputLog outputLog) {
+        
+        cmd = ExecutorPool.requestExecutor(cmd, cfg, outputLog)
+        if(cmd.executor) {
+            log.info "Using pre-allocated executor of type ${cmd.executor.class.name}"
+            return cmd
+        }
+
+        CommandExecutor cmdExec = executorFactory.createExecutor(cfg)
+        cmd.executor = cmdExec
+        return cmd
+    }
+   
     void adoptCommand(Command command) {
         this.executedCommands << command.executor
         this.commandIds[command.executor] = command.id

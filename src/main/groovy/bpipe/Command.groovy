@@ -105,7 +105,7 @@ class Command implements Serializable {
      */
     private Map cfg
     
-    Map getConfig(inputs) {
+    Map getConfig(List inputs) {
         if(cfg != null)
             return cfg
             
@@ -132,7 +132,7 @@ class Command implements Serializable {
         this.cfg = rawCfg.clone()
         
         // Resolve inputs to files
-        List fileInputs = inputs.collect { new File(it) }
+        List fileInputs = inputs == null ? [] : inputs.collect { new File(it) }
         
         // Execute any executable properties that are closures
         rawCfg.each { key, value ->
@@ -146,6 +146,10 @@ class Command implements Serializable {
                 log.info "Converted walltime is " + cfg[key]
             }
         }
+        
+        // Ensure configuration knows its own name
+        cfg.name = configName
+        
         return cfg
     }
     
@@ -185,6 +189,9 @@ class Command implements Serializable {
        if(e instanceof bpipe.executor.ThrottledDelegatingCommandExecutor)
             e = e.commandExecutor
   
+       if(!dir.exists())
+           dir.mkdirs()
+           
        File saveFile = new File(dir, this.id)
        Command me = this
        saveFile.withObjectOutputStream { ois ->
@@ -195,6 +202,30 @@ class Command implements Serializable {
     
     boolean isResourcesSatisfied() {
         return this.allocated || (this.executor != null && this.executor instanceof ProbeCommandExecutor)
+    }
+    
+    void adopt(Command other) {
+        // note we do NOT take the other command's id, because there may already be
+        // associations to this command's id eg: in the file system
+        // this.id = other.id
+        this.stageId = other.stageId
+        this.branch = other.branch
+        this.configName = other.configName
+        this.createTimeMs = other.createTimeMs
+        this.startTimeMs = other.startTimeMs
+        this.dir = other.dir
+        this.outputs = other.outputs
+        this.name = other.name
+        this.cfg = other.cfg
+        this.allocated = other.allocated
+    }
+    
+    transient Closure commandListener
+    
+    void setCommand(String cmd) {
+        this.command = cmd
+        if(commandListener != null)
+            commandListener(this)
     }
     
     static Command readCommand(File saveFile) {

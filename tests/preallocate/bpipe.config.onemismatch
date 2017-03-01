@@ -1,0 +1,17 @@
+
+preallocate {
+    small {
+        jobs=2
+        configs=["berry","foo"]
+    }
+}
+
+commands {
+    berry {
+        memory="1g"
+    }
+
+    juice {
+        memory="4g"
+    }
+}
