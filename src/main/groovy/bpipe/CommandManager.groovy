@@ -235,7 +235,7 @@ class CommandManager {
                 }
             }
             catch(PipelineError e) {
-              System.err.println("Failed to stop command: $cmd.id\n\n${Utils.indent(e.message)}\n\nThe job may already be stopped; use 'bpipe cleancommands' to clear old commands.")      
+              System.err.println("WARNING: $cmd.id\n\n${Utils.indent(e.message)}\n\nNote: this may occur if the job is already stopped; use 'bpipe cleancommands' to clear old commands.")      
             }
             catch(Throwable t) {
               System.err.println("An unexpected error occured while stopping command: $exec.\n\n${Utils.indent(t.message)}\n\nThe job may already be stopped; use 'bpipe cleancommands' to clear old commands.")      

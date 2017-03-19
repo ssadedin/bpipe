@@ -54,17 +54,14 @@ class Stop extends BpipeCommand {
             return
         }
         
-        if(!isRunning(pid)) {
-            out.println "The pipeline in this directory has already terminated"
-            System.exit(0)
+        if(isRunning(pid)) {
+            out.println "Stopping Bpipe process $pid"
+            
+            // Try to kill the bpipe process (ourselves!)
+            String output = ("kill $pid").execute().text
+            if(output)
+                out.println "Output from kill: $output"
         }
-        
-        out.println "Stopping Bpipe process $pid"
-        
-        // Try to kill the bpipe process (ourselves!)
-        String output = ("kill $pid").execute().text
-        if(output)
-            out.println "Output from kill: $output"
         
         // Give it a tiny window to happen
         Thread.sleep(100)
