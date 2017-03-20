@@ -45,7 +45,7 @@ QSUB_FAILED=7              # qsub command returned non-zero exit status
 MKDIR_JOBDIR_FAILED=8      # mkdir $JOBDIR failed
 
 ESSENTIAL_ENV_VARS="COMMAND NAME"
-OPTIONAL_ENV_VARS="WALLTIME PROCS QUEUE JOBDIR MEMORY"
+OPTIONAL_ENV_VARS="WALLTIME PROCS QUEUE JOBDIR MEMORY CUSTOM_SUBMIT_OPTS"
 DEFAULT_BATCH_MEM=1
 DEFAULT_BATCH_PROCS=1
 DEFAULT_WALLTIME="01:00:00" # one hour
@@ -196,7 +196,7 @@ start () {
    if [[ -f $job_script_name ]]
       then
          # launch the job and get its id
-         job_id_full=`qsub $job_script_name`
+         job_id_full=`qsub $CUSTOM_SUBMIT_OPTS $job_script_name`
          qsub_exit_status=$?
          if [[ $? -eq 0 ]]
             then

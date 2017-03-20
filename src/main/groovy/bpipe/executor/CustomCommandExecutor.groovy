@@ -203,6 +203,10 @@ class CustomCommandExecutor implements CommandExecutor {
             env.COMMAND = '('+ command.command + ') > .bpipe/commandtmp/'+command.id+'/'+command.id+'.out 2>  .bpipe/commandtmp/'+command.id+'/'+command.id+'.err'
         }
             
+        if(config == null) {
+            return
+        }
+        
         // If an account is specified by the config then use that
         if(config?.account)
             env.ACCOUNT = config.account
@@ -231,6 +235,9 @@ class CustomCommandExecutor implements CommandExecutor {
         if(config?.mem_param)
             env.MEM_PARAM = String.valueOf(config.mem_param)
             
+        if('custom_submit_options' in config)
+            env.CUSTOM_SUBMIT_OPTS = String.valueOf(config.custom_submit_options)
+  
         // modules since we may need to load modules before the command... - Simon Gladman (slugger70) 2014
         if(config?.modules) {
             log.info "Using modules: $config?.modules"

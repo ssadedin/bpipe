@@ -92,6 +92,21 @@ where for each command the configuration name is placed first and the command fo
 The above runs BWA twice in parallel, but one has a configuration anmed "small_bwa" while the other has a configuration
 called "big_bwa".
 
+## Customizing Submit Options
+
+In some systems there are some options that can only be provided as arguments to the submission command (eg: to qsub). 
+To allow customization of these options in cases where the generic options supported by Bpipe are not sufficient,
+the `custom_submit_options` configuration can be set to inject arbitrary arguments into the submission command itself.
+For example:
+
+```
+commands {
+    mycommand {
+        custom_submit_options="-ac FOO=bar"
+    }
+}
+```
+
 ## Sun Grid Engine options
 
 In order to enable the Sun Grid Engine (SGE) resource manager define the following entry in the `bpipe.config` file :

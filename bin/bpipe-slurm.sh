@@ -82,7 +82,7 @@ MKDIR_JOBDIR_FAILED=8
 JOBTYPE_FAILED=9              # jobtype variable led to non-zero exit status
 
 ESSENTIAL_ENV_VARS="COMMAND NAME"
-OPTIONAL_ENV_VARS="WALLTIME PROCS QUEUE JOBDIR JOBTYPE MEMORY"
+OPTIONAL_ENV_VARS="WALLTIME PROCS QUEUE JOBDIR JOBTYPE MEMORY CUSTOM_SUBMIT_OPTS"
 DEFAULT_BATCH_MEM=4096
 DEFAULT_BATCH_PROCS=1
 DEFAULT_WALLTIME="01:00:00" # one hour
@@ -223,7 +223,7 @@ start () {
    if [[ -f $job_script_name ]]
       then
          # launch the job and get its id
-         job_id_full=`sbatch $job_script_name`
+         job_id_full=`sbatch $CUSTOM_SUBMIT_OPTS $job_script_name`
          sbatch_exit_status=$?
          if [[ $? -eq 0 ]]
             then
