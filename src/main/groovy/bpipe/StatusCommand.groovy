@@ -83,7 +83,7 @@ class StatusCommand extends BpipeCommand {
             File resultFile = new File(".bpipe/results/${pid}.xml")
             
             if(!resultFile.exists()) {
-                out.prinlnt """
+                out.println """
                     Error: no result file exists for the most recent Bpipe run.
                 
                     This may indicate that the Bpipe process was terminated in an unexpected manner.

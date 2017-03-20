@@ -84,7 +84,7 @@ abstract class BpipeCommand {
         if(pid == null)
             pid = getLastLocalPID()
         
-        String processInfo = "ps -p $pid".execute().text
+        String processInfo = "ps -f -p $pid".execute().text
         if(processInfo.contains("bpipe.Runner"))
             return true
         else
