@@ -141,20 +141,8 @@ class OutputDirectoryWatcher extends Thread {
     }
     
     void runUsingNativeWatcher() {
-        try {
-            if(!Files.exists(this.directory))
-                this.directory.toFile().mkdirs()
-                
-            this.watchKey = 
-                this.directory.register(watcher, [ENTRY_CREATE, ENTRY_MODIFY] as WatchEvent.Kind[],  com.sun.nio.file.SensitivityWatchEventModifier.HIGH)
-                
-            log.info "Using high sensitivity file watcher for $directory"
-        }
-        catch(Throwable t) {
-            log.info "Fall back to low sensitivity file watching for $directory"
-            this.watchKey = 
-                this.directory.register(watcher, [ENTRY_CREATE, ENTRY_MODIFY] as WatchEvent.Kind[])
-        }
+        
+        this.setupWatcher()
             
         this.initialize()
         
@@ -194,7 +182,37 @@ class OutputDirectoryWatcher extends Thread {
             
             if(!key.reset()) {
                 log.warning("WARNING: watch key for directory $directory expired")
-                return
+                
+                Thread.sleep(1000)
+                if(!setupWatcher(false)) // one reason this can happen is if the directory 
+                                         // was deleted deliberately. If so, don't recreate
+                    return
+            }
+        }
+    }
+
+    private boolean setupWatcher(boolean mkdir=true) {
+        try {
+            if(!Files.exists(this.directory) && mkdir)
+                this.directory.toFile().mkdirs()
+
+            this.watchKey =
+                    this.directory.register(watcher, [ENTRY_CREATE, ENTRY_MODIFY] as WatchEvent.Kind[],  com.sun.nio.file.SensitivityWatchEventModifier.HIGH)
+
+            log.info "Using high sensitivity file watcher for $directory"
+            
+            return true
+        }
+        catch(Throwable t) {
+            log.info "Fall back to low sensitivity file watching for $directory"
+            
+            try {
+                this.watchKey =
+                        this.directory.register(watcher, [ENTRY_CREATE, ENTRY_MODIFY] as WatchEvent.Kind[])
+            }
+            catch(Throwable t2) {
+                log.warning "Unable to create directory watcher: " + t2
+                return false
             }
         }
     }
@@ -300,6 +318,8 @@ class OutputDirectoryWatcher extends Thread {
         return watcher
     }
     
+    static final long SYNC_TIMEOUT_MS = 30000
+    
     /**
      * Sleep until we have high confidence that this directory watcher has received
      * all notifications for its directory. 
@@ -308,12 +328,15 @@ class OutputDirectoryWatcher extends Thread {
      * of that file to be received.
      */
     void sync() {
+        
         // create tmp file
         // wait until we are notified about it
         // return 
         int rand = new Random().nextInt()
         File tmpFile = new File(directory.toFile(),".bpipe.tmp-"+rand)
         tmpFile.text = ""
+        
+        long startTimeMs = System.currentTimeMillis()
         boolean created = createdFiles.contains(tmpFile.name)
         synchronized(manualPollerWaitLock) {
             manualPollerWaitLock.notify()
@@ -322,6 +345,10 @@ class OutputDirectoryWatcher extends Thread {
             synchronized(this.timestamps) {
                 this.timestamps.wait(300)
                 created = createdFiles.contains(tmpFile.name)
+            }
+            if(System.currentTimeMillis()-startTimeMs > SYNC_TIMEOUT_MS) {
+                log.warning("File system sync timed out after " +  (System.currentTimeMillis()-startTimeMs) + "ms: file $tmpFile was not observed as created")
+                break
             }
         }
         tmpFile.delete()
