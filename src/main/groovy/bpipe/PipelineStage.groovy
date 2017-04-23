@@ -291,7 +291,7 @@ class PipelineStage {
                 if(!succeeded && !joiner) 
                     EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")
                 
-                log.severe "Cleaning up outputs due to error"
+                log.severe "Cleaning up outputs due to error: $e"
                 log.throwing("PipelineStage", "run", e)
                 cleanupOutputs()
                 throw e
