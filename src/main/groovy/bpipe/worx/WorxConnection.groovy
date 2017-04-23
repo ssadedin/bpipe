@@ -144,9 +144,9 @@ class WorxConnection {
         log.info "Connecting to $configUrl"
         
         URL url = new URL(configUrl)
-        socket = new Socket(url.host, url.port) 
-        
         try {
+            socket = new Socket(url.host, url.port) 
+        
             socketReader = new BufferedReader(new InputStreamReader(socket.inputStream))
         } catch (Exception e) {
             if((failures%20) == 0) {
