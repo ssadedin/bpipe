@@ -66,7 +66,7 @@ class SlurmCommandExecutor extends TorqueCommandExecutor implements CommandExecu
         super.setEnvironment(env)
         
         if(config?.memory)
-            env.MEMORY = (config.memory.toInteger() * 1024).toString()
+            env.MEMORY = String.valueOf(config.memory)
         
         // jobtype since queues (parition in slurm) may not determine computation mode
         if(config?.jobtype) {
