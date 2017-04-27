@@ -860,4 +860,20 @@ class Utils {
         }        
         return result
     }
+    
+    static String formatErrors(Collection<PipelineError> errors) {
+        
+        int width = Config.config.columns
+        
+        return errors.collect {  PipelineError e ->
+            String branch = e.ctx?.branch?.name
+            if(branch != null && branch != "all") {
+                branch = " ( $branch ) "
+            }
+            
+            (e.ctx ? " $e.ctx.stageName $branch " : "").center(width,"-") + "\n\n" + e.message + "\n"
+        }.join("\n") + "\n" + ("-" * width)
+        
+        
+    }
 }

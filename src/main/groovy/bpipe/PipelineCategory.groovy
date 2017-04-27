@@ -582,12 +582,14 @@ class PipelineCategory {
                 }
                 current.failReason = messages
                 
+                List<PipelineError> childFailures = pipelines.grep { it.failed }*.failExceptions.flatten()
+                
                 Exception e
                 if(pipelines.every { p -> p.failExceptions.every { it instanceof PipelineTestAbort } }) {
                    e = new PipelineTestAbort()
                 }
                 else {
-                    e = new PipelineError("One or more parallel stages aborted. The following messages were reported: \n" + messages)
+                   e = new SummaryErrorException(childFailures)
                 }
                 e.summary = true
                 throw e
@@ -711,17 +713,26 @@ class PipelineCategory {
         Map<Throwable,Pipeline> exPipelines = [:]
         pipelines.each { Pipeline p -> p.failExceptions.each { ex -> exPipelines[ex] = p } }
         
-        pipelines*.failExceptions.flatten().groupBy { it.message }.collect { String msg, List<Throwable> t ->
+        pipelines*.failExceptions
+                  .flatten()
+                  .groupBy { it.message }
+                  .collect { String msg, List<Throwable> t ->
+                      
+                        if(t instanceof SummaryErrorException) {
+                            
+                            assert t.summarisedErrors.every { (!it instanceof SummaryErrorException) }
+                            return t.summarisedErrors*.message.join("\n")
+                        }
+                        
+                        List<String> branches = t.collect { exPipelines[it] }*.branchPath.flatten()
+                        
+                        List<String> stages = t.grep { it instanceof PipelineError && it.ctx != null }.collect { it.ctx.stageName }.unique()
+                        
+                        """
+                            Branch${branches.size()>1?'es':''} ${branches.join(", ")} in stage${stages.size()>1?'s':''} ${stages.join(", ")} reported message:
             
-            List<String> branches = t.collect { exPipelines[it] }*.branchPath.flatten()
-            
-            List<String> stages = t.grep { it instanceof PipelineError && it.ctx != null }.collect { it.ctx.stageName }.unique()
-            
-            """
-                Branch${branches.size()>1?'es':''} ${branches.join(", ")} in stage${stages.size()>1?'s':''} ${stages.join(", ")} reported message:
-
-           """.stripIndent() + msg 
-        }.join("\n")
+                       """.stripIndent() + msg 
+                  }.join("\n")
         
         /*
         pipelines.collect { 

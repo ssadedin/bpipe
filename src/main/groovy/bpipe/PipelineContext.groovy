@@ -1376,7 +1376,7 @@ class PipelineContext {
         if(!this.probeMode)
             this.commandManager.cleanup(c)
             
-        throw new CommandFailedException("Command failed with exit status = $c.exitCode : \n\n$c.command")
+        throw new CommandFailedException("Command in stage $stageName failed with exit status = $c.exitCode : \n\n$c.command", this)
       }
       
       if(!this.probeMode)

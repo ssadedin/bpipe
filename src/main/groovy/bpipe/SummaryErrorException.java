@@ -24,6 +24,10 @@
 */
 package bpipe;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+
 /**
  * A user level error that occurred during pipeline execution.
  * Such errors are shown to the user without accompanying stack
@@ -31,13 +35,32 @@ package bpipe;
  * friendly and understandable and not refer to code 
  * artefacts.
  */
-class CommandFailedException extends PipelineError {
-
-    public CommandFailedException(String arg0, PipelineContext ctx) {
-        super(arg0, ctx);
+class SummaryErrorException extends PipelineError {
+    
+    private HashSet<PipelineError> summarisedErrors = new HashSet();
+    
+    public SummaryErrorException(List<PipelineError> children) throws Exception {
+        super();
+        for(Exception e : children)  {
+            if(e instanceof SummaryErrorException) {
+                this.summarisedErrors.addAll(((SummaryErrorException)e).summarisedErrors);
+            }
+            else
+            if(e instanceof PipelineError) {
+                this.summarisedErrors.add((PipelineError)e);
+            }
+            else
+                throw e;
+        }
+        
+    }
+    
+    public String getMessage() {
+        
+        return "One or more parallel stages aborted. The following messages were reported:\n\n" + Utils.formatErrors(summarisedErrors);
     }
 
-    public CommandFailedException(Throwable arg0) {
+    public SummaryErrorException(Throwable arg0) {
         super(arg0);
     }
     

@@ -406,7 +406,8 @@ class PipelineStage {
             }
         }
         catch(PipelineError e) {
-            e.ctx = context
+            if(e.ctx == null)
+                e.ctx = context
             throw e
         }
         finally {
