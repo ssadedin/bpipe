@@ -357,7 +357,8 @@ class OutputDirectoryWatcher extends Thread {
     @CompileStatic
     boolean isPreexisting(String fileName) {
         synchronized(this.timestamps) {
-            boolean created = this.createdFiles.contains(fileName)
+            String normalisedFileName = new File(fileName).name
+            boolean created = this.createdFiles.contains(normalisedFileName)
             return !created;
         }
     }
