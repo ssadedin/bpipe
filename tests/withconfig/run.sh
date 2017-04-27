@@ -10,6 +10,6 @@ grep -q "Stage there" test.out || err "Failed to find expected stage there"
 grep -q "Stage world" test.out || err "Failed to find expected stage world"
 grep -q "Stage fail" test.out || err "Failed to find expected stage fail"
 
-grep -q "Command failed with exit status" test.out || err "Pipeline should have failed in last stage but didn't."
+grep -q "Command in stage fail failed with exit status" test.out || err "Pipeline should have failed in last stage but didn't."
 
 true
