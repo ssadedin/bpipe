@@ -1522,7 +1522,7 @@ class PipelineContext {
         async(cmd, true, config)
     }
     
-    final static int EXIT_ABORTED = -2
+    final static int EXIT_ABORTED = -2i
     
     class CommandThread extends Thread implements ResourceRequestor {
         Command toWaitFor
