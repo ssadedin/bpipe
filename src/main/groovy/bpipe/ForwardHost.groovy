@@ -33,23 +33,15 @@ import java.util.Timer;
 @Log
 class ForwardHost {
     
-    static Timer forwardingTimer
-    
     transient List<Forwarder> forwarders = []
     
     public void forward(String fileName, def stream) {
     
-        // Start the forwarding timer task if it is not already running
-        synchronized(ForwardHost.class) {
-            if(forwardingTimer == null) {
-                forwardingTimer = new  Timer(true)
-            }
-        }
-    
+   
         Forwarder f = new Forwarder(new File(fileName), stream)
         log.info "Forwarding file $fileName using forwarder $f"
         
-        forwardingTimer.schedule(f, 0, 2000)
+        Poller.instance.timer.schedule(f, 0, 2000)
     
         this.forwarders << f
     }

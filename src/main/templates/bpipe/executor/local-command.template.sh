@@ -1,6 +1,6 @@
 #!/bin/sh
 
-echo ">>>>>>>>>>>>>>>> ENTERING COMMAND TEMPLATE <<<<<<<<<<<<<<<<<<<<<<"
+#echo ">>>>>>>>>>>>>>>> ENTERING COMMAND TEMPLATE <<<<<<<<<<<<<<<<<<<<<<"
 
 <%if(config?.use) {%>
 use ${config.use}
@@ -18,6 +18,6 @@ result=\$?
 echo -n \$result > $jobDir/${CMD_EXIT_FILENAME}.tmp
 mv $jobDir/${CMD_EXIT_FILENAME}.tmp $jobDir/${CMD_EXIT_FILENAME}
 
-echo ">>>>>>>>>>>>>>>> EXITING COMMAND TEMPLATE <<<<<<<<<<<<<<<<<<<<<<"
+#echo ">>>>>>>>>>>>>>>> EXITING COMMAND TEMPLATE <<<<<<<<<<<<<<<<<<<<<<"
 
 exit \$result

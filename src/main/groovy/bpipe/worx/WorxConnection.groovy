@@ -67,6 +67,10 @@ class WorxConnection {
         if(socket == null || socket.isClosed())
             resetSocket()
             
+            
+        if(socket == null)
+            return
+            
         byte [] jsonBytes = eventJson.getBytes("UTF-8")
         
         log.info "POST $path" 
@@ -148,13 +152,15 @@ class WorxConnection {
             socket = new Socket(url.host, url.port) 
         
             socketReader = new BufferedReader(new InputStreamReader(socket.inputStream))
+            
+            socketWriter = new HttpWriter(wrapped: new PrintWriter(new OutputStreamWriter(socket.outputStream, "UTF-8")))
+            
         } catch (Exception e) {
             if((failures%20) == 0) {
                println "WARNING: Worx connection to " + configUrl + " unsuccessful: " +  e.message
             }
             this.failures++
         }
-        socketWriter = new HttpWriter(wrapped: new PrintWriter(new OutputStreamWriter(socket.outputStream, "UTF-8")))
     }
     
     void close() {
