@@ -186,11 +186,6 @@ class CommandManager {
         return cmd
     }
    
-    void adoptCommand(Command command) {
-        this.executedCommands << command.executor
-        this.commandIds[command.executor] = command.id
-    }
-    
     /**
      * Stop all known commands.
      * <p>
