@@ -23,6 +23,8 @@ class PooledExecutor implements CommandExecutor {
      */
     Command command
     
+    Map poolConfig
+    
     /**
      * An output log that will forward to the real output log, when
      * the command activate
@@ -79,6 +81,48 @@ class PooledExecutor implements CommandExecutor {
             onFinish()
         
         return exitCode
+    }
+    
+    /**
+     * Return true if this pooled executor is able to run the given job,
+     * based on its configuration.
+     * 
+     * @param cfg
+     * @return
+     */
+    boolean canAccept(Map cfg) {
+        
+        // Check: is the amount of time left in my own job budget sufficient
+        // to run the given command?
+        String myWalltimeConfig = this.poolConfig.get("walltime",null)
+        
+        // How long does the job need?
+        if(cfg.walltime && myWalltimeConfig) {
+            
+            long myWallTimeMs = Utils.walltimeToMs(myWalltimeConfig)
+            long timeRemainingMs = myWallTimeMs - (System.currentTimeMillis() - this.command.createTimeMs)
+            long walltimeMs = Utils.walltimeToMs(cfg.walltime)
+            
+            log.info "Pooled job $hostCommandId checking time remaining ($timeRemainingMs ms) compared to requirements ($walltimeMs)."
+            if(walltimeMs > timeRemainingMs) {
+                log.info "Pooled job $hostCommandId has insufficient time remaining ($timeRemainingMs ms) compared to requirements ($walltimeMs). Rejecting job request."
+                return false;
+            }
+        }
+        
+        // TODO: check other attributes such as memory and procs
+        return true
+    }
+    
+    void execute(Command command, OutputLog log) {
+        this.currentCommandId = command.id
+        this.command.adopt(command) 
+        this.outputLog.wrapped = log
+        this.command.executor = this
+        
+        // Note: this will trigger an event to the waiting command executor that
+        // will make it write out the file and execute the command
+        this.command.command = command.command
     }
     
     @Override
@@ -238,6 +282,8 @@ class ExecutorPool {
             
             cmdExec.start(execCfg, cmd, outputLog, outputLog)
             
+            cmd.createTimeMs = System.currentTimeMillis()
+            
             log.info "Started command $cmd.id as instance $i of pooled command of type $cfg.name"
             
             Poller.instance.timer.schedule({
@@ -251,6 +297,7 @@ class ExecutorPool {
             pe.setHostCommandId(cmd.id)
             pe.stopFile = stopFile
             pe.heartBeatFile = heartBeatFile
+            pe.poolConfig = this.cfg.collectEntries { it }
             pe.onFinish = {
                 log.info "Adding pooled executor $cmd.id back into pool"
                 executors << pe
@@ -264,15 +311,23 @@ class ExecutorPool {
         if(executors.isEmpty())
             return command
         
-        PooledExecutor pe = executors.pop()
-        pe.currentCommandId = command.id
-        pe.command.adopt(command) 
-        pe.outputLog.wrapped = outputLog
-        pe.command.executor = pe
+        PooledExecutor pe = null;
         
-        // Note: this will trigger an event to the waiting command executor that
-        // will make it write out the file and execute the command
-        pe.command.command = command.command
+        for(PooledExecutor candidatePe in executors) {
+            if(candidatePe.canAccept(command.processedConfig)) {
+                pe = candidatePe
+            }
+        }
+        
+        if(!pe) {
+            log.info "No compatible pooled executor available from ${executors.size()} pooled commands for command $command.id (config=$command.configName)"
+            return
+        }
+        
+        executors.remove(pe)
+        
+        pe.execute(command, outputLog)
+        
         return pe.command
     }
     
@@ -342,24 +397,31 @@ class ExecutorPool {
     /**
      * If a pooled executor that is compatible with the given command is available,
      * returns a new command with the executor assigned. Otherwise returns the
-     * original command with the executor set to null.
+     * original command without changing the executor.
      * 
      * @param command
      * @param cfg
      * @param outputLog
+     * 
      * @return  A Command object that is either the input command unchanged, or a new command
      *          with an executor assigned.
      */
     synchronized static Command requestExecutor(Command command, Map cfg, OutputLog outputLog) {
-        ExecutorPool pool = pools.find { it.value.configs.contains(cfg.name) }?.value
-        if(pool == null)
-            return command
+        pools.each { name, pool -> 
+            pool.configs.contains(cfg.name) 
+        }?.value
         
-        Command result = pool.take(command, outputLog)
-        if(pool.executors.isEmpty())
-            pool.executors.remove(cfg.name)
-            
-        return result
+        
+        for(Map.Entry poolEntry in pools) {
+            ExecutorPool pool = poolEntry.value
+            if(!pool.configs.contains(cfg.name))
+                continue
+                
+            Command newCommand = pool.take(command, outputLog)
+            if(newCommand)
+                return newCommand
+        }
+        
+        return command
     }
-    
 }
