@@ -153,6 +153,17 @@ class Command implements Serializable {
         return cfg
     }
     
+    /**
+     * Return an already initialised configuration. Note that this means
+     * getConfig() must have been called at least once with a list of inputs!
+     * 
+     * @return  processed configuration, converted to Map
+     */
+    Map getProcessedConfig() {
+        assert this.cfg != null
+        return this.cfg
+    }
+    
     private String formatWalltime(def walltime) {
        // Treat as integer, convert to string
        walltime = walltime.toInteger()

@@ -46,4 +46,13 @@ class UtilsTest {
         assert sp("""tree 'foo \\' "bar"'""") == ['tree','foo \' "bar"']
         
     }
+    
+    @Test
+    public void testWalltimeToMs() {
+        assert Utils.walltimeToMs("1") == 1000L
+        assert Utils.walltimeToMs(1) == 1000L
+        assert Utils.walltimeToMs("00:30") == 1800000L
+        assert Utils.walltimeToMs("2:00") == 7200000L
+        assert Utils.walltimeToMs("1:3:13") == 24 * 3600000L + 3 * 3600000L + 13 * 60000L
+    }
 }

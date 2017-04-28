@@ -876,4 +876,29 @@ class Utils {
         
         
     }
+    
+    final static long MINUTE=60000L
+    final static long HOUR=60 * MINUTE
+    final static long DAY=24*HOUR
+    
+    /**
+     * Convert a time specified in a configuration to ms
+     * 
+     * @return
+     */
+    static long walltimeToMs(Object timeSpec) {
+        
+        String stringValue = String.valueOf(timeSpec)
+        
+        // If integer, then assume it is seconds
+        if(stringValue.isInteger()) {
+            return ((long)stringValue.toInteger()) * 1000L
+        }
+        
+        // If not integer, parse in format HH:MM:SS
+        List<String> parts = stringValue.tokenize(":")*.toInteger().reverse()
+        return [[MINUTE, HOUR, DAY], parts].transpose().sum { unitAndValue ->
+            unitAndValue[0]*unitAndValue[1]
+        }
+    }
 }
