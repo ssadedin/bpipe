@@ -70,6 +70,7 @@ pages:
 - ['Guides/Troubleshooting.md','Guides','Troubleshooting']
 - ['Guides/PipelineEvents.md','Guides','Listening for Pipeline Events']
 - ['Guides/AdvancedSettings.md','Guides','Advanced Settings']
+- ['Guides/ExtendingClassPath.md','Guides','Adding to Class Path']
 - ['Examples/PairedEndAlignment.md','Examples','Paired End Alignment']
 - ['Examples/RNASeqCorset.md','Examples','RNA Seq Corset']
 - ['Examples/WGSVariantCalling.md','Examples','WGS Variant Calling']

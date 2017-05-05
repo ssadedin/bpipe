@@ -33,6 +33,9 @@ dependencies {
     compile group: 'org.codehaus.groovy', name: 'groovy', version: '2.4.8'
     compile 'org.codehaus.gpars:gpars:0.12'
 
+    // ivy allows Grape to be used inside Bpipe pipelines
+    compile group: 'org.apache.ivy', name: 'ivy', version: '2.4.0'
+
     compile files(fileTree(dir:'local-lib', includes:['*.jar']))
 
     // In case GridGain ever revive their Maven repo ...
