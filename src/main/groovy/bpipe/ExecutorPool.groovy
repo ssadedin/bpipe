@@ -142,6 +142,16 @@ class PooledExecutor implements CommandExecutor {
         this.command.command = command.command
     }
     
+    /**
+     * Cause this pooled executor to start capturing from the stdout
+     * and stderr files that its script will write to.
+     */
+    void captureOutput() {
+        this.outputLog = new ForwardingOutputLog()
+        this.forward(".bpipe/commandtmp/$command.id/pool.out", outputLog)
+        this.forward(".bpipe/commandtmp/$command.id/pool.err", outputLog)
+    }
+    
     @Override
     void stop() {
         
@@ -248,16 +258,14 @@ class ExecutorPool {
         }
     }
     
+    /**
+     * Connect a previously started executor pool to this Bpipe
+     * instance.
+     * 
+     * @param pe
+     */
     void connectPooledExecutor(PooledExecutor pe) {
-        pe.outputLog = new ForwardingOutputLog()
-        
-        // TODO: This won't work for executors that don't use the convention of
-        // sending all output to cmd.out and cmd.err!!!!
-        // So: the pooled executor script needs to achieve that on its own by 
-        // wrapping the stdout and stderr to dedicated files
-        pe.forward(".bpipe/commandtmp/$pe.command.id/cmd.out", pe.outputLog)
-        pe.forward(".bpipe/commandtmp/$pe.command.id/cmd.err", pe.outputLog)
-        
+        pe.captureOutput()
         pe.onFinish = {
             log.info "Adding persistent pooled executor $pe.hostCommandId back into pool"
             executors << pe
@@ -363,7 +371,7 @@ class ExecutorPool {
             }
         }, 0, HEARTBEAT_INTERVAL_SECONDS*1000)
             
-        pe.outputLog = outputLog
+        pe.captureOutput()
         pe.stopFile = stopFile
         pe.heartBeatFile = heartBeatFile
         File poolFile = pe.poolFile
