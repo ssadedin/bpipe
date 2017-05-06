@@ -27,6 +27,7 @@ package bpipe.executor
 import groovy.util.logging.Log
 import bpipe.Command;
 import bpipe.ForwardHost;
+import bpipe.Utils
 
 /**
  * Implementation of support for TORQUE resource manager.
@@ -103,6 +104,14 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
      */
     List<String> getIgnorableOutputs() {
         return [ this.name + '.o.*$', this.name + '.e.*$' ]
+    }
+    
+    void setJobName(String jobName) {
+        log.info("Setting job name for $commandId to $jobName")
+        Map result = Utils.executeCommand(["qalter","-N",jobName, this.commandId])
+        if(result.exitValue != 0) {
+            log.warning("Unable to set job name to $jobName for $commandId. Command output: " + result.out)
+        }
     }
 
     String toString() {

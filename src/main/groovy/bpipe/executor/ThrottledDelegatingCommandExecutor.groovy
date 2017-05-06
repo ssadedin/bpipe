@@ -176,6 +176,13 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         return result   
     }
     
+    void setJobName(String name) {
+        if(this.commandExecutor.respondsTo("setJobName")) {
+            log.info "Setting job name"
+            this.commandExecutor.setJobName(cmd.name)
+        } 
+    }
+    
     @Override
     void stop() {
         try {

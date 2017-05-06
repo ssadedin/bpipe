@@ -86,7 +86,9 @@ class LocalCommandExecutor implements CommandExecutor {
     void start(Map cfg, Command command, Appendable outputLog, Appendable errorLog) {
         
       String cmd = command.command
-      new Thread({
+      
+      
+      Closure executeClosure = {
           
           // Special case for Windows / Cygwin
           // On Windows Java detects spaces in arguments and if it finds them
@@ -140,7 +142,7 @@ class LocalCommandExecutor implements CommandExecutor {
           
           log.info "Launching command wrapper script ${wrapperScript.path}"
           
-          ProcessBuilder pb = new ProcessBuilder(['bash','-e',wrapperScript.path])
+          ProcessBuilder pb = new ProcessBuilder(['nohup','bash','-e',wrapperScript.path])
           pb.redirectOutput(Redirect.to(new File(jobDir, CMD_OUT_FILENAME)))
           pb.redirectError(Redirect.to(new File(jobDir, CMD_ERR_FILENAME)))
           
@@ -155,10 +157,6 @@ class LocalCommandExecutor implements CommandExecutor {
           
           exitValue = process.waitFor()
 
-          // Make sure to wait until the output streams are actually closed
-          try { t1.join(); } catch(Exception e) {}
-          try { t2.join(); } catch(Exception e) {}
-
           // Once we know the streams are closed, THEN destroy the process
           // This guarantees that file handles are cleaned up, even if
           // other things above went horribly wrong
@@ -169,7 +167,11 @@ class LocalCommandExecutor implements CommandExecutor {
           synchronized(this) {
               this.notifyAll()
           }
-      }).start()
+      }
+      
+      Thread runnerThread = new Thread(executeClosure)
+      runnerThread.daemon = true
+      runnerThread.start()
       
       while(!process) 
         Thread.sleep(100)

@@ -2,12 +2,16 @@ package bpipe
 
 import java.util.List
 import java.util.Map
+import java.util.regex.Pattern
+import org.apache.ivy.plugins.report.LogReportOutputter
 
 import bpipe.executor.CommandExecutor
+import bpipe.executor.CommandTemplate
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 
 @Log
+@Mixin(ForwardHost)
 class PooledExecutor implements CommandExecutor {
     
     public static final long serialVersionUID = 0L
@@ -44,10 +48,6 @@ class PooledExecutor implements CommandExecutor {
     
     String hostCommandId
     
-    void setHostCommandId(String value) {
-        this.hostCommandId = value
-    }
-
     /**
      * Triggers the waiting pooled executor to start running a command.
      * <p>
@@ -57,10 +57,20 @@ class PooledExecutor implements CommandExecutor {
     @Override
     public void start(Map cfg, Command cmd, Appendable outputLog, Appendable errorLog) {
         
+        assert !(cfg instanceof ConfigObject)
+        
         File cmdScript = new File(".bpipe/commandtmp/$hostCommandId", ExecutorPool.POOLED_COMMAND_FILENAME + ".${currentCommandId}.sh")
         File cmdScriptTmp = new File(".bpipe/commandtmp/$hostCommandId", ExecutorPool.POOLED_COMMAND_FILENAME + ".tmp")
         cmdScriptTmp.text = cmd.command
         cmdScriptTmp.renameTo(cmdScript)
+        
+        if(executor.respondsTo("setJobName")) {
+            log.info "Setting job name"
+            executor.setJobName(cmd.name)
+        }
+        else {
+            log.info "Pooled executor unable to set job name (not supported)"
+        }
     }
     
     @Override
@@ -80,7 +90,14 @@ class PooledExecutor implements CommandExecutor {
         if(onFinish != null)
             onFinish()
         
+        if(executor.respondsTo("setJobName")) {
+            executor.setJobName(poolConfig.name)
+        }            
         return exitCode
+    }
+    
+    File getPoolFile() {
+       new File(".bpipe/pools/${poolConfig.name}/${hostCommandId}") 
     }
     
     /**
@@ -154,6 +171,8 @@ class ExecutorPool {
     
     int poolSize
     
+    boolean persistent
+    
     Map jobCfg
     
     List<String> configs
@@ -171,11 +190,11 @@ class ExecutorPool {
         this.configs = configs
 
         this.poolSize = String.valueOf(poolCfg.get('jobs') ?: 1).toInteger()
+        
+        this.persistent = poolCfg.get('persist', false)
 
         log.info "Found pre-allocation pool $poolCfg.name for ${configs.join(',')} of size $poolSize"
     }
-    
-    static final long HEARTBEAT_INTERVAL_SECONDS = 10
     
     /**
      * Launches a wrapper job that waits for child jobs to be assigned and executes them.
@@ -199,111 +218,160 @@ class ExecutorPool {
         
         startTimeMs = System.currentTimeMillis()
         
-        log.info "Allocating ${poolSize} executors for pool ${cfg.name}"
+        List<PooledExecutor> existingPools = this.persistent ? searchForExistingPools(cfg.name) : []
+        
+        log.info "Found ${existingPools.size()} persistent commands in existing pool for $cfg.name "
+        
+        log.info "Creating / locating ${poolSize} executors for pool ${cfg.name}"
+        
         for(int i=0; i<poolSize; ++i) {
             
-            Command cmd = new Command(
-                name:cfg.name, 
-                configName: cfg.name, 
-                id: CommandId.newId(),
-                dir: new File(CommandManager.DEFAULT_COMMAND_DIR)
-            )
+            // TODO: does a pre-existing command exist? if so, use it!
+            PooledExecutor pe  = null
+            if(!existingPools.isEmpty()) {
+                pe = existingPools.pop()
+                log.info "Connecting pooled command of type $cfg.name to existing persistent pool: $pe.hostCommandId"
+                
+                connectPooledExecutor(pe)
+            }
             
-            Map execCfg = cmd.getConfig(null)
+            if(pe == null) {
+                pe = startNewPooledExecutor()
+                log.info "Started command $pe.hostCommandId as instance $i of pooled command of type $cfg.name"
+            }
             
-            CommandExecutor cmdExec = executorFactory.createExecutor(execCfg)
-            cmd.executor = cmdExec
-            
-            String pooledCommandScript = ".bpipe/commandtmp/$cmd.id/$POOLED_COMMAND_FILENAME"
-            String poolCommandStopFlag = ".bpipe/commandtmp/$cmd.id/$POOLED_COMMAND_STOP_FILENAME"
-            File heartBeatFile = new File(".bpipe/commandtmp/$cmd.id/heartbeat")
-            
-            File stopFile = new File(".bpipe/commandtmp/${cmd.id}/$POOLED_COMMAND_STOP_FILENAME")
-            
-            def debugLog = ('debugPooledExecutor' in cfg) ? "true" : "false"
-            
-            cmd.command = """
-
-                export POOL_ID="$cfg.name"
-
-                i=0
-                while true;
-                do
-                    while [ ! -e ${pooledCommandScript}.[0-9]*.sh ];
-                    do
-
-                        if [ -e "$stopFile" ];
-                        then
-                            $debugLog && { echo "Pool command exit flag detected: $stopFile" >> pool.log; }
-                            exit 0
-                        fi
-
-                        sleep 1
-
-                        $debugLog && { echo "No: ${pooledCommandScript}.[0-9]*.sh" >> pool.log; }
-
-                        let 'i=i+1'
-                        $debugLog && { echo "i=\$i" >> pool.log; }
-                        if [ "\$i" == ${HEARTBEAT_INTERVAL_SECONDS+5} ];
-                        then
-                            if [ ! -e "$heartBeatFile" ];
-                            then
-                                $debugLog && { echo "Heartbeat not found: exiting" >> pool.log; }
-                                exit 0
-                            fi
-                            $debugLog && { echo "Remove heartbeat: $heartBeatFile" >> pool.log; }
-                            i=0
-                            rm $heartBeatFile
-                        else
-                            $debugLog && { echo "In between heartbeat checks: \$i" >> pool.log; }
-                        fi
-                    done
-
-                    POOL_COMMAND_SCRIPT=`ls ${pooledCommandScript}.[0-9]*.sh` 
-                    POOL_COMMAND_SCRIPT_BASE=\${POOL_COMMAND_SCRIPT%%.sh}
-                    POOL_COMMAND_ID=\${POOL_COMMAND_SCRIPT_BASE##*.}
-
-                    $debugLog && { echo "Pool $cmd.id Executing command: \$POOL_COMMAND_ID" >> pool.log; }
-
-                    mv \$POOL_COMMAND_SCRIPT $pooledCommandScript
-
-                    POOL_COMMAND_EXIT_FILE=.bpipe/commandtmp/$cmd.id/\${POOL_COMMAND_ID}.pool.exit
-
-                    bash -e $pooledCommandScript
-    
-                    echo \$? > \$POOL_COMMAND_EXIT_FILE
-                done
-            """
-            
-            OutputLog outputLog = new ForwardingOutputLog()
-            
-            // Sometimes this can be the first code that runs and needs this
-            new File(".bpipe/commands").mkdirs()
-            
-            cmdExec.start(execCfg, cmd, outputLog, outputLog)
-            
-            cmd.createTimeMs = System.currentTimeMillis()
-            
-            log.info "Started command $cmd.id as instance $i of pooled command of type $cfg.name"
-            
-            Poller.instance.timer.schedule({
-                if(!heartBeatFile.exists()) {
-                    heartBeatFile.text = String.valueOf(System.currentTimeMillis())
-                }
-            }, 0, HEARTBEAT_INTERVAL_SECONDS*1000)
-            
-            PooledExecutor pe = new PooledExecutor(executor:cmdExec, command: cmd)
-            pe.outputLog = outputLog
-            pe.setHostCommandId(cmd.id)
-            pe.stopFile = stopFile
-            pe.heartBeatFile = heartBeatFile
-            pe.poolConfig = this.cfg.collectEntries { it }
             pe.onFinish = {
-                log.info "Adding pooled executor $cmd.id back into pool"
+                log.info "Adding pooled executor $pe.hostCommandId back into pool"
                 executors << pe
             }
             this.executors << pe
         }
+    }
+    
+    void connectPooledExecutor(PooledExecutor pe) {
+        pe.outputLog = new ForwardingOutputLog()
+        
+        // TODO: This won't work for executors that don't use the convention of
+        // sending all output to cmd.out and cmd.err!!!!
+        // So: the pooled executor script needs to achieve that on its own by 
+        // wrapping the stdout and stderr to dedicated files
+        pe.forward(".bpipe/commandtmp/$pe.command.id/cmd.out", pe.outputLog)
+        pe.forward(".bpipe/commandtmp/$pe.command.id/cmd.err", pe.outputLog)
+        
+        pe.onFinish = {
+            log.info "Adding persistent pooled executor $pe.hostCommandId back into pool"
+            executors << pe
+        } 
+    }
+   
+    static Pattern ALL_NUMBERS = ~/[0-9]{1,}/
+    
+    /**
+     * Searches in the .bpipe/pools/<pool name> directory for any command pools 
+     * that may still be running and usuable for executing commands.
+     * 
+     * @param name
+     * @return
+     */
+    List<PooledExecutor> searchForExistingPools(String name) {
+        
+        File poolDir = new File(".bpipe/pools/$name")
+        if(!poolDir.exists()) {
+            log.info "No existing pool witih name $name"
+            return []
+        }
+        
+        poolDir.listFiles().grep {
+            it.name.matches(ALL_NUMBERS)
+        }.collect { File f ->
+            try {
+                f.withObjectInputStream {  ois ->
+                    ois.readObject()
+                }
+            }
+            catch(Exception e) {
+                log.severe "Unable to load command from $f: $e"
+                // could clean up command here?
+            }
+        }.grep { PooledExecutor pe ->
+            
+            CommandStatus status = pe.command.executor.status() 
+            
+            log.info "Command state for $pe.command.id is $status"
+            
+            return (status == CommandStatus.RUNNING)
+        }
+    }
+    
+    static final long HEARTBEAT_INTERVAL_SECONDS = 10
+    
+    PooledExecutor startNewPooledExecutor() {
+        
+        Command cmd = new Command(
+            name:cfg.name, 
+            configName: cfg.name, 
+            id: CommandId.newId(),
+            dir: new File(CommandManager.DEFAULT_COMMAND_DIR)
+        )
+            
+        Map execCfg = cmd.getConfig(null)
+            
+        CommandExecutor cmdExec = executorFactory.createExecutor(execCfg)
+        cmd.executor = cmdExec
+            
+        String pooledCommandScript = ".bpipe/commandtmp/$cmd.id/$POOLED_COMMAND_FILENAME"
+        String poolCommandStopFlag = ".bpipe/commandtmp/$cmd.id/$POOLED_COMMAND_STOP_FILENAME"
+        File heartBeatFile = new File(".bpipe/commandtmp/$cmd.id/heartbeat")
+            
+        File stopFile = new File(".bpipe/commandtmp/${cmd.id}/$POOLED_COMMAND_STOP_FILENAME")
+            
+        def debugLog = ('debugPooledExecutor' in cfg) ? "true" : "false"
+        
+        PooledExecutor pe = new PooledExecutor(
+            executor:cmdExec, 
+            command: cmd, 
+            hostCommandId: cmd.id
+        )
+        
+        pe.poolConfig = this.cfg.collectEntries { it }
+        
+        cmd.command = new CommandTemplate().renderCommandTemplate("executor/pool-command.template.sh", 
+            [
+                cfg: cfg, 
+                cmd: cmd,
+                persistent: persistent,
+                poolFile: pe.getPoolFile().absolutePath,
+                debugLog: debugLog,
+                pooledCommandScript: pooledCommandScript,
+                heartBeatFile: heartBeatFile,
+                HEARTBEAT_INTERVAL_SECONDS: HEARTBEAT_INTERVAL_SECONDS,
+                stopFile: stopFile
+            ])
+            
+        OutputLog outputLog = new ForwardingOutputLog()
+            
+        // Sometimes this can be the first code that runs and needs this
+        new File(".bpipe/commands").mkdirs()
+            
+        cmdExec.start(execCfg, cmd, outputLog, outputLog)
+            
+        cmd.createTimeMs = System.currentTimeMillis()
+            
+        Poller.instance.timer.schedule({
+            if(!heartBeatFile.exists()) {
+                heartBeatFile.text = String.valueOf(System.currentTimeMillis())
+            }
+        }, 0, HEARTBEAT_INTERVAL_SECONDS*1000)
+            
+        pe.outputLog = outputLog
+        pe.stopFile = stopFile
+        pe.heartBeatFile = heartBeatFile
+        File poolFile = pe.poolFile
+        poolFile.parentFile.mkdirs()
+        
+        poolFile.withObjectOutputStream { oos -> oos.writeObject(pe) }
+        
+        return pe
     }
     
     synchronized Command take(Command command, OutputLog outputLog) {
@@ -379,14 +447,15 @@ class ExecutorPool {
     }
     
     /**
-     * Shut down all the preallocation pools. If any jobs are still waiting pending commands
-     * then they will be terminated.
+     * Shut down all the preallocation pools, if they are not persistent. If any jobs are still 
+     * waiting pending commands then they will be terminated.
      */
     synchronized static void shutdownAll() {
         log.info "Shutting down ${pools.size()} preallocation pools"
         for(ExecutorPool pool in pools*.value) {
             try {
-                pool.shutdown()
+                if(!pool.persistent)
+                    pool.shutdown()
             }
             catch(Exception e) {
                 log.warning("Failed to shutdown preallocation pool: " + pool.cfg.name)

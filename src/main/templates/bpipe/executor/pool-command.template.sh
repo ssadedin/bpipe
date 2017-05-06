@@ -1,0 +1,65 @@
+######################################
+#
+# Bpipe Pooled Command Script
+# Pool: $cfg.name
+#
+######################################
+
+export POOL_ID="$cfg.name"
+
+(
+i=0
+    while true;
+    do
+        while [ ! -e ${pooledCommandScript}.[0-9]*.sh ];
+        do
+    
+            if [ -e "$stopFile" ];
+            then
+                $debugLog && { echo "Pool command exit flag detected: $stopFile" >> pool.log; }
+                exit 0
+            fi
+    
+            sleep 1
+    
+            $debugLog && { echo "No: ${pooledCommandScript}.[0-9]*.sh" >> pool.log; }
+    
+            let 'i=i+1'
+            $debugLog && { echo "i=\$i" >> pool.log; }
+            if ! $persistent;
+            then
+                if [ "\$i" == ${HEARTBEAT_INTERVAL_SECONDS+5} ];
+                then
+                    if [ ! -e "$heartBeatFile" ];
+                    then
+                        $debugLog && { echo "Heartbeat not found: exiting" >> pool.log; }
+                        exit 0
+                    fi
+                    $debugLog && { echo "Remove heartbeat: $heartBeatFile" >> pool.log; }
+                    i=0
+                    rm $heartBeatFile
+                else
+                    $debugLog && { echo "In between heartbeat checks: \$i" >> pool.log; }
+                fi
+            fi
+        done
+    
+        POOL_COMMAND_SCRIPT=`ls ${pooledCommandScript}.[0-9]*.sh` 
+        POOL_COMMAND_SCRIPT_BASE=\${POOL_COMMAND_SCRIPT%%.sh}
+        POOL_COMMAND_ID=\${POOL_COMMAND_SCRIPT_BASE##*.}
+    
+        $debugLog && { echo "Pool $cmd.id Executing command: \$POOL_COMMAND_ID" >> pool.log; }
+    
+        mv \$POOL_COMMAND_SCRIPT $pooledCommandScript
+    
+        POOL_COMMAND_EXIT_FILE=.bpipe/commandtmp/$cmd.id/\${POOL_COMMAND_ID}.pool.exit
+    
+        bash -e $pooledCommandScript
+        
+        echo \$? > \$POOL_COMMAND_EXIT_FILE
+    done
+)
+
+$debugLog && { echo "Removing pool file $poolFile" >> pool.log; }
+
+rm -f $poolFile
