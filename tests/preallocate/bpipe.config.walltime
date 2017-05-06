@@ -1,0 +1,24 @@
+
+preallocate {
+    short_job {
+        jobs=1
+        walltime="00:05"
+        configs="berry"
+    }
+
+    juice {
+        jobs=1
+    }
+
+}
+
+commands {
+    berry {
+        memory="1g" 
+        walltime="10:00" // too long for the short config above
+    }
+
+    juice {
+        memory="4g"
+    }
+}
