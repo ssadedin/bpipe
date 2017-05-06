@@ -404,9 +404,6 @@ class CustomCommandExecutor implements CommandExecutor {
     void stop() {
         String cmd = "bash $managementScript stop ${commandId}"
         log.info "Executing command to stop command $commandId: $cmd"
-        
-        // Debug:
-        println "\nExecuting command to stop command $commandId: $cmd\n"
         int errorCount = 0
         while(true) {
 			int exitValue
