@@ -203,14 +203,33 @@ class Command implements Serializable {
        if(!dir.exists())
            dir.mkdirs()
            
+       // Temporarily swap out the config if necessary
+       def tempCfg = cfg
+       if(cfg instanceof ConfigObject) {
+           cfg = cfg.collectEntries { it }
+       }
+           
        File saveFile = new File(dir, this.id)
        Command me = this
        saveFile.withObjectOutputStream { ois ->
            ois.writeObject(e)
            ois.writeObject(me)
        } 
+       
+       cfg = tempCfg
     }
     
+    static Command load(File f) {
+        Command cmd
+        f.withObjectInputStream {
+            CommandExecutor exec = it.readObject()
+            log.info "Loaded command executor $exec"
+            cmd = it.readObject()
+            log.info "Loaded command ${cmd.id} from $f"
+        }
+        return cmd
+    }
+
     boolean isResourcesSatisfied() {
         return this.allocated || (this.executor != null && this.executor instanceof ProbeCommandExecutor)
     }
