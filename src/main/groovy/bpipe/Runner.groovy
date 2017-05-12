@@ -788,7 +788,7 @@ class Runner {
         
         String notFoundMsg = """
             
-            No previous Bpipe command seems to have been run in this directory."
+            No previous Bpipe command seems to have been run in this directory.
 
             """.stripIndent()
             
