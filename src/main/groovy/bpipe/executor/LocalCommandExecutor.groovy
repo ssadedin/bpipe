@@ -49,8 +49,9 @@ class LocalCommandExecutor implements CommandExecutor {
     
     public static final long serialVersionUID = 0L
     
-   
     transient Process process
+    
+    transient Command command
     
     /**
      * The exit code returned by the process, only
@@ -176,9 +177,18 @@ class LocalCommandExecutor implements CommandExecutor {
       while(!process) 
         Thread.sleep(100)
     }
+    
+    transient String lastStatus = CommandStatus.UNKNOWN.name()
    
     String status() {
         String result = statusImpl()
+        if(command && (result != lastStatus)) {
+            if(result == CommandStatus.RUNNING.name()) {
+                this.command.startTimeMs = System.currentTimeMillis()
+                this.command.save()
+            }
+            lastStatus = result
+        }
         return result  
     }
     
