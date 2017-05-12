@@ -244,7 +244,7 @@ start () {
          # launch the job and get its id
          job_id_full=`sbatch $CUSTOM_SUBMIT_OPTS $job_script_name`
          sbatch_exit_status=$?
-         if [[ $? -eq 0 ]]
+         if [[ $sbatch_exit_status -eq 0 ]]
             then
                # SLURM syntax: Submitted batch job <jobID>
                # strip all but numbers , which assumes remainder is job identifier

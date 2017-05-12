@@ -217,7 +217,7 @@ start () {
          # launch the job and get its id
          job_id_full=`qsub $CUSTOM_SUBMIT_OPTS $job_script_name`
          qsub_exit_status=$?
-         if [[ $? -eq 0 ]]
+         if [[ $qsub_exit_status -eq 0 ]]
             then
                # bite off the job number from the start of the job identifier
                job_id_number=`echo $job_id_full | sed -n 's/\([0-9][0-9]*\).*/\1/p'`
