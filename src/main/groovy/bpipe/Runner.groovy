@@ -111,6 +111,11 @@ class Runner {
     
     public static void main(String [] args) {
         
+        if(!BPIPE_HOME || BPIPE_HOME.isEmpty()) {
+            System.err.println "ERROR: The system property bpipe.home was not set. Please check that Bpipe was correctly started from its launch script."
+            System.exit(1)
+        }
+        
         def db = new File(".bpipe")
         if(!db.exists())
             if(!db.mkdir())
@@ -637,6 +642,11 @@ class Runner {
      * The local directory where job information is stored
      */
     static final File LOCAL_JOB_DIR = new File(".bpipe/jobs")
+    
+    /**
+     * Bpipe home, set as system property by Bpipe runner script prior to launching
+     */
+    static String BPIPE_HOME = System.getProperty("bpipe.home")
     
     /**
      * Perform essential cleanup when Bpipe process ends.

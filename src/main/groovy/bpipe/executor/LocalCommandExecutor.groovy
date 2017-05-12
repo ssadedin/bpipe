@@ -288,7 +288,12 @@ class LocalCommandExecutor implements CommandExecutor {
         
         log.info "Shutting down local job $id with pid $pid"
         
-        "kill $pid".execute()
+        List killCmd = ["bash","-c","source ${bpipe.Runner.BPIPE_HOME}/bin/bpipe-utils.sh; killtree $pid"]
+        Map killResult = Utils.executeCommand(killCmd)
+        if(killResult.exitValue != 0) {
+            throw new RuntimeException("Attempt to kill process returned exit code " + 
+                "$killResult.exitValue using command:\n\n$killCmd\n\nOutput:\n\n$killResult.out\n\n$killResult.err")
+        }
         
         // Store an exit code so that future status calls will know that the command 
         // exited via a normal process and not abruptly killed

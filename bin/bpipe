@@ -57,46 +57,6 @@ launch_in_foreground() {
     exit
 }
 
-#----------------------------------------------------------
-# Kill a whole tree of processes in a cross platform way.
-# Note, in some situations killing the parent process is 
-# sufficient ot kill the children, however this doesn't
-# happen universally, so this function actually recursively
-# calls itself to iterate all child processes and kill them
-#----------------------------------------------------------
-killtree() {
-    local ppid=$1
-    
-    # Sadly Mac OS/X does not seem to support --ppid option in default version
-    # of ps
-    if uname | grep -q Darwin;
-    then
-        pids=`ps -o pid,ppid | grep '^[0-9]' | grep ' '$ppid | cut -f 1 -d ' '`
-    elif uname | grep -iq cygwin;
-    then
-        pids=`ps -f  | awk '{ if(NR>1) print  $2 " " $3 }' | grep ' '$ppid | cut -f 1 -d ' '`
-    else
-        pids=$(ps -o pid --no-headers --ppid ${ppid})
-    fi
-    
-    if [ ! -z "$pids" ];
-    then
-        for child_pid in ${pids}; 
-        do
-            killtree ${child_pid}
-        done
-    fi
-    
-    # If second arg supplied, wait before killing parent
-    # this allows Bpipe itself to notice its children are dead
-    # by itself.
-    if [ ! -z "$2" ];
-    then
-        sleep $2
-    fi
-    
-    kill -TERM ${ppid} > /dev/null 2>&1
-}
 
 #----------------------------------------------------------
 # Create a file containing the PID of the Java process
@@ -233,7 +193,8 @@ function handle_sigint() {
         then
             echo
             echo "Terminating process $BPIPE_PID ..."
-            killtree $BPIPE_PID
+            
+            kill -TERM ${BPIPE_PID} > /dev/null 2>&1
 
             # Don't carry on until Bpipe actually finishes
             wait $BPIPE_PID > /dev/null 2>&1
@@ -418,6 +379,9 @@ function set_bpipe_home() {
 # Resolve the home directory for Bpipe
 set_bpipe_home
 
+# Source the utility scripts from Bpipe dir
+source $BPIPE_HOME/bin/bpipe-utils.sh
+
 # Default directory for pipes - user can override by setting BPIPE_LIB themselves
 : ${BPIPE_LIB:="$HOME/bpipes"}
 
@@ -490,7 +454,12 @@ then
 
     # Stop any commands that must be stopped by a custom resource
     # manager (non-local commands)
-    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=stopcommands bpipe.Runner
+    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=stopcommands bpipe.Runner $*
+    
+    if [ "$1" == 'preallocated' ];
+    then 
+        exit 0
+    fi
     
     # Find all the process ids and kill it
     get_last_run_pid
@@ -505,10 +474,10 @@ then
       echo
       echo "Killing job $LAST_PID"
       echo
-      killtree $LAST_PID 5
-    else
-      echo
-      echo "Job $LAST_PID appears to be finished"
+      
+      kill -TERM ${LAST_PID} > /dev/null 2>&1
+      
+     else
       echo
     fi
 
