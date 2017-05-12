@@ -179,7 +179,7 @@ make_pbs_script () {
              ;;
    esac
    
-    mods_request = ""
+    mods_request=""
     #handle the module specifications. - Simon Gladman 2014
     if [[  ! -z $MODULES ]]; then
         for MOD in $MODULES
