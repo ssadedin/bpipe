@@ -101,6 +101,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         command.command = command.command.replaceAll(PipelineContext.THREAD_LAZY_VALUE, threadAmount)
         
         command.allocated = true
+        command.createTimeMs = System.currentTimeMillis()
 
         bpipe.Pipeline.currentRuntimePipeline.get().isIdle = false
 

@@ -159,6 +159,7 @@ class CustomCommandExecutor implements CommandExecutor {
         String startCmd = pb.command().join(' ')
         log.info "Starting command: " + startCmd
         
+        this.command.createTimeMs = System.currentTimeMillis()
         this.runningCommand = command.command
         this.startedAt = new Date()
 		
@@ -173,9 +174,10 @@ class CustomCommandExecutor implements CommandExecutor {
     	            reportStartError(startCmd, out,err,exitValue)
     	            throw new PipelineError("Failed to start command:\n\n$command.command")
     	        }
-    	        this.commandId = out.toString().trim()
+                String rawOutput = out.toString() + "\n" + err.toString()
+    	        this.commandId = rawOutput.trim()
     	        if(this.commandId.isEmpty())
-    	            throw new PipelineError("Job runner ${this.class.name} failed to return a job id for job $id ($name) despite reporting success exit code for command:\n\n$startCmd\n\nRaw output was:[" + out.toString() + "]")
+    	            throw new PipelineError("Job runner ${this.class.name} failed to return a job id for job $id ($name) despite reporting success exit code for command:\n\n$startCmd\n\nRaw output was:[" + rawOutput + "]")
     	            
     	        log.info "Started command with id $commandId"
 	        }
@@ -248,13 +250,27 @@ class CustomCommandExecutor implements CommandExecutor {
 	static synchronized acquireLock(Map cfg) {
         OSResourceThrottle.instance.acquireLock(cfg)
 	}
+    
+    transient String lastStatus = CommandStatus.UNKNOWN.name()
+    
+    @Override
+    public String status() {
+        String result = statusImpl()
+        if(command && (result != lastStatus)) {
+            if(result == CommandStatus.RUNNING.name()) {
+                this.command.startTimeMs = System.currentTimeMillis()
+                this.command.save()
+            }
+            lastStatus = result
+        }
+        return result   
+    }
 
     /**
      * For custom commands status is returned by calling the shell script with the
      * 'status' argument and the stored command id.
      */
-    @Override
-    public String status() {
+    public String statusImpl() {
         String cmd = "bash $managementScript status ${commandId}"
 		String result
 		withLock {
@@ -266,12 +282,12 @@ class CustomCommandExecutor implements CommandExecutor {
     	        int exitValue = p.waitFor() 
     	        if(exitValue != 0)
     	            return CommandStatus.UNKNOWN.name()
-    	        result = out.toString()
+    	        result = out.toString().trim()
 	        }
         }
         if(this.command) {
             try {
-                this.command.setStatus(CommandStatus.forName(result))
+                this.command.setStatus(CommandStatus.valueOf(result))
             }
             catch(Exception e) {
                 log.warning("Failed to update status for result $result: $e")

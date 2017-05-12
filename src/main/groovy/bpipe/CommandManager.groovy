@@ -120,13 +120,14 @@ class CommandManager {
         
         OutputLog commandLog = new OutputLog(outputLog, command.id)
 
+        command.dir = this.commandDir
+        
         // Note: the command returned back may be a new command object,
         // it is important that we replace the original with it and return
         // the new one back to the caller.
         command = createExecutor(command, cfg, outputLog)
         
         CommandExecutor cmdExec = command.executor
-       
         if(Runner.isPaused()) {
             throw new PipelinePausedException()
         }
@@ -145,8 +146,6 @@ class CommandManager {
         
         command.name = name
         command.executor = wrapped
-        command.dir = this.commandDir
-        
         wrapped.start(cfg, command, commandLog, commandLog)
     		
 		this.commandIds[cmdExec] = command.id
@@ -209,12 +208,18 @@ class CommandManager {
                     catch(Exception e) {
                         log.info "Unable to read command details for $f.absolutePath : maybe legacy pipeline directory?"
                     }
-                    if(cmd)
-                        stoppedCommands << cmd
                 }
+                
                 if(exec != null) {
-                    exec.stop() 
-                    log.info "Successfully stopped command $exec"
+                    if(exec instanceof PooledExecutor && exec.poolConfig.get('persistent',false)) {
+                        println "Command $cmd.id is persistent command: ignoring"
+                    }
+                    else {
+                        exec.stop() 
+                        if(cmd)
+                            stoppedCommands << cmd
+                        println "Successfully stopped command $cmd.id ($exec)"
+                    }
                 }
                 else {
                     println "WARNING: stored command $f.absolutePath had null executor (internal error)"

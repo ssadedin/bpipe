@@ -10,6 +10,15 @@ import bpipe.executor.CommandTemplate
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 
+ /**
+  * An executor that starts a single job that can be reused by 
+  * multiple commands.
+  * <p>
+  * The PooledExecutor starts a job which sits idle until it is 
+  * passed a command to run. A command is passed by writing a file in a
+  * specific format to its commandtmp directory. When this file appears, 
+  * the pooled executor picks it up and executes it.
+  */
 @Log
 @Mixin(ForwardHost)
 class PooledExecutor implements CommandExecutor {
@@ -19,13 +28,22 @@ class PooledExecutor implements CommandExecutor {
     /**
      * The executor that will run the command
      */
-    @Delegate
     CommandExecutor executor
     
     /**
      * The dummy command object used to initialize the execution; not the real command!
      */
     Command command
+    
+    /**
+     * The state of the currently active command
+     */
+    CommandStatus state = CommandStatus.UNKNOWN
+    
+    /**
+     * The currently active command (if any)
+     */
+    Command activeCommand
     
     Map poolConfig
     
@@ -35,7 +53,7 @@ class PooledExecutor implements CommandExecutor {
      */
     transient ForwardingOutputLog outputLog
     
-    transient String currentCommandId = null
+    String currentCommandId = null
     
     transient Closure onFinish =  null
     
@@ -64,6 +82,9 @@ class PooledExecutor implements CommandExecutor {
         cmdScriptTmp.text = cmd.command
         cmdScriptTmp.renameTo(cmdScript)
         
+        activeCommand = cmd
+        state = CommandStatus.RUNNING
+        
         if(executor.respondsTo("setJobName")) {
             log.info "Setting job name"
             executor.setJobName(cmd.name)
@@ -71,6 +92,14 @@ class PooledExecutor implements CommandExecutor {
         else {
             log.info "Pooled executor unable to set job name (not supported)"
         }
+    }
+    
+    String getStopHostedCommandFile() {
+        
+        assert currentCommandId != null // should only call this when a command is assigned
+        
+        File stopFile = new File(".bpipe/commandtmp/$hostCommandId/${currentCommandId}.pool.stop")
+        return stopFile.path
     }
     
     @Override
@@ -93,11 +122,36 @@ class PooledExecutor implements CommandExecutor {
         if(executor.respondsTo("setJobName")) {
             executor.setJobName(poolConfig.name)
         }            
+        
+        state = CommandStatus.COMPLETE
+        
         return exitCode
     }
     
     File getPoolFile() {
        new File(".bpipe/pools/${poolConfig.name}/${hostCommandId}") 
+    }
+    
+    /**
+     * Compute the fraction of this pooled executor's lifetime that is remaining
+     * before its walltime (if configured) expires.
+     * <p>
+     * If no walltime was configured, assumes infinite lifetime, returns 1.0
+     * 
+     * @return  double representing fraction of walltime remaining
+     */
+    double getTimeFractionRemaining() {
+        
+        String poolWalltimeConfig = this.poolConfig.get("walltime",null)
+        
+        // if no walltime set then assume this pool lasts forever
+        if(!poolWalltimeConfig)
+            return 1.0
+            
+        long poolWallTimeMs = Utils.walltimeToMs(poolWalltimeConfig)
+        double timeRemainingMs = (double)(poolWallTimeMs - (System.currentTimeMillis() - this.command.createTimeMs));
+        
+        return timeRemainingMs  / poolWallTimeMs
     }
     
     /**
@@ -117,7 +171,7 @@ class PooledExecutor implements CommandExecutor {
         if(cfg.walltime && myWalltimeConfig) {
             
             long myWallTimeMs = Utils.walltimeToMs(myWalltimeConfig)
-            long timeRemainingMs = myWallTimeMs - (System.currentTimeMillis() - this.command.createTimeMs)
+            long timeRemainingMs = myWallTimeMs - (System.currentTimeMillis() - this.command.createTimeMs);
             long walltimeMs = Utils.walltimeToMs(cfg.walltime)
             
             log.info "Pooled job $hostCommandId checking time remaining ($timeRemainingMs ms) compared to requirements ($walltimeMs)."
@@ -133,9 +187,8 @@ class PooledExecutor implements CommandExecutor {
     
     void execute(Command command, OutputLog log) {
         this.currentCommandId = command.id
-        this.command.adopt(command) 
         this.outputLog.wrapped = log
-        this.command.executor = this
+        command.executor = this
         
         // Note: this will trigger an event to the waiting command executor that
         // will make it write out the file and execute the command
@@ -152,8 +205,7 @@ class PooledExecutor implements CommandExecutor {
         this.forward(".bpipe/commandtmp/$command.id/pool.err", outputLog)
     }
     
-    @Override
-    void stop() {
+    void stopPooledExecutor() {
         
         this.executor.stop()
             
@@ -161,6 +213,59 @@ class PooledExecutor implements CommandExecutor {
         log.info "Writing stop file: $stopFile"
         this.stopFile.text = String.valueOf(System.currentTimeMillis())
         this.heartBeatFile.delete()
+    }
+    
+    /**
+     * Delete the persistent pool files associated with this executor.
+     * These are stored in .bpipe/pools and are created to allow subsequent
+     * pipelines to know about potentially running pooled executors.
+     */
+    void deletePoolFiles() {
+        
+        File poolFile = this.getPoolFile()
+        log.info "Deleting pool file $poolFile for pooled executor $command.id"
+        
+        if(!poolFile.delete())
+            poolFile.deleteOnExit()
+            
+        if(poolFile.parentFile.listFiles().size() == 0) {
+            poolFile.parentFile.deleteDir()
+        }
+    }
+    
+    void savePoolFile() {
+        File poolFile = this.poolFile
+        poolFile.parentFile.mkdirs()
+        poolFile.withObjectOutputStream { oos -> oos.writeObject(this) }
+    }
+
+    @Override
+    public String status() {
+        return state.name();
+    }
+
+    @Override
+    public void stop() {
+        if(!poolConfig.get('persist', false)) {
+            this.stopPooledExecutor()
+        }
+        else {
+            new File(this.stopHostedCommandFile).text=System.currentTimeMillis()
+        }
+    }
+
+    @Override
+    public void cleanup() {
+    }
+
+    @Override
+    public String statusMessage() {
+        return "Pooled executor ${command.id} running underlying executor: " + this.executor;
+    }
+
+    @Override
+    public List<String> getIgnorableOutputs() {
+        return [];
     }
 }
 
@@ -171,9 +276,17 @@ class ExecutorPool {
     
     public static final String POOLED_COMMAND_STOP_FILENAME = "stop"
     
+    /**
+     * Fraction of walltime below which an existing executor will not be considered
+     * usable if discovered as a persistent pool
+     */
+    public static final DEFAULT_POOL_RECREATE_THRESHOLD = 0.20
+    
     Map cfg
     
-    List<PooledExecutor> executors = []
+    List<PooledExecutor> availableExecutors = []
+    
+    List<PooledExecutor> activeExecutors = []
     
     ExecutorFactory executorFactory
     
@@ -228,34 +341,75 @@ class ExecutorPool {
         
         startTimeMs = System.currentTimeMillis()
         
-        List<PooledExecutor> existingPools = this.persistent ? searchForExistingPools(cfg.name) : []
+        List<PooledExecutor> existingPools = this.persistent ? searchForExistingPools() : []
         
         log.info "Found ${existingPools.size()} persistent commands in existing pool for $cfg.name "
         
         log.info "Creating / locating ${poolSize} executors for pool ${cfg.name}"
         
-        for(int i=0; i<poolSize; ++i) {
+        // When some executors are from previously created persistent pools,
+        // they may not be "usable" in that they may have too little time left
+        // We still connect to them in case they are useful, but we do not count them
+        // in the pool executors to be created since we want to ensure we have enough
+        // usable executors
+        int usablePoolExecutors = 0
+        
+        double timeFractionThreshold = 
+            cfg.get('timeFractionThreshold', DEFAULT_POOL_RECREATE_THRESHOLD)
+        
+        while(usablePoolExecutors < poolSize) {
             
             // TODO: does a pre-existing command exist? if so, use it!
-            PooledExecutor pe  = null
-            if(!existingPools.isEmpty()) {
-                pe = existingPools.pop()
-                log.info "Connecting pooled command of type $cfg.name to existing persistent pool: $pe.hostCommandId"
+            PooledExecutor pe = acquirePooledExecutor(existingPools)
+            double fracRemaining = pe.timeFractionRemaining
+            if(fracRemaining > timeFractionThreshold){
                 
-                connectPooledExecutor(pe)
+                log.info "Executor $pe.command.id added as usable pooled command executor (has $fracRemaining of time left)"
+                
+                ++usablePoolExecutors
+            }
+            else {
+                log.info "Executor $pe.command.id added but is below usable threshold (has only $fracRemaining of time left)"
             }
             
-            if(pe == null) {
-                pe = startNewPooledExecutor()
-                log.info "Started command $pe.hostCommandId as instance $i of pooled command of type $cfg.name"
-            }
-            
-            pe.onFinish = {
-                log.info "Adding pooled executor $pe.hostCommandId back into pool"
-                executors << pe
-            }
-            this.executors << pe
         }
+        
+        Poller.instance.timer.schedule(
+            this.&replaceUnusableExecutors,CHECK_EXECUTORS_INTERVAL_SECONDS*1000, CHECK_EXECUTORS_INTERVAL_SECONDS*1000) 
+    }
+    
+    /**
+     * Acquire a usable executor and add it to our pool.
+     * <p>
+     * If a usable exeuctor is found in the provided list, it is initialised
+     * and added to our pool. If not, a new executor is started.
+     * 
+     * @param existingExecutors
+     * 
+     * @return  the executor acquired
+     */
+    PooledExecutor acquirePooledExecutor(List<PooledExecutor> existingExecutors) {
+        PooledExecutor pe  = null
+        if(!existingExecutors.isEmpty()) {
+            pe = existingExecutors.pop()
+            log.info "Connecting pooled command of type $cfg.name to existing persistent pool: $pe.hostCommandId"
+
+            connectPooledExecutor(pe)
+        }
+
+        if(pe == null) {
+            pe = startNewPooledExecutor()
+            log.info "Started command $pe.hostCommandId as pooled command of type $cfg.name"
+        }
+
+        pe.onFinish = {
+            log.info "Adding pooled executor $pe.hostCommandId back into pool"
+            availableExecutors << pe
+            activeExecutors.remove(pe)
+        }
+        
+        this.availableExecutors << pe
+        return pe
     }
     
     /**
@@ -268,7 +422,7 @@ class ExecutorPool {
         pe.captureOutput()
         pe.onFinish = {
             log.info "Adding persistent pooled executor $pe.hostCommandId back into pool"
-            executors << pe
+            availableExecutors << pe
         } 
     }
    
@@ -281,7 +435,9 @@ class ExecutorPool {
      * @param name
      * @return
      */
-    List<PooledExecutor> searchForExistingPools(String name) {
+    List<PooledExecutor> searchForExistingPools() {
+        
+        String name = cfg.name
         
         File poolDir = new File(".bpipe/pools/$name")
         if(!poolDir.exists()) {
@@ -289,7 +445,7 @@ class ExecutorPool {
             return []
         }
         
-        poolDir.listFiles().grep {
+        Map<CommandStatus,List<PooledExecutor>> executors = poolDir.listFiles().grep {
             it.name.matches(ALL_NUMBERS)
         }.collect { File f ->
             try {
@@ -301,25 +457,39 @@ class ExecutorPool {
                 log.severe "Unable to load command from $f: $e"
                 // could clean up command here?
             }
-        }.grep { PooledExecutor pe ->
+        }.grep { 
+            it != null // can happen if starting pooled executor fails?
+        }.groupBy { PooledExecutor pe ->
             
             CommandStatus status = pe.command.executor.status() 
             
             log.info "Command state for $pe.command.id is $status"
             
-            return (status == CommandStatus.RUNNING)
+            return status 
         }
+        
+        // What to do about executors that are not in runnign state?
+        // Simple thing is to delete them
+        List<PooledExecutor> nonRunningExecutors = executors.collect { (it.key != CommandStatus.RUNNING) ? it.value : [] }.sum()
+        nonRunningExecutors*.deletePoolFiles()
+        
+        return executors[CommandStatus.RUNNING] ?: []
     }
+    
+    static final long CHECK_EXECUTORS_INTERVAL_SECONDS = 120
     
     static final long HEARTBEAT_INTERVAL_SECONDS = 10
     
     PooledExecutor startNewPooledExecutor() {
         
+        long nowMs = System.currentTimeMillis()
         Command cmd = new Command(
             name:cfg.name, 
             configName: cfg.name, 
+            createTimeMs: nowMs,
+            startTimeMs: nowMs,
             id: CommandId.newId(),
-            dir: new File(CommandManager.DEFAULT_COMMAND_DIR)
+            dir: new File(".bpipe/pools/commands")
         )
             
         Map execCfg = cmd.getConfig(null)
@@ -347,6 +517,7 @@ class ExecutorPool {
             [
                 cfg: cfg, 
                 cmd: cmd,
+                pooledExecutor: pe,
                 persistent: persistent,
                 poolFile: pe.getPoolFile().absolutePath,
                 debugLog: debugLog,
@@ -361,7 +532,7 @@ class ExecutorPool {
         // Sometimes this can be the first code that runs and needs this
         new File(".bpipe/commands").mkdirs()
             
-        cmdExec.start(execCfg, cmd, outputLog, outputLog)
+        cmdExec.start(cfg.collectEntries { it }, cmd, outputLog, outputLog)
             
         cmd.createTimeMs = System.currentTimeMillis()
             
@@ -370,47 +541,84 @@ class ExecutorPool {
                 heartBeatFile.text = String.valueOf(System.currentTimeMillis())
             }
         }, 0, HEARTBEAT_INTERVAL_SECONDS*1000)
-            
+        
         pe.captureOutput()
         pe.stopFile = stopFile
         pe.heartBeatFile = heartBeatFile
-        File poolFile = pe.poolFile
-        poolFile.parentFile.mkdirs()
         
-        poolFile.withObjectOutputStream { oos -> oos.writeObject(pe) }
-        
+        if(persistent) // If this is a persistent pool, save the executor in the shared pools directory (.bpipe/pools)
+            pe.savePoolFile()
         return pe
+    }
+    
+    synchronized void replaceUnusableExecutors() {
+        
+        double threshold = cfg.get('timeFractionThreshold', DEFAULT_POOL_RECREATE_THRESHOLD) 
+        
+        log.info "Checking if ${availableExecutors.size()} executors are still usable (threshold=$threshold)"
+        
+        // Remove executors that aren't running any more
+        availableExecutors.grep { PooledExecutor pe ->
+            pe.status() != CommandStatus.RUNNING.name() && 
+            pe.status() != CommandStatus.WAITING.name()  
+        }.each { PooledExecutor pe ->
+            log.info "Removing pooled executor in state ${pe.status()} because no longer running"
+            pe.stop()
+            pe.deletePoolFiles()
+            availableExecutors.remove(pe)
+        }
+        
+        // Count the usable executors
+        int usableExecutors = (availableExecutors + activeExecutors).count { PooledExecutor pe ->
+            if(pe.timeFractionRemaining >= threshold) {
+                // usable
+                return true
+            }
+            else {
+                log.info "Executor $pe.hostCommandId is not usable: timeFracRemaining = $pe.timeFractionRemaining"
+            }
+        }
+        
+        log.info "There are ${usableExecutors} / $poolSize desired usable executors"
+        
+        while(usableExecutors<poolSize) {
+            PooledExecutor pe = acquirePooledExecutor([])
+            if(persistent)
+                pe.savePoolFile()
+            ++usableExecutors
+        }
     }
     
     synchronized Command take(Command command, OutputLog outputLog) {
         
-        if(executors.isEmpty())
+        if(availableExecutors.isEmpty())
             return command
         
-        PooledExecutor pe = null;
-        
-        for(PooledExecutor candidatePe in executors) {
-            if(candidatePe.canAccept(command.processedConfig)) {
-                pe = candidatePe
-            }
+        // Take the executor with the smallest time remaining that is
+        // still usable
+        PooledExecutor pe = availableExecutors.grep { PooledExecutor cpe ->
+            cpe.canAccept(command.processedConfig)
+        }.min { PooledExecutor cpe ->
+            cpe.timeFractionRemaining
         }
         
         if(!pe) {
-            log.info "No compatible pooled executor available from ${executors.size()} pooled commands for command $command.id (config=$command.configName)"
+            log.info "No compatible pooled executor available from ${availableExecutors.size()} pooled commands for command $command.id (config=$command.configName)"
             return
         }
         
-        executors.remove(pe)
+        availableExecutors.remove(pe)
+        activeExecutors.add(pe)
         
         pe.execute(command, outputLog)
         
-        return pe.command
+        return command
     }
     
     @CompileStatic
-    void shutdown() {
-        log.info "Shutting down ${executors.size()} jobs in preallocation pool ${cfg.name}"
-        for(PooledExecutor pe in executors) {
+    synchronized void shutdown() {
+        log.info "Shutting down ${availableExecutors.size()} jobs in preallocation pool ${cfg.name}"
+        for(PooledExecutor pe in availableExecutors) {
             pe.stop()
         }
     }
@@ -419,6 +627,17 @@ class ExecutorPool {
      * Preallocation pools, indexed by the name of the pool
      */
     static Map<String,ExecutorPool> pools = [:]
+    
+    /**
+     * Read all the pools configuration and start the configured pools
+     */
+    static void startPools(ExecutorFactory executorFactory, ConfigObject userConfig) {
+        
+        initPools(executorFactory, userConfig)
+        
+        // Start all the pools
+        pools*.value*.start()
+    }
     
     /**
      * Read the given userConfig and parse the "preallocate" section to find configurations
@@ -433,7 +652,7 @@ class ExecutorPool {
         //
         // small { // name of pool, by default the name of the configs it applies to
         //     jobs=10
-        //     configs="bwa,gatk" // optional: now it will be limited to these configs
+        //     configs="bwa,gatk" // optional: now it will be limited to these configs, otherwise "small"
         // }
         
         // Create the pools
@@ -441,17 +660,22 @@ class ExecutorPool {
         for(Map.Entry e in prealloc) {
             ConfigObject cfg = e.value
             
+            Map mergedCfg = cfg.clone().merge(Config.userConfig) 
+            
             if(!('configs' in cfg))
                 cfg.configs = e.key
            
             if(!('name' in cfg))
                 cfg.name = e.key
                 
+            // These are large entries in the root of the default config that are not 
+            // wanted for executors (mainly they just pollute the logs)
+            mergedCfg.remove("commands")
+            mergedCfg.remove("tools")
+            mergedCfg.remove("libs")
+            
             pools[(String)cfg.name] = new ExecutorPool(executorFactory, cfg)
         }
-        
-        // Start all the pools
-        pools*.value*.start()
     }
     
     /**
@@ -480,14 +704,12 @@ class ExecutorPool {
      * @param cfg
      * @param outputLog
      * 
-     * @return  A Command object that is either the input command unchanged, or a new command
-     *          with an executor assigned.
+     * @return  A Command object that is either unchanged, or has an executor assigned.
      */
     synchronized static Command requestExecutor(Command command, Map cfg, OutputLog outputLog) {
         pools.each { name, pool -> 
             pool.configs.contains(cfg.name) 
         }?.value
-        
         
         for(Map.Entry poolEntry in pools) {
             ExecutorPool pool = poolEntry.value

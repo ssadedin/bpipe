@@ -356,7 +356,7 @@ class Runner {
                            { Concurrency.instance.initFromConfig() },
                            { if(!opts.t) { NotificationManager.instance.configure(Config.userConfig); configureReportsFromUserConfig() } },
                            { Dependencies.instance.preloadOutputGraph() },
-                           { if(!opts.t) { ExecutorPool.initPools(ExecutorFactory.instance, Config.userConfig) } }
+                           { if(!opts.t) { ExecutorPool.startPools(ExecutorFactory.instance, Config.userConfig) } }
                            ].collect{new Thread(it)}
         initThreads*.start()
 

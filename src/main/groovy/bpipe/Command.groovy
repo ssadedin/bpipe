@@ -211,6 +211,7 @@ class Command implements Serializable {
            
        File saveFile = new File(dir, this.id)
        Command me = this
+       
        saveFile.withObjectOutputStream { ois ->
            ois.writeObject(e)
            ois.writeObject(me)
@@ -223,9 +224,7 @@ class Command implements Serializable {
         Command cmd
         f.withObjectInputStream {
             CommandExecutor exec = it.readObject()
-            log.info "Loaded command executor $exec"
             cmd = it.readObject()
-            log.info "Loaded command ${cmd.id} from $f"
         }
         return cmd
     }
@@ -234,23 +233,7 @@ class Command implements Serializable {
         return this.allocated || (this.executor != null && this.executor instanceof ProbeCommandExecutor)
     }
     
-    void adopt(Command other) {
-        // note we do NOT take the other command's id, because there may already be
-        // associations to this command's id eg: in the file system
-        // this.id = other.id
-        this.stageId = other.stageId
-        this.branch = other.branch
-        this.configName = other.configName
-        this.createTimeMs = other.createTimeMs
-        this.startTimeMs = other.startTimeMs
-        this.dir = other.dir
-        this.outputs = other.outputs
-        this.name = other.name
-        this.cfg = other.cfg
-        this.allocated = other.allocated
-    }
-    
-    transient Closure commandListener
+   transient Closure commandListener
     
     void setCommand(String cmd) {
         this.command = cmd

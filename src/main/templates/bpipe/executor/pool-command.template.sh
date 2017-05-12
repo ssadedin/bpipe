@@ -7,6 +7,41 @@
 
 export POOL_ID="$cfg.name"
 
+killtree() {
+    local ppid=\$1
+    
+    # Sadly Mac OS/X does not seem to support --ppid option in default version
+    # of ps
+    if uname | grep -q Darwin;
+    then
+        pids=`ps -o pid,ppid | grep '^[0-9]' | grep ' '\$ppid | cut -f 1 -d ' '`
+    elif uname | grep -iq cygwin;
+    then
+        pids=`ps -f  | awk '{ if(NR>1) print  \$2 " " \$3 }' | grep ' '\$ppid | cut -f 1 -d ' '`
+    else
+        pids=\$(ps -o pid --no-headers --ppid \${ppid})
+    fi
+    
+    if [ ! -z "\$pids" ];
+    then
+        for child_pid in \${pids}; 
+        do
+            killtree \${child_pid}
+        done
+    fi
+    
+    # If second arg supplied, wait before killing parent
+    # this allows Bpipe itself to notice its children are dead
+    # by itself.
+    if [ ! -z "\$2" ];
+    then
+        sleep \$2
+    fi
+    
+    kill -TERM \${ppid} > /dev/null 2>&1
+}
+
+
 (
 i=0
     while true;
@@ -16,7 +51,7 @@ i=0
     
             if [ -e "$stopFile" ];
             then
-                $debugLog && { echo "Pool command exit flag detected: $stopFile" >> pool.log; }
+                $debugLog && { echo "Pool command exit flag detected for pool ${cmd.id}: $stopFile" >> pool.log; }
                 exit 0
             fi
     
@@ -53,10 +88,29 @@ i=0
         mv \$POOL_COMMAND_SCRIPT $pooledCommandScript
     
         POOL_COMMAND_EXIT_FILE=.bpipe/commandtmp/$cmd.id/\${POOL_COMMAND_ID}.pool.exit
+        POOL_COMMAND_STOP_FILE=.bpipe/commandtmp/$cmd.id/\${POOL_COMMAND_ID}.pool.stop
     
-        bash -e $pooledCommandScript >> .bpipe/commandtmp/$cmd.id/pool.out 2>>.bpipe/commandtmp/$cmd.id/pool.err
+        ( 
+         bash -e $pooledCommandScript >> .bpipe/commandtmp/$cmd.id/pool.out 2>>.bpipe/commandtmp/$cmd.id/pool.err;
+         echo \$? > \$POOL_COMMAND_EXIT_FILE
+        ) &
         
-        echo \$? > \$POOL_COMMAND_EXIT_FILE
+        JOB_PID=\$!
+        
+        $debugLog && { echo "Pool $cmd.id has child command pid: \$JOB_PID" >> pool.log; }
+        
+        while [ ! -f \$POOL_COMMAND_EXIT_FILE ];
+        do
+            sleep 1;
+            if [ -e \$POOL_COMMAND_STOP_FILE ];
+            then
+                $debugLog && { echo "Pool $cmd.id detected stop file \$POOL_COMMAND_STOP_FILE for command \$POOL_COMMAND_ID - kill -9 \$JOB_PID" >> pool.log; }
+                killtree \$JOB_PID
+                echo "-1" > \$POOL_COMMAND_EXIT_FILE
+            fi
+        done
+        
+        $debugLog && { echo "Pool $cmd.id finished command: \$POOL_COMMAND_ID" >> pool.log; }
     done
 )
 
