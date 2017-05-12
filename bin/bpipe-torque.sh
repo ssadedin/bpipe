@@ -241,7 +241,7 @@ stop () {
          # try to stop it
          qdel "$1"
          qdel_success=$?
-         if [[ qdel_success == 0 ]]
+        if [[ $qdel_success == 0 ]]
             then
                exit $SUCCESS
             else
