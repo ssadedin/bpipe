@@ -30,6 +30,12 @@ import groovy.util.slurpersupport.GPathResult;
 import bpipe.cmd.BpipeCommand;
 import bpipe.executor.CommandExecutor;
 
+/**
+ * Print out information about currently running pipeline in the local, or if no 
+ * running pipeline, the outcome of the previous run.
+ * 
+ * @author Simon Sadedin
+ */
 class StatusCommand extends BpipeCommand {
 
     public StatusCommand() {
@@ -92,9 +98,14 @@ class StatusCommand extends BpipeCommand {
             }
             
             GPathResult dom = new XmlSlurper().parse(resultFile)
+            out.println(" " + (" Pipeline " + (dom.succeeded.text() == "true" ? "Succeeded" : "Failed")).center(Config.config.columns-2,"="))
+            out.println(("| Started: " + dom.startDateTime.text()).padRight(Config.config.columns-1) + "|")
+            out.println(("| Ended: " + dom.endDateTime.text()).padRight(Config.config.columns-1) + "|")
+            out.println (" " + "="*(Config.config.columns-2))
+            out.println ""
+
             dom.commands.command.each { cmdNode ->
-                out.println " ${cmdNode.id.text()} ".center(Config.config.columns,"=")
-                out.println "Stage: \t${cmdNode.stage.text()}"
+                out.println (" Stage ${cmdNode.stage.text()} Command ${cmdNode.id.text()} ".center(Config.config.columns,"="))
                 out.println "Create: \t${cmdNode.start.text()}"
                 out.println "Start: \t${cmdNode.start.text()}"
                 out.println "End: \t${cmdNode.end.text()}"
