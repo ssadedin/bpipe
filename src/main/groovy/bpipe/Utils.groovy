@@ -895,7 +895,7 @@ class Utils {
             return ((long)stringValue.toInteger()) * 1000L
         }
         
-        // If not integer, parse in format HH:MM:SS
+        // If not integer, parse in format DD:HH:MM
         List<String> parts = stringValue.tokenize(":")*.toInteger().reverse()
         return [[MINUTE, HOUR, DAY], parts].transpose().sum { unitAndValue ->
             unitAndValue[0]*unitAndValue[1]
