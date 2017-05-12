@@ -136,6 +136,7 @@ class QueryCommand extends BpipeCommand {
                    Pending Time:        ${pendingDuration}
                    Running Time:        ${duration}
                    Inputs used:         ${p.inputs.join(',')}
+                   Command Id:          ${p.commandId}
                    Command:             ${p.command}
                    Preserved:           ${p.preserve?'yes':'no'}
                    Intermediate output: ${p.intermediate?'yes':'no'}
@@ -150,6 +151,7 @@ class QueryCommand extends BpipeCommand {
                    pendingTime:         pendingDuration,
                    runningTime:         duration,
                    inputs:              p.inputs,
+                   commandId:           p.commandId,
                    command:             p.command,
                    preserved:           p.preserve,
                    intermediate:        p.intermediate
