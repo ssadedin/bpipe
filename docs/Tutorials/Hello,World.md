@@ -60,4 +60,7 @@ hello = {
 }
 ```
 
-Of course, this particular pipeline is very boring because it has no inputs and other than displaying messages it produces no outputs.  To see how Bpipe manages inputs and outputs, have a look at the next part of the tutorial: [Example With Inputs And Outputs](Tutorials/ExampleWithInputsAndOutputs)
+Of course, this particular pipeline is very boring because it has no inputs and
+other than displaying messages it produces no outputs.  To see how Bpipe
+manages inputs and outputs, have a look at the next part of the tutorial:
+[Example With Inputs And Outputs](ExampleWithInputsAndOutputs)
