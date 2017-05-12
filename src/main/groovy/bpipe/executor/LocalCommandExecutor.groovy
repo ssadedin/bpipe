@@ -244,8 +244,9 @@ class LocalCommandExecutor implements CommandExecutor {
         }
         
         while(true) {
-            if(status() == CommandStatus.COMPLETE.name())
+            if(status() == CommandStatus.COMPLETE.name()) {
                 return exitValue
+            }
              synchronized(this) {
                  this.wait(500)
              }
@@ -288,6 +289,11 @@ class LocalCommandExecutor implements CommandExecutor {
         log.info "Shutting down local job $id with pid $pid"
         
         "kill $pid".execute()
+        
+        // Store an exit code so that future status calls will know that the command 
+        // exited via a normal process and not abruptly killed
+        File exitFile = new File(".bpipe/commandtmp/$id/$CMD_EXIT_FILENAME")
+        exitFile.text = "-1"
     }
     
     @Override
