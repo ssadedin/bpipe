@@ -773,7 +773,7 @@ public class Pipeline implements ResourceRequestor {
                         command {
                             id(cmd.id)
                             stage(cmd.name)
-                            branch(cmd.branch.name)
+                            branch(cmd.branch?.name?:"")
                             content(cmd.command)
                             start(new Date(cmd.startTimeMs).format(DATE_FORMAT))
                             end(new Date(cmd.stopTimeMs).format(DATE_FORMAT))
