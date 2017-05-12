@@ -523,6 +523,7 @@ class ExecutorPool {
                 debugLog: debugLog,
                 pooledCommandScript: pooledCommandScript,
                 heartBeatFile: heartBeatFile,
+                bpipeHome: Runner.BPIPE_HOME,
                 HEARTBEAT_INTERVAL_SECONDS: HEARTBEAT_INTERVAL_SECONDS,
                 stopFile: stopFile
             ])

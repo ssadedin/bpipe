@@ -7,40 +7,7 @@
 
 export POOL_ID="$cfg.name"
 
-killtree() {
-    local ppid=\$1
-    
-    # Sadly Mac OS/X does not seem to support --ppid option in default version
-    # of ps
-    if uname | grep -q Darwin;
-    then
-        pids=`ps -o pid,ppid | grep '^[0-9]' | grep ' '\$ppid | cut -f 1 -d ' '`
-    elif uname | grep -iq cygwin;
-    then
-        pids=`ps -f  | awk '{ if(NR>1) print  \$2 " " \$3 }' | grep ' '\$ppid | cut -f 1 -d ' '`
-    else
-        pids=\$(ps -o pid --no-headers --ppid \${ppid})
-    fi
-    
-    if [ ! -z "\$pids" ];
-    then
-        for child_pid in \${pids}; 
-        do
-            killtree \${child_pid}
-        done
-    fi
-    
-    # If second arg supplied, wait before killing parent
-    # this allows Bpipe itself to notice its children are dead
-    # by itself.
-    if [ ! -z "\$2" ];
-    then
-        sleep \$2
-    fi
-    
-    kill -TERM \${ppid} > /dev/null 2>&1
-}
-
+source $bpipeHome/bin/bpipe-utils.sh
 
 (
 i=0
