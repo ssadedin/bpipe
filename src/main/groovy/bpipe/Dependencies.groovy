@@ -277,7 +277,7 @@ class GraphEntry implements Serializable {
             inputs = ["<no inputs>"]
                   
         String inputValue = inputs.join('\n') + ' => \n'
-        return inputValue + dumpChildren(inputs.collect {it.size()}.max())
+        return inputValue + dumpChildren(Math.min(20,inputs.collect {it.size()}.max()))
         
 //        return dumpChildren(0)
     }
@@ -312,7 +312,8 @@ class GraphEntry implements Serializable {
               }
           }
         }
-        return me + filteredChildren*.dumpChildren(indent+(names.collect{it.size()}.max()?:0)).join('\n')
+        int maxIndent = 20
+        return me + filteredChildren*.dumpChildren(indent+Math.min((names.collect{it.size()}.max()?:0), maxIndent)).join('\n')
     }
     
     String toString() {
