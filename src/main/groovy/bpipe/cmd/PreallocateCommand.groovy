@@ -39,7 +39,8 @@ import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;
 
 /**
- * Stop the jobs associated with the currently running pipeline
+ * Start any persistent preallocated commands that are configured in
+ * the bpipe.config without starting the actual pipeline itself
  * 
  * @author Simon Sadedin
  */
