@@ -72,7 +72,7 @@ class Runner {
               retry [job id] [test]
               remake <file1> <file2>...
               resume
-              stop
+              stop [preallocated]
               history 
               log
               jobs
@@ -80,6 +80,7 @@ class Runner {
               status
               cleanup
               query
+              preallocate
               preserve
               register <pipeline> <in1> <in2>...
               diagram <pipeline> <in1> <in2>...
