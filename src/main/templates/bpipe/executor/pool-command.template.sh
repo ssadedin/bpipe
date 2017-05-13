@@ -71,7 +71,7 @@ i=0
             sleep 1;
             if [ -e \$POOL_COMMAND_STOP_FILE ];
             then
-                $debugLog && { echo "Pool $cmd.id detected stop file \$POOL_COMMAND_STOP_FILE for command \$POOL_COMMAND_ID - kill -9 \$JOB_PID" >> pool.log; }
+                $debugLog && { echo "Pool $cmd.id detected stop file \$POOL_COMMAND_STOP_FILE for command \$POOL_COMMAND_ID, kill \$JOB_PID" >> pool.log; }
                 killtree \$JOB_PID
                 echo "-1" > \$POOL_COMMAND_EXIT_FILE
             fi

@@ -631,13 +631,17 @@ class ExecutorPool {
     
     /**
      * Read all the pools configuration and start the configured pools
+     * 
+     * @return  the number of distinct pools that were started
      */
-    static void startPools(ExecutorFactory executorFactory, ConfigObject userConfig) {
+    static int startPools(ExecutorFactory executorFactory, ConfigObject userConfig, boolean persistentOnly=false) {
         
-        initPools(executorFactory, userConfig)
+        initPools(executorFactory, userConfig, persistentOnly)
         
         // Start all the pools
         pools*.value*.start()
+        
+        return pools.size()
     }
     
     /**
@@ -648,7 +652,7 @@ class ExecutorPool {
      * @param userConfig
      */
     @CompileStatic
-    synchronized static void initPools(ExecutorFactory executorFactory, ConfigObject userConfig) {
+    synchronized static void initPools(ExecutorFactory executorFactory, ConfigObject userConfig, boolean persistentOnly=false) {
         // Each prealloc section looks like
         //
         // small { // name of pool, by default the name of the configs it applies to
@@ -674,6 +678,11 @@ class ExecutorPool {
             mergedCfg.remove("commands")
             mergedCfg.remove("tools")
             mergedCfg.remove("libs")
+            
+            if(persistentOnly && !(mergedCfg.get('persist')?:false)) {
+                log.info "Not starting pool $cfg.name because it is not a persistent pool, and persistent mode required"
+                continue
+            }
             
             pools[(String)cfg.name] = new ExecutorPool(executorFactory, cfg)
         }

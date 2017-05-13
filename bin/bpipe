@@ -420,6 +420,7 @@ elif [ "$COMMAND" == "cleanup" ] || \
          [ "$COMMAND" == "status" ] || \
          [ "$COMMAND" == "query" ] || \
          [ "$COMMAND" == "preserve" ] || \
+         [ "$COMMAND" == "preallocate" ] || \
          [ "$COMMAND" == "install" ] || \
          [ "$COMMAND" == "diagram" ] || \
          [ "$COMMAND" == "diagrameditor" ]  || \

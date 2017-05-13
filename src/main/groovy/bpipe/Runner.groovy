@@ -35,6 +35,7 @@ import org.apache.commons.cli.Option
 import org.codehaus.groovy.runtime.StackTraceUtils;
 
 import bpipe.agent.AgentRunner
+import bpipe.cmd.PreallocateCommand
 import bpipe.cmd.Stop;
 import bpipe.worx.WorxEventListener;
 
@@ -157,6 +158,12 @@ class Runner {
                 f "Set output format to 'png' or 'svg'", args:1
             }
             Config.config["mode"] = "diagram"
+        }
+        else
+        if(mode == "preallocate")  {
+            log.info("Mode is preallocate")
+            new PreallocateCommand(args as List).run(System.out)
+            exit(0) 
         }
         else
         if(mode == "register")  {
