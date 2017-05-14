@@ -58,6 +58,7 @@ i=0
         POOL_COMMAND_STOP_FILE=.bpipe/commandtmp/$cmd.id/\${POOL_COMMAND_ID}.pool.stop
     
         ( 
+         set +e
          bash -e $pooledCommandScript >> .bpipe/commandtmp/$cmd.id/pool.out 2>>.bpipe/commandtmp/$cmd.id/pool.err;
          echo \$? > \$POOL_COMMAND_EXIT_FILE
         ) &
