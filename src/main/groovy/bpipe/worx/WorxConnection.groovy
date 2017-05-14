@@ -142,7 +142,7 @@ class WorxConnection {
             // Ignore
         }
         
-        log.info "Config is ${Config.userConfig}"
+//        log.info "Config is ${Config.userConfig}"
         
         String configUrl = Config.userConfig["worx"]?.url?:"http://127.0.0.1:8888/"
         log.info "Connecting to $configUrl"
