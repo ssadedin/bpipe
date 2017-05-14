@@ -186,7 +186,7 @@ class WorxEventListener implements PipelineEventListener {
         details.script = scriptFile.canonicalPath
         details.host = InetAddress.getLocalHost().hostName
             
-        WorxEventJob job = new WorxEventJob(event:eventType, properties: [desc: desc] + details)
+        WorxEventJob job = new WorxEventJob(event:eventType, properties: [desc: desc, timeMs: System.currentTimeMillis()] + details)
         this.service.submit(job);
         
         /*
