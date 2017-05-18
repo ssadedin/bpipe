@@ -460,7 +460,7 @@ class PipelineCategory {
             
             if(samples.isEmpty()) 
                 if(input)
-                    throw new PipelineError("The pattern provided '$pattern' did not match any of the files provided as input $input")
+                    println("Note: a pattern '$pattern' was provided, but did not match any of the files provided as input $input.")
                 else
                     throw new PatternInputMissingError("An input pattern was specified '$pattern' but no inputs were given when Bpipe was run.")
                     
