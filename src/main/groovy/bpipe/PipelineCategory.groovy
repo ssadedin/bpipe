@@ -696,9 +696,15 @@ class PipelineCategory {
         
         log.info "Last merged outputs are $mergedOutputs"
         mergedContext.setRawOutput(mergedOutputs)
+        
+        Closure flattenedBody = finalStages.find { it != null }?.body
+        if(flattenedBody == null) {
+            flattenedBody = {}
+        }
+        
         PipelineStage mergedStage = new FlattenedPipelineStage(
                 mergedContext, 
-                finalStages.find { it != null }.body,
+                flattenedBody,
                 finalStages
             )
         log.info "Merged stage name is $mergedStage.stageName"
