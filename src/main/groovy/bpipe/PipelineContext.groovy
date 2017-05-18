@@ -1720,8 +1720,8 @@ class PipelineContext {
           }
           else
           if(procs instanceof IntRange) {
-              procs = procs.from
               maxProcs = procs.to
+              procs = procs.from
           }
           log.info "Found procs value $procs (maxProcs = $maxProcs) to override computed threads value of $actualThreads"
           this.usedResources['threads'].amount = procs
