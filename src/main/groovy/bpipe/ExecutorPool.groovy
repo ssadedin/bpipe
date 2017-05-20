@@ -228,7 +228,8 @@ class PooledExecutor implements CommandExecutor {
         if(!poolFile.delete())
             poolFile.deleteOnExit()
             
-        if(poolFile.parentFile.listFiles().size() == 0) {
+        List poolFiles = (poolFile.parentFile.listFiles()?:[]) as List
+        if(poolFiles.size() == 0) {
             poolFile.parentFile.deleteDir()
         }
     }
