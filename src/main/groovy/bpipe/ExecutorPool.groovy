@@ -560,11 +560,11 @@ class ExecutorPool {
         
         // Remove executors that aren't running any more
         availableExecutors.grep { PooledExecutor pe ->
-            pe.status() != CommandStatus.RUNNING.name() && 
-            pe.status() != CommandStatus.WAITING.name()  
+            pe.executor.status() != CommandStatus.RUNNING.name() && 
+            pe.executor.status() != CommandStatus.WAITING.name()  
         }.each { PooledExecutor pe ->
             log.info "Removing pooled executor in state ${pe.status()} because no longer running"
-            pe.stop()
+            pe.stopPooledExecutor()
             pe.deletePoolFiles()
             availableExecutors.remove(pe)
         }
