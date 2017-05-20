@@ -12,6 +12,10 @@ abstract class BpipeCommand {
     
     List<String> args = []
     
+    CliBuilder cli = new CliBuilder()
+    
+    OptionAccessor opts  
+    
     File COMMAND_TMP = new File(System.getProperty("user.home") + "/.bpipedb/commandtmp")
     
     BpipeCommand(String commandLine, List<String> args) {
@@ -60,6 +64,15 @@ abstract class BpipeCommand {
             log.info "Executed command with output: " + output
         }
         return output
+    }
+    
+    @CompileStatic
+    OptionAccessor parse() {
+        opts = cli.parse(args) 
+        if(!opts) {
+            System.exit(1)
+        }
+        return opts
     }
     
     /**

@@ -861,6 +861,18 @@ class Utils {
         return result
     }
     
+    static boolean isProcessRunning(String pid) {
+        String info = "ps -o ppid,ruser -p ${pid}".execute().text
+        def lines = info.split("\n")*.trim()
+        if(lines.size()>1)  {
+            info = lines[1].split(" ")[1]; 
+            if(info == System.properties["user.name"]) {
+                return true
+            }
+        }        
+        return false
+    }
+    
     static String formatErrors(Collection<PipelineError> errors) {
         
         int width = Config.config.columns
@@ -900,5 +912,57 @@ class Utils {
         return [[MINUTE, HOUR, DAY], parts].transpose().sum { unitAndValue ->
             unitAndValue[0]*unitAndValue[1]
         }
+    }
+    
+    static Pattern TRIM_SECONDS = ~',[^,]*?seconds$'
+    
+    static String table(Map options = [:], List<String> headers, List<List> rows) {
+        
+        // Find the width of each column
+        Map<String,Integer> columnWidths = [:]
+        headers.eachWithIndex { hd, i ->
+            Object widestRow = rows.max { row -> String.valueOf(row[i]).size() }
+            columnWidths[hd] = Math.max(hd.size(), String.valueOf(widestRow[i]).size())
+        }
+        
+        // Create formatters
+        Map formatters = options.get('format',[:])
+        headers.each { h ->
+            if(!formatters[h])
+                formatters[h] = { String.valueOf(it) }
+            else 
+            if(formatters[h] instanceof Closure) {
+                // just let it be - it will be called and expected to return the value
+            }
+            else { // Assume it is a String.format specifier (sprintf style)
+                String spec = formatters[h]
+                if(spec == "timespan") {
+                    formatters[h] = { times ->
+                        TimeCategory.minus(times[1],times[0]).toString().replaceAll(TRIM_SECONDS, '')
+                    }
+                }
+                else {
+                    formatters[h] = { val ->
+                        String.format(spec, val)
+                    }
+                }
+            }
+        }
+        
+        StringBuilder out = new StringBuilder()
+        
+        // Now render the table
+        String header = headers.collect { h -> h.center(columnWidths[h]) }.join(" | ")
+        out.println header
+        out.println "-" * header.size()
+        
+        rows.each { row ->
+            int i=0
+            out.println headers.collect { h -> 
+                formatters[h](row[i++]).padRight(columnWidths[h]) 
+            }.join(" | ")
+        }
+        
+        return out.toString()
     }
 }

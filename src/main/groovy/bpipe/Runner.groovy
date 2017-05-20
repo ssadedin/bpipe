@@ -184,6 +184,12 @@ class Runner {
             cli = diagramCli
             Config.config["mode"] = "diagrameditor"
         }
+        else
+        if(mode == "jobs") {
+            log.info("Mode is jobs")
+            new bpipe.cmd.JobsCommand(args as List).run(System.out)
+            exit(0)
+        } 
         else 
         if(mode == "cleanup") {
             runCleanup(args)

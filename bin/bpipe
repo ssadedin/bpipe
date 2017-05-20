@@ -424,6 +424,7 @@ elif [ "$COMMAND" == "cleanup" ] || \
          [ "$COMMAND" == "install" ] || \
          [ "$COMMAND" == "diagram" ] || \
          [ "$COMMAND" == "diagrameditor" ]  || \
+         [ "$COMMAND" == "jobs" ]  || \
          [ "$COMMAND" == "documentation" ];
 then
     launch_in_foreground $*
@@ -497,7 +498,7 @@ then
     shift 1
     java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=showchecks bpipe.ChecksCommand -o $*
     exit
-elif [ "$COMMAND" == "jobs" ];
+elif [ "$COMMAND" == "oldjobs" ];
 then
     print_jobs
     exit
