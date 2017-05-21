@@ -207,7 +207,12 @@ class PooledExecutor implements CommandExecutor {
     
     void stopPooledExecutor() {
         
-        this.executor.stop()
+        try {
+            this.executor.stop()
+        }
+        catch(Exception e) {
+            log.warning("Attempt to stop pooled executor returned error: " + e)
+        }
             
         // Write out the stop flag
         log.info "Writing stop file: $stopFile"
