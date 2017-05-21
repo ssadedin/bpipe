@@ -81,18 +81,17 @@ class JobsCommand extends BpipeCommand {
         File jobsDir = new File(bpipeDbDir, "jobs")
         File completedDir = new File(bpipeDbDir, "completed") 
         
-        long sleepTime = (opts.sleepTime ?: "7000").toLong()
+        long sleepTime = (opts.sleepTime ?: "10000").toLong()
         long maxAgeMs = 24 * 60 * 60 * 1000
+        if(opts.all) {
+            maxAgeMs = Long.MAX_VALUE
+        }
         
         // There's no need to query completed jobs repeatedly, so we 
         // just do that at the start
         List<List> completedJobs = getJobs(completedDir,maxAgeMs, false)
         
         while(true) {
-            
-            if(opts.all) {
-                maxAgeMs = Long.MAX_VALUE
-            }
             
             List<List> jobRows = getJobs(jobsDir, maxAgeMs)
             
