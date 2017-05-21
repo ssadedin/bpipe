@@ -916,6 +916,8 @@ class Utils {
     
     static Pattern TRIM_SECONDS = ~',[^,]*?seconds$'
     
+    static Pattern TRIM_ZEROS = ~'\\.000 seconds$'
+    
     static String table(Map options = [:], List<String> headers, List<List> rows) {
         
         // Create formatters
@@ -931,7 +933,7 @@ class Utils {
                 String spec = formatters[h]
                 if(spec == "timespan") {
                     formatters[h] = { times ->
-                        TimeCategory.minus(times[1],times[0]).toString().replaceAll(TRIM_SECONDS, '')
+                        TimeCategory.minus(times[1],times[0]).toString().replaceAll(TRIM_SECONDS, '').replaceAll(TRIM_ZEROS,' seconds')
                     }
                 }
                 else {
