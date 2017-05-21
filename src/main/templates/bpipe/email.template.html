@@ -13,6 +13,7 @@
         <h3>Runtime Summary</h3>
         <table style='border: solid 1px #555; border-collapse: collapse;' border=1 cellpadding=3>
             <tbody>
+                <tr><th $thbg>Path</th><td><%=bpipe.Runner.runDirectory%></td> </tr>
                 <tr><th $thbg>Start</th><td><%=pipeline.startDate.format("yyyy-MM-dd HH:mm:ss")%></td> </tr>
                 <tr><th $thbg>End</th><td><%=pipeline.finishDate.format("yyyy-MM-dd HH:mm:ss")%></td></tr>
                 <tr><th $thbg>Duration</th><td><%=groovy.time.TimeCategory.minus(pipeline.finishDate,pipeline.startDate)%></td></tr>
