@@ -918,13 +918,6 @@ class Utils {
     
     static String table(Map options = [:], List<String> headers, List<List> rows) {
         
-        // Find the width of each column
-        Map<String,Integer> columnWidths = [:]
-        headers.eachWithIndex { hd, i ->
-            Object widestRow = rows.max { row -> String.valueOf(row[i]).size() }
-            columnWidths[hd] = Math.max(hd.size(), String.valueOf(widestRow[i]).size())
-        }
-        
         // Create formatters
         Map formatters = options.get('format',[:])
         headers.each { h ->
@@ -949,20 +942,35 @@ class Utils {
             }
         }
         
-        StringBuilder out = new StringBuilder()
+        // Create renderers
+        Map renderers = options.get('render',[:])
+        headers.each { hd ->
+            if(!renderers[hd]) {
+                renderers[hd]  = { val, width  -> print val.padRight(width) }
+            }
+        }
+        
+        // Find the width of each column
+        Map<String,Integer> columnWidths = [:]
+        headers.eachWithIndex { hd, i ->
+            Object widestRow = rows.max { row -> formatters[hd](row[i]).size() }
+            columnWidths[hd] = Math.max(hd.size(), formatters[hd](widestRow[i]).size())
+        }
         
         // Now render the table
-        String header = headers.collect { h -> h.center(columnWidths[h]) }.join(" | ")
-        out.println header
-        out.println "-" * header.size()
+        String header = headers.collect { hd -> hd.center(columnWidths[hd]) }.join(" | ")
+        println header
+        println "-" * header.size()
         
         rows.each { row ->
             int i=0
-            out.println headers.collect { h -> 
-                formatters[h](row[i++]).padRight(columnWidths[h]) 
-            }.join(" | ")
+            headers.each { hd -> 
+                if(i!=0)
+                    print(" | ");
+//                renderers[hd](formatters[hd](row[i++]).padRight(columnWidths[hd]))
+                 renderers[hd](formatters[hd](row[i++]), columnWidths[hd])
+            }
+            println ""
         }
-        
-        return out.toString()
     }
 }

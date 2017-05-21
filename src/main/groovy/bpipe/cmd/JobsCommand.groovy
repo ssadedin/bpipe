@@ -27,7 +27,10 @@ package bpipe.cmd
 import java.io.Writer;
 import java.util.List
 
+import javax.security.auth.Subject.SecureSet
+import javax.swing.text.rtf.RTFGenerator
 
+import bpipe.Command
 import bpipe.CommandManager;
 import bpipe.Config
 import bpipe.ExecutorFactory
@@ -38,6 +41,7 @@ import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;
 
 import static org.fusesource.jansi.Ansi.*
+import static org.fusesource.jansi.Ansi.Color.*
 import org.fusesource.jansi.AnsiConsole
 
 /**
@@ -50,11 +54,19 @@ class JobsCommand extends BpipeCommand {
     
     public JobsCommand(List<String> args) {
         super("jobs", args);
+        cli.usage = "bpipe jobs <options>"
         cli.with {
             all 'Show completed  as well as running jobs'
             watch 'Show continuously updated display'
+            sleep 'Sleep time when watching continuously', args:1
+            h  'Show help', longOpt: 'help'
         }
         parse()
+        
+        if(opts.h) {
+            cli.usage()
+            System.exit(0)
+        }
     }
 
     @Override
@@ -69,23 +81,31 @@ class JobsCommand extends BpipeCommand {
         File jobsDir = new File(bpipeDbDir, "jobs")
         File completedDir = new File(bpipeDbDir, "completed") 
         
+        long sleepTime = (opts.sleepTime ?: "7000").toLong()
+        long maxAgeMs = 24 * 60 * 60 * 1000
+        
+        // There's no need to query completed jobs repeatedly, so we 
+        // just do that at the start
+        List<List> completedJobs = getJobs(completedDir,maxAgeMs, false)
+        
         while(true) {
             
+            if(opts.all) {
+                maxAgeMs = Long.MAX_VALUE
+            }
+            
+            List<List> jobRows = getJobs(jobsDir, maxAgeMs)
+            
+            jobRows.addAll(completedJobs)
+            
+            jobRows.sort { row -> -row[3][0].time }
+            
             if(opts.watch) {
-                // print("\033[H\033[2J");
                 print(ansi().eraseScreen().cursor(0, 0))
                 print(ansi().bold())
                 println(new Date().toString())
                 print(ansi().reset())
             }
-            
-            List<List> jobRows = getJobs(jobsDir)
-            
-            if(opts.all) {
-                jobRows.addAll(getJobs(completedDir,false))
-            }
-            
-            jobRows.sort { row -> -row[2][0].time }
             
             println ""
             if(jobRows.isEmpty()) {
@@ -96,20 +116,32 @@ class JobsCommand extends BpipeCommand {
                     println "\nNo currently running jobs\n"
             }
             else {
-                println Utils.table(["PID", "Directory", "Running Time"], jobRows, format: ["Running Time": "timespan"])
+                Utils.table(["Date", "PID", "Directory", "Run Time", "Stage","State"], jobRows, format: [
+                    "Run Time": "timespan"
+                ], render: [
+                    "State": { val, width -> 
+                        if(val.trim() == "Running")  { 
+                            print(ansi().fg(GREEN).toString());
+                            print(val.padRight(width)); 
+                            print(ansi().reset())
+                        } else { 
+                            print(val.padRight(width))
+                        } 
+                    }
+                ])
             }
             println ""
             
             if(!opts.watch)
                 break
                 
-            Thread.sleep(5000)
+            Thread.sleep(sleepTime)
         }
         
         AnsiConsole.systemUninstall()
     }
     
-    public List<List> getJobs(File jobsDir, boolean checkRunning=true) {
+    public List<List> getJobs(File jobsDir, long maxAgeMs, boolean checkRunning=true) {
         
         File homeDir = new File(System.properties["user.home"])
         File bpipeDbDir = new File(homeDir, ".bpipedb")
@@ -130,19 +162,36 @@ class JobsCommand extends BpipeCommand {
             
             String pid = jobFile.name
             
-            if(!checkRunning || Utils.isProcessRunning(pid)) {
+            if(now.time - maxAgeMs < jobFile.lastModified()) {
+                
+                boolean isRunning = checkRunning && Utils.isProcessRunning(pid)
+                Command cmd = isRunning ? getLastCommand(jobDir) : null
+                
+                
+                long finishTimeMs = isRunning ? now.time : new File(jobDir,".bpipe/results/${pid}.xml")?.lastModified() 
+               
                 return [
+                    new Date(jobFile.lastModified()).format('YYYY-MM-dd'),
                     pid, 
                     jobDir,
-                    [new Date(jobFile.lastModified()), now]
+                    finishTimeMs > 0 ? [new Date(jobFile.lastModified()), new Date(finishTimeMs)] : null,
+                    cmd ? cmd.name : "",
+                    isRunning ? "Running" : "Finished"
                 ]
-            }
-            else {
-                // Remove the symbolic link
-                jobFile.renameTo(new File(completedDir,jobFile.name))
                 
-                return null
+                if(checkRunning && !isRunning) {
+                    // Remove the symbolic link
+                    jobFile.renameTo(new File(completedDir,jobFile.name))
+                    return null
+                }
             }
-        }.grep { it != null } 
+        }.grep { it != null && it[3] != null } 
+    }
+    
+    Command getLastCommand(File jobDir) {
+        File lastCommandFile = new File(jobDir,".bpipe/commands").listFiles().grep { it.name.isInteger() }.max { File f -> f.lastModified() }
+        
+        if(lastCommandFile)
+            Command.load(lastCommandFile)
     }
 }
