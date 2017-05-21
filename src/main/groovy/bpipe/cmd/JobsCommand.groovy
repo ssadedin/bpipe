@@ -93,7 +93,7 @@ class JobsCommand extends BpipeCommand {
         
         while(true) {
             
-            List<List> jobRows = getJobs(jobsDir, maxAgeMs)
+            List<List> jobRows = getJobs(jobsDir, Long.MAX_VALUE)
             
             jobRows.addAll(completedJobs)
             
