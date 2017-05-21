@@ -27,7 +27,6 @@ package bpipe.cmd
 import java.io.Writer;
 import java.util.List
 
-import javax.swing.colorchooser.CenterLayout
 
 import bpipe.CommandManager;
 import bpipe.Config
@@ -37,6 +36,9 @@ import bpipe.PooledExecutor
 import bpipe.Utils
 import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;
+
+import static org.fusesource.jansi.Ansi.*
+import org.fusesource.jansi.AnsiConsole
 
 /**
  * Prints out a list of running Bpipe pipelines
@@ -50,6 +52,7 @@ class JobsCommand extends BpipeCommand {
         super("jobs", args);
         cli.with {
             all 'Show completed  as well as running jobs'
+            watch 'Show continuously updated display'
         }
         parse()
     }
@@ -57,31 +60,53 @@ class JobsCommand extends BpipeCommand {
     @Override
     public void run(PrintStream out) {
         
+        AnsiConsole.systemInstall();
+        
         Config.config["mode"] = "jobs"
         
         File homeDir = new File(System.properties["user.home"])
         File bpipeDbDir = new File(homeDir, ".bpipedb")
         File jobsDir = new File(bpipeDbDir, "jobs")
         File completedDir = new File(bpipeDbDir, "completed") 
-        List<List> jobRows = getJobs(jobsDir)
         
-        if(opts.all) {
-            jobRows.addAll(getJobs(completedDir,false))
+        while(true) {
+            
+            if(opts.watch) {
+                // print("\033[H\033[2J");
+                print(ansi().eraseScreen().cursor(0, 0))
+                print(ansi().bold())
+                println(new Date().toString())
+                print(ansi().reset())
+            }
+            
+            List<List> jobRows = getJobs(jobsDir)
+            
+            if(opts.all) {
+                jobRows.addAll(getJobs(completedDir,false))
+            }
+            
+            jobRows.sort { row -> -row[2][0].time }
+            
+            println ""
+            if(jobRows.isEmpty()) {
+                if(opts.all) {
+                    println "\nNo jobs found\n"
+                }
+                else
+                    println "\nNo currently running jobs\n"
+            }
+            else {
+                println Utils.table(["PID", "Directory", "Running Time"], jobRows, format: ["Running Time": "timespan"])
+            }
+            println ""
+            
+            if(!opts.watch)
+                break
+                
+            Thread.sleep(5000)
         }
         
-        jobRows.sort { row -> -row[2][0].time }
-        
-        println ""
-        if(jobRows.isEmpty()) {
-            if(opts.all)
-                println "\nNo jobs found\n"
-            else
-                println "\nNo currently running jobs\n"
-        }
-        else {
-            println Utils.table(["PID", "Directory", "Running Time"], jobRows, format: ["Running Time": "timespan"])
-        }
-        println ""
+        AnsiConsole.systemUninstall()
     }
     
     public List<List> getJobs(File jobsDir, boolean checkRunning=true) {
@@ -92,6 +117,11 @@ class JobsCommand extends BpipeCommand {
         Date now = new Date()
         
        jobsDir.listFiles().collect { jobFile ->
+           
+            if(!jobFile.canonicalFile.exists()) {
+                jobFile.delete()
+                return null
+            } 
             
             List<String> lines = jobFile.text.readLines()
             List<String> jobInfo = lines[0].tokenize(":")*.trim()
