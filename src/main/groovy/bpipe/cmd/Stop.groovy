@@ -30,6 +30,7 @@ import java.util.List
 import javax.swing.colorchooser.CenterLayout
 
 import bpipe.CommandManager;
+import bpipe.CommandStatus
 import bpipe.Config
 import bpipe.ExecutorFactory
 import bpipe.ExecutorPool
@@ -104,7 +105,22 @@ class Stop extends BpipeCommand {
                    try {
                        pe.stopPooledExecutor()
                        pe.deletePoolFiles()
-                       String newState = pe.executor.status()
+                       String newState 
+                       int retries = 0
+                       while(true) {
+                           newState = pe.executor.status()
+                          if(newState != CommandStatus.RUNNING) 
+                              break
+                              
+                          if(++retries > 5) {
+                              log.warning("Command $pe.command.id did not respond to stop command")
+                              break
+                          }
+                              
+                          Thread.sleep(1000)
+                          
+                       } 
+                       
                        println "Pool: $pool.cfg.name".padLeft(20) + " Command: ${pe.command.id}".padLeft(15) + " State: ${oldState} => ${newState}"
                    }
                    catch(Exception e) {
