@@ -434,6 +434,13 @@ class ExecutorPool {
    
     static Pattern ALL_NUMBERS = ~/[0-9]{1,}/
     
+    
+    /**
+     * Set of statuses for internal executor that are considered to still be active
+     * ie: able to potentially run a job in the future.
+     */
+    static Set<CommandStatus> ACTIVE_STATUSES = [CommandStatus.WAITING, CommandStatus.RUNNING] as Set
+    
     /**
      * Searches in the .bpipe/pools/<pool name> directory for any command pools 
      * that may still be running and usuable for executing commands.
@@ -474,12 +481,15 @@ class ExecutorPool {
             return status 
         }
         
-        // What to do about executors that are not in runnign state?
-        // Simple thing is to delete them
-        List<PooledExecutor> nonRunningExecutors = executors.collect { (it.key != CommandStatus.RUNNING) ? it.value : [] }.sum()
-        nonRunningExecutors*.deletePoolFiles()
+        // Clean up old executors - anything not in active state
+        List<PooledExecutor> nonRunningExecutors = executors.collect { !(it.key in ACTIVE_STATUSES) ? it.value : [] }.sum()
+        if(nonRunningExecutors.size()>0) {
+            log.info "Deleting files for ${nonRunningExecutors.size()} expired executors"
+            nonRunningExecutors*.deletePoolFiles()
+        }
         
-        return executors[CommandStatus.RUNNING] ?: []
+        // Return anything in an active state
+        return ACTIVE_STATUSES.collect { executors[it]?:[] }.sum()
     }
     
     static final long CHECK_EXECUTORS_INTERVAL_SECONDS = 120
