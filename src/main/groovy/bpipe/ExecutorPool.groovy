@@ -312,7 +312,7 @@ class ExecutorPool {
         this.cfg = poolCfg
         this.jobCfg = jobCfg
         
-        def configs = poolCfg.get('configs') ?: [ e.key ]
+        def configs = poolCfg.get('configs') ?: [ poolCfg.name ]
         if(configs instanceof String) {
             configs = configs.tokenize(',')*.trim()
         }
@@ -507,6 +507,9 @@ class ExecutorPool {
             id: CommandId.newId(),
             dir: new File(".bpipe/pools/commands")
         )
+        
+        assert cfg.name != null
+        assert cmd.configName != null
             
         Map execCfg = cmd.getConfig(null)
             
@@ -681,14 +684,17 @@ class ExecutorPool {
         for(Map.Entry e in prealloc) {
             ConfigObject cfg = e.value
             
-            Map mergedCfg = cfg.clone().merge(Config.userConfig) 
-            
             if(!('configs' in cfg))
                 cfg.configs = e.key
            
             if(!('name' in cfg))
                 cfg.name = e.key
                 
+            assert !('name' in Config.userConfig)
+            
+            
+            Map mergedCfg = Config.userConfig.clone().merge(cfg)
+            
             // These are large entries in the root of the default config that are not 
             // wanted for executors (mainly they just pollute the logs)
             mergedCfg.remove("commands")
@@ -700,7 +706,12 @@ class ExecutorPool {
                 continue
             }
             
-            pools[(String)cfg.name] = new ExecutorPool(executorFactory, cfg)
+            // Convert to plain map (so it is serializable)
+            mergedCfg = mergedCfg.grep { Map.Entry me ->  me.value instanceof Serializable }.collectEntries()
+            
+            assert mergedCfg.name != null
+            
+            pools[(String)cfg.name] = new ExecutorPool(executorFactory, mergedCfg)
         }
     }
     
