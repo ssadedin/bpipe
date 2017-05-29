@@ -109,7 +109,7 @@ class Stop extends BpipeCommand {
                        int retries = 0
                        while(true) {
                            newState = pe.executor.status()
-                          if(newState != CommandStatus.RUNNING) 
+                          if(newState != CommandStatus.RUNNING.name()) 
                               break
                               
                           if(++retries > 5) {
