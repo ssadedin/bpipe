@@ -41,3 +41,4 @@ then
   printf "$failures"
   echo
 fi
+exit $fail
