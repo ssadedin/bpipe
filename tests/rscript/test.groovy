@@ -3,7 +3,7 @@
  * join them together in a pipeline
  */
 hello = {
-	exec "echo hello > test.txt"
+	exec "echo hello > $output.txt"
 }
 
 world = {
