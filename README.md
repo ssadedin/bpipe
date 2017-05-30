@@ -1,4 +1,4 @@
-Welcome to Bpipe
+Welcome to Bpipe  [![travis](https://travis-ci.org/ssadedin/bpipe.svg?branch=master)](https://travis-ci.org/ssadedin/bpipe)
 =================
 
 Bpipe provides a platform for running big bioinformatics jobs that consist of a series of processing stages - known as 'pipelines'.

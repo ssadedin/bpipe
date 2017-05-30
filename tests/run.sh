@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TESTS=`find . -maxdepth 1 -type d | grep "[A-Za-z]"`
+TESTS=`find . -maxdepth 1 -type d | grep -E "^\.\/[A-Za-z]"`
 
 source testsupport.sh
 
@@ -41,3 +41,4 @@ then
   printf "$failures"
   echo
 fi
+exit $fail
