@@ -96,6 +96,9 @@ class Forwarder extends TimerTask {
      */
     public void flush() {
         synchronized(files) {
+            // This small wait is to allow a small window for flushable changes to appear in the files
+            Thread.sleep(200)
+            
             long startTimeMs = System.currentTimeMillis()
             long now = startTimeMs
             
@@ -116,11 +119,30 @@ class Forwarder extends TimerTask {
                 log.info "All files ${files*.absolutePath} exist"
             }
         }
-        this.run()
+        
+        while(true) {
+            if(this.scanFiles()) { // returns true if one or more files modified; in that case keep looping
+                Thread.sleep(200)
+            }
+            else
+                break
+        }
     }
     
     @Override
     public void run() {
+        scanFiles()
+    }
+    
+    /**
+     * Scan all the files known by this forwarder
+     * 
+     * @return  true if any new content observed, false otherwise
+     */
+    boolean scanFiles() {
+        
+        boolean modified = false
+        
         List<File> scanFiles
         synchronized(files) {
             try {
@@ -139,6 +161,8 @@ class Forwarder extends TimerTask {
                                 //log.info "No chars to read from ${f.absolutePath} (size=${f.length()})"
                                 return
                             }
+                            
+                            modified = true
                             
                             log.info "Read " + count + " chars from $f starting with " + Utils.truncnl(new String(buffer, 0, Math.min(count,30)),25)
                             
@@ -160,5 +184,6 @@ class Forwarder extends TimerTask {
                 e.printStackTrace()
             }
         }
+        return modified
     }
 }
