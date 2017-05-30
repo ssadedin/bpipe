@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TESTS=`find . -maxdepth 1 -type d | grep "[A-Za-z]"`
+TESTS=`find . -maxdepth 1 -type d | grep -E "^\.\/[A-Za-z]"`
 
 source testsupport.sh
 
