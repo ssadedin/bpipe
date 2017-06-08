@@ -311,7 +311,12 @@ class Runner {
             Config.config.maxThreads = Integer.parseInt(opts.n)
             Config.config.customThreads = true
         }
-        
+        else 
+        if(Config.userConfig.containsKey('concurrency')) { // If not specified by command line, look for concurrency in bpipe.config
+            Config.config.maxThreads = Integer.parseInt(String.valueOf(Config.userConfig.concurrency))
+            Config.config.customThreads = true
+        }
+
         if(opts.m) {
             log.info "Maximum memory specified as $opts.m"
             try {
@@ -374,8 +379,7 @@ class Runner {
                            { /* Add event listeners that come directly from configuration */ EventManager.instance.configure(Config.userConfig) },
                            { Concurrency.instance.initFromConfig() },
                            { if(!opts.t) { NotificationManager.instance.configure(Config.userConfig); configureReportsFromUserConfig() } },
-                           { Dependencies.instance.preloadOutputGraph() },
-                           { if(!opts.t) { ExecutorPool.startPools(ExecutorFactory.instance, Config.userConfig) } }
+                           { Dependencies.instance.preloadOutputGraph() }
                            ].collect{new Thread(it)}
         initThreads*.start()
 
