@@ -920,6 +920,8 @@ class Utils {
     
     static String table(Map options = [:], List<String> headers, List<List> rows) {
         
+        String indent = options.indent ? (" " * options.indent) : ""
+        
         // Create formatters
         Map formatters = options.get('format',[:])
         headers.each { h ->
@@ -961,15 +963,17 @@ class Utils {
         
         // Now render the table
         String header = headers.collect { hd -> hd.center(columnWidths[hd]) }.join(" | ")
-        println header
-        println "-" * header.size()
+        println indent + header
+        println indent + ("-" * header.size())
         
         rows.each { row ->
             int i=0
             headers.each { hd -> 
                 if(i!=0)
                     print(" | ");
-//                renderers[hd](formatters[hd](row[i++]).padRight(columnWidths[hd]))
+                else
+                    print(indent)
+                    
                  renderers[hd](formatters[hd](row[i++]), columnWidths[hd])
             }
             println ""

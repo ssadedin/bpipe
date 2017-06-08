@@ -219,6 +219,12 @@ class Runner {
             exit(0)
         } 
         else
+        if(mode == "stats") {
+            log.info("Displaying stats")
+            new bpipe.cmd.StatsCommand(args as List).run(System.out)
+            exit(0)
+        } 
+        else
         if(mode == "stopcommands") {
             log.info("Stopping running commands")
             cli = stopCommandsCli

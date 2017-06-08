@@ -92,6 +92,24 @@ abstract class BpipeCommand {
         return pid
     }
     
+    File getLastResultFile() {
+        String pid = getLastLocalPID()
+        getResultFile(pid)
+    }
+    
+    File getResultFile(String pid) {
+        File resultFile = new File(".bpipe/results/${pid}.xml")
+        if(!resultFile.exists()) {
+            out.println """
+                Error: no result file exists for the run requested.
+                
+                This may indicate that the Bpipe process was terminated in an unexpected manner.
+            """
+            System.exit(1)
+        }
+        return resultFile
+    }
+    
     boolean isRunning(String pid=null) {
         
         if(pid == null)
