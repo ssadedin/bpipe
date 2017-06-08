@@ -64,6 +64,15 @@ class NodeListCategory {
     }
 }
 
+class ClosureScript extends Script {
+    Closure closure
+    def run() {
+        closure.resolveStrategy = Closure.DELEGATE_FIRST
+        closure.delegate = this
+        closure.call()
+    }
+}
+
 /**
  * Main Pipeline class.  Used by client to start a pipeline
  * running by specifying initial inputs and setting up 
@@ -1025,6 +1034,11 @@ public class Pipeline implements ResourceRequestor {
         }
             
         loadedPaths << f
+    }
+    
+    static synchronized void config(Closure cfgClosure) {
+        ConfigObject newConfig = new ConfigSlurper().parse(new ClosureScript(closure:cfgClosure))
+        Config.userConfig.merge(newConfig)
     }
     
     /**
