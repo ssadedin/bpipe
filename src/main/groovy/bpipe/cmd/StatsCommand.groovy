@@ -44,6 +44,8 @@ class StatsCommand extends BpipeCommand {
     @Override
     public void run(PrintStream out) {
         
+        // hack: need to refactor out to be set in constructor
+        this.out = out;
         
         String pid = this.args ? this.args[0] : this.getLastLocalPID()
         

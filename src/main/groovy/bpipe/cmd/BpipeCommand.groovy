@@ -23,6 +23,11 @@ abstract class BpipeCommand {
         this.args = args
     }
     
+    /**
+     * The stream to which output should be written
+     */
+    PrintStream out
+    
     abstract void run(PrintStream out);
     
     String shellExecute(PipelineInfo pipelineInfo) {
