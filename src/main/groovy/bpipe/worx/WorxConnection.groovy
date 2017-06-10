@@ -57,6 +57,8 @@ class WorxConnection {
      * Count of number of times this connection failed
      */
     int failures = 0
+    
+    boolean closeAfterRead = false
    
     void sendJson(String path, Object payload) {
         sendJson(path, JsonOutput.toJson(payload))
@@ -67,7 +69,6 @@ class WorxConnection {
         if(socket == null || socket.isClosed())
             resetSocket()
             
-            
         if(socket == null)
             return
             
@@ -75,8 +76,27 @@ class WorxConnection {
         
         log.info "POST $path" 
         
+//        HttpWriter f = new HttpWriter(wrapped:new FileWriter("http.log"))
+//        
+//        f.headerLine("POST $path HTTP/1.1")
+//                    .headerLine("Host: localhost:8080")
+//                    .headerLine("Content-Type: application/json;charset=utf-8")
+//                    .headerLine("Accept: */*")
+//                    .headerLine("User-Agent: curl/7.50.0")
+//                    .headerLine("Content-Length: " + jsonBytes.size()) // encoding?
+//                    .headerLine("")
+//                    .flush()
+//  
+//        f.print(eventJson+"\r\n") // note that encoding was set in creation of underlying Writer
+//        f.headerLine("")
+//         .flush()
+//         
+        
         socketWriter.headerLine("POST $path HTTP/1.1")
-                    .headerLine("Content-Type: application/json; charset=utf-8")
+                    .headerLine("Host: localhost:8080")
+                    .headerLine("Content-Type: application/json;charset=utf-8")
+                    .headerLine("Accept: */*")
+                    .headerLine("User-Agent: curl/7.50.0")
                     .headerLine("Content-Length: " + jsonBytes.size()) // encoding?
                     .headerLine("")
                     .flush()
@@ -102,33 +122,78 @@ class WorxConnection {
         String line
         int blankCount=0
         Map headers = [:]
-        while(true) {
-          line = socketReader.readLine()
-//          log.info "GOT RESPONSE line: " + line
-          if(!line && (++blankCount>0)) {
-              break
-          }
-          if(line)
-            blankCount = 0
-          def header = line.trim().split(':')
-          if(header.size()>1)
-            headers[header[0]] = header[1]
-        }
-
-        int contentLength = headers['Content-Length'].toInteger()
-        log.info "Content Length = " + contentLength
         
-        if(contentLength > 0) {
-            char [] buffer = new char[contentLength+1]
-            socketReader.read(buffer)
-//            log.info "RAW REPONSE: \n" + buffer
+        try {
+            List<String> nonHeaderLines = []
+            while(true) {
+              line = socketReader.readLine()
+//              log.fine "GOT RESPONSE line: " + line
+              if(!line) {
+                  break
+              }
+              if(line)
+                  blankCount = 0
+              List<String> header = line.tokenize(':')*.trim()
+              if(header.size()>1)
+                headers[header[0]] = header[1]
+              else
+                nonHeaderLines << line
+            }
             
-            Object result = new JsonSlurper().parse(new StringReader(new String(buffer)))
-            return result
+            // First non-header line should have HTTP status
+            if(nonHeaderLines.isEmpty())
+                throw new Exception("No HTTP response code returned from server!")
+    
+            List<String> statusLineFields = nonHeaderLines[0].tokenize()
+            if(statusLineFields.size()<2)
+                throw new Exception("HTTP status line does not have expected format: " + nonHeaderLines[0])
+            
+            Integer statusCode = statusLineFields[1].toInteger()
+            if(statusCode >= 400)
+                throw new Exception("Event post returned status code ${statusCode}:\n" + nonHeaderLines.join('\n'))
+                
+            Integer contentLength = headers['Content-Length']?.toInteger()?:0
+            log.info "Content Length = " + contentLength
+        
+            if(contentLength > 0) {
+                char [] buffer = new char[contentLength+1]
+                socketReader.read(buffer)
+                log.info "RAW REPONSE: \n" + buffer
+                
+                Object result = new JsonSlurper().parse(new StringReader(new String(buffer)))
+                return result
+            }
+            else
+            if(headers['Transfer-Encoding'] == 'chunked') {
+                
+                // Read the chunk length
+                String chunkLengthValue = socketReader.readLine()
+                Long chunkSize = Long.decode("0x" + chunkLengthValue)
+                log.info "Chunk size in bytes: $chunkSize"
+                
+                char [] buffer = new char[chunkSize]
+                socketReader.read(buffer)
+                
+                String payload = new String(buffer)
+                
+                String newLine = socketReader.readLine()
+                String nextChunk = socketReader.readLine()
+                if(nextChunk != "0")
+                    log.warning("next chunk length has unexpected value: $nextChunk")
+                
+                socketReader.readLine() // consume final empty line
+                
+                return new JsonSlurper().parse(new StringReader(payload))
+            }
+            else {
+                log.info "No response data"
+                return [:]
+            }
         }
-        else {
-            log.info "No response data"
-            return [:]
+        finally {
+            log.info "Closing Worx connection by server request"
+            this.socket.close()
+            this.socket = null
         }
     }
     
@@ -152,8 +217,7 @@ class WorxConnection {
             socket = new Socket(url.host, url.port) 
         
             socketReader = new BufferedReader(new InputStreamReader(socket.inputStream))
-            
-            socketWriter = new HttpWriter(wrapped: new PrintWriter(new OutputStreamWriter(socket.outputStream, "UTF-8")))
+            socketWriter = new HttpWriter(wrapped: new PrintWriter(new OutputStreamWriter(socket.outputStream, "US-ASCII")))
             
         } catch (Exception e) {
             if((failures%20) == 0) {

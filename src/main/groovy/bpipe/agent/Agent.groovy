@@ -93,17 +93,15 @@ class Agent extends TimerTask {
         if(result.commands) {
             // Each command is a map, indexed by pguid mapping to a list of Command objects
             // which are serialised as Maps
-            result.commands.each { String pguid, List<Map> commands -> 
-                PipelineInfo pi =  this.pipelines[pguid]
+            result.commands.each { Map command -> 
+                PipelineInfo pi =  this.pipelines[command.run.id]
                 if(!pi) {
-                    log.severe "Unknown pipeline guid $pguid returned from poll for $details.pguids"
+                    log.severe "Unknown pipeline guid $command.run.id returned from poll for $details.pguids"
                     return
                 }
                 
                 // Execute the commands
-                for(Map commandAttributes in commands) {
-                    executeCommand(commandAttributes, pi)
-                }
+                executeCommand(command, pi)
             }
         }
     }
@@ -121,7 +119,7 @@ class Agent extends TimerTask {
             command.args = commandAttributes.arguments.split(",")
             
             String result = command.shellExecute(pi)
-            worx.sendJson("/result/$commandAttributes.id", [
+            worx.sendJson("/commandResult/$commandAttributes.id", [
                     command: commandAttributes.id,
                     status: "ok",
                     output: result
@@ -137,7 +135,7 @@ class Agent extends TimerTask {
             
             log.severe "Command $commandAttributes failed: " + stackTrace
             
-            worx.sendJson("/result/$commandAttributes.id", [
+            worx.sendJson("/commandResult/$commandAttributes.id", [
                 command: commandAttributes.id,
                 status: "failed",
                 error: stackTrace

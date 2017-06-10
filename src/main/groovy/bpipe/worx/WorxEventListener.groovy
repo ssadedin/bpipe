@@ -108,12 +108,15 @@ class WorxEventListener implements PipelineEventListener {
             
             try {
                 String json = JsonOutput.toJson([events: [eventDetails]])
+                log.info "Send: $json"
                 worx.sendJson("/events", json)
+                log.info "Sent json OK"
             }
             catch(Throwable e) {
                 e.printStackTrace()
             }
             
+            log.info "Read response ..."
             def response = worx.readResponse()
             log.info "Response: $response"
             
@@ -124,10 +127,10 @@ class WorxEventListener implements PipelineEventListener {
             }
         }
         catch(Exception e) {
-            log.severe "Failed to send event to $socket $this"
+            log.info "Error sending event ($e)"
+            log.severe "Failed to send event to remote worx host: $e"
             e.printStackTrace()
         }
-      
     }
     
     void start() {

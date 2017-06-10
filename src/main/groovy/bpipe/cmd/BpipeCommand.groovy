@@ -44,7 +44,9 @@ abstract class BpipeCommand {
         File tmpFile = new File(COMMAND_TMP, Utils.sha1(command) + ".sh")
         tmpFile.setExecutable(true)
         
-        """chmod u+rx $tmpFile.absolutePath""".execute()
+        String chmodText = """chmod u+rx $tmpFile.absolutePath""".execute().text
+        
+        log.info "Chmod output: $chmodText"
         
         log.info("Executing command [$command] via temp file $tmpFile in directory $pipelineInfo.path")
         
