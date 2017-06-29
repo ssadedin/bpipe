@@ -53,7 +53,15 @@ tmsg() {
 launch_in_foreground() {
     LAUNCH_MODE="$1"
     shift 1
-    exec java -Xmx${MAX_JAVA_MEM} -classpath "$CP" $BPIPEDEBUG -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=$LAUNCH_MODE bpipe.Runner $* 
+    exec java -Xmx${MAX_JAVA_MEM} \
+             -noverify \
+              -classpath "$CP" \
+              $BPIPEDEBUG \
+              -Dbpipe.home="$JVM_BPIPE_HOME" \
+              -Dbpipe.mode=$LAUNCH_MODE \
+              org.codehaus.groovy.tools.GroovyStarter \
+              --classpath "$CP" \
+              --main bpipe.Runner $*
     exit
 }
 
