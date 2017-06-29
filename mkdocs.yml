@@ -77,4 +77,5 @@ pages:
 - ['Examples/RNASeqCorset.md','Examples','RNA Seq Corset']
 - ['Examples/WGSVariantCalling.md','Examples','WGS Variant Calling']
 - ['Releases/0.9.9.3.md','Releases','0.9.9.3']
+- ['Releases/0.9.9.4.md','Releases','0.9.9.4']
 #markdown_extensions: [gfm]
