@@ -3,8 +3,8 @@ Welcome to Bpipe  [![travis](https://travis-ci.org/ssadedin/bpipe.svg?branch=mas
 
 Bpipe provides a platform for running big bioinformatics jobs that consist of a series of processing stages - known as 'pipelines'.
 
-* May 21st, 2017 - New! [Bpipe 0.9.9.3](docs/Releases/0.9.9.3.md) released!
-* Download [latest](http://download.bpipe.org/versions/bpipe-0.9.9.3.tar.gz), [all](http://download.bpipe.org)
+* June 13th, 2017 - New! [Bpipe 0.9.9.4](Releases/0.9.9.4.md) released!
+* Download [latest](http://download.bpipe.org/versions/bpipe-0.9.9.4.tar.gz), [all](http://download.bpipe.org)
 * [Documentation](http://docs.bpipe.org)
 * [Mailing List](https://groups.google.com/forum/#!forum/bpipe-discuss) (Google Group)
 
@@ -28,6 +28,8 @@ By turning your shell scripts into Bpipe scripts, here are some of the features 
   * **Notifications by Email or Instant Message** - Bpipe can send you alerts to tell you when your pipeline finishes or even as each stage completes.
   * See how Bpipe compares to [similar tools](http://docs.bpipe.org/Overview/ComparisonToWorkflowTools/)
 
-Take a look at the [Overview](http://docs.bpipe.org/Overview/Introduction/) to see Bpipe in action, work through the [Basic Tutorial](http://docs.bpipe.org/Tutorials/Hello%2CWorld/) 
-for simple first steps, see a step by step example of a [realistic pipeline](http://docs.bpipe.org/Tutorials/RealPipelineTutorial/) made using Bpipe, or 
+Take a look at the [Overview](http://docs.bpipe.org/Overview/Introduction/) to
+see Bpipe in action, work through the [Basic Tutorial](http://docs.bpipe.org/Tutorials/Hello%2CWorld/) 
+for simple first steps, see a step by step example of a [realistic
+pipeline](http://docs.bpipe.org/Tutorials/RealPipelineTutorial/) made using Bpipe, or 
 take a look at the [Reference](http://docs.bpipe.org) to see all the documentation.
