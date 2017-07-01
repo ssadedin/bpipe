@@ -133,7 +133,17 @@ class PipelineStage {
      */
     boolean synthetic = true
     
+    /**
+     * A short identifier for the stage, taken from the user's pipeline
+     * definition
+     */
     String stageName = "Unknown"
+    
+    /**
+     * The display name includes more human readable context than the stageName
+     * (eg: branch path)
+     */
+    String displayName = "Unknown Stage"
     
     /**
      * If the name of the stage cannot be determined another way, this name
@@ -159,6 +169,38 @@ class PipelineStage {
     long endDateTimeMs
     
     /**
+     * Prepare this stage to execute
+     * <p>
+     * Sets names of stage, emits required events, outputs to log files
+     * 
+     * @param pipeline
+     */
+    void initializeStage(Pipeline pipeline) {
+        this.synthetic = false
+        
+        stageName = 
+            PipelineCategory.closureNames.containsKey(body) ? PipelineCategory.closureNames[body] : "${stageCount}"
+                        
+        displayName = calculateDisplayName(pipeline)
+                        
+        context.outputLog.flush("\n"+" Stage ${displayName} ".center(Config.config.columns,"="))
+        CommandLog.cmdLog << "# Stage $displayName"
+        ++stageCount
+                    
+        // Note: make sure startDateTimeMs is assigned before event is sent
+        this.startDateTimeMs = System.currentTimeMillis()
+                    
+        EventManager.instance.signal(PipelineEvent.STAGE_STARTED, 
+                                     "Starting stage $displayName", 
+                                     [stage:this])
+                    
+        context.initialize(pipeline, stageName)
+                
+        log.info("Stage $displayName : INPUT=${context.@input} OUTPUT=${context.defaultOutput}")
+    }
+    
+    
+    /**
      * Executes the pipeline stage body, wrapping it with logic and instrumentation
      * to manage the pipeline. 
      * <p>
@@ -176,170 +218,82 @@ class PipelineStage {
         
         Dependencies.instance.checkFiles(context.@input, pipeline.aliases)
         
-		// Note: although it would appear these are being injected at a per-pipeline level,
-		// in fact they end up as globally shared variables across all parallel threads
-		// (there IS only ONE binding for a closure and only ONE closure instance getting 
-		// executed, even by multiple threads). All per-thread state is maintained inside
-		// the PipelineContext.
-        if(body.properties.containsKey("binding")) {
-             this.context.extraBinding.variables.each { k,v ->
-                 if(!body.binding.variables.containsKey(k)) {
-                     body.binding.variables[k] = v
-                 }
-             } 
-        }
+        copyContextBindingsToBody()
         
         succeeded = false
         
         boolean joiner = (body in this.context.pipelineJoiners)
-        if(!joiner)
-            this.synthetic = false
         
 		// The name used for displaying this stage
-		String displayName = "Unknown Stage"
         try {
-            try {
-                if(!joiner) {
-                    stageName = 
-                        PipelineCategory.closureNames.containsKey(body) ? PipelineCategory.closureNames[body] : "${stageCount}"
-    	            context.stageName = stageName
-                    
-    //                this.id = pipeline.getStageId()
-                    displayName = getDisplayName(pipeline)
-                        
-                    context.outputLog.flush("\n"+" Stage ${displayName} ".center(Config.config.columns,"="))
-                    CommandLog.cmdLog << "# Stage $displayName"
-                    ++stageCount
-                    
-                    // Note: make sure startDateTimeMs is assigned before event is sent
-                    this.startDateTimeMs = System.currentTimeMillis()
-                    
-                    EventManager.instance.signal(PipelineEvent.STAGE_STARTED, 
-                                                 "Starting stage $displayName", 
-                                                 [stage:this])
-                    
-                    if(context.@output == null && context.@defaultOutput == null) {
-                        if(context.@input) {
-                            // If we are running in a sub-pipeline that has a name, make sure we
-                            // reflect that in the output file name.  The name should only be applied to files
-                            // produced form the first stage in the sub-pipeline
-                            if(pipeline.name && !pipeline.nameApplied) {
-                                context.defaultOutput = Utils.first(context.@input) + "." + pipeline.name + "."+stageName
-                                // Note we don't set pipeline.nameApplied = true here
-                                // if it is really applied then that is flagged in PipelineContext
-                                // Setting the applied flag here will stop it from being applied
-                                // in the transform / filter constructs 
-                            }
-                            else {
-                                    context.defaultOutput = Utils.first(context.@input) + "." + stageName
-                            }
-                        }
-                        else
-                            context.defaultOutput = stageName
-                    }
-                    log.info("Stage $displayName : INPUT=${context.@input} OUTPUT=${context.defaultOutput}")
-                }   
-                context.stageName = stageName
+            if(!joiner) {
+                initializeStage(pipeline)
+            }   
                 
-                if(stageName in Config.config.breakAt)
-                    Config.config.breakTriggered = true
+            if(stageName in Config.config.breakAt)
+                Config.config.breakTriggered = true
                 
-                // Execute the actual body of the pipeline stage
-                runBody()
+            // Execute the actual body of the pipeline stage
+            runBody()
                     
-                succeeded = true
-                if(!joiner) {
-                    log.info("Stage $displayName returned $context.nextInputs as default inputs for next stage")
-                }
-                    
-                context.uncleanFilePath.text = ""
-                
-                def nextInputs = determineForwardedFiles()
-                    
-                if(!this.context.@output) {
-                    log.info "No explicit output on stage ${this.hashCode()} context ${this.context.hashCode()} so output is nextInputs $nextInputs"
-                    this.context.rawOutput = nextInputs 
-                }
-    
-                context.defaultOutput = null
-                log.info "Setting next inputs $nextInputs on stage ${this.hashCode()}, context ${context.hashCode()} in thread ${Thread.currentThread().id}"
-                context.nextInputs = nextInputs
-                
-                OutputDirectoryWatcher watcher = OutputDirectoryWatcher.getDirectoryWatcher(context.outputDirectory)
-                
-                // Save the output meta data
-                Map<String,Long> modifiedFiles = watcher.modifiedSince(startDateTimeMs)
-                if(modifiedFiles.size()<20) {
-                    log.info "Files modified since $startDateTimeMs in $stageName are $modifiedFiles"
-                }
-                else {
-                    log.info "${modifiedFiles.size()} files modified since $startDateTimeMs in $stageName"
-                }
-                Dependencies.instance.saveOutputs(this, modifiedFiles, Utils.box(this.context.@input))
+            succeeded = true
+            if(!joiner) {
+                log.info("Stage $displayName returned $context.nextInputs as default inputs for next stage")
             }
-            catch(UserTerminateBranchException e) {
-                throw e
-            }
-            catch(PipelineTestAbort e) {
-                throw e
-            }
-            catch(PipelinePausedException e) {
-                throw e
-            }
-            catch(Throwable e) {
-                
-                if(!succeeded && !joiner) 
-                    EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")
-                
-                log.severe "Cleaning up outputs due to error: $e"
-                log.throwing("PipelineStage", "run", e)
-                cleanupOutputs()
-                throw e
-            }
-            finally {
-                if(!joiner) {
-                    if(!context.uncleanFilePath.delete())
-                        log.warning("Unable to delete in-progress command file $context.uncleanFilePath")
-                }
-            }
-        
-            log.info "Checking files: " + context.@output
-            try {
-                 Dependencies.instance.checkFiles(context.@output, pipeline.aliases, "output")
- 
-                if(!joiner) {
-                     EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED,
-                        "Finished stage $displayName", [stage:this])            
-                }
-            } 
-            catch (PipelineError e) {
-                
-                succeeded = false
-                
-                if(!joiner) {
-                    log.info "Sending failed event due to missing output"
-                    EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", [stage:this])             
-                    EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")
-                }
                     
-                throw e 
-            }
-            
-            
-            // Save the database of files created
-    //        if(Config.config.enableCommandTracking)
-            
+            context.uncleanFilePath.text = ""
+                
+            setContextNextInputs()
+               
+            saveOutputMetaData()
+        }
+        catch(UserTerminateBranchException e) {
+            throw e
+        }
+        catch(PipelineTestAbort e) {
+            throw e
+        }
+        catch(PipelinePausedException e) {
+            throw e
+        }
+        catch(Throwable e) {
+                
+            if(!succeeded && !joiner) 
+                EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")
+                
+            log.severe "Cleaning up outputs due to error: $e"
+            log.throwing("PipelineStage", "run", e)
+            cleanupOutputs()
+            throw e
         }
         finally {
-//                if(!joiner) {
-//                    if(!succeeded) 
-//                        EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")
-//                    else
-//                         EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED,
-//                            "Finished stage $displayName", [stage:this])
-//                }
+            if(!joiner) {
+                if(!context.uncleanFilePath.delete())
+                    log.warning("Unable to delete in-progress command file $context.uncleanFilePath")
+            }
         }
         
+        log.info "Checking files: " + context.@output
+        try {
+             Dependencies.instance.checkFiles(context.@output, pipeline.aliases, "output")
+ 
+            if(!joiner) {
+                 EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED,
+                    "Finished stage $displayName", [stage:this])            
+            }
+        } 
+        catch (PipelineError e) {
+                
+            succeeded = false
+                
+            if(!joiner) {
+                log.info "Sending failed event due to missing output"
+                EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", [stage:this])             
+                EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")
+            }
+                    
+            throw e 
+        }
         return context.nextInputs
     }
     
@@ -415,6 +369,38 @@ class PipelineStage {
             this.running = false
             this.endDateTimeMs = System.currentTimeMillis()
         }
+    }
+    
+    void setContextNextInputs() {
+        def nextInputs = determineForwardedFiles()
+
+        if(!this.context.@output) {
+            log.info "No explicit output on stage ${this.hashCode()} context ${this.context.hashCode()} so output is nextInputs $nextInputs"
+            this.context.rawOutput = nextInputs
+        }
+
+        context.defaultOutput = null
+        log.info "Setting next inputs $nextInputs on stage ${this.hashCode()}, context ${context.hashCode()} in thread ${Thread.currentThread().id}"
+        context.nextInputs = nextInputs
+    }
+    
+    /**
+     * Identify which files were modified by execution of the stage and 
+     * update their saved metadata.
+     */
+    void saveOutputMetaData() {
+        OutputDirectoryWatcher watcher = OutputDirectoryWatcher.getDirectoryWatcher(context.outputDirectory)
+                
+        // Save the output meta data
+        Map<String,Long> modifiedFiles = watcher.modifiedSince(startDateTimeMs)
+        if(modifiedFiles.size()<20) {
+            log.info "Files modified since $startDateTimeMs in $stageName are $modifiedFiles"
+        }
+        else {
+            log.info "${modifiedFiles.size()} files modified since $startDateTimeMs in $stageName"
+        }
+        Dependencies.instance.saveOutputs(this, modifiedFiles, Utils.box(this.context.@input))
+        
     }
 
     /**
@@ -531,12 +517,35 @@ class PipelineStage {
         }
     }
     
+    /**
+     * The context provided to a stage can have a set of additional variables 
+     * defined in its binding. This method copies them into the binding of the
+     * body closure.
+     * 
+     * @TODO    this possibly should be synchronized?
+     * @TODO    remove this?
+     */
+    void copyContextBindingsToBody() {
+		// Note: although it would appear these are being injected at a per-pipeline level,
+		// in fact they end up as globally shared variables across all parallel threads
+		// (there IS only ONE binding for a closure and only ONE closure instance getting 
+		// executed, even by multiple threads). All per-thread state is maintained inside
+		// the PipelineContext.
+        if(body.properties.containsKey("binding")) {
+             this.context.extraBinding.variables.each { k,v ->
+                 if(!body.binding.variables.containsKey(k)) {
+                     body.binding.variables[k] = v
+                 }
+             } 
+        }
+    }
+    
     boolean isJoiner() {
         this.body in this.context.pipelineJoiners
     }
     
     @CompileStatic
-    String getDisplayName(Pipeline pipeline) {
+    private String calculateDisplayName(Pipeline pipeline) {
        if(pipeline.branch) {
            return stageName + " ("  + pipeline.branch.getFirstNonTrivialName() + ")"
        }
@@ -555,6 +564,10 @@ class PipelineStage {
                 threadId: this.context.threadId,
                 succeeded: this.succeeded
             ]
+    }
+    
+    String toString() {
+        toProperties().toString()
     }
     
 }

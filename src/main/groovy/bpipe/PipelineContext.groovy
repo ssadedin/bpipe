@@ -119,7 +119,7 @@ class PipelineContext {
     /**
      * The stage name for which this context is running
      */
-    String stageName
+    String stageName = "Unknown"
     
     /**
      * The directory to which the pipeline stage should write its outputs
@@ -264,6 +264,38 @@ class PipelineContext {
     * by this context / stage
     */
    private OutputLog outputLog
+   
+    /**
+     * Set the default inputs and outputs for this context according to the current
+     * state of the given pipeline, and our stage name.
+     * <p>
+     * Note: initialize may not always be called - for silent "joiner" stages a context
+     * is created but not initialized, because these have no inputs or outputs.
+     * 
+     * @param pipeline
+     */
+   void initialize(Pipeline pipeline, String stageName) {
+        this.stageName = stageName
+        if(this.@output == null && this.@defaultOutput == null) {
+            if(this.@input) {
+                // If we are running in a sub-pipeline that has a name, make sure we
+                // reflect that in the output file name.  The name should only be applied to files
+                // produced form the first stage in the sub-pipeline
+                if(pipeline.name && !pipeline.nameApplied) {
+                    this.defaultOutput = Utils.first(this.@input) + "." + pipeline.name + "."+stageName
+                    // Note we don't set pipeline.nameApplied = true here
+                    // if it is really applied then that is flagged in PipelineContext
+                    // Setting the applied flag here will stop it from being applied
+                    // in the transform / filter constructs 
+                }
+                else {
+                        this.defaultOutput = Utils.first(this.@input) + "." + stageName
+                }
+            }
+            else
+                this.defaultOutput = stageName
+        }
+    }
    
    def getDefaultOutput() {
 //       log.info "Returning default output " + this.@defaultOutput
