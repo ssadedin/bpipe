@@ -352,6 +352,8 @@ class PipelineStage {
                         
                     def returnedInputs = Runner.binding.withLocalVariables(bindingVariables) {
                         body(context.@input)
+                        
+                        runOutstandingChecks()
                     }
                     if(joiner || (body in Pipeline.currentRuntimePipeline.get().segmentJoiners)) {
                         context.nextInputs = returnedInputs
@@ -368,6 +370,13 @@ class PipelineStage {
             Pipeline.currentContext.set(null)
             this.running = false
             this.endDateTimeMs = System.currentTimeMillis()
+        }
+    }
+    
+    void runOutstandingChecks() {
+        for(Checker checker in context.checkers.grep { !it.executed }) {
+            log.info "Executing un-executed check $checker.name for stage $stageName"
+            checker.otherwise({})
         }
     }
     

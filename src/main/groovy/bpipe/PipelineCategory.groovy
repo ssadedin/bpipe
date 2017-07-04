@@ -25,6 +25,7 @@
 package bpipe
 
 import groovy.lang.Closure;
+import groovy.transform.CompileStatic
 
 import java.io.FileOutputStream;
 import java.util.List;
@@ -279,55 +280,14 @@ class PipelineCategory {
             
                         try {
                             
-                            // First we make a "dummy" stage that contains the inputs
-                            // to the next stage as outputs.  This allows later logic
-                            // to find these "inputs" correctly when it expects to see
-                            // all "inputs" reflected as some output of an earlier stage
-                            PipelineContext dummyPriorContext = pipeline.createContext()
-                            PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
-                            dummyPriorContext.stageName = dummyPriorStage.stageName = "_${chr}_inputs"
-                                
                             // If the filterInputs option is set, match input files on the region name
                             def childInputs = input
                             
-                            def filterInputs = chr instanceof Chr ? chr.config?.filterInputs : "auto"
-                            
-                            if(filterInputs == "auto") { 
-                                if(Config.userConfig.autoFilter!="false") {
-//                                    log.info "Checking for auto filter - inputs matching chr pattern are: " + Utils.box(input).grep { it.matches(/.*\.chr[1-9A-Z_]*\..*$/) }
-                                    filterInputs = Utils.box(input).any { it.matches(/.*\.chr[1-9A-Z_]*\..*$/) }
-                                }
-                                else
-                                    filterInputs = false
-                            }
-                            
-                            if(filterInputs && (chr instanceof Chr)) {
-                                log.info "Filtering child pipeline inputs on name $chr.name"
-                                
-                                childInputs  = Utils.box(input).grep { i -> (i.indexOf('.' + chr.name + '.')>0) }
-                                    
-                                // Since the name of the region is already in the file path, it does not need
-                                // to be applied again to output files
-                                child.nameApplied = true
-                                    
-                                if(!childInputs) {
-                                    println "MSG: Skipping region ${chr.name} because no matching inputs were found"
-                                    Concurrency.instance.unregisterResourceRequestor(child)
-                                    return
-                                }
-                            }
-                                
-                            // Note: must be raw output because otherwise the original inputs (from other folders)
-                            // can get redirected to the output folder
-                            dummyPriorContext.setRawOutput(childInputs)
-                                
-                            log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
-                            child.addStage(dummyPriorStage)
-                            
-                            
                             child.branch = new Branch()
                             if(chr instanceof Chr) {
-                                initChildFromChr(child,chr.name)
+                                childInputs = initChildFromChr(child,chr,input)
+                                if(childInputs == null)
+                                    return
                             }
                             else
                             if(chr instanceof RegionSet) {
@@ -337,6 +297,8 @@ class PipelineCategory {
                                 child.branch.@name = String.valueOf(chr)
                             }
                             
+                            PipelineStage dummyPriorStage = createFilteredInputStage(chr, childInputs, pipeline)
+                            child.addStage(dummyPriorStage)
                             child.runSegment(childInputs, segmentClosure)
                         }
                         catch(Exception e) {
@@ -358,20 +320,88 @@ class PipelineCategory {
         return multiplyImplementation
     }
     
-    static void initChildFromRegionSet(Pipeline child, RegionSet chr) {
+    /**
+     * Create a fake pipeline stage that exists for the purpose of setting 
+     * a particular set of inputs to a child branch
+     * 
+     * @param branchObject  object that identifies the branch
+     * @param childInputs   input set that the child branch should see
+     * @param pipeline      pipeline that will be the parent of the child branch
+     * 
+     * @return  a PipelineStage object that will filter inputs to the list 
+     *          given
+     */
+    static PipelineStage createFilteredInputStage(def branchObject, List childInputs, Pipeline pipeline) {
+        // First we make a "dummy" stage that contains the inputs
+        // to the next stage as outputs.  This allows later logic
+        // to find these "inputs" correctly when it expects to see
+        // all "inputs" reflected as some output of an earlier stage
+        PipelineContext dummyPriorContext = pipeline.createContext()
+        PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
+        dummyPriorContext.stageName = dummyPriorStage.stageName = "_${branchObject}_inputs"
+                                
+        // Note: must be raw output because otherwise the original inputs (from other folders)
+        // can get redirected to the output folder
+        dummyPriorContext.setRawOutput(childInputs)
+        
+        log.info "Created dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
+        return dummyPriorStage
+    }
+    
+    static void initChildFromRegionSet(Pipeline child, RegionSet regions) {
         RegionValue regionValue = 
-            new RegionValue(value: chr.sequences.collect { 
+            new RegionValue(value: regions.sequences.collect { 
                 it.value.toString() 
             }.flatten().join(" "))
                                         
         child.variables.region = regionValue
         child.branch.region = regionValue
-        child.branch.chr = chr.sequences.keySet().iterator().next()
+        child.branch.chr = regions.sequences.keySet().iterator().next()
         
         log.info "Set region value for $child to $regionValue"
     }
     
-    static void initChildFromChr(Pipeline child, String chrName) {
+    /**
+     * Configure a child pipeline to execute for a specific chromosome
+     * 
+     * @param child
+     * @param chr
+     * @return true if the child should be executed, false if it should be aborted
+     */
+    static def initChildFromChr(Pipeline child, Chr chr, def input) {
+        
+        def childInputs = input 
+        
+        String chrName = chr.name
+        
+        def filterInputs = chr instanceof Chr ? chr.config?.filterInputs : "auto"
+                            
+        if(filterInputs == "auto") { 
+            if(Config.userConfig.autoFilter!="false") {
+//                                    log.info "Checking for auto filter - inputs matching chr pattern are: " + Utils.box(input).grep { it.matches(/.*\.chr[1-9A-Z_]*\..*$/) }
+                filterInputs = Utils.box(input).any { it.matches(/.*\.chr[1-9A-Z_]*\..*$/) }
+            }
+            else
+                filterInputs = false
+        }
+                            
+        if(filterInputs && (chr instanceof Chr)) {
+            log.info "Filtering child pipeline inputs on name $chr.name"
+                                
+            childInputs  = Utils.box(input).grep { i -> (i.indexOf('.' + chr.name + '.')>0) }
+                                    
+            // Since the name of the region is already in the file path, it does not need
+            // to be applied again to output files
+            child.nameApplied = true
+                                    
+            if(!childInputs) {
+                println "MSG: Skipping region ${chr.name} because no matching inputs were found"
+                Concurrency.instance.unregisterResourceRequestor(child)
+                return null
+            }
+        }
+        
+        child.branch = new Branch()
         child.variables.chr = chrName
         child.branch.name = chrName
         child.branch.chr = chrName
@@ -384,6 +414,8 @@ class PipelineCategory {
                 log.info "Set child branch region for chr $chrName to $child.branch.region based on " + chromSizes[chrName]
             }
         }
+        
+        return childInputs
     }
     
     static Object multiply(java.util.regex.Pattern pattern, List segments) {
