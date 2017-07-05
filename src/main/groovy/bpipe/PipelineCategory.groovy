@@ -366,11 +366,13 @@ class PipelineCategory {
      * 
      * @param child
      * @param chr
-     * @return true if the child should be executed, false if it should be aborted
+     * @return a list of inputs to use for the child, or null if the child should not execute
      */
     static def initChildFromChr(Pipeline child, Chr chr, def input) {
         
         def childInputs = input 
+        if(childInputs == null)
+            childInputs = []
         
         String chrName = chr.name
         
@@ -378,7 +380,7 @@ class PipelineCategory {
                             
         if(filterInputs == "auto") { 
             if(Config.userConfig.autoFilter!="false") {
-//                                    log.info "Checking for auto filter - inputs matching chr pattern are: " + Utils.box(input).grep { it.matches(/.*\.chr[1-9A-Z_]*\..*$/) }
+                // log.info "Checking for auto filter - inputs matching chr pattern are: " + Utils.box(input).grep { it.matches(/.*\.chr[1-9A-Z_]*\..*$/) }
                 filterInputs = Utils.box(input).any { it.matches(/.*\.chr[1-9A-Z_]*\..*$/) }
             }
             else
