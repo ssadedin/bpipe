@@ -39,12 +39,18 @@ class ChecksCommand {
         cli.with {
             o "override specified check to force it to pass", args:1
             l "list checks and exit, non-interactive mode"
+            h "show help", longOpt: 'help'
         }
         
         List<Check> checks = Check.loadAll()
         List<Check> overrideChecks = null
         
         def opts = cli.parse(args)
+        if(opts.h) {
+            cli.usage()
+            System.exit(0)
+        }
+        
         if(opts.o) {
             def parts = opts.o.split(/\./)
             if(parts.size() == 1) {
