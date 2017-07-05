@@ -24,6 +24,11 @@
  */
 package bpipe
 
+/**
+ * Carries the state of a 'check' construct in Bpipe
+ * 
+ * @author Simon Sadedin
+ */
 class Check {
     
     String branch

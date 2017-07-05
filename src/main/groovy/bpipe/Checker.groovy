@@ -44,6 +44,8 @@ class Checker {
     PipelineContext ctx
     
     String name
+    
+    boolean executed = false
 
     public Checker(PipelineContext ctx, Closure check) {
         this.checkClosure = check
@@ -58,26 +60,19 @@ class Checker {
     
     private static Pattern EXCLUDED_CHECK_NAME_STAGES = ~'_.*inputs$'
     
+    /**
+     * Looks if a check is up to date with inputs or not, and if not, executes the check.
+     * If it fails, the otherwise clause of the check construct is executed.
+     * 
+     * @param otherwiseClause
+     */
     void otherwise(Closure otherwiseClause) {
-        log.info("Evaluating otherwise clause for Check $ctx.stageName / $name")
         
-        Check check
+        log.info("Evaluating Check $ctx.stageName / $name")
         
-        // Legacy compatibility: if a check is saved with only the branch name,
-        // accept that
-        if(Check.getFile(ctx.stageName, this.name, ctx.branch.toString()).exists()) {
-            check = Check.getCheck(ctx.stageName, this.name, ctx.branch.toString())
-        }
-        else {
-            Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
-            String stagePath = ctx.pipelineStages.grep { it.stageName && it.stageName != "Unknown" && !it.stageName.matches(EXCLUDED_CHECK_NAME_STAGES) }*.stageName.join("_")
-            String branchPath = pipeline.branchPath.join("_") + '_' + stagePath
-            if(branchPath.size() > 60) {
-                branchPath = Utils.sha1(branchPath) + "_" + ctx.branch.toString()
-            }
-            log.info "Computing check based on branchPath $branchPath"
-            check = Check.getCheck(ctx.stageName, this.name, branchPath);
-        }
+        this.executed = true
+        
+        Check check = getCheck()
         
         log.info "Check name = $check.name"
         
@@ -87,39 +82,11 @@ class Checker {
             log.info "Check ${check.toString()} was already executed and is up to date with inputs $inputs"
             log.info "Cached result of ${check} was Passed: ${check.passed} Overridden: ${check.override}"
         }
-        else
-        try { // Check either had not executed, or was not up-to-date
-            
-	        File checkFile = check.getFile(check.stage, check.name, check.branch)
-            log.info "Executing check: $check with status in file: $checkFile"
-			
-            List oldOutputs = ctx.@output
-			ctx.internalOutputs = [checkFile.path]
-			ctx.internalInputs = Utils.box(ctx.@output)
-            check.executed = new Date()
-            
-			try {
-	            checkClosure()
-			}
-			finally {
-	            // A check can modify the outputs even if it doesn't reference any
-	            // Make sure it doesn't affect what gets passed on to next stage
-	            ctx.setRawOutput(oldOutputs)
-				ctx.internalOutputs = []
-				ctx.internalInputs = []
-			}
-            
-            check.passed = true
-            if(!Runner.opts.t && !ctx.probeMode) {
-                check.save()
-            }
+        else {
+            log.info "Check ${check.toString()} was not already executed or not up to date with inputs $inputs"
+            this.executeCheck(check)
         }
-        catch(CommandFailedException e) {
-            log.info "Check $check was executed and failed ($e)"
-            check.passed = false
-            check.save()
-        }
-        
+            
         // Execute result of check
         if(!check.passed && !check.override) {
             ctx.currentCheck = check
@@ -133,4 +100,118 @@ class Checker {
             }
         }
     }
+    
+    /**
+     * Execute the given check, saving its results in the check's corresponding file
+     * 
+     * @param check     the Check to execute
+     */
+    void executeCheck(Check check) {
+        
+        PipelineStage pipelineStage = ctx.getCurrentStage()
+
+        Map checkDetails = [
+            name: check.name,
+            message: check.message,
+            stage:pipelineStage
+        ]
+        
+        try { // Check either had not executed, or was not up-to-date
+            
+            EventManager.instance.signal(PipelineEvent.CHECK_EXECUTED, 
+                 "Executing check $check.name", 
+                 checkDetails)
+  
+            runCheckClosure()
+            
+            check.passed = true
+            checkDetails.result = true
+            
+            EventManager.instance.signal(PipelineEvent.CHECK_SUCCEEDED, 
+                "Check '${check.name?:''}' for stage $pipelineStage.displayName passed", 
+                checkDetails
+            ) 
+            
+            if(!Runner.opts.t && !ctx.probeMode) {
+                check.save()
+            }
+        }
+        catch(CommandFailedException e) {
+            log.info "Check $check was executed and failed ($e)"
+            check.passed = false
+            check.save()
+            
+            checkDetails.result = false
+            EventManager.instance.signal(PipelineEvent.CHECK_FAILED, 
+                "Check '${check.name?:''}' for stage $pipelineStage.displayName failed", 
+                checkDetails
+            )             
+        }
+    }
+    
+    /**
+     * Run the closure for the check
+     * <p>
+     * Note: the closure throws an exception if the check fails. If no exception
+     * is thrown, the check passed.
+     */
+    void runCheckClosure() {
+        
+        check.executed = new Date()
+            
+        File checkFile = check.getFile(check.stage, check.name, check.branch)
+        log.info "Executing check: $check with status in file: $checkFile"
+		
+        List oldOutputs = ctx.@output
+		ctx.internalOutputs = [checkFile.path]
+		ctx.internalInputs = Utils.box(ctx.@output)
+		try {
+            checkClosure()
+		}
+		finally {
+            // A check can modify the outputs even if it doesn't reference any
+            // Make sure it doesn't affect what gets passed on to next stage
+            ctx.setRawOutput(oldOutputs)
+			ctx.internalOutputs = []
+			ctx.internalInputs = []
+		}
+    }
+    
+    /**
+     * Look for a saved execution of this check, and if there is one, return it
+     * If there is no saved check, create a new, unsaved one.
+     * 
+     * @return  a Check object representing the context, branch and stage being checked.
+     */
+    Check getCheck() {
+        if(isLegacyCheck(ctx.stageName, ctx.branch.toString())) {
+            check = Check.getCheck(ctx.stageName, this.name, ctx.branch.toString())
+        }
+        else {
+            Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
+            
+            String stagePath = ctx.pipelineStages.grep { 
+                it.stageName && it.stageName != "Unknown" && !it.stageName.matches(EXCLUDED_CHECK_NAME_STAGES) 
+            }*.stageName.join("_")
+            
+            String branchPath = pipeline.branchPath.join("_") + '_' + stagePath
+            if(branchPath.size() > 60) {
+                branchPath = Utils.sha1(branchPath) + "_" + ctx.branch.toString()
+            }
+            log.info "Computing check based on branchPath $branchPath"
+            check = Check.getCheck(ctx.stageName, this.name, branchPath);
+        }
+    }
+    
+    /**
+     * Legacy checks were saved with only the branch name, rather than full branch path.
+     * 
+     * @param   stageName
+     * @param   branch
+     * @return  true iif a saved, legacy check exists the given stage name and branch.
+     */
+    boolean isLegacyCheck(String stageName, String branch) {
+        return Check.getFile(ctx.stageName, this.name, ctx.branch.toString()).exists()
+    }
+    
 }

@@ -154,6 +154,12 @@ class PipelineContext {
      * tool information is stored as {@link Tool} objects
      */
     Map<String, Object> documentation = [:]
+    
+    /**
+     * A list of Checkers created during execution of the corresponding
+     * pipeline stage.
+     */
+    List<Checker> checkers = []
    
     private List<PipelineStage> pipelineStages
    
@@ -2098,7 +2104,7 @@ class PipelineContext {
     * @return
     */
    PipelineStage getCurrentStage() {
-       return this.stages[-1]
+       return this.pipelineStages[-1]
    }
    
     /**
@@ -2357,11 +2363,15 @@ class PipelineContext {
     }
     
     Checker check(String name, Closure c) {
-        return new Checker(this,name, c)
+        Checker checker = new Checker(this,name, c)
+        this.checkers << checker
+        return checker
     }
     
     Checker check(Closure c) {
-        return new Checker(this,c)
+        Checker checker = new Checker(this,c)
+        this.checkers << checker
+        return checker
     }
     
     String output(String value) {
