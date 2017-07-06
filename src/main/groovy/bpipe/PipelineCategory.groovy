@@ -297,7 +297,7 @@ class PipelineCategory {
                                 child.branch.@name = String.valueOf(chr)
                             }
                             
-                            PipelineStage dummyPriorStage = createFilteredInputStage(chr, childInputs, pipeline)
+                            PipelineStage dummyPriorStage = createFilteredInputStage(chr, Utils.box(childInputs), pipeline)
                             child.addStage(dummyPriorStage)
                             child.runSegment(childInputs, segmentClosure)
                         }
@@ -331,6 +331,7 @@ class PipelineCategory {
      * @return  a PipelineStage object that will filter inputs to the list 
      *          given
      */
+    @CompileStatic
     static PipelineStage createFilteredInputStage(def branchObject, List childInputs, Pipeline pipeline) {
         // First we make a "dummy" stage that contains the inputs
         // to the next stage as outputs.  This allows later logic
