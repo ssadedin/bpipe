@@ -55,6 +55,13 @@ public enum PipelineEvent {
      * Bpipe is exiting - Supported
      */
 	SHUTDOWN,
+    
+	/* ----------------- Checks --------------------------------------*/
+    CHECK_EXECUTED,
+    
+    CHECK_SUCCEEDED,
+    
+    CHECK_FAILED,
 	
     /* ----------------- Command Level Events ----------------------- */
     
