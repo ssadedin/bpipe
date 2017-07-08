@@ -1498,17 +1498,17 @@ class PipelineContext {
         """.stripIndent(), false, config)    
     }
     void groovy(String groovyCommand) {
-        groovy("", groovyCommand)
+        groovy([:], groovyCommand)
     }
     
-    void groovy(String opts, String groovyCommand) {
+    void groovy(Map opts, String groovyCommand) {
         
         String cp = ""
         if(Config.userConfig.containsKey("libs")) {
             cp = "-cp ${Config.userConfig.libs}"
         }
         
-        opts = "-noverify " + opts
+        String javaOpts = "-noverify " + (opts.javaOpts?:"")
         
         String javaExe = Utils.resolveExe("java", null)
         String SET_JH = ""
@@ -1520,13 +1520,20 @@ class PipelineContext {
         String groovyExe = Utils.resolveExe("groovy","groovy")
         String groovyHome = new File(groovyExe).absoluteFile.parentFile.parentFile 
         
-        exec("""
+        String cmd = """
         $SET_JH
         unset GROOVY_HOME
-        JAVA_OPTS='$opts' $groovyExe $cp -e '
+        JAVA_OPTS='$javaOpts' $groovyExe $cp -e '
         $groovyCommand
         '
-        """.stripIndent(), false)    
+        """.stripIndent()
+        
+        if(opts.config) {
+            exec(cmd, false, opts.config)    
+        }
+        else {
+            exec(cmd, false)    
+        }
     } 
     
     /**
