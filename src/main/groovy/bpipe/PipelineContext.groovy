@@ -1497,6 +1497,11 @@ class PipelineContext {
         !
         """.stripIndent(), false, config)    
     }
+    
+    void groovy(String groovyCommand, String config) {
+        groovy([config:config], groovyCommand)
+    }
+    
     void groovy(String groovyCommand) {
         groovy([:], groovyCommand)
     }
