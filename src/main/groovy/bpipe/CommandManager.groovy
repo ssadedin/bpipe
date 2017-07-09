@@ -263,7 +263,10 @@ class CommandManager {
         if(e instanceof bpipe.executor.ProbeCommandExecutor)
             return
             
-        if(e instanceof ThrottledDelegatingCommandExecutor)
+        if(e instanceof bpipe.PooledExecutor)
+            return
+            
+         if(e instanceof ThrottledDelegatingCommandExecutor)
             e = e.commandExecutor
         
         e.cleanup()
@@ -348,7 +351,8 @@ class CommandManager {
                         cmd = it.readObject()
                     }
                     catch(Exception e) {
-                        System.err.println "WARN: unable to read saved command: " + e.message
+                        System.err.println "WARN: unable to read saved command $f: " + e.message
+                        return
                     }
                     
                     // Update the status

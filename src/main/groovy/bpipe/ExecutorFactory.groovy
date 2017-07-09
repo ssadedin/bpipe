@@ -25,9 +25,11 @@
 package bpipe
 
 import bpipe.executor.CustomCommandExecutor
+import groovy.util.logging.Log
 import bpipe.executor.CommandExecutor
 
 @Singleton
+@Log
 class ExecutorFactory {
     
     CommandExecutor createExecutor(Map cfg) {
@@ -37,10 +39,19 @@ class ExecutorFactory {
         // or it can map to a class
         
         CommandExecutor cmdExec = null
-        String executor = cfg.executor
-        File executorFile = new File(executor)
-        if(executorFile.exists()) {
+        def executor = cfg.executor
+        
+        // Already assigned
+        if(executor instanceof CommandExecutor)
+            return executor
+        
+        if((executor instanceof String) && new File(executor).exists()) {
+            File executorFile = new File(executor)
             cmdExec = new CustomCommandExecutor(executorFile)
+        }
+        else
+        if(executor instanceof Closure) {
+            return executor()
         }
         else {
             String name1 = "bpipe.executor."+executor.capitalize()

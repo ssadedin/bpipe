@@ -5,6 +5,7 @@ import bpipe.Command;
 import bpipe.Concurrency;
 import bpipe.PipelineContext;
 import bpipe.ResourceUnit;
+import bpipe.RescheduleResult
 
 /**
  * Wraps another CommandExecutor and adds concurrency control to it
@@ -40,6 +41,15 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
     
     @Delegate CommandExecutor commandExecutor
     
+    /**
+     * Set if this job has been rescheduled
+     */
+    transient CommandExecutor rescheduledExecutor
+    
+    /**
+     * Set by the waitFor() method to indicate if reschedule was successful
+     */
+    transient bpipe.RescheduleResult rescheduleResult
     
     /**
      * This lock controls concurrency so that we do not try to launch too many concurrent jobs.
@@ -69,10 +79,8 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         this.command = cmd
         this.outputLog = outputLog
         this.errorLog = errorLog
-        if(deferred) {
-          this.cfg = cfg
-        }
-        else {
+        this.cfg = cfg
+        if(!deferred) {
             doStart(cfg,cmd)
         }
     }
@@ -136,14 +144,47 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         }
         
         try {
-            log.info "Waiting for command to complete before releasing ${resources.size()} resources"
-            int result = commandExecutor.waitFor()
-            return result
+            return waitWithReschedule()
         }
         finally {
             log.info "Releasing ${resources.size()} resources"
             releaseAll()
             log.info "Released ${resources.size()} resources"
+        }
+    }
+    
+    int waitWithReschedule() {
+        log.info "Waiting for command to complete before releasing ${resources.size()} resources"
+        while(true) {
+            int result = commandExecutor.waitFor()
+            if(result != 0) {
+                // May have been rescheduled
+                if(rescheduledExecutor) {
+                    this.commandExecutor = rescheduledExecutor
+                    this.command.executor = rescheduledExecutor
+                    commandExecutor.start(this.cfg, this.command, outputLog, errorLog)
+                    this.command.save()
+                    this.rescheduleResult = RescheduleResult.SUCCEEDED
+                }
+            }
+            else {
+                return result
+            }
+        }
+    }
+    
+    final static long RESCHEDULE_JOB_TIMEOUT = 30000
+    
+    public RescheduleResult reschedule(CommandExecutor newExecutor) {
+        this.rescheduledExecutor = newExecutor
+        this.stop()
+        bpipe.Utils.waitWithTimeout(RESCHEDULE_JOB_TIMEOUT) {
+            this.rescheduleResult != null
+        }.ok {
+            this.rescheduleResult
+        }.timeout {
+           log.warning "Attempt to reschedule job timed out after "
+           RescheduleResult.FAILED 
         }
     }
     

@@ -48,8 +48,9 @@ import org.codehaus.groovy.runtime.StackTraceUtils
  * 
  * @author ssadedin@mcri.edu.au
  */
-@Log
 class Utils {
+    
+    public static Logger log = Logger.getLogger("bpipe.Utils")
     
     /**
      * Returns a list of output files that appear to be out of date
@@ -991,5 +992,22 @@ class Utils {
             }
             println ""
         }
+    }
+    
+    static Map waitWithTimeout(long timeoutMs, Closure action) {
+        return [
+            ok: { okAction ->
+                long startMs = System.currentTimeMillis()
+                while(true) {
+                    def result = action()
+                    if(result != null)
+                        return [ timeout: { return okAction(result) }]
+                    Thread.sleep(100)
+                    
+                    if(System.currentTimeMillis() - startMs > timeoutMs)
+                        return [ timeout: {  it() }]
+                }
+            }
+        ]
     }
 }

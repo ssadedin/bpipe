@@ -7,8 +7,14 @@ import org.apache.ivy.plugins.report.LogReportOutputter
 
 import bpipe.executor.CommandExecutor
 import bpipe.executor.CommandTemplate
+import bpipe.executor.ThrottledDelegatingCommandExecutor
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
+
+enum RescheduleResult {
+        SUCCEEDED,
+        FAILED
+}
 
  /**
   * An executor that starts a single job that can be reused by 
@@ -83,7 +89,8 @@ class PooledExecutor implements CommandExecutor {
         cmdScriptTmp.renameTo(cmdScript)
         
         activeCommand = cmd
-        state = CommandStatus.RUNNING
+        state = CommandStatus.RUNNING 
+        activeCommand.startTimeMs = System.currentTimeMillis()
         
         if(executor.respondsTo("setJobName")) {
             log.info "Setting job name"
@@ -115,6 +122,8 @@ class PooledExecutor implements CommandExecutor {
         Thread.sleep(100)
         
         int exitCode = exitCodeFile.text.trim().toInteger()
+        
+        this.outputLog.flush()
         
         if(onFinish != null)
             onFinish()
@@ -199,8 +208,12 @@ class PooledExecutor implements CommandExecutor {
      * Cause this pooled executor to start capturing from the stdout
      * and stderr files that its script will write to.
      */
-    void captureOutput() {
-        this.outputLog = new ForwardingOutputLog()
+    void captureOutput(ForwardingOutputLog outputLog) {
+        
+        if(outputLog == null)
+            outputLog = new ForwardingOutputLog()
+        
+        this.outputLog = outputLog
         this.forward(".bpipe/commandtmp/$command.id/pool.out", outputLog)
         this.forward(".bpipe/commandtmp/$command.id/pool.err", outputLog)
     }
@@ -409,13 +422,70 @@ class ExecutorPool {
         }
 
         pe.onFinish = {
-            log.info "Adding pooled executor $pe.hostCommandId back into pool"
-            availableExecutors << pe
-            activeExecutors.remove(pe)
+            processFinishedExecutor(pe)
         }
         
         this.availableExecutors << pe
         return pe
+    }
+    
+    void processFinishedExecutor(PooledExecutor pe) {
+        
+        // Is there a waiting job that can run using this job?
+        if(allocateToExistingWaitingJob(pe)) {
+            log.info "Pooled executor $pe.hostCommandId has been rescheduled"
+            return
+        }
+        else {
+            this.returnExecutorToPool(pe)
+        }
+    }
+    
+    synchronized boolean allocateToExistingWaitingJob(PooledExecutor pe) {
+        
+        log.info "Searching for waiting command to use pooled executor $pe.hostCommandId"
+        
+        List<Command> waitingCommands = CommandManager.executedCommands.grep {
+            it.status == CommandStatus.WAITING
+        }
+        
+        log.info "Checking ${waitingCommands.size()} commands for compatibility."
+        Command compatibleCommand = waitingCommands.grep { Command command ->
+            command.cfg.name in this.configs
+        }.grep { Command command ->
+            !(command.executor instanceof PooledExecutor)
+        }.find { Command command ->
+            pe.canAccept(command.cfg)
+        }
+        
+        if(compatibleCommand == null) {
+            log.info "No compatible waiting command for $pe.hostCommandId"
+            return false
+        }
+        else {
+            log.info "Command $compatibleCommand.id is compatible to reschedule to pooled executor $pe.hostCommandId"
+            
+            ThrottledDelegatingCommandExecutor delegator = compatibleCommand.executor
+            
+            // Ideally would move this inside the block below, but it prevents
+            // initial messages from the stage from getting forwarded
+            pe.execute(compatibleCommand, delegator.outputLog)
+            
+            RescheduleResult result = delegator.reschedule(pe)
+            if(result == RescheduleResult.SUCCEEDED) {
+                return true
+            }
+            else {
+                pe.outputLog.wrapped = null
+                return false
+            }
+        }
+    }
+    
+    void returnExecutorToPool(PooledExecutor pe) {
+        log.info "Adding pooled executor $pe.hostCommandId back into pool"
+        availableExecutors << pe
+        activeExecutors.remove(pe)
     }
     
     /**
@@ -425,7 +495,7 @@ class ExecutorPool {
      * @param pe
      */
     void connectPooledExecutor(PooledExecutor pe) {
-        pe.captureOutput()
+        pe.captureOutput(null)
         pe.onFinish = {
             log.info "Adding persistent pooled executor $pe.hostCommandId back into pool"
             availableExecutors << pe
@@ -551,6 +621,7 @@ class ExecutorPool {
             
         // Sometimes this can be the first code that runs and needs this
         new File(".bpipe/commands").mkdirs()
+        new File(".bpipe/commandtmp").mkdirs()
             
         cmdExec.start(cfg.collectEntries { it }, cmd, outputLog, outputLog)
             
@@ -558,11 +629,12 @@ class ExecutorPool {
             
         Poller.instance.timer.schedule({
             if(!heartBeatFile.exists()) {
+                heartBeatFile.absoluteFile.parentFile.mkdirs()
                 heartBeatFile.text = String.valueOf(System.currentTimeMillis())
             }
         }, 0, HEARTBEAT_INTERVAL_SECONDS*1000)
         
-        pe.captureOutput()
+        pe.captureOutput(outputLog)
         pe.stopFile = stopFile
         pe.heartBeatFile = heartBeatFile
         
@@ -682,6 +754,10 @@ class ExecutorPool {
         // Create the pools
         ConfigObject prealloc = (ConfigObject) userConfig.get("preallocate")
         for(Map.Entry e in prealloc) {
+            
+            if(!(e.value instanceof ConfigObject))
+                throw new PipelineError("An entry in your preallocate section had the wrong type: each entry should be a subconfiguration. You specified: " + e.value.class?.name)
+            
             ConfigObject cfg = e.value
             
             if(!('configs' in cfg))

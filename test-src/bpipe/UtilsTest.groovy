@@ -75,4 +75,33 @@ class UtilsTest {
          
         
     }
+    
+    @Test
+    void waitWithTimeoutTest() {
+        
+        String result 
+        
+        result = Utils.waitWithTimeout(5000L) {
+            null
+        }.ok {
+            assert false
+        }.timeout {
+            println "Correct behavior of timeout"
+            "timed out"
+        }
+        
+        assert result == "timed out"
+        
+        
+        result = Utils.waitWithTimeout(5000L) {
+            true
+        }.ok {
+            println "Correct behavior of timeout"
+            "hello"
+        }.timeout {
+            assert false
+        } 
+        
+        assert result == "hello"
+    }
 }
