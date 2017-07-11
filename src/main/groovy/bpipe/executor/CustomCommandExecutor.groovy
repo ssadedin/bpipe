@@ -289,7 +289,7 @@ class CustomCommandExecutor implements CommandExecutor {
         String statusValue = result.split()[0]
         if(this.command) {
             try {
-                this.command.setStatus(result)
+                this.command.setStatus(statusValue)
             }
             catch(Exception e) {
                 log.warning("Failed to update status for result $result: $e")
