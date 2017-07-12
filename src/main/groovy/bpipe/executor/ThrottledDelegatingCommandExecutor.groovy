@@ -154,23 +154,35 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
     }
     
     int waitWithReschedule() {
+        
         log.info "Waiting for command to complete before releasing ${resources.size()} resources"
         while(true) {
+            
             int result = commandExecutor.waitFor()
-            if(result != 0) {
-                // May have been rescheduled
-                if(rescheduledExecutor) {
-                    this.commandExecutor = rescheduledExecutor
-                    this.command.executor = rescheduledExecutor
-                    commandExecutor.start(this.cfg, this.command, outputLog, errorLog)
-                    this.command.save()
-                    this.rescheduleResult = RescheduleResult.SUCCEEDED
-                }
+            
+            // rescheduledExecutor being set is a flag to indicate the underlying job 
+            // has been rescheduled
+            if((result != 0) && rescheduledExecutor) { 
+                
+                reschedule()
+                    
+                // In the case of rescheduling, re-execute this loop with the new executor
+                continue
             }
-            else {
-                return result
-            }
+            return result
         }
+    }
+    
+    void reschedule() {
+        
+        log.info "Job $command.id has been rescheduled"
+        
+        this.commandExecutor = rescheduledExecutor
+        this.command.executor = rescheduledExecutor
+        commandExecutor.start(this.cfg, this.command, outputLog, errorLog)
+        this.command.save()
+        this.rescheduleResult = RescheduleResult.SUCCEEDED
+        this.rescheduledExecutor = null
     }
     
     final static long RESCHEDULE_JOB_TIMEOUT = 30000
