@@ -109,20 +109,12 @@ class PooledExecutor implements CommandExecutor {
         return stopFile.path
     }
     
+    final static List<String> ENDED_JOB_STATUSES = [CommandStatus.COMPLETE.name(), CommandStatus.UNKNOWN.name()]
+    
     @Override
     int waitFor() {
         
-        File exitCodeFile = new File(".bpipe/commandtmp/$hostCommandId/${currentCommandId}.pool.exit")
-        
-        // wait until result status file appears
-        while(!exitCodeFile.exists()) {
-            Thread.sleep(1000)
-        }
-        
-        Thread.sleep(100)
-        
-        int exitCode = exitCodeFile.text.trim().toInteger()
-        
+        int exitCode = waitForExitFile()
         this.outputLog.flush()
         
         if(onFinish != null)
@@ -135,6 +127,28 @@ class PooledExecutor implements CommandExecutor {
         state = CommandStatus.COMPLETE
         
         return exitCode
+    }
+    
+    int waitForExitFile() {
+        File exitCodeFile = new File(".bpipe/commandtmp/$hostCommandId/${currentCommandId}.pool.exit")
+        
+        // wait until result status file appears
+        int loopIterations = 0
+        while(!exitCodeFile.exists()) {
+            Thread.sleep(1000)
+            
+            // Every 15 seconds, check that our underlying job was not killed
+            if(loopIterations % 15 == 0) {
+                String status = this.executor.status()
+                if(status in ENDED_JOB_STATUSES) {
+                    log.severe "Pooled job ${this.hostCommandId} in pool ${poolConfig.name} ended unexpectedly: failing command ${currentCommandId}"
+                    return 1;
+                }
+            }
+            ++loopIterations
+        }
+        Thread.sleep(100)
+        return exitCodeFile.text.trim().toInteger()
     }
     
     File getPoolFile() {
@@ -681,10 +695,20 @@ class ExecutorPool {
         }
     }
     
-    synchronized Command take(Command command, OutputLog outputLog) {
+    /**
+     * Attempts to find a compatible executor in this pool.
+     * If one is found, the exececutor is assigned and true is 
+     * returned. Otherwise, false is returned and the executor is
+     * unassigned.
+     * 
+     * @param command
+     * @param outputLog
+     * @return
+     */
+    synchronized boolean take(Command command, OutputLog outputLog) {
         
         if(availableExecutors.isEmpty())
-            return command
+            return false
         
         // Take the executor with the smallest time remaining that is
         // still usable
@@ -696,7 +720,7 @@ class ExecutorPool {
         
         if(!pe) {
             log.info "No compatible pooled executor available from ${availableExecutors.size()} pooled commands for command $command.id (config=$command.configName)"
-            return
+            return false
         }
         
         availableExecutors.remove(pe)
@@ -704,7 +728,7 @@ class ExecutorPool {
         
         pe.execute(command, outputLog)
         
-        return command
+        return true
     }
     
     @CompileStatic
@@ -828,10 +852,11 @@ class ExecutorPool {
             ExecutorPool pool = poolEntry.value
             if(!pool.configs.contains(cfg.name))
                 continue
-                
-            Command newCommand = pool.take(command, outputLog)
-            if(newCommand)
-                return newCommand
+            
+            if(pool.take(command, outputLog)) {
+                log.info "Allocated command $command.id to pooled job $command.executor.hostCommandId, from pool $pool.cfg.name"
+                break
+            }
         }
         
         return command

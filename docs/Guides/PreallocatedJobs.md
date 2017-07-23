@@ -63,6 +63,31 @@ In this case, the pool of 4 jobs will not be shut down at the end of pipeline ex
 Instead, they will remain running but idle, and will be available for use by another
 Bpipe pipeline.
 
+### Refresh Frequency for Persistent Job Pools
+
+Persistent jobs will run down the time on their "clock" while they sit in the pool. Therefore,
+it is necessary to stop and refresh jobs periodicially to ensure that the jobs in the pool
+actually have enough time to execute the tasks they are designed to carry out. Bpipe calculates
+the ratio of the time the job has remaining to the total walltime allocated and triggers a
+refresh of a job in the pool when the threshold is breached. By default, this threshold is 0.2 - 
+that is, a when a persistent preallocated job reaches 20% of its walltime, a new job will be 
+requested and the old one will be retired. You can set this threshold by setting the `timeFractionThreshold`
+parameter in the configuration. Eg:
+
+```
+
+preallocate {
+    small {
+        jobs=4
+        walltime="8:00:00"
+        memory="16g"
+        configs=["berry","juice"]
+        timeFractionThreshold=0.4
+        persist=true
+    }
+}
+```
+
 ### Stopping persistent Job Pools
 
 Since they are not stopped when your pipeline ends, you need to manually shut down
