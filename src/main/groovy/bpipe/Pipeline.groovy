@@ -731,6 +731,10 @@ public class Pipeline implements ResourceRequestor {
                         Description:  $e.description""".stripIndent()
             failed = true
         }
+        catch(Exception e) {
+            log.throwing "Pipeline", "Unexpected failure", e
+            failed = true
+        }
                 
         finishDate = new Date()
         if(Runner.opts.t && failed && failExceptions.empty) { 
