@@ -91,7 +91,7 @@ class Utils {
             }
             
             if(maxInputTimestamp < outputTimestamp) {
-                log.info "Output newer than all inputs (quick check)"
+                log.info "Output newer than all inputs (quick check: $maxInputTimestamp vs $outputTimestamp)"
                 return false
             }
                 
