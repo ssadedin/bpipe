@@ -76,7 +76,8 @@ class Runner {
               history 
               log
               jobs
-              checks
+              checks [options]
+              override 
               status
               cleanup
               query
