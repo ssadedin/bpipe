@@ -898,7 +898,9 @@ class Utils {
         
     }
     
-    final static long MINUTE=60000L
+    
+    final static long SECOND=1000L
+    final static long MINUTE= 60 * SECOND
     final static long HOUR=60 * MINUTE
     final static long DAY=24*HOUR
     
@@ -918,7 +920,7 @@ class Utils {
         
         // If not integer, parse in format DD:HH:MM
         List<String> parts = stringValue.tokenize(":")*.toInteger().reverse()
-        return [[MINUTE, HOUR, DAY], parts].transpose().sum { unitAndValue ->
+        return [[SECOND, MINUTE, HOUR, DAY], parts].transpose().sum { unitAndValue ->
             unitAndValue[0]*unitAndValue[1]
         }
     }
