@@ -54,11 +54,19 @@ class StatsCommand extends BpipeCommand {
         // hack: need to refactor out to be set in constructor
         this.out = out;
         
-        String pid = this.args ? this.args[0] : this.getLastLocalPID()
-        
-        if(pid == null) {
-            out.println "\nNo Bpipe run could be found in this directory\n"
-            System.exit(1)
+        List<File> resultFiles 
+        if(opts.all) {
+            resultFiles = new File(".bpipe/results").listFiles().grep { it.name.endsWith('.xml') }
+        }
+        else {
+            String pid = this.args ? this.args[0] : this.getLastLocalPID()
+            
+            if(pid == null) {
+                out.println "\nNo Bpipe run could be found in this directory\n"
+                System.exit(1)
+            }
+            
+            resultFiles = [getResultFile(pid)]
         }
         
         Closure toDate = { value ->
@@ -66,30 +74,72 @@ class StatsCommand extends BpipeCommand {
         }
         
         Closure formatTimeSpan = { t ->
-           TimeCategory.minus(new Date(t.toLong()), new Date(0)).toString().replaceAll('\\.000 seconds$',' seconds')
+            
+            if(t==null)
+                return "-"
+            
+           long longTime = t.toLong()
+           if(longTime == 0) {
+               return "-"
+           }
+           
+           TimeCategory.minus(new Date(longTime), new Date(0)).toString()
+                       .replaceAll('\\.[0-9]{1,} seconds$',' seconds')
+                       .replaceAll('minutes,.* seconds$',' minutes')
         }
         
-        File resultFile = getResultFile(pid)
-        GPathResult dom = new XmlSlurper().parse(resultFile)
+        List<GPathResult> doms = resultFiles.collect { 
+            try {
+                new XmlSlurper().parse(it) 
+            }
+            catch(Exception e) {
+                out.println "WARNING: Could not read result file: " + it
+                return null
+            }
+        }.grep { it != null }
         
-        String runTime = formatTimeSpan(toDate(dom.endDateTime).time - toDate(dom.startDateTime).time)
+        if(doms.isEmpty()) {
+            out.println "\nNo result files could be read.\n"
+            System.exit(1)
+        }
+        
+        long totalTimeMs = doms.collect { dom -> toDate(dom.endDateTime).time - toDate(dom.startDateTime).time }.sum()
+        String runTime = formatTimeSpan(totalTimeMs)
         
         out.println ""
         
-        out.println(" " + (" Pipeline " + (dom.succeeded.text() == "true" ? "Succeeded" : "Failed")).center(Config.config.columns-2,"="))
-        out.println(("| Started: " + dom.startDateTime.text()).padRight(Config.config.columns-1) + "|")
-        out.println(("| Ended: " + dom.endDateTime.text()).padRight(Config.config.columns-1) + "|")
+        out.println(" " + (" Pipeline " + (doms.every { it.succeeded.text() == "true"} ? "Succeeded" : "Failed")).center(Config.config.columns-2,"="))
+        out.println(("| Started: " + doms[0].startDateTime.text()).padRight(Config.config.columns-1) + "|")
+        out.println(("| Ended: " + doms[-1].endDateTime.text()).padRight(Config.config.columns-1) + "|")
         out.println(("| Run Time: " + runTime).padRight(Config.config.columns-1) + "|")
         out.println (" " + "="*(Config.config.columns-2))
         out.println ""
         
 
-        List<List> stats = dom.commands.command.groupBy {  cmdNode ->
+        List<List> stats = doms.collect { dom ->dom.commands.command }.sum().groupBy {  cmdNode ->
             cmdNode.stage.text()
         }.collect { stage, cmds ->
-            List<Long> times = cmds.collect { cmd ->  toDate(cmd.end).time - toDate(cmd.start).time }
-            double mean = times.sum() / times.size()
-            [stage, cmds.size(), formatTimeSpan(times.min().toLong()), formatTimeSpan(mean), formatTimeSpan(times.max()), (times.sum() / 1000.0).toLong()]
+            
+            // Failed commands do not accurately reflect the time taken, so
+            // only count commands that succeeded
+            List succeeded = cmds.grep { cmd ->
+                cmd.exitCode.text() == "0"
+            }
+            
+            List<Long> times = succeeded.collect { cmd ->  
+                long startTimeMs = toDate(cmd.start).time 
+                startTimeMs == 0 ? 0 : toDate(cmd.end).time - startTimeMs
+            }
+            
+            double mean = times.isEmpty() ? 0 : times.sum() / times.size()
+            
+            [
+             stage, 
+             cmds.size(), 
+             formatTimeSpan(times.min()?.toLong()),
+             formatTimeSpan(mean), formatTimeSpan(times.max()), 
+             ((times.sum()?:0) / 1000.0).toLong()
+            ]
         }
         
         Utils.table(["Stage","Count","Min","Mean","Max", "Weight"], stats, indent:1)
