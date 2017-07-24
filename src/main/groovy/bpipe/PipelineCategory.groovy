@@ -450,7 +450,7 @@ class PipelineCategory {
             splitOnMap(input, branches,segments)
         }
         
-        log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
+//        log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
         pipeline.joiners << multiplyImplementation
         return multiplyImplementation
     }
@@ -503,7 +503,7 @@ class PipelineCategory {
         }
 					
         
-        log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
+//        log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
         pipeline.joiners << multiplyImplementation
         
         return multiplyImplementation
