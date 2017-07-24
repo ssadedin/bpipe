@@ -65,7 +65,7 @@ class StatusCommand extends BpipeCommand {
             out.println ""
             List<Command> commands = mgr.getCurrentCommands()
             
-            commands += mgr.getCommandsForDir(new File(CommandManager.DEFAULT_EXECUTED_DIR))
+            commands += mgr.getCommandsByStatus(null)
             
             Map<CommandStatus,Command> grouped = commands.groupBy {
                 it.status
