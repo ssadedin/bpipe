@@ -456,10 +456,26 @@ public class Pipeline implements ResourceRequestor {
         if(!pipelineBuilder.binding.variables.containsKey("BPIPE_NO_EXTERNAL_STAGES"))
             pipeline.loadExternalStages()
 
+        
         Object result = pipeline.execute([], pipelineBuilder.binding, pipelineBuilder, false)
+        
         segmentJoiners.addAll(pipeline.joiners)
+        
+        if(!(result in segmentBuilders))
+            segmentBuilders[result] = pipelineBuilder
+        
         return result
     }
+    
+    /**
+     * A map from the generated closure for a segment to the closure that
+     * built it. This allows us to know which builder was used for a closure when
+     * it is encountered. It is used in the constructing the graph structure of the
+     * pipeline which needs to understand which closures are segments and 
+     * to invoke the builder to recreate the segment in graph form (see
+     *  DefinePipelineCategory).
+     */
+    static Map<Closure,Closure> segmentBuilders = [:]
     
     static List<Closure> segmentJoiners = []
     
@@ -609,6 +625,13 @@ public class Pipeline implements ResourceRequestor {
         }
     }
     
+    /**
+     * The current pipeline build operation - if building the real pipeline,
+     * it's PipelineCategory, but when the pipeline structure graph is being 
+     * created, it's DefinePipelineCategory
+     */
+    static Class builderCategory = PipelineCategory
+    
 
     private Closure execute(def inputFile, Object host, Closure pipeline, boolean launch=true) {
         
@@ -645,7 +668,7 @@ public class Pipeline implements ResourceRequestor {
         Map pipelineStructure = launch ? diagram(host, pipeline) : null
         
         def constructedPipeline
-        use(PipelineCategory) {
+        use(builderCategory) {
             
             // Build the actual pipeline
             Pipeline.withCurrentUnderConstructionPipeline(this) {
@@ -1226,43 +1249,50 @@ public class Pipeline implements ResourceRequestor {
      */
     Map diagram(Object host, Closure pipeline) {
         
-        // We have to manually add all the external variables to the outer pipeline stage
-        this.externalBinding.variables.each {
-            log.info "Loaded external reference: $it.key"
-            if(!pipeline.binding.variables.containsKey(it.key))
-                pipeline.binding.variables.put(it.key,it.value)
-            else
-                log.info "External reference $it.key is overridden by local reference"
-        }
-        
-        // Figures out what the pipeline stages are 
-        if(host)
-            pipeline.setDelegate(host)
+        try {
+            Pipeline.builderCategory = DefinePipelineCategory
             
-        DefinePipelineCategory.reset()
-        use(DefinePipelineCategory) {
-            def realizedPipeline = pipeline()
-            Utils.box(realizedPipeline).each { realizedBranch ->
-                if(!(realizedBranch in PipelineCategory.closureNames) && (realizedBranch !=null)) {
-                    if(realizedBranch instanceof Closure) {
-                        realizedBranch()
+            // We have to manually add all the external variables to the outer pipeline stage
+            this.externalBinding.variables.each {
+                log.info "Loaded external reference: $it.key"
+                if(!pipeline.binding.variables.containsKey(it.key))
+                    pipeline.binding.variables.put(it.key,it.value)
+                else
+                    log.info "External reference $it.key is overridden by local reference"
+            }
+            
+            // Figures out what the pipeline stages are 
+            if(host)
+                pipeline.setDelegate(host)
+                
+            DefinePipelineCategory.reset()
+            use(DefinePipelineCategory) {
+                def realizedPipeline = pipeline()
+                Utils.box(realizedPipeline).each { realizedBranch ->
+                    if(!(realizedBranch in PipelineCategory.closureNames) && (realizedBranch !=null)) {
+                        if(realizedBranch instanceof Closure) {
+                            realizedBranch()
+                        }
+                    }
+                    else {
+                        DefinePipelineCategory.inputStage.appendNode(
+                            PipelineCategory.closureNames[realizedBranch])
+                        
+                        Node rootNode = DefinePipelineCategory.createNode(realizedBranch)
+                        DefinePipelineCategory.edges.add(
+                            new Edge(DefinePipelineCategory.inputStage, rootNode))
                     }
                 }
-                else {
-                    DefinePipelineCategory.inputStage.appendNode(
-                        PipelineCategory.closureNames[realizedBranch])
-                    
-                    Node rootNode = DefinePipelineCategory.createNode(realizedBranch)
-                    DefinePipelineCategory.edges.add(
-                        new Edge(DefinePipelineCategory.inputStage, rootNode))
-                }
             }
+            return [
+                root : DefinePipelineCategory.inputStage, 
+                nodes: DefinePipelineCategory.nodes, 
+                edges: DefinePipelineCategory.edges*.toMap()
+            ]
         }
-        return [
-            root : DefinePipelineCategory.inputStage, 
-            nodes: DefinePipelineCategory.nodes, 
-            edges: DefinePipelineCategory.edges*.toMap()
-        ]
+        finally {
+            Pipeline.builderCategory = PipelineCategory
+        }
     }
     
     final int dumpTabWidth = 8

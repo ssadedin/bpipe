@@ -145,9 +145,14 @@ class DefinePipelineCategory {
     }
     
     static Object plus(Closure c, Closure other) {
-//        println "Closure " + PipelineCategory.closureNames[c]  +  " + Closure " + PipelineCategory.closureNames[other]
+        String cName = PipelineCategory.closureNames[c]
+        // println "Closure " + cName  +  " (${c.hashCode()}) + Closure " + PipelineCategory.closureNames[other]
         def result  = { 
             
+            if(c in Pipeline.segmentBuilders) {
+                Pipeline.segmentBuilders[c]()()
+            }
+            else
             if(PipelineCategory.closureNames.containsKey(c)) {
                 
                 boolean addInputConnection = (nodes.size() == 1)
@@ -156,6 +161,7 @@ class DefinePipelineCategory {
                 if(addInputConnection) {
                      edges << new Edge(inputStage,newStage) 
                 }
+                
                 currentStage.each { from ->
                      edges << new Edge(from,newStage) 
                      // println "Edge: ${from.attributes().id} (${from.name()}) => ${newStage.attributes().id} (name=${newStage.name()})"
@@ -165,11 +171,16 @@ class DefinePipelineCategory {
                 currentStage = [newStage]
                 childIndices[-1]++
             }
-                
+            
             if(c in joiners) {
                 c()
             }
             
+            if(other in Pipeline.segmentBuilders) {
+                // println "Descend into ${other.hashCode()} closure name=" + PipelineCategory.closureNames[other]
+                Pipeline.segmentBuilders[other]()()
+            }
+            else
             if(PipelineCategory.closureNames.containsKey(other) 
                 && !Config.noDiagram.contains(PipelineCategory.closureNames[other])) {
                 def newStage = createNode(other)
@@ -200,7 +211,12 @@ class DefinePipelineCategory {
         def mul = multiply("*", segments)
         
         def result = { inputs ->
-          if(PipelineCategory.closureNames.containsKey(other)) {
+            
+            if(other in Pipeline.segmentBuilders) {
+                Pipeline.segmentBuilders[other]()()
+            }
+            else
+            if(PipelineCategory.closureNames.containsKey(other)) {
                 def newStage = createNode(other)
                 currentStage.each { 
 //                    println "Edge from " + it.id + " to $newStage.id"
@@ -293,6 +309,10 @@ class DefinePipelineCategory {
                 // A joiner means that Bpipe created an intermediate closure to build a sub-portion of the pipeline
                 // That means we shouldn't include it directly, but rather execute the joiner to build that sub-graph
                 // and then attach to the result
+                if(s in Pipeline.segmentBuilders) {
+                    Pipeline.segmentBuilders[s]()()
+                }
+                else                
                 if(s in joiners) {
                     
                     // The confusion comes because this recursion might be doing fundamentally different things:
