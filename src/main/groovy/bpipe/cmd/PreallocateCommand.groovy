@@ -52,7 +52,7 @@ class PreallocateCommand extends BpipeCommand {
     }
 
     @Override
-    public void run(PrintStream out) {
+    public void run(Writer out) {
         Config.config["mode"] = "preallocate"
         
         out.println ""

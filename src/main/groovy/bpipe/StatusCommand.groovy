@@ -48,7 +48,7 @@ class StatusCommand extends BpipeCommand {
         run(System.out)
     }
     
-    void run(PrintStream out) {
+    void run(Writer out) {
         
         CliBuilder cli = new CliBuilder()
         cli.with {

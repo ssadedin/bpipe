@@ -670,7 +670,7 @@ class Runner {
     /**
      * Bpipe home, set as system property by Bpipe runner script prior to launching
      */
-    static String BPIPE_HOME = System.getProperty("bpipe.home")
+    static String BPIPE_HOME = new File(System.getProperty("bpipe.home")).absolutePath
     
     /**
      * Perform essential cleanup when Bpipe process ends.

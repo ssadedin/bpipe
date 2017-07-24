@@ -52,7 +52,7 @@ class Stop extends BpipeCommand {
 
     @Override
     @CompileStatic
-    public void run(PrintStream out) {
+    public void run(Writer out) {
         Config.config["mode"] = "stopcommands"
         
         println ""

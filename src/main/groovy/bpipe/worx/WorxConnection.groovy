@@ -116,6 +116,9 @@ class WorxConnection {
      */
     Object readResponse() {
         
+        if(this.socketReader == null)
+            return null
+        
         log.info "Starting to read response"
         
         // Read headers
@@ -191,9 +194,11 @@ class WorxConnection {
             }
         }
         finally {
-            log.info "Closing Worx connection by server request"
-            this.socket.close()
-            this.socket = null
+            if(this.socket) {
+                log.info "Closing Worx connection by server request"
+                this.socket.close()
+                this.socket = null
+            }
         }
     }
     

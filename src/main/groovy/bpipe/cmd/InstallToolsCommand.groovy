@@ -6,7 +6,7 @@ class InstallToolsCommand  extends BpipeCommand {
         super("install", args); 
     }
 
-    public void run(PrintStream out) {
+    public void run(Writer out) {
         
         CliBuilder cli = new CliBuilder(usage: "bpipe install [options] <pipeline>")
         

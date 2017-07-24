@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 MCRI, authors
+ * Copyright (c) 2017 MCRI, authors
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -24,23 +24,36 @@
  */
 package bpipe.cmd
 
-import java.io.Writer;
-import java.util.List
-
-import bpipe.CommandManager;
-import bpipe.Config
-import groovy.util.logging.Log;
+import bpipe.Utils
+import groovy.transform.CompileStatic
+import groovy.util.logging.Log
 
 @Log
-class LogCommand extends BpipeCommand {
+class RunPipelineCommand extends BpipeCommand {
     
-    public LogCommand(List<String> args) {
-        super("log", args);
+    public RunPipelineCommand(List<String> args) {
+        super("run", args);
     }
-
+    
     @Override
     public void run(Writer out) {
-        // This command is only supported via shellExecute() - see {@link BpipeCommand#shellExecute}
-        throw new UnsupportedOperationException()
+        
+        if(dir == null) 
+            throw new IllegalArgumentException("Directory parameter not set. Directory for command to run in must be specified")
+        
+        File dirFile = new File(dir).absoluteFile
+        if(!dirFile.parentFile.exists())
+            throw new IllegalArgumentException("Directory supplied $dir is not in an existing path. The directory parent must already exist.")
+        
+        
+        
+        log.info "Running with arguments: " + args;
+        
+        List<String> cmd = [ bpipe.Runner.BPIPE_HOME + "/bin/bpipe", "run" ] 
+        cmd.addAll(args)
+        Map result = Utils.executeCommand(cmd, out:out, err: out) {
+            directory(dirFile)
+        }
     }
 }
+

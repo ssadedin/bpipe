@@ -120,6 +120,9 @@ class WorxEventListener implements PipelineEventListener {
             def response = worx.readResponse()
             log.info "Response: $response"
             
+            if(response == null)
+                return;
+            
             for(Map cmd in response.commands) {
                 if(cmd.command == "stop") {
                     new Stop().run(System.out, cmd.arguments)
@@ -141,6 +144,10 @@ class WorxEventListener implements PipelineEventListener {
              PipelineEvent.STARTED,
              PipelineEvent.STAGE_STARTED,
              PipelineEvent.STAGE_COMPLETED, 
+             PipelineEvent.SEND, 
+             PipelineEvent.CHECK_EXECUTED, 
+             PipelineEvent.CHECK_SUCCEEDED, 
+             PipelineEvent.CHECK_FAILED, 
              PipelineEvent.FINISHED,
              PipelineEvent.SHUTDOWN
         ].each { EventManager.instance.addListener(it,this) } 

@@ -833,22 +833,30 @@ class Utils {
     /**
      * Execute the given command and return back a map with the exit code,
      * the standard output, and std err 
+     * <p>
+     * An optional closure will be executed as a delegate of the ProcessBuilder created
+     * to allow configuration.
      * 
      * @param startCmd  List of objects (will be converted to strings) as args to command
      * @return Map with exitValue, err and out keys
      */
-    static Map<String,Object> executeCommand(List<Object> startCmd) {
+    static Map<String,Object> executeCommand(Map options = [:], List<Object> startCmd, Closure builder = null) {
         
         List<String> stringified = startCmd*.toString()
         
         log.info "Executing command: " + stringified.join(' ')
         
         ProcessBuilder pb = new ProcessBuilder(stringified)
+        if(builder != null) {
+            builder.delegate = pb
+            builder()
+        }
+        
         Process p = pb.start()
         Map result = [:]
         Utils.withStreams(p) {
-            StringBuilder out = new StringBuilder()
-            StringBuilder err = new StringBuilder()
+            Appendable out = options.out ?: new StringBuilder()
+            Appendable err = options.err ?: new StringBuilder()
             
             // Note: observed issue with hang here on Broad cluster
             // seems to be related to hang inside OS / NFS call. Maybe use forwarder for this?
@@ -956,11 +964,16 @@ class Utils {
         
         // Find the width of each column
         Map<String,Integer> columnWidths = [:]
-        headers.eachWithIndex { hd, i ->
-            Object widestRow = rows.max { row -> formatters[hd](row[i]).size() }
-            columnWidths[hd] = Math.max(hd.size(), formatters[hd](widestRow[i]).size())
+        if(rows) {
+            headers.eachWithIndex { hd, i ->
+                Object widestRow = rows.max { row -> formatters[hd](row[i]).size() }
+                columnWidths[hd] = Math.max(hd.size(), formatters[hd](widestRow[i]).size())
+            }
         }
-        
+        else {
+            headers.each { columnWidths[it] = it.size() }
+        }
+            
         // Now render the table
         String header = headers.collect { hd -> hd.center(columnWidths[hd]) }.join(" | ")
         println indent + header

@@ -42,7 +42,14 @@ class StatsCommand extends BpipeCommand {
     }
 
     @Override
-    public void run(PrintStream out) {
+    public void run(Writer out) {
+        
+
+
+        cli.with { 
+            all 'Show aggregate results for all runs of this pipeline', required: false
+        }
+        def opts = this.parse()
         
         // hack: need to refactor out to be set in constructor
         this.out = out;

@@ -50,7 +50,7 @@ class QueryCommand extends BpipeCommand {
     }
 
     @Override
-    public void run(PrintStream out) {
+    public void run(Writer out) {
         
         CliBuilder cli = new CliBuilder()
         cli.with {

@@ -18,6 +18,8 @@ abstract class BpipeCommand {
     
     File COMMAND_TMP = new File(System.getProperty("user.home") + "/.bpipedb/commandtmp")
     
+    String dir
+    
     BpipeCommand(String commandLine, List<String> args) {
         this.commandLine = commandLine
         this.args = args
@@ -26,42 +28,42 @@ abstract class BpipeCommand {
     /**
      * The stream to which output should be written
      */
-    PrintStream out
+    Writer out
     
-    abstract void run(PrintStream out);
+    void run(PrintStream out) {
+        this.run(new PrintWriter(out))
+    }
     
-    String shellExecute(PipelineInfo pipelineInfo) {
+    abstract void run(Writer out);
+    
+    void shellExecute(String exe, String directory) {
         
         // Write the command to tmp directory
         if(!COMMAND_TMP.exists())
             COMMAND_TMP.mkdirs()
         
-        String command = "/Users/simon/bpipe/bin/bpipe $commandLine"
+        String command = bpipe.Runner.BPIPE_HOME + "/bin/$exe $commandLine"
         if(args) {
             command = "$command " + args.join(" ")
         }
         
         File tmpFile = new File(COMMAND_TMP, Utils.sha1(command) + ".sh")
-        tmpFile.setExecutable(true)
-        
-        String chmodText = """chmod u+rx $tmpFile.absolutePath""".execute().text
-        
-        log.info "Chmod output: $chmodText"
-        
-        log.info("Executing command [$command] via temp file $tmpFile in directory $pipelineInfo.path")
+        log.info("Executing command [$command] via temp file $tmpFile in directory $directory")
         
         tmpFile.text = command + "\n"
         
+        tmpFile.setExecutable(true)
+        String chmodText = """chmod u+rx $tmpFile.absolutePath""".execute().text
+        log.info "Chmod output: $chmodText"
+        
         Process p =
             new ProcessBuilder("bash", "-c", tmpFile.absolutePath)
-                                .directory(new File(pipelineInfo.path))
+                                .directory(new File(directory))
                                 .start()
                                 
         String output                                
         Utils.withStreams(p) {
-            StringBuilder out = new StringBuilder()
-            StringBuilder err = new StringBuilder()
-            p.waitForProcessOutput(out, err)
+            p.waitForProcessOutput(out, out)
             int exitValue = p.waitFor()
             if(exitValue != 0) {
                 throw new Exception("Failed to start command:\n\n$command\n\nOutput: " + out.toString() + 
@@ -70,7 +72,6 @@ abstract class BpipeCommand {
             output = out.toString().trim()
             log.info "Executed command with output: " + output
         }
-        return output
     }
     
     @CompileStatic

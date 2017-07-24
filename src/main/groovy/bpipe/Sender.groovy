@@ -195,12 +195,24 @@ class Sender {
        else
            log.info "Sending $content to $cfgName"
        
-       NotificationManager.instance.sendNotification(cfgName, PipelineEvent.SEND, this.details.subject, [
+           
+       Map props = [
+            "stage" : ctx.currentStage,
             "send.content": content,
             "send.subject": this.details.subject,
             "send.contentType" : this.contentType,
             "send.file" : this.details.file
-        ]) 
+        ]
+           
+       NotificationManager.instance.sendNotification(cfgName, PipelineEvent.SEND, this.details.subject, props) 
+       
+       // The file can actually be a PipelineOutput or similar which leads to 
+       // bizarre errors when serializing to JSON because the whole PipelineContext
+       // gets captured in there
+       props['send.file'] = String.valueOf(props['send.file'])
+       
+       EventManager.instance.signal(PipelineEvent.SEND, this.details.subject, props)
+       
        
        if(ctx.currentCheck && ctx.currentCheck.message != details.subject) {
            ctx.currentCheck.message = details.subject

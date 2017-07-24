@@ -70,7 +70,7 @@ class JobsCommand extends BpipeCommand {
     }
 
     @Override
-    public void run(PrintStream out) {
+    public void run(Writer out) {
         
         AnsiConsole.systemInstall();
         
