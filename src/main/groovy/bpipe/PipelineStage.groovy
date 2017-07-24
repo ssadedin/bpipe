@@ -491,12 +491,15 @@ class PipelineStage {
         // Otherwise we might destroy existing data
         if(this.context.@output != null) {
             
-            OutputDirectoryWatcher odw = OutputDirectoryWatcher.getDirectoryWatcher(context.outputDirectory)
-            odw.sync()
+            OutputDirectoryWatcher odw 
+            if(context.outputDirectory != null) {
+                odw = OutputDirectoryWatcher.getDirectoryWatcher(context.outputDirectory)
+                odw.sync()
+            }
              
             def newOutputFiles = Utils.box(this.context.@output).collect { it.toString() }.unique()
             newOutputFiles.removeAll { fn ->
-                boolean keep = odw.isPreexisting(fn)
+                boolean keep = odw?.isPreexisting(fn)
                 if(keep)
                     log.info "Keeping $fn because determined as pre-existing"
                 return keep;

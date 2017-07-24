@@ -232,7 +232,7 @@ class PipelineOutput {
                     // spurious "output missing" errors or attempts to recreate the output because Bpipe
                     // thinks it should exist when it doesn't
                     // see produce_to_dir_no_output_ref test
-                    if(it != defaultOutput)
+                    if(it != defaultOutput && it != null)
                         this.outputChangeListener(it,null)
                 }
             }
@@ -252,7 +252,7 @@ class PipelineOutput {
     }
     
     void setDir(Object value) {
-        if(this.outputDirChangeListener)
+        if(this.outputDirChangeListener && value != null)
             this.outputDirChangeListener(value.toString())
     }
     

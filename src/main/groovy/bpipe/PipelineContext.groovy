@@ -124,7 +124,7 @@ class PipelineContext {
     /**
      * The directory to which the pipeline stage should write its outputs
      */
-    String outputDirectory = "."
+    String outputDirectory = Config.config.defaultOutputDirectory
     
     /**
      * The id of the thread that created this context
@@ -591,7 +591,10 @@ class PipelineContext {
     * This method is (and must remain) side-effect free
     */
    def toOutputFolder(outputs) {
-       Utils.toDir(outputs, outputDirectory)
+       if(outputDirectory == null)
+           Utils.toDir(outputs, ".")
+       else
+           Utils.toDir(outputs, outputDirectory)
    }
    
    void checkAccompaniedOutputs(List<String> inputsToCheck) {
@@ -2512,6 +2515,11 @@ class PipelineContext {
         this.usedResources["memory"] = 
             new ResourceUnit(key:"memory", amount: memoryAmountMB, maxAmount: memoryAmountMB)
         return String.valueOf(memoryValue)
+    }
+    
+    void setOutputDirectory(String outputDirectory) {
+        assert outputDirectory != null
+        this.@outputDirectory = outputDirectory
     }
     
     void debug() {
