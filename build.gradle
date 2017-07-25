@@ -73,7 +73,11 @@ if(!new File("local-lib").listFiles().find { it.name =~ /gridgain.*.jar/ }) {
 
 jar {
     from configurations.compile.grep {
-        !(it.name in ["mail.jar"]) && !it.name.startsWith("gridgain") && !it.name.startsWith("hazelcast")
+        !(it.name in ["mail.jar"]) && 
+        !it.name.startsWith("gridgain") &&
+        !it.name.startsWith("hazelcast") &&
+        !it.name.startsWith("xalan-") &&
+        !it.name.startsWith("xml-apis")
     }.collect {
         it.isDirectory() ? it : zipTree(it)
     }
