@@ -7,6 +7,8 @@ import static Utils.splitShellArgs as sp
 
 import org.junit.Test;
 
+import groovy.time.TimeCategory
+
 class UtilsTest {
 
     @Test
@@ -49,11 +51,14 @@ class UtilsTest {
     
     @Test
     public void testWalltimeToMs() {
-        assert Utils.walltimeToMs("1") == 1000L
-        assert Utils.walltimeToMs(1) == 1000L
-        assert Utils.walltimeToMs("00:30") == 1800000L
-        assert Utils.walltimeToMs("2:00") == 7200000L
-        assert Utils.walltimeToMs("1:3:13") == 24 * 3600000L + 3 * 3600000L + 13 * 60000L
+        use(TimeCategory) {
+            assert Utils.walltimeToMs("1") == 1.seconds.toMilliseconds()
+            assert Utils.walltimeToMs(1) == 1.seconds.toMilliseconds()
+            assert Utils.walltimeToMs("00:30") == 30.seconds.toMilliseconds()
+            assert Utils.walltimeToMs("2:00") == 2.minutes.toMilliseconds()
+            assert Utils.walltimeToMs("1:3:13") == (1.hour + 3.minutes + 13.seconds).toMilliseconds()
+            assert Utils.walltimeToMs("2:03:30:00") == (2.days + 3.hours + 30.minutes).toMilliseconds()
+        }
     }
     
     @Test
