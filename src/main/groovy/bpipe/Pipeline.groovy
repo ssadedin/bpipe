@@ -84,7 +84,7 @@ public class Pipeline implements ResourceRequestor {
     /**
      * Default imports added to the top of all files executed by Bpipe
      */
-    static final String PIPELINE_IMPORTS = "import static Bpipe.*; import Preserve as preserve; import Intermediate as intermediate; import Accompanies as accompanies; import Produce as produce; import Transform as transform; import Filter as filter;"
+    static final String PIPELINE_IMPORTS = "import static Bpipe.*; import static bpipe.RegionSet.bed; import Preserve as preserve; import Intermediate as intermediate; import Accompanies as accompanies; import Produce as produce; import Transform as transform; import Filter as filter;"
     
     /**
      * The thread id of the master thread that is running the baseline root

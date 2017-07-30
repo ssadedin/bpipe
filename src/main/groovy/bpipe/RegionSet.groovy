@@ -106,8 +106,8 @@ class RegionSet implements Serializable {
     /**
      * A synonym for {@link #group(int)}
      */
-    Set<RegionSet> split(int parts) {
-        group(parts)
+    Set<RegionSet> split(Map options=[:], int parts) {
+        group(options, parts)
     }
     
     Set<RegionSet> partition(int sizeBp) {
@@ -118,6 +118,19 @@ class RegionSet implements Serializable {
                 new RegionSet(seq)
             }
         }.flatten() as Set
+    }
+    
+    static RegionSet bed(String fileName) {
+        RegionSet regionSet = new RegionSet()
+        new File(fileName).eachLine { String line ->
+            List<String> parts = line.tokenize('\t')
+            if(parts.size()<3) 
+                throw new PipelineError("BED file should have at least 3 tab separated columns")
+                    
+            Sequence sequence = new Sequence(name:parts[0], range:(parts[1].toInteger())..(parts[2].toInteger()))
+            regionSet.addSequence(sequence)
+        }
+        return regionSet
     }
     
     /**
@@ -132,7 +145,9 @@ class RegionSet implements Serializable {
      * @return        A set of RegionSet objects representing the given
      *                genome split into the requested number of parts
      */
-    Set<RegionSet> group(int parts) {
+    Set<RegionSet> group(Map options=[:], int parts) {
+        
+        boolean allowSplitRegions = options.allowBreaks == null ? true : options.allowBreaks
         
         // A sorted set ordered by size and then object to 
         SortedSet<RegionSet> results = new TreeSet({ a,b -> b.size().compareTo(a.size())?:a.hashCode().compareTo(b.hashCode())} as Comparator)
@@ -152,7 +167,7 @@ class RegionSet implements Serializable {
         log.info "*** Splitting regions to increase to $parts parts"
         while(results.size() < parts) {
             // Split the largest region set into two
-            if(!splitLargest(results))
+            if(!splitLargest(results, allowSplitRegions))
                 break
         }
         
@@ -160,7 +175,7 @@ class RegionSet implements Serializable {
         // above loop again to reduce down 
         while(results.first().size() > 2*results.last().size()) {
             log.info "*** Rebalancing regions due to ${results.first().size()} > 2 x ${results.last().size()}"
-            if(!splitLargest(results))
+            if(!splitLargest(results, allowSplitRegions))
                 break
             combineSmallest(results)
         }
@@ -168,11 +183,11 @@ class RegionSet implements Serializable {
         return results
     }
     
-    boolean splitLargest(SortedSet results) {
+    boolean splitLargest(SortedSet results, boolean allowSplitRegions) {
         
         RegionSet largest = results.first()
         
-        def (large,small) = largest.splitInTwo()
+        def (large,small) = largest.splitInTwo(allowSplitRegions)
         float ratio = (float)large.size() / (float)small.size()
         
         assert ratio >= 1.0f : "Ratio of large region to small is > 1 (ratio = $ratio)"
@@ -207,7 +222,7 @@ class RegionSet implements Serializable {
      * It is possible no split is possible that will return a balanced result 
      * in which case the algorithm gives up and returns the unbalanced split.
      */
-    List splitInTwo() {
+    List splitInTwo(boolean allowSplitSequences) {
         List<Sequence> ordered = ([] + sequences.values()).sort { it.size() }.reverse()
         
         // Start by sorting the regions into two piles by ordering by size
@@ -229,6 +244,9 @@ class RegionSet implements Serializable {
         // We expect result1 to be bigger, so we will even up the piles
         // by splitting regions from result1 and giving them to result2
         List<Sequence> ordered2 = ([] + result1.sequences.values()).sort { it.size() }.reverse()
+        
+        if(!allowSplitSequences)
+            return [result1,result2]
         
         log.info("Will check ${ordered2.size()} regions to reassign to other split in case of size bias")
         
