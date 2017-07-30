@@ -81,7 +81,7 @@ class QueryCommand extends BpipeCommand {
         }
     }
     
-    void queryOutputsByStageId(String stageId, PrintWriter out) {
+    void queryOutputsByStageId(String stageId, PrintStream out) {
         
         // Find the commands executed for the given stage
         // Read all the commands
@@ -100,7 +100,7 @@ class QueryCommand extends BpipeCommand {
      * 
      * @param args  list of file names to display dependencies for
      */
-    void queryOutputs(List<String> outputFiles, PrintWriter out) {
+    void queryOutputs(List<String> outputFiles, PrintStream out) {
         
         Dependencies deps = Dependencies.instance
         
