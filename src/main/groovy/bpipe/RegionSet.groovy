@@ -120,14 +120,22 @@ class RegionSet implements Serializable {
         }.flatten() as Set
     }
     
-    static RegionSet bed(String fileName) {
+    static RegionSet bed(Map options=[:], String fileName) {
+        int padding = 0;
+        if(options.padding)
+            padding = options.padding.toInteger()
+
         RegionSet regionSet = new RegionSet()
         new File(fileName).eachLine { String line ->
             List<String> parts = line.tokenize('\t')
-            if(parts.size()<3) 
+            if(parts.size()<3)
                 throw new PipelineError("BED file should have at least 3 tab separated columns")
-                    
-            Sequence sequence = new Sequence(name:parts[0], range:(parts[1].toInteger())..(parts[2].toInteger()))
+
+
+            int start = Math.max(parts[1].toInteger() - padding, 0)
+            int end = parts[2].toInteger() + padding
+
+            Sequence sequence = new Sequence(name:parts[0], range:(start)..(end))
             regionSet.addSequence(sequence)
         }
         return regionSet

@@ -60,7 +60,7 @@ pages:
 - ['Guides/Logging.md','Guides','Logging']
 - ['Guides/Modules.md','Guides','Modules']
 - ['Guides/Notifications.md','Guides','Notifications']
-- ['Guides/Regions.md','Guides','Regions']
+- ['Guides/Regions.md','Guides','Working with Genomic Regions']
 - ['Guides/Reports.md','Guides','Reports']
 - ['Guides/ResourceManagers.md','Guides','Resource Managers']
 - ['Guides/ToolVersionDatabase.md','Guides','Tool Version Database']
