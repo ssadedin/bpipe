@@ -142,7 +142,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         if((threadResource.amount==0) && (threadResource.maxAmount==0)) 
             return true
 
-        if(!cfg.containsKey("procs") && (threadResource.amount == 1))
+        if(!cfg.containsKey("procs") && (threadResource.amount == 1) && (threadResource.maxAmount == 0))
             return true
         else            
             return false    
