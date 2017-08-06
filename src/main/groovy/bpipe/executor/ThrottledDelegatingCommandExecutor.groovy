@@ -93,7 +93,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         // == 1 at the end is incorrect, 1 is the default, so this test is trying to check if
         // the user set the value explicitly or not. However they could have actually explicitly set it to 1
         // in which case this will go wonky
-        if(threadResource && command.command.contains(PipelineContext.THREAD_LAZY_VALUE) && (threadResource.amount==1) && (threadResource.maxAmount==0))
+        if(threadResource != null && command.command.contains(PipelineContext.THREAD_LAZY_VALUE) && (threadResource.amount==0) && (threadResource.maxAmount==0))
             threadResource.amount = ResourceUnit.UNLIMITED
 
         resources.each { Concurrency.instance.acquire(it) }
