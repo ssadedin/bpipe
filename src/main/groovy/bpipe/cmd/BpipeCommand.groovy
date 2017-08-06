@@ -30,8 +30,15 @@ abstract class BpipeCommand {
      */
     Writer out
     
+    @CompileStatic
     void run(PrintStream out) {
-        this.run(new PrintWriter(out))
+        PrintWriter writer = new PrintWriter(out, true)
+        try {
+            this.run(writer)
+        }
+        finally {
+            writer.flush()
+        }
     }
     
     abstract void run(Writer out);
