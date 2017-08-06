@@ -485,7 +485,7 @@ class Runner {
             StringWriter sw = new StringWriter()
             sanitized.printStackTrace(new PrintWriter(sw))
             String stackTrace = sw.toString()
-            Pipeline.scriptNames.each { fileName, internalName -> stackTrace = stackTrace.replaceAll(internalName, fileName) }
+            Pipeline.scriptNames.each { fileName, internalName -> stackTrace = stackTrace.replaceAll(internalName+'(.groovy)?', fileName) }
             System.err.println(stackTrace)
             System.err.println()
             System.err.println "=" * Config.config.columns
