@@ -7,7 +7,7 @@ hello = {
 
 world = {
        exec """
-         echo "Using bam file $input.bam"
+         echo "world using bam file $input.bam in branch $branch.name"
        """
        exec "cat $input.bam > $output.txt"
 }
