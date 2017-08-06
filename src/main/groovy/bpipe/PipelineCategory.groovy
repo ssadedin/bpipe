@@ -44,8 +44,6 @@ import java.util.regex.Pattern;
 
 import org.codehaus.groovy.runtime.StackTraceUtils;
 
-import static Utils.*
-
 /**
  * A category that adds default Bpipe functions to closures
  * to enable basic operators such as the + operator to work.
