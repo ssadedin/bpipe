@@ -176,14 +176,17 @@ class Tail {
         // Try to also show the command information
         Command cmd = new CommandManager().readSavedCommand(commandId)
         
-        println " Command $commandId ".center(Config.config.columns, "=")
+        println " Command $cmd.name ($commandId) ".center(Config.config.columns, "=")
         
         int leftWidth = 10
         if(cmd) {
             println ""
             println "Command ".padRight(leftWidth) + " : " + cmd.command
             println "Exit Code ".padRight(leftWidth) + " : " + cmd.exitCode
-            println "Output ".padRight(leftWidth) + " : "
+            println "Config: " 
+            Utils.table(["Name","Value"], cmd.processedConfig.collect { k,v -> [k,v] }, indent:leftWidth)
+            
+            println "\nOutput ".padRight(leftWidth) + " : "
             println ""
             if(logEntry) {
                 println logEntry.content
