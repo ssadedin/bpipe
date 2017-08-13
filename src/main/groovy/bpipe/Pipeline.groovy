@@ -786,7 +786,8 @@ public class Pipeline implements ResourceRequestor {
                 commands: CommandManager.executedCommands
             ])
         
-        saveResultState(failed, allChecks, failedChecks) 
+        if(!Runner.opts.t)
+            saveResultState(failed, allChecks, failedChecks) 
         
         if(!failed) {
             summarizeOutputs(stages)
