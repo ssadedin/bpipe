@@ -94,6 +94,7 @@ class Tail {
         if(opts.c) {
             showCommandLog(logFile, opts.c)
         }
+        else
         if(opts.s) {
             showStageLog(logFile, opts.s)
         }
