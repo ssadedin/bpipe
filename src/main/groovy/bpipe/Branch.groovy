@@ -49,6 +49,8 @@ class Branch extends Expando implements Serializable {
     
     Branch parent = null
     
+    transient Closure dirChangeListener = null
+    
     Branch getTop() { // Causes compile to fail :-(
         if(parent == null) {
             return this
@@ -94,6 +96,12 @@ class Branch extends Expando implements Serializable {
         return parent.getFirstNonTrivialName()
     }
     
+    void setDir(String dir) {
+        this.dir = dir;
+        if(this.dirChangeListener != null)
+            this.dirChangeListener(dir)
+    }
+    
     void setProperty(String name, Object value) {
         
         if((name in PipelineCategory.closureNames.values()) && !(value instanceof Closure)) {
@@ -104,6 +112,15 @@ class Branch extends Expando implements Serializable {
             """.stripIndent())
         }
         else {
+            if(name == 'dirChangeListener') {
+                this.dirChangeListener = value
+            }            
+            else
+            if(name == 'dir') {
+                this.dir = value
+                if(this.dirChangeListener != null)
+                    this.dirChangeListener(value)
+            }
             super.setProperty(name,value)
         }
     }

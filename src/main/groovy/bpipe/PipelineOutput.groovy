@@ -356,7 +356,10 @@ class PipelineOutput {
         String segments = (branchSegment + [stageName] + extraSegments + [name]).collect { 
             FastUtils.strip(it,'.')
          }.join(".")
-        if(stageName.equals(this.output)) {
+         
+        File outputFile = new File(this.output)
+         
+        if(stageName.equals(outputFile.name)) {
            this.outputUsed = FastUtils.dotJoin(([this.defaultOutput] + branchSegment + [name]) as String[])
         }
         else
