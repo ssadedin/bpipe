@@ -306,7 +306,13 @@ class OutputMetaData implements Serializable {
         if(outputPath.startsWith("./"))
             outputPath = outputPath.substring(2)
         
-        return  new File(outputsDir,this.stageName + "." + outputPath.replace('/', "_").replace('\\','_') + ".properties")
+        int maxFileNameLength = Config.userConfig.get('maxFileNameLength',2048)
+        String pathElement = outputPath.replace('/', "_").replace('\\','_')
+        String fileName = this.stageName + "." + pathElement + ".properties"
+        if(fileName.size() > maxFileNameLength)
+            fileName = this.stageName + "." + pathElement.substring(0, maxFileNameLength-this.stageName.size()-60) + '.' + Utils.sha1(pathElement) + ".properties"
+            
+        return  new File(outputsDir,fileName)
     }
     
     /**
