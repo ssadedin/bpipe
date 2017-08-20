@@ -52,7 +52,7 @@ class OutputDirectoryWatcher extends Thread {
     
     WatchService watcher 
     
-    Map<Long,List<String>> timestamps = new TreeMap()
+    TreeMap<Long,List<String>> timestamps = new TreeMap()
     
     Map<String,Long> files = new HashMap()
     
@@ -61,6 +61,8 @@ class OutputDirectoryWatcher extends Thread {
     List<List> fileCreationListeners = []
     
     boolean stop = false
+    
+    long initTimeMs = -1L
     
     /**
      * Global registry of directory watchers - we keep it to 1 per directory by
@@ -77,6 +79,7 @@ class OutputDirectoryWatcher extends Thread {
     OutputDirectoryWatcher(Path directory) {
         this.directory = directory
         if(!Files.exists(directory))
+            
             directory.toFile().mkdirs()
             
         this.watcher = FileSystems.getDefault().newWatchService();
@@ -276,18 +279,25 @@ class OutputDirectoryWatcher extends Thread {
                 this.timestamps[timestamp] = [fileName]
             else
                 tsPaths.add(fileName)
+                
+            files[fileName] = timestamp
         }
+        
+        this.initTimeMs = System.currentTimeMillis()
     }
     
+    @CompileStatic
     long timestampOf(String fileName) {
         synchronized(timestamps) {
             return files[fileName]
         }
     }
     
+    @CompileStatic
     long maxTimestamp() {
         synchronized(timestamps) {
-            return timestamps.lastKey()
+            Long ts = this.timestamps.lastKey()
+            return ts == null ? -1L : ts.longValue()
         }
     }
     
@@ -310,6 +320,7 @@ class OutputDirectoryWatcher extends Thread {
     synchronized public static OutputDirectoryWatcher getDirectoryWatcher(String forDirectory) {
         OutputDirectoryWatcher watcher = watchers[forDirectory]
         if(watcher == null) {
+            log.info "Creating directory watcher for $forDirectory"
             watcher = new OutputDirectoryWatcher(forDirectory)
             watcher.setDaemon(true)
             watcher.start()
@@ -333,7 +344,8 @@ class OutputDirectoryWatcher extends Thread {
         // wait until we are notified about it
         // return 
         int rand = new Random().nextInt()
-        File tmpFile = new File(directory.toFile(),".bpipe.tmp-"+rand)
+        File directoryFile = directory.toFile()
+        File tmpFile = new File(directoryFile,".bpipe.tmp-"+rand)
         tmpFile.text = ""
         
         long startTimeMs = System.currentTimeMillis()
@@ -341,6 +353,7 @@ class OutputDirectoryWatcher extends Thread {
         synchronized(manualPollerWaitLock) {
             manualPollerWaitLock.notify()
         }
+        
         while(!created) {
             synchronized(this.timestamps) {
                 this.timestamps.wait(300)
@@ -359,7 +372,16 @@ class OutputDirectoryWatcher extends Thread {
         synchronized(this.timestamps) {
             String normalisedFileName = new File(fileName).name
             boolean created = this.createdFiles.contains(normalisedFileName)
-            return !created;
+            if(created)
+                return false
+                
+            Long ts = files[fileName]
+            if(ts == null) // If it existed previously then it would have been populated in 
+                           // the files index upon initialization
+                return false
+            
+            // If it got populated, but after initialization then it must not be pre-existing
+            return ts > this.initTimeMs
         }
     }
     
