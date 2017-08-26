@@ -25,6 +25,7 @@
 
 package bpipe
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 import groovy.xml.MarkupBuilder
 
@@ -69,6 +70,8 @@ class PipelineContext {
      * of threads for the command to use.
      */
     public final static String THREAD_LAZY_VALUE = '__bpipe_lazy_resource_threads__'
+    
+    public final static String MEMORY_LAZY_VALUE = '__bpipe_lazy_resource_memory__'
     
     /**
      * Create a Pipeline Context with the specified adidtional bound variables and
@@ -2217,6 +2220,11 @@ class PipelineContext {
             }
         }
         return THREAD_LAZY_VALUE
+    }
+    
+    @CompileStatic
+    String getMemory() {
+        return MEMORY_LAZY_VALUE
     }
     
     /**

@@ -93,6 +93,15 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         if(isUnlimited(cfg,threadResource))
             threadResource.amount = ResourceUnit.UNLIMITED
 
+        if(cfg.containsKey("memory")) {
+            ResourceUnit memoryResource = ResourceUnit.memory(cfg.memory)
+            String memoryValue = String.valueOf(Math.round(memoryResource.amount / 1024))
+            
+            log.info "Reserving ${memoryValue} of memory for command due to use of inline memory variable"
+            command.command = command.command.replaceAll(PipelineContext.MEMORY_LAZY_VALUE, memoryValue)
+            resources << memoryResource
+        }
+            
         resources.each { Concurrency.instance.acquire(it) }
 
         int threadCount = threadResource?threadResource.amount:1

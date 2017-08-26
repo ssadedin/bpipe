@@ -16,6 +16,10 @@ Implicit variables are special variables that are made available to your Bpipe p
 - branch - when a pipeline is running parallel branches, the name of the current branch is available in a *$branch* variable.
 - threads - a special variable that causes Bpipe to automatically estimate and assign a suitable
             number of threads to a command
+- memory - a special variable that takes on the value of the memory value assigned in
+           `bpipe.config`, and if referenced, also triggers Bpipe to throttle the command it
+           is referenced in according to resource limit set for the pipeline (eg: using 
+           `bpipe run -m`)
 
 The input and output variables are how Bpipe automatically connects tasks together to make a pipeline.  The default input to a stage is the output from the previous stage. In general you should always try to use these variables instead of hard coding file names into your commands.   Using these variables ensures that your tasks are reusable and can be joined together to form flexible pipelines.  
 
