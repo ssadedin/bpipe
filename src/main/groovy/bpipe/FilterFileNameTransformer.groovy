@@ -48,7 +48,7 @@ class FilterFileNameTransformer implements FileNameTransformer {
     boolean nameApplied = false
 
     @Override
-    public List<String> transform(List<String> inputs,  boolean applyName) {
+    public List<PipelineFile> transform(List<PipelineFile> inputs,  boolean applyName) {
         
         this.nameApplied = applyName
         
@@ -75,10 +75,10 @@ class FilterFileNameTransformer implements FileNameTransformer {
                 // However we're already adding the branch name, so the filename is already
                 // unique at this point, and we'd like to keep it short
                 // TODO: perhaps only leave out filter when it's chromosome ? not sure
-                return inp.replaceAll('\\.[^\\.]*$','.'+pipeline.name+/*'.'+ type+*/oldExt)
+                return inp.newName(inp.path.replaceAll('\\.[^\\.]*$','.'+pipeline.name+/*'.'+ type+*/oldExt))
             }
             else
-                return inp.replaceAll('(\\.[^\\.]*$)','.'+type+oldExt)
+                return inp.newName(inp.path.replaceAll('(\\.[^\\.]*$)','.'+type+oldExt))
         }
         
         log.info "Filtering using $types produces outputs $files"
