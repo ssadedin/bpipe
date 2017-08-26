@@ -20,6 +20,7 @@ class PipelineFile implements Serializable {
     
     PipelineFile(String path, StorageLayer storage) {
         assert path != null
+        assert storage != null
         this.path = path
         this.storage = storage
     }
