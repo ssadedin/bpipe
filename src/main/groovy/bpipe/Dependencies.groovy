@@ -164,7 +164,7 @@ class GraphEntry implements Serializable {
             if(p.canonicalPath != null)
                 return p.canonicalPath
                 
-            p.canonicalPath = Utils.canonicalFileFor(p.outputFile.path).path
+            p.canonicalPath = Utils.canonicalFileFor(String.valueOf(p.outputFile)).path
         }
     }
     
@@ -370,10 +370,14 @@ class Dependencies {
      * @return  true iff file is newer than all inputs, but older than all 
      *          non-up-to-date outputs
      */
-    List<String> getOutOfDate(List originalOutputs, def inputs) {
+    List<PipelineFile> getOutOfDate(List originalOutputs, def inputs) {
         
         List outputs = originalOutputs.unique(false)
+
+        assert inputs.every { it instanceof PipelineFile }
+        
         inputs = Utils.box(inputs)
+
         if(outputs.contains("align/NA12879.bam")) 
             println "debug output"
         
@@ -537,11 +541,11 @@ class Dependencies {
                 if(inps == null)
                     inps = []
 
-                outputMetaDataFiles = Utils.box(inps).collect { inputFile ->
+                outputMetaDataFiles = Utils.box(inps).collect { PipelineFile inputFile ->
                     String inputFileValue = String.valueOf(inputFile)
-                    OutputMetaData omd = new OutputMetaData(inputFileValue)
+                    OutputMetaData omd = new OutputMetaData(inputFile)
                     omd.timestamp = new File(inputFileValue).lastModified()
-                    omd.outputFile = new File(inputFile)
+                    omd.outputFile = inputFile.toPath()
                     omd
                 }
             }
@@ -582,14 +586,13 @@ class Dependencies {
         context.trackedOutputs.each { String id, Command command ->
             
             String cmd = command.command
-            List<String> outputs = command.outputs
+            List<PipelineFile> outputs = command.outputs
             for(def o in outputs) {
                 o = Utils.first(o)
                 if(!o)
                     continue
                     
                 OutputMetaData p = new OutputMetaData(o)
-                p.stageName = context.stageName
                 
                 // Check if the output file existed before the stage ran. If so, we should not save meta data, as it will already be there
                 // Note: saving two meta data files for the same output can produce a circular dependency (exception
@@ -606,38 +609,8 @@ class Dependencies {
                 if(p.exists()) {
                     p.read()
                 }
-                
-                String hash = Utils.sha1(cmd+"_"+o)
 
-                p.command = cmd
-                p.commandId = command.id
-                p.branchPath = branchPath
-                p.stageId = stage.id
-                
-                def allInputs = context.getResolvedInputs()
-                
-                log.info "Context " + context.hashCode() + " for stage " + context.stageName + " has resolved inputs " + allInputs
-                
-                p.inputs = allInputs?:[]
-                p.outputFile = new File(o)
-                p.basePath = Runner.runDirectory
-                p.canonicalPath = new File(o).canonicalPath
-                p.fingerprint = hash
-                
-                p.tools = context.documentation["tools"].collect { name, Tool tool -> tool.fullName + ":"+tool.version }.join(",")
-                
-                if(p.cleaned == null)
-                    p.cleaned = false
-                
-                p.preserve = (o in context.preservedOutputs)
-                
-                p.intermediate = context.intermediateOutputs.contains(o)
-                if(context.accompanyingOutputs.containsKey(o))
-                    p.accompanies = context.accompanyingOutputs[o]
-                    
-                p.startTimeMs = command.startTimeMs
-                p.createTimeMs = command.createTimeMs
-                p.stopTimeMs = command.stopTimeMs
+                p.setPropertiesFromCommand(o, command, stage, branchPath)
                 saveOutputMetaData(p)
             }
         }
@@ -991,7 +964,7 @@ class Dependencies {
                 if(newerInputs) {
                     p.upToDate = false
                     log.info "$p.outputFile is older than inputs " +
-                       (newerInputs.collect { it.outputFile.name + ' / ' + it.timestamp + ' / ' + it.maxTimestamp + ' vs ' + p.timestamp })
+                       (newerInputs.collect { it.outputFile.fileName + ' / ' + it.timestamp + ' / ' + it.maxTimestamp + ' vs ' + p.timestamp })
                     continue
                 }
                 
@@ -999,7 +972,7 @@ class Dependencies {
 
                 // The entry may still not be up to date if it
                 // does not exist and a downstream target needs to be updated
-                if(p.outputFile.exists()) {
+                if(Files.exists(p.outputFile)) {
                     p.upToDate = true
                     continue
                 }
@@ -1093,9 +1066,7 @@ class Dependencies {
                 if(!files)
                     return []
                 result.addAll(files.collectParallel { 
-                    OutputMetaData omd = new OutputMetaData(null)
-                    omd.read(it)
-                    return omd
+                    OutputMetaData.fromFile(it)
                 }.grep { it != null }.sort { it.timestamp })
             }
         }

@@ -1,5 +1,7 @@
 package bpipe
 
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.List
 import java.util.Map
 import java.util.regex.Pattern
@@ -8,6 +10,7 @@ import org.apache.ivy.plugins.report.LogReportOutputter
 import bpipe.executor.CommandExecutor
 import bpipe.executor.CommandTemplate
 import bpipe.executor.ThrottledDelegatingCommandExecutor
+import bpipe.storage.StorageLayer
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 
@@ -72,6 +75,8 @@ class PooledExecutor implements CommandExecutor {
     
     String hostCommandId
     
+    StorageLayer storage
+    
     /**
      * Triggers the waiting pooled executor to start running a command.
      * <p>
@@ -83,10 +88,12 @@ class PooledExecutor implements CommandExecutor {
         
         assert !(cfg instanceof ConfigObject)
         
-        File cmdScript = new File(".bpipe/commandtmp/$hostCommandId", ExecutorPool.POOLED_COMMAND_FILENAME + ".${currentCommandId}.sh")
-        File cmdScriptTmp = new File(".bpipe/commandtmp/$hostCommandId", ExecutorPool.POOLED_COMMAND_FILENAME + ".tmp")
+        Path cmdScript = storage.toPath(".bpipe/commandtmp/$hostCommandId/" + ExecutorPool.POOLED_COMMAND_FILENAME + ".${currentCommandId}.sh")
+        Path cmdScriptTmp = storage.toPath(".bpipe/commandtmp/$hostCommandId/" + ExecutorPool.POOLED_COMMAND_FILENAME + ".tmp")
         cmdScriptTmp.text = cmd.command
-        cmdScriptTmp.renameTo(cmdScript)
+        Files.move(cmdScriptTmp, cmdScript)
+        
+        log.info "Created pool executor command script $cmdScript using storage " + storage.class.name
         
         activeCommand = cmd
         state = CommandStatus.RUNNING 
@@ -130,11 +137,11 @@ class PooledExecutor implements CommandExecutor {
     }
     
     int waitForExitFile() {
-        File exitCodeFile = new File(".bpipe/commandtmp/$hostCommandId/${currentCommandId}.pool.exit")
+        Path exitCodeFile = storage.toPath(".bpipe/commandtmp/$hostCommandId/${currentCommandId}.pool.exit")
         
         // wait until result status file appears
         int loopIterations = 0
-        while(!exitCodeFile.exists()) {
+        while(!Files.exists(exitCodeFile)) {
             Thread.sleep(1000)
             
             // Every 15 seconds, check that our underlying job was not killed
@@ -148,11 +155,21 @@ class PooledExecutor implements CommandExecutor {
             ++loopIterations
         }
         Thread.sleep(100)
-        return exitCodeFile.text.trim().toInteger()
+        
+        int exitCode =  Utils.withRetries(3, message:"Read $exitCodeFile from ${storage.class.name}") {
+            String text = new String(Files.readAllBytes(exitCodeFile),"UTF-8")
+            println "Read [$text] from exit code file"
+            return text.trim().toInteger()
+        }
     }
     
     File getPoolFile() {
        new File(".bpipe/pools/${poolConfig.name}/${hostCommandId}") 
+    }
+    
+    void resolveStorage() {
+        String storageName = poolConfig.containsKey('storage') ? poolConfig.storage : null
+        this.storage = StorageLayer.create(storageName)
     }
     
     /**
@@ -443,6 +460,36 @@ class ExecutorPool {
         return pe
     }
     
+    void verify() {
+        int timeoutSecs = 30
+        Utils.waitWithTimeout(timeoutSecs*1000) {
+            availableExecutors.any { PooledExecutor pe ->
+                pe.executor.status() == CommandStatus.WAITING.name()
+            }
+        }.ok {
+            
+            // A little bit of time to start / run / fail
+            Thread.sleep(5000)
+            
+            int countRunning = availableExecutors.count { PooledExecutor pe ->
+                pe.executor.status() == CommandStatus.WAITING.name()
+            }            
+            
+            if(countRunning == availableExecutors.size())
+                return
+                
+            List<PooledExecutor> completeExecutors = availableExecutors.grep { PooledExecutor pe ->
+                pe.executor.status() == CommandStatus.COMPLETE.name()
+            }            
+            
+            if(!completeExecutors.isEmpty())
+                throw new RuntimeException("ERROR: ${completeExecutors} executors terminated with exit codes: " + completeExecutors*.waitFor()*.toString().join(","))
+            
+        }.timeout {
+            throw new RuntimeException("After waiting $timeoutSecs seconds, not all executors were running. Please check logs for details")
+        }
+    }
+    
     void processFinishedExecutor(PooledExecutor pe) {
         
         // Is there a waiting job that can run using this job?
@@ -615,6 +662,9 @@ class ExecutorPool {
         )
         
         pe.poolConfig = this.cfg.collectEntries { it }
+        pe.resolveStorage()
+        
+        
         
         cmd.command = new CommandTemplate().renderCommandTemplate("executor/pool-command.template.sh", 
             [
@@ -628,7 +678,8 @@ class ExecutorPool {
                 heartBeatFile: heartBeatFile,
                 bpipeHome: Runner.BPIPE_HOME,
                 HEARTBEAT_INTERVAL_SECONDS: HEARTBEAT_INTERVAL_SECONDS,
-                stopFile: stopFile
+                stopFile: stopFile,
+                bpipeUtilsShellCode: new File("${Runner.BPIPE_HOME}/bin/bpipe-utils.sh").text
             ])
             
         OutputLog outputLog = new ForwardingOutputLog()
@@ -749,12 +800,16 @@ class ExecutorPool {
      * 
      * @return  the number of distinct pools that were started
      */
-    static int startPools(ExecutorFactory executorFactory, ConfigObject userConfig, boolean persistentOnly=false) {
+    static int startPools(ExecutorFactory executorFactory, ConfigObject userConfig, boolean persistentOnly=false, boolean checkPools=false) {
         
         initPools(executorFactory, userConfig, persistentOnly)
         
         // Start all the pools
         pools*.value*.start()
+        
+        if(checkPools) {
+            pools*.value*.verify()
+        }
         
         return pools.size()
     }

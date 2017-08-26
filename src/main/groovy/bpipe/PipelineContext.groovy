@@ -40,6 +40,7 @@ import bpipe.executor.CommandExecutor
 import bpipe.executor.ProbeCommandExecutor
 import bpipe.storage.LocalFileSystemStorageLayer
 import bpipe.storage.StorageLayer
+import bpipe.storage.UnknownStoragePipelineFile
 
 /**
 * This context defines implicit functions and variables that are
@@ -272,7 +273,7 @@ class PipelineContext {
     * by use of the transform, filter or produce constructs.  If so, the actual output
     * is stored in the output property.
     */
-   private def defaultOutput
+   private String defaultOutput
    
    /**
     * Log that will write output from messages and commands executed
@@ -299,14 +300,14 @@ class PipelineContext {
                 // reflect that in the output file name.  The name should only be applied to files
                 // produced form the first stage in the sub-pipeline
                 if(pipeline.name && !pipeline.nameApplied) {
-                    initialDefaultOutput = Utils.first(this.@input) + "." + pipeline.name + "."+stageName
+                    initialDefaultOutput = String.valueOf(Utils.first(this.@input)) + "." + pipeline.name + "."+stageName
                     // Note we don't set pipeline.nameApplied = true here
                     // if it is really applied then that is flagged in PipelineContext
                     // Setting the applied flag here will stop it from being applied
                     // in the transform / filter constructs 
                 }
                 else {
-                    initialDefaultOutput = Utils.first(this.@input) + "." + stageName
+                    initialDefaultOutput = String.valueOf(Utils.first(this.@input)) + "." + stageName
                 }
             }
             
@@ -366,7 +367,7 @@ class PipelineContext {
            
            assert !(o instanceof List)
            
-           if(o instanceof PipelineFile)
+           if((o instanceof PipelineFile) && !(o instanceof UnknownStoragePipelineFile))
                return o
            else {
                String oString = String.valueOf(o)
@@ -387,16 +388,27 @@ class PipelineContext {
    }
    
    @CompileStatic
-   StorageLayer resolveStorageFor(String outputPath, Map config = null) {
+   StorageLayer resolveStorageFor(String outputPath, Map config = null, boolean strict=true) {
        
        if(config == null) {
            String commandId = pathToCommandId[outputPath]
+           if(commandId == null) {
+               if(!strict)
+                   return null
+           }
+           
            if(commandId == null)
-               return null
+               return new UnknownStoragePipelineFile(outputPath).storage
+//               throw new IllegalStateException("Could not identify command id for path $outputPath")
+               
            assert commandId != null
            Command command = trackedOutputs[commandId] 
            if(command == null)
-               return null
+               if(!strict)
+                   return null
+                   
+           assert command != null
+                  
            config = command.processedConfig
        }
        
@@ -716,9 +728,9 @@ class PipelineContext {
    }
    
    /**
-    * Input to a stage - can be either a single value or a list of values
+    * Input(s) to a pipeline stage 
     */
-   List input
+   List<PipelineFile> input
    
    /**
     * Wrapper that intercepts calls to resolve input properties. This is what
@@ -737,14 +749,20 @@ class PipelineContext {
     * are responsible for the branch are set here. This is used in certain cases
     * to set a different default output
     */
-   def branchInputs
+   List<PipelineFile> branchInputs
    
     /**
      * The inputs to be passed to the next stage of the pipeline.
      * Usually this is the same as context.output but it doesn't have
      * to be.
      */
-   def nextInputs
+   List<PipelineFile> nextInputs
+   
+   
+   @CompileStatic
+   List<PipelineFile> getRawInput() {
+       return this.@input
+   }
    
    /**
     * Return the value of the specified input<n> where n is the 
@@ -1256,16 +1274,17 @@ class PipelineContext {
     }
     
     @CompileStatic
-    void trackOutputIfNotAlreadyTracked(PipelineFile o, String command, String commandId) {
-        trackOutputIfNotAlreadyTracked(o.path, command, commandId)
+    void trackOutputIfNotAlreadyTracked(String o, String command, String commandId) { 
+        trackOutputIfNotAlreadyTracked(new PipelineFile(o, resolveStorageFor(o)), command, commandId)
     }
     
     @CompileStatic
-    void trackOutputIfNotAlreadyTracked(String o, String command, String commandId) {
-        if(!(o in this.referencedOutputs) && !(o in this.inferredOutputs) && !(o in this.allInferredOutputs)) {
+    void trackOutputIfNotAlreadyTracked(PipelineFile o, String command, String commandId) {
+        String path = o.path
+        if(!(path in this.referencedOutputs) && !(path in this.inferredOutputs) && !(path in this.allInferredOutputs)) {
              if(!this.trackedOutputs[commandId]) {
                  this.trackedOutputs[commandId] = new Command(id: commandId, outputs: [o], command: command)
-                 this.pathToCommandId[o] = commandId
+                 this.pathToCommandId[path] = commandId
              }
              else
                  this.trackedOutputs[commandId].outputs << o
@@ -1535,7 +1554,13 @@ class PipelineContext {
       for(String o in commandReferencedOutputs)
           pathToCommandId[o] = c.id
       
-      c.outputs = commandReferencedOutputs
+      Map configObject = c.getConfig(this.@input)
+      c.outputs = commandReferencedOutputs.collect { String o ->
+          
+//          assert c.processedConfig != null
+          new PipelineFile(o, resolveStorageFor(o, configObject))
+      }
+      assert c.outputs.every { it instanceof PipelineFile }
      
       c.exitCode = c.executor.waitFor()
       if(c.stopTimeMs <= 0)
@@ -1895,14 +1920,7 @@ class PipelineContext {
       // (prior to the async or exec command entry) and set as inferredOutputs until
       // the command is executed, and then we wipe them out
       List unconvertedOutputs = (this.inferredOutputs + this.referencedOutputs + this.internalOutputs).unique()
-      List<PipelineFile> checkOutputs = unconvertedOutputs.collect {  f ->
-          if(f instanceof PipelineFile)
-              return f
-          else {
-              String path = String.valueOf(f)
-              return new PipelineFile(path, resolveStorageFor(path, command.processedConfig))
-          }
-      }
+      List<PipelineFile> checkOutputs = convertToPipelineFiles(command, unconvertedOutputs)
       
       // TODO: here we need to resolve these to a storage layer
       
@@ -1910,7 +1928,7 @@ class PipelineContext {
 
       // We expect that the actual inputs will have been resolved by evaluation of the command to be executed 
       // before this method is invoked
-      def actualResolvedInputs = Utils.box(this.@inputWrapper?.resolvedInputs) + internalInputs
+      def actualResolvedInputs = convertToPipelineFiles(command, Utils.box(this.@inputWrapper?.resolvedInputs) + internalInputs)
 
       log.info "Checking actual resolved inputs $actualResolvedInputs"
       
@@ -1946,10 +1964,12 @@ class PipelineContext {
         if(toolsDiscovered)
             this.doc(["tools" : toolsDiscovered])
       }
-          
 
       command.branch = this.branch
-      command.outputs = checkOutputs.unique()
+      command.outputs = checkOutputs.unique() // TODO: unique { it.path } ?
+      
+      assert command.outputs.every { it instanceof PipelineFile }
+      
       command.stageId = this.pipelineStages[-1].id
       try {
           command = commandManager.start(stageName, command, config, Utils.box(this.input), 
@@ -1971,10 +1991,20 @@ class PipelineContext {
           
       trackedOutputs[command.id] = command              
       
-      
       List outputFilter = command.executor.ignorableOutputs
 
       return command
+    }
+    
+    List<PipelineFile> convertToPipelineFiles(Command command, List miscInputs) {
+        miscInputs.collect {  f ->
+            if(f instanceof PipelineFile)
+                return f
+            else {
+                String path = String.valueOf(f)
+                return new PipelineFile(path, resolveStorageFor(path, command.processedConfig))
+            }
+        }
     }
     
     /**
@@ -2045,7 +2075,7 @@ class PipelineContext {
       log.info message
       msg message
           
-      return new Command(executor:new ProbeCommandExecutor())
+      return new Command(command: command.command, executor:new ProbeCommandExecutor())
     }
     
     /**
@@ -2401,7 +2431,7 @@ class PipelineContext {
      * and those inferred by input variable file extensions.
      */
     List<String> getResolvedInputs() {
-       ((this.@inputWrapper?.resolvedInputs?:[]) + this.allResolvedInputs).flatten().unique() 
+       ((this.@inputWrapper?.resolvedInputs?:[]) + this.allResolvedInputs).flatten().collect { String.valueOf(it) }.unique()
     }
     
     /**

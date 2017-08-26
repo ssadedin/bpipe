@@ -1073,4 +1073,25 @@ class Utils {
             // ignore   
         }
     }
+
+    static Object withRetries(Map options=[:], int maxRetries, Closure action) {
+       int count = 0
+       long sleepTimeMs = 1000
+        while(true) {
+            try {
+                return action()
+            }
+            catch(Exception e) {
+                if(count > maxRetries)
+                    throw e
+            }
+            if(options.message != null)
+                log.info "Try $count of $maxRetries ($options.message) ..."
+            else
+                log.info "Try $count of $maxRetries ..."
+            Thread.sleep(sleepTimeMs)
+            ++count
+            sleepTimeMs = Math.min(10000,sleepTimeMs*2)
+        }
+    } 
 }

@@ -54,6 +54,11 @@ dependencies {
     compile group: 'org.apache.activemq', name: 'activemq-client', version: '5.14.5'
 
 
+    compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.0'
+
+    compile group: 'com.google.cloud', name: 'google-cloud-nio', version: '0.21.1-alpha'
+
+
     compile ('com.hazelcast:hazelcast-all:2.1.2') { transitive = false }
     testCompile group: 'junit', name: 'junit', version: '4.8.2'
 

@@ -7,7 +7,10 @@
 
 export POOL_ID="$cfg.name"
 
-source $bpipeHome/bin/bpipe-utils.sh
+${bpipeUtilsShellCode}
+
+mkdir -p "`dirname $stopFile`"
+mkdir -p .bpipe/commandtmp/$cmd.id
 
 (
 i=0
@@ -60,7 +63,8 @@ i=0
         ( 
          set +e
          bash -e $pooledCommandScript >> .bpipe/commandtmp/$cmd.id/pool.out 2>>.bpipe/commandtmp/$cmd.id/pool.err;
-         echo \$? > \$POOL_COMMAND_EXIT_FILE
+         echo \$? > \${POOL_COMMAND_EXIT_FILE}.tmp
+         mv \${POOL_COMMAND_EXIT_FILE}.tmp \${POOL_COMMAND_EXIT_FILE}
         ) &
         
         JOB_PID=\$!

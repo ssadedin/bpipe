@@ -26,6 +26,7 @@
 package bpipe
 
 import groovy.transform.CompileStatic
+import groovy.transform.TypeChecked
 import groovy.util.logging.Log
 
 import java.nio.file.DirectoryStream
@@ -214,11 +215,11 @@ class PipelineStage {
         
         // Cache the original inputs for reference when searching back up through 
         // the pipeline for inputs matching a pattern
-        this.originalInputs = this.context.@input
+        this.originalInputs = this.context.rawInput
         
         def pipeline = Pipeline.currentRuntimePipeline.get()
         
-        Dependencies.instance.checkFiles(context.@input.collect { new LocalPipelineFile(it) }, pipeline.aliases)
+        Dependencies.instance.checkFiles(context.rawInput, pipeline.aliases)
         
         copyContextBindingsToBody()
         
@@ -279,7 +280,7 @@ class PipelineStage {
             }
         }
         
-        log.info "Checking files: " + context.rawOutput
+        log.info "Checking files: " + context.rawOutput.collect { String.valueOf(it) + " ( " + it.storage.class.name + ")" }.join(",")
         try {
              Dependencies.instance.checkFiles(context.rawOutput, pipeline.aliases, "output")
  
@@ -385,8 +386,9 @@ class PipelineStage {
         }
     }
     
+    @TypeChecked
     void setContextNextInputs() {
-        def nextInputs = determineForwardedFiles()
+        List<PipelineFile> nextInputs = determineForwardedFiles()
 
         if(!this.context.rawOutput) {
             log.info "No explicit output on stage ${this.hashCode()} context ${this.context.hashCode()} so output is nextInputs $nextInputs"
@@ -438,10 +440,11 @@ class PipelineStage {
      *     from the previous stage, assuming that this stage was just
      *     producing "side effects"
      *
-     * @return String|List<String>    a list of files to send to the next pipeline stage
-     *                                 as default inputs
+     * @return a list of files to send to the next pipeline stage
+     *         as default inputs
      */
-    private determineForwardedFiles() {
+    @CompileStatic
+    private List<PipelineFile> determineForwardedFiles() {
         
         this.context.resolveOutputs()
         
@@ -449,24 +452,18 @@ class PipelineStage {
         // set outputs
         if(!context.nextInputs && this.context.rawOutput != null) {
             log.info("Inferring nextInputs from explicit output as ${context.rawOutput}")
-            context.nextInputs = this.context.rawOutput.collect { it.toString() }
+            context.nextInputs = this.context.rawOutput
         }
         else {
             log.info "Inputs are NOT being inferred from context.output (context.nextInputs=$context.nextInputs)"
         }
 
-        def nextInputs = context.nextInputs
+        List<PipelineFile> nextInputs = context.nextInputs
         if(!nextInputs) {
             log.info("Inferring nextInputs from inputs $context.@input")
-            nextInputs = this.context.@input
+            nextInputs = this.context.rawInput
         }
         
-        if(nextInputs instanceof PipelineOutput) {
-            nextInputs = nextInputs.toString()
-            if(nextInputs == "null")
-                nextInputs = null
-        }
-            
         return nextInputs
     }
     
