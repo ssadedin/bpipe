@@ -33,6 +33,6 @@ package bpipe
  */
 interface FileNameTransformer {
     
-    List<String> transform(List<String> inputs, boolean applyName)
+    List<PipelineFile> transform(List<PipelineFile> inputs, boolean applyName)
 
 }
