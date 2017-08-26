@@ -747,7 +747,7 @@ class PipelineCategory {
             new PipelineContext(null, parent.stages, joiners, new Branch(name:'all'))
         def mergedOutputs = finalStages.collect { s ->
             Utils.box(s?.context?.nextInputs ?: s?.context?.@output) 
-        }.sum().collect { Utils.canonicalFileFor(it).path }.unique()
+        }.sum().collect { it.path.normalize() }.unique()
         
         log.info "Last merged outputs are $mergedOutputs"
         mergedContext.setRawOutput(mergedOutputs)

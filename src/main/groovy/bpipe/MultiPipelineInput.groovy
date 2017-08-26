@@ -41,8 +41,9 @@ import groovy.util.logging.Log;
 @Log
 class MultiPipelineInput extends PipelineInput implements Iterable {
     
-    MultiPipelineInput(def input, List<PipelineStage> stages, Aliases aliases) {
+    MultiPipelineInput(List<PipelineFile> input, List<PipelineStage> stages, Aliases aliases) {
 		super(input,stages, aliases)	
+        assert input.every { it instanceof PipelineFile }
 	}
 	
 	/**
@@ -51,14 +52,15 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
     @Override
 	public String mapToCommandValue(def values) {
 		def result = Utils.box(values)
+        assert result.every { it instanceof PipelineFile }
         addResolvedInputs(result)
         return result.collect { this.aliases[String.valueOf(it)] }.join(' ')
 	}
 
 	String toString() {
        List boxed = Utils.box(super.@input).unique()
-       for(String i in boxed) {
-           if(!this.resolvedInputs.contains(i))
+       for(PipelineFile i in boxed) {
+           if(!this.resolvedInputs.any { it.path == i.path })
                this.resolvedInputs.add(i)
        }
        addFilterExts(boxed)
@@ -97,7 +99,7 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
      * @return  string containing each matching input prefixed by the flag and a space
      */
     public String withFlag(String flag) {
-       List boxed = Utils.box(super.@input).unique()
+       List<PipelineFile> boxed = Utils.box(super.@input).unique { it.path }
        addResolvedInputs(boxed)
        if(flag.endsWith("=")) {
            return boxed.collect { "${flag}${it}" }.join(" ") 
@@ -108,11 +110,11 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
     
 	@Override
 	public Iterator iterator() {
-		return Utils.box(super.@input).listIterator()
+		return super.@input.listIterator()
 	}
     
     public int size() {
-        return Utils.box(super.@input).size()
+        return super.@input.size()
     }
     
     String asQuotedList() {

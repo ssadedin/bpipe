@@ -452,7 +452,7 @@ class PipelineContext {
     * To get a complete list of resolved inputs, call the #getResolvedInputs
     * method.
     */
-   def allResolvedInputs = []
+   List<PipelineFile> allResolvedInputs = []
    
    /**
     * The default output property reference.  Actually returns a quasi
@@ -1028,10 +1028,10 @@ class PipelineContext {
         
         def boxed = Utils.box(this.@input)
             
-        this.currentFilter = (boxed + Utils.box(this.pipelineStages[-1].originalInputs)).grep {
-             it.indexOf('.')>=0  // only consider file names that actually contain periods
-        }.collect { 
-            Utils.ext(it) // For each such file, return the file extension
+        this.currentFilter = (boxed + Utils.box(this.pipelineStages[-1].originalInputs)).grep { PipelineFile f ->
+             f.path.indexOf('.')>=0  // only consider file names that actually contain periods
+        }.collect { PipelineFile f ->
+            Utils.ext(f.path) // For each such file, return the file extension
         }
         
         this.currentFileNameTransform = new FilterFileNameTransformer(types: types, exts: currentFilter)
@@ -2271,7 +2271,7 @@ class PipelineContext {
     * @param body
     * @return
     */
-   def withInputs(List newInputs, Closure body) {
+   def withInputs(List<PipelineFile> newInputs, Closure body) {
        
        def oldInputs = this.@input
        this.@input  = newInputs
@@ -2431,7 +2431,9 @@ class PipelineContext {
      * and those inferred by input variable file extensions.
      */
     List<String> getResolvedInputs() {
-       ((this.@inputWrapper?.resolvedInputs?:[]) + this.allResolvedInputs).flatten().collect { String.valueOf(it) }.unique()
+        List wrapperResolved = this.@inputWrapper?.resolvedInputs?:[]
+        
+       (wrapperResolved + this.allResolvedInputs).flatten().unique { it.path }
     }
     
     /**

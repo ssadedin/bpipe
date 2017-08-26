@@ -55,7 +55,7 @@ class PipelineInput {
     /**
      * Raw inputs
      */
-    def input
+    List<PipelineFile> input
     
     /**
      * The default value is returned when toString() is called.
@@ -75,7 +75,7 @@ class PipelineInput {
      * List of inputs actually resolved by interception of $input.x 
      * style property references
      */
-    List<String> resolvedInputs = []
+    List<PipelineFile> resolvedInputs = []
     
     List<PipelineStage> stages 
     
@@ -104,10 +104,13 @@ class PipelineInput {
      */
     Aliases aliases
     
-    PipelineInput(def input, List<PipelineStage> stages, Aliases aliases) {
+    PipelineInput(List<PipelineFile> input, List<PipelineStage> stages, Aliases aliases) {
         this.stages = stages;
-        this.input = Utils.box(input).collect { String.valueOf(it) }
+        this.input = input
         this.aliases = aliases
+        
+        if(!input.every { it instanceof PipelineFile })
+            throw new Exception("bad input")
     }
     
     String toString() {
@@ -117,25 +120,27 @@ class PipelineInput {
         if(defaultValueIndex>=boxed.size())
            throw new PipelineError("Expected ${defaultValueIndex+1} or more inputs but fewer provided")
             
-        String resolvedValue = boxed[defaultValueIndex]
-        if(!this.resolvedInputs.contains(resolvedValue))
+        PipelineFile resolvedValue = boxed[defaultValueIndex]
+        if(!this.resolvedInputs.any { it.path == resolvedValue.path })
             this.resolvedInputs.add(resolvedValue)
         return this.aliases[String.valueOf(resolvedValue)]
+            
+        return String.valueOf(resolvedValue);
     }
     
-    void addResolvedInputs(List objs) {
+    void addResolvedInputs(List<PipelineFile> objs) {
         
-        List<String> stringified = objs.collect { String.valueOf(it) }
+        assert objs.every { it instanceof PipelineFile }
         
-        for(inp in stringified) {
-            if(!this.resolvedInputs.contains(inp))
+        for(inp in objs) {
+            if(!this.resolvedInputs.any { it.path == inp.path })
                 this.resolvedInputs.add(inp)
         }
         
         if(parent)
-            parent.addResolvedInputs(stringified)
+            parent.addResolvedInputs(objs)
             
-        addFilterExts(stringified)
+        addFilterExts(objs)
     }
 	
 	String getPrefix() {
@@ -394,12 +399,12 @@ class PipelineInput {
         }
     }
     
-    void addFilterExts(List objs) {
+    void addFilterExts(List<PipelineFile> files) {
         // If a filter is in operation and the file extension of the input was not already
         // resolved by the filter, add it here since this input could now be the input targeted
         // for filtering (the user may specify it using an $output.<ext> reference
         if(currentFilter) {
-          objs.collect { it.substring(it.lastIndexOf('.')+1) }.each {
+          files.collect { it.path.substring(it.lastIndexOf('.')+1) }.each {
               if(!currentFilter.contains(it)) {
                   currentFilter.add(it)
               }
