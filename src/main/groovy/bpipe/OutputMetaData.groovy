@@ -71,7 +71,7 @@ class OutputMetaData implements Serializable {
     
     boolean cleaned = false
     
-    File outputFile
+    transient Path outputFile
     
     String outputPath
     
@@ -123,8 +123,11 @@ class OutputMetaData implements Serializable {
      */
     long maxTimestamp
     
-    OutputMetaData(String outputFileName) {
-        this.outputPath = outputFileName
+    private OutputMetaData() {
+    }
+    
+    OutputMetaData(PipelineFile outputFile) {
+        this.outputPath = outputFile.path
     }
     
     /**
@@ -136,6 +139,45 @@ class OutputMetaData implements Serializable {
         "maxTimeStamp",
         "class"
     ] as Set
+    
+    @CompileStatic
+    void setPropertiesFromCommand(PipelineFile o, Command command, PipelineStage stage, String branchPath) {
+        
+        this.command = command.command
+        this.commandId = command.id
+        this.branchPath = branchPath
+        this.stageId = stage.id
+        
+        PipelineContext context = stage.context
+        
+        this.stageName = context.stageName
+                
+        List<String> allInputs = stage.context.getResolvedInputs()
+        log.info "Context " + context.hashCode() + " for stage " + context.stageName + " has resolved inputs " + allInputs
+        
+        this.inputs = allInputs?:(List<String>)[]
+        this.outputFile = o.toPath()
+        this.basePath = Runner.runDirectory
+        this.canonicalPath = o.toPath().toAbsolutePath().normalize()
+        this.fingerprint = Utils.sha1(command.command+"_"+o)
+        
+        
+        List<Tool> resolvedTools = (List<Tool>)context.documentation["tools"].collect { Map.Entry<String,Tool> toolEntry -> toolEntry.value }
+        this.tools = resolvedTools.collect { Tool tool -> tool.fullName + ":"+tool.version }.join(",")
+               
+        if(this.cleaned == null)
+            this.cleaned = false
+                
+        this.preserve = (o in context.preservedOutputs)
+                
+        this.intermediate = context.intermediateOutputs.contains(o)
+        if(context.accompanyingOutputs.containsKey(o))
+            this.accompanies = context.accompanyingOutputs[o]
+                    
+        this.startTimeMs = command.startTimeMs
+        this.createTimeMs = command.createTimeMs
+        this.stopTimeMs = command.stopTimeMs
+    }
     
     /**
      * Store the given OutputMetaData file as an output meta data file
@@ -155,14 +197,14 @@ class OutputMetaData implements Serializable {
         
         p.cleaned = String.valueOf(cleaned)
         
-        if(p.outputFile instanceof File)
-            p.outputFile = outputFile.path
+        if(p.outputFile instanceof Path)
+            p.outputFile = p.outputFile.fileName
             
         // TODO: the whole point of storing the timestampe is to get better resolution than
         // is offered by the file system. So overwriting this here does not make
         // make sense
-        if(outputFile.exists())    
-            p.timestamp = String.valueOf(outputFile.lastModified())
+        if(Files.exists(outputFile))
+            p.timestamp = String.valueOf(Files.getLastModifiedTime(outputFile).toMillis())
         else
         if(!timestamp)
             p.timestamp = "0"
@@ -204,16 +246,17 @@ class OutputMetaData implements Serializable {
             return 
         }
             
-        this.outputFile = new File(p.outputFile)
+        // TODO: create using correct storage
+        this.outputFile = new File(p.outputFile).toPath() 
         
         // Normalizing the slashes in the path is necessary for Cygwin compatibility
-        this.outputPath = outputFile.path.replace('\\',"/")
+        this.outputPath = String.valueOf(outputFile).replace('\\',"/")
         
         // If the file exists then we should get the timestamp from there
         // Otherwise just use the timestamp recorded
         // todo: should use the LATER of these two!
-        if(this.outputFile.exists())
-            this.timestamp = outputFile.lastModified() // todo: performance
+        if(Files.exists(this.outputFile))
+            this.timestamp = Files.getLastModifiedTime(outputFile).toMillis() // todo: performance
         else {
             if(p.timestamp != null) {
                 this.timestamp = Long.parseLong(p.timestamp)
@@ -349,4 +392,11 @@ class OutputMetaData implements Serializable {
             this.canonicalInputs = this.inputs.collect { Utils.canonicalFileFor(it).path }
         return this.canonicalInputs
     } 
+
+    @CompileStatic
+    static OutputMetaData fromFile(File file) {
+       OutputMetaData omd = new OutputMetaData()
+       omd.read(file) 
+       return omd
+    }
 }

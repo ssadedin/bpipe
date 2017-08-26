@@ -32,9 +32,12 @@ package bpipe;
  * artefacts.
  */
 class CommandFailedException extends PipelineError {
+    
+    Command command;
 
-    public CommandFailedException(String arg0, PipelineContext ctx) {
+    public CommandFailedException(String arg0, PipelineContext ctx, Command command) {
         super(arg0, ctx);
+        this.command = command;
     }
 
     public CommandFailedException(Throwable arg0) {

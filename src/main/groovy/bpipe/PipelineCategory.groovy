@@ -184,7 +184,7 @@ class PipelineCategory {
             }
                 
             log.info "Checking inputs for next stage:  $nextInputs"
-            Dependencies.instance.checkFiles(nextInputs.collect { new LocalPipelineFile(it) }, pipeline.aliases)
+            Dependencies.instance.checkFiles(nextInputs, pipeline.aliases)
                 
             currentStage = new PipelineStage(pipeline.createContext(), other)
             currentStage.context.@input = nextInputs
