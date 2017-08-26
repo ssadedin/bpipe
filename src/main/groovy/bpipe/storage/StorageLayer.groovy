@@ -12,6 +12,9 @@ abstract class StorageLayer implements Serializable {
     
     static StorageLayer create(String name) {
         
+        if(name == null)
+            return new LocalFileSystemStorageLayer()
+        
         ConfigObject storageConfig = 
             bpipe.Config.userConfig['filesystems']
                         .get(name, null)

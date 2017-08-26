@@ -24,13 +24,23 @@
  */
 package bpipe
 
+import java.io.Reader
+import java.util.List
+import java.util.Map
+
+import groovy.lang.Closure
+import groovy.util.ConfigObject
 import groovy.util.logging.Log
 
 /**
  * Data structure to track information about each tool in the tool database
  * @author ssadedin
  */
+<<<<<<< HEAD
 @Log
+=======
+@Log 
+>>>>>>> google cloud WIP - support for input files stored on Google Cloud
 class Tool {
     
     Tool(String name, ConfigObject obj) {
@@ -247,11 +257,15 @@ class Tool {
     }
     
     def ask(String msg, Closure c) {
+<<<<<<< HEAD
         
+=======
+>>>>>>> google cloud WIP - support for input files stored on Google Cloud
         if(stdin == null)
             stdin = System.in.newReader()
             
         print msg + "? (y/n) "
+<<<<<<< HEAD
         
         if(System.properties['bpipe.quiet']) {
             println " y (auto-answered)"
@@ -263,6 +277,12 @@ class Tool {
                 c()
             }
         }
+=======
+        String answer = stdin.readLine().trim()
+        if(answer == "y") {
+            c()
+        }
+>>>>>>> google cloud WIP - support for input files stored on Google Cloud
     }
     
     int sh(String script, Map env = [:]) {
@@ -308,7 +328,11 @@ class Tool {
         return ("installExe" in config) && ("conda" in config.installExe.split(",")*.trim())
     }
      
+<<<<<<< HEAD
     List<String> install(String requestedVersion='*') {
+=======
+    List<String> install() {
+>>>>>>> google cloud WIP - support for input files stored on Google Cloud
         
         File dir = new File(Config.config.script).absoluteFile.parentFile
         
@@ -348,7 +372,11 @@ class Tool {
             }
             
             if(isPipPackage()) {
+<<<<<<< HEAD
                 def pipErrors =  installPipPackage(requestedVersion)
+=======
+                def pipErrors =  installPipPackage()
+>>>>>>> google cloud WIP - support for input files stored on Google Cloud
                 
                 // If pip fails but the package could possibly be installed by Conda,
                 // then try that.
@@ -439,7 +467,11 @@ class Tool {
         */
     }
     
+<<<<<<< HEAD
     List<String> installPipPackage(String requestedVersion='*') {
+=======
+    List<String> installPipPackage() {
+>>>>>>> google cloud WIP - support for input files stored on Google Cloud
         
         String python = Utils.resolveExe("python",null)
         String pip = "pip"
@@ -448,6 +480,7 @@ class Tool {
         
         println "Installing  python package via pip: $name"
         
+<<<<<<< HEAD
 		if(requestedVersion != '*')
             println "Requested version = $requestedVersion"
         
@@ -455,6 +488,9 @@ class Tool {
         
         int exitCode = sh """$pip install -q $name $versionSuffix"""
             
+=======
+        int exitCode = sh """$pip install -q $name"""
+>>>>>>> google cloud WIP - support for input files stored on Google Cloud
         if(exitCode != 0)
             return ["Python package $name installation failed, please check for errors in output"]
         else
@@ -492,6 +528,7 @@ local({r <- getOption("repos")
 })
 
 source("https://bioconductor.org/biocLite.R")
+<<<<<<< HEAD
 biocLite("$name", suppressUpdates=TRUE, ask=FALSE)
 !
 """
@@ -499,8 +536,19 @@ biocLite("$name", suppressUpdates=TRUE, ask=FALSE)
             println "Installation of R package $name appears to have failed."
             return ["R package installation failed, please check for errors in output"]
         }
+=======
+biocLite("$name")
+!
+"""
+        if(exitCode != 0)
+            return ["R package installation failed, please check for errors in output"]
+>>>>>>> google cloud WIP - support for input files stored on Google Cloud
         else
             return []
     }
 }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> google cloud WIP - support for input files stored on Google Cloud

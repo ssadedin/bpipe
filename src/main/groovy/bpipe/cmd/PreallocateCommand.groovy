@@ -68,8 +68,23 @@ class PreallocateCommand extends BpipeCommand {
         
         out.println "Starting resources in preallocate configuration ... \n"
         
-        int poolsStarted = ExecutorPool.startPools(ExecutorFactory.instance, Config.userConfig, true)        
-        
+        try {
+            this.startPools(out)
+        }
+        catch(Exception e) {
+            out.println """
+                An error occurred starting one or more of the preallocated executors. The following messages may help to understand the problem:
+                
+                ${e.message}
+            """.stripIndent()
+        }
+      
+        System.exit(0)
+    }
+    
+    void startPools(Writer out) {
+        int poolsStarted = ExecutorPool.startPools(ExecutorFactory.instance, Config.userConfig, true, true)
+            
         if(poolsStarted == 0) {
             out.println "Although a preallocate section was specified, no preallocated jobs were started."
             out.println ""
@@ -78,9 +93,7 @@ class PreallocateCommand extends BpipeCommand {
             out.println ""
             System.exit(0)
         }
-  
         out.println "${poolsStarted} persistent pools were started."
         out.println ""
-        System.exit(0)
     }
 }

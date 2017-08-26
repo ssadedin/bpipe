@@ -25,6 +25,9 @@
 package bpipe
 
 import groovy.util.logging.Log;
+
+import java.nio.file.Path
+
 import bpipe.executor.CommandExecutor
 import bpipe.executor.ProbeCommandExecutor;;
 
@@ -63,7 +66,7 @@ class Command implements Serializable {
      */
     String command
     
-    List outputs = []
+    List<PipelineFile> outputs = []
     
     CommandExecutor executor
     
@@ -105,7 +108,7 @@ class Command implements Serializable {
      */
     private Map cfg
     
-    Map getConfig(List inputs) {
+    Map getConfig(List<PipelineFile> inputs) {
         if(cfg != null)
             return cfg
             
@@ -132,7 +135,7 @@ class Command implements Serializable {
         this.cfg = rawCfg.clone()
         
         // Resolve inputs to files
-        List fileInputs = inputs == null ? [] : inputs.collect { new File(it) }
+        List<Path> fileInputs = inputs == null ? [] : inputs.collect { it.toPath() }
         
         // Execute any executable properties that are closures
         rawCfg.each { key, value ->
