@@ -524,6 +524,20 @@ class Concurrency {
        log.info "Thread " + Thread.currentThread().id + " releasing $resourceUnit.amount $resourceUnit.key"
    }
    
+   void setLimit(String resourceName, String value) {
+       if(resourceName == "memory") {
+           ResourceUnit memoryResource = ResourceUnit.memory(value)
+           setLimit("memory", memoryResource.amount)
+       }
+       else {
+           if(value.isInteger())
+               setLimit(resourceName, value.toInteger())
+           else 
+               throw new PipelineError("Resource ${resourceName} limit could not be parsed as an integer and is not a known non-integer resource type")
+       }
+   }
+   
+   
    void setLimit(String resourceName, int amount) {
        this.resourceAllocations.put(resourceName, new Semaphore(amount))
    }
