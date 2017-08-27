@@ -128,7 +128,7 @@ class Checker {
             checkDetails.result = true
             
             EventManager.instance.signal(PipelineEvent.CHECK_SUCCEEDED, 
-                "Check '${check.name?:''}' for stage $pipelineStage.displayName passed", 
+                "Check ${check.name? /'$check.name'/:''} for stage $pipelineStage.displayName passed", 
                 checkDetails
             ) 
             
@@ -143,7 +143,7 @@ class Checker {
             
             checkDetails.result = false
             EventManager.instance.signal(PipelineEvent.CHECK_FAILED, 
-                "Check '${check.name?:''}' for stage $pipelineStage.displayName failed", 
+                "Check ${check.name? /'$check.name'/:''} for stage $pipelineStage.displayName failed", 
                 checkDetails
             )             
         }
