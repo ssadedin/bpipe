@@ -93,14 +93,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         if(isUnlimited(cfg,threadResource))
             threadResource.amount = ResourceUnit.UNLIMITED
 
-        if(cfg.containsKey("memory")) {
-            ResourceUnit memoryResource = ResourceUnit.memory(cfg.memory)
-            String memoryValue = String.valueOf(Math.round(memoryResource.amount / 1024))
-            
-            log.info "Reserving ${memoryValue} of memory for command due to use of inline memory variable"
-            command.command = command.command.replaceAll(PipelineContext.MEMORY_LAZY_VALUE, memoryValue)
-            resources << memoryResource
-        }
+        addMemoryResources(cfg, cmd)
             
         resources.each { Concurrency.instance.acquire(it) }
 
@@ -137,6 +130,29 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         }
         
         this.command.save()
+    }
+    
+    @CompileStatic
+    void addMemoryResources(Map cfg, Command cmd) {
+        if(!cfg.containsKey("memory")) 
+            return
+            
+        ResourceUnit memoryResource = ResourceUnit.memory(cfg.memory)
+        int memoryAmountMB = memoryResource.amount
+            
+        if(cfg.containsKey("memoryMargin")) {
+            ResourceUnit memoryMargin = ResourceUnit.memory(cfg.memoryMargin)
+            memoryAmountMB = Math.max((int)(memoryAmountMB/2),(int)(memoryAmountMB-memoryMargin.amount))
+            log.info "After applying memory margin of ${memoryMargin}MB, actual memory available is ${memoryAmountMB}MB"
+        }
+            
+        // Actual memory is passed to pipelines in GB
+        int memoryGigs = (int)Math.round((double)(memoryAmountMB / 1024))
+        String memoryValue = String.valueOf(memoryGigs)
+            
+        log.info "Reserving ${memoryValue} of memory for command due to presence of memory config"
+        command.command = command.command.replaceAll(PipelineContext.MEMORY_LAZY_VALUE, memoryValue)
+        resources << memoryResource
     }
     
     @CompileStatic
