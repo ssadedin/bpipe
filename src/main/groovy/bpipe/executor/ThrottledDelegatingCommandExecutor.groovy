@@ -7,6 +7,7 @@ import bpipe.Concurrency;
 import bpipe.PipelineContext;
 import bpipe.ResourceUnit;
 import bpipe.RescheduleResult
+import bpipe.PipelineError
 
 /**
  * Wraps another CommandExecutor and adds concurrency control to it
@@ -134,8 +135,11 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
     
     @CompileStatic
     void addMemoryResources(Map cfg, Command cmd) {
-        if(!cfg.containsKey("memory")) 
+        
+        if(!cfg.containsKey("memory")) {
+            checkIfMemoryInCommand()
             return
+        }
             
         ResourceUnit memoryResource = ResourceUnit.memory(cfg.memory)
         int memoryAmountMB = memoryResource.amount
@@ -153,6 +157,19 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         log.info "Reserving ${memoryValue} of memory for command due to presence of memory config"
         command.command = command.command.replaceAll(PipelineContext.MEMORY_LAZY_VALUE, memoryValue)
         resources << memoryResource
+    }
+    
+    /**
+     * Throws exception with informative error message if $memory was referenced in a command
+     * but was not defined anywhere in configuration.
+     * <p>
+     * <i>Note</i>: this was made a separate method because of IllegalAccessError with @CompileStatic
+     * in addMemoryResources
+     */
+    private void checkIfMemoryInCommand() {
+        if(command.command.contains(PipelineContext.MEMORY_LAZY_VALUE)) 
+            throw new PipelineError("Command in stage $command.name:\n\n" + command.command.replaceAll(PipelineContext.MEMORY_LAZY_VALUE,'\\${memory}') + "\n\ncontains reference to \$memory variable, but no memory is specified for this command in the configuration.\n\n" + 
+                                    "Please add an entry for memory to the configuration of this command in your bpipe.config file")
     }
     
     @CompileStatic
