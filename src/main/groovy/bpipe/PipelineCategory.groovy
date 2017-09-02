@@ -45,6 +45,7 @@ import java.util.regex.Pattern;
 import org.codehaus.groovy.runtime.StackTraceUtils;
 
 import bpipe.storage.LocalPipelineFile
+import bpipe.storage.UnknownStoragePipelineFile
 
 /**
  * A category that adds default Bpipe functions to closures
@@ -389,9 +390,9 @@ class PipelineCategory {
      * @param chr
      * @return a list of inputs to use for the child, or null if the child should not execute
      */
-    static def initChildFromChr(Pipeline child, Chr chr, def input) {
+    static def initChildFromChr(Pipeline child, Chr chr, List<PipelineFile> input) {
         
-        def childInputs = input 
+        List<PipelineFile> childInputs = input 
         if(childInputs == null)
             childInputs = []
         
@@ -402,7 +403,7 @@ class PipelineCategory {
         if(filterInputs == "auto") { 
             if(Config.userConfig.autoFilter!="false") {
                 // log.info "Checking for auto filter - inputs matching chr pattern are: " + Utils.box(input).grep { it.matches(/.*\.chr[1-9A-Z_]*\..*$/) }
-                filterInputs = Utils.box(input).any { it.matches(/.*\.chr[1-9A-Z_]*\..*$/) }
+                filterInputs = input.any { it.path.matches(/.*\.chr[1-9A-Z_]*\..*$/) }
             }
             else
                 filterInputs = false
@@ -411,7 +412,7 @@ class PipelineCategory {
         if(filterInputs && (chr instanceof Chr)) {
             log.info "Filtering child pipeline inputs on name $chr.name"
                                 
-            childInputs  = Utils.box(input).grep { i -> (i.indexOf('.' + chr.name + '.')>0) }
+            childInputs  = input.grep { i -> (i.path.indexOf('.' + chr.name + '.')>0) }
                                     
             // Since the name of the region is already in the file path, it does not need
             // to be applied again to output files
@@ -491,6 +492,8 @@ class PipelineCategory {
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
         
         def multiplyImplementation = { input ->
+            
+            assert input.every { it instanceof PipelineFile }
             
             log.info "multiply on input $input with pattern $pattern"
             
@@ -591,7 +594,9 @@ class PipelineCategory {
                                 
                         // Need to set this without redirection to the output folder because otherwise
                         dummyPriorContext.setRawOutput(files)
-                        dummyPriorContext.@input = files
+                        dummyPriorContext.@input = files.collect { 
+                            it instanceof PipelineFile ? it : new UnknownStoragePipelineFile(it)
+                        }
                                 
                         log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
                         child.addStage(dummyPriorStage)
