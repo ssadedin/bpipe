@@ -24,6 +24,8 @@
  */
 package bpipe
 
+import java.security.cert.CertPath
+
 import groovy.util.logging.Log;
 
 /**
@@ -205,7 +207,7 @@ class TransformOperation {
     /**
      * Compute a list of expected output file names from this transform's input files (files attribute)
      */
-    List<String> computeOutputFiles(String applyBranchName, String stageName, List<String> fromPatterns = ['\\.[^\\.]*$'], List<String> providedToPatterns = null) {
+    List<PipelineFile> computeOutputFiles(String applyBranchName, String stageName, List<String> fromPatterns = ['\\.[^\\.]*$'], List<String> providedToPatterns = null) {
         Map extensionCounts = [:]
         for(def e in exts) {
             extensionCounts[e] = 0
@@ -236,7 +238,7 @@ class TransformOperation {
             int fromPatternIndex = count%fromPatterns.size()
             int fileIndex = (providedToPatterns == null) ? extensionCounts[extension] % files.size() : fromPatternIndex
             
-            String inp = this.files[fileIndex]
+            PipelineFile inp = this.files[fileIndex]
             String fromPattern = fromPatterns[fromPatternIndex]
             
             extensionCounts[extension]++
@@ -247,28 +249,28 @@ class TransformOperation {
                    toPattern = '.' + toPattern
             }
             
-            String txed = null
-            if(inp.contains(".")) {
+            PipelineFile txed = null
+            if(inp.name.contains(".")) {
                 String dot = fromPattern.startsWith(".") ?"":"."
-                txed = inp.replaceAll(fromPattern,dot+FastUtils.dotJoin(additionalSegment,toPattern))
+                txed = inp.newName(inp.path.replaceAll(fromPattern,dot+FastUtils.dotJoin(additionalSegment,toPattern)))
             }
             else {
-                txed = FastUtils.dotJoin(inp,additionalSegment,extension)
+                txed = inp.newName(FastUtils.dotJoin(inp.path,additionalSegment,extension))
             }
             
             // There are still some situations that can result in consecutive periods appearing in
             // a file name (when the branch name is inserted automatically). So it's a bit of a hack,
             // but we simply remove them
-            txed = txed.replaceAll(/\.\.*/,/\./)
+            txed = inp.newName(txed.path.replaceAll(/\.\.*/,/\./))
             
             // A small hack that is designed to avoid a situation where an output 
             // receives the same name as an input file
-            if(txed in files) {
-                txed = txed.replaceAll('\\.'+extension+'$', '.'+FastUtils.dotJoin(stageName,extension))
+            if(files.any { it.path == txed.path }) {
+                txed = txed.newName(txed.path.replaceAll('\\.'+extension+'$', '.'+FastUtils.dotJoin(stageName,extension)))
             }
             
-            if(txed.startsWith("."))
-                txed = txed.substring(1)
+            if(txed.path.startsWith("."))
+                txed = txed.newName(txed.path.substring(1))
                 
             ++count
             return txed
