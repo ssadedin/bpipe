@@ -326,7 +326,7 @@ class PipelineContext {
    }
    
    def setDefaultOutput(defOut) {
-       this.@defaultOutput = toOutputFolder(defOut)
+       this.@defaultOutput = toOutputFolder(defOut)[0]
    }
    
    /**
@@ -459,6 +459,17 @@ class PipelineContext {
     * String-like object that intercepts property references
     */
    def getOutput() {
+       try {
+           return getOutputImpl()
+       }
+       catch(Exception e) {
+           e.printStackTrace()
+           throw e
+       }
+   }
+   
+   def getOutputImpl() {
+       
        String baseOutput = Utils.first(this.getDefaultOutput())
        def out = this.@output?.collect { it.path }
        if(out == null || this.currentFileNameTransform) { // Output not set elsewhere, or set dynamically based on inputs
@@ -483,7 +494,7 @@ class PipelineContext {
                if(defaultValueIndex<0)
                    defaultValueIndex = 0
                    
-               def resolved = Utils.unbox(allResolved[defaultValueIndex])
+               PipelineFile resolved = Utils.unbox(allResolved[defaultValueIndex])
                
                log.info("Using non-default output due to input property reference: " + resolved + " from resolved inputs " + allResolved)
                
@@ -491,7 +502,7 @@ class PipelineContext {
                    out = this.currentFileNameTransform.transform(Utils.box(allResolved), this.applyName)
                }
                else
-                   out = resolved +"." + this.stageName
+                   out = resolved.newName(resolved.name +"." + this.stageName)
                    
                this.checkAccompaniedOutputs([resolved])
                
@@ -1576,7 +1587,7 @@ class PipelineContext {
             
         log.info "Command $c.id in branch $branch failed with exit code $c.exitCode"
         
-        throw new CommandFailedException("Command in stage $stageName failed with exit status = $c.exitCode : \n\n$c.command", this)
+        throw new CommandFailedException("Command in stage $stageName failed with exit status = $c.exitCode : \n\n$c.command", this, c)
       }
       
       if(!this.probeMode)
@@ -2177,6 +2188,8 @@ class PipelineContext {
            log.info "Input list to check has $outputCount entries (" + reverseOutputs[0].size() + ") in tier 1"
        }
        
+       assert reverseOutputs.every { outs -> outs.every { it instanceof PipelineFile } }
+       
        exts = Utils.box(exts).collect { (it instanceof PipelineOutput || it instanceof PipelineInput) ? it.toString() : it }
        
        Map extTotals = exts.countBy { it }
@@ -2190,14 +2203,14 @@ class PipelineContext {
            boolean globMatch = normExt.indexOf('*')>=0
            if(!globMatch) {
              ext.startsWith(".") ? ext : "." + ext
-             matcher = { log.info("Check $it ends with $normExt");  it?.endsWith(normExt) }
+             matcher = { log.info("Check $it ends with $normExt");  it?.path?.endsWith(normExt) }
            }
            else {
              final Pattern m = FastUtils.globToRegex(normExt)
              log.info "Converted glob pattern $normExt to regex ${m.pattern()}"
-             matcher = { fileName ->
+             matcher = { PipelineFile fileToMatch ->
 //                 log.info "Match $fileName to ${m.pattern()}"
-                 fileName ? m.matcher(fileName).matches() : false
+                 fileToMatch ? m.matcher(fileToMatch.path).matches() : false
              }
            }
            
@@ -2207,7 +2220,7 @@ class PipelineContext {
            // Count of how many of this kind of extension have been consumed
            int count = 0
            for(s in reverseOutputs) {
-               def outputsFound = s.grep { matcher(it) }.collect { it.toString() }
+               def outputsFound = s.grep { matcher(it) }
                
                log.info "Matched : $outputsFound"
                
@@ -2232,9 +2245,6 @@ class PipelineContext {
 //               log.info("Checking outputs ${s} vs $inp N")
            }
           
-           // Not found - if the file exists as a path in its own right use that
-           if(new File(ext).exists())
-               return ext
        }
        
        log.info "Found inputs $resolvedInputs for spec $orig"

@@ -219,8 +219,12 @@ class PipelineInput {
 	 * given values.  See also {@link MultiPipelineInput#mapToCommandValue(Object)}
 	 */
 	String mapToCommandValue(def values) {
-        String rawResolvedInput = String.valueOf(Utils.box(values)[defaultValueIndex])
-        def result = this.aliases[rawResolvedInput]
+        
+        PipelineFile rawResolvedInput = Utils.box(values)[defaultValueIndex]
+        
+        assert rawResolvedInput instanceof PipelineFile
+        
+        def result = this.aliases[rawResolvedInput.path]
         log.info "Adding resolved input $result (raw input = $rawResolvedInput)"
         this.addResolvedInputs([rawResolvedInput])
         return result
@@ -403,8 +407,8 @@ class PipelineInput {
         // If a filter is in operation and the file extension of the input was not already
         // resolved by the filter, add it here since this input could now be the input targeted
         // for filtering (the user may specify it using an $output.<ext> reference
-        if(currentFilter) {
-          files.collect { it.path.substring(it.lastIndexOf('.')+1) }.each {
+        if(currentFilter) { 
+          files.collect { it.path.substring(it.path.lastIndexOf('.')+1) }.each {
               if(!currentFilter.contains(it)) {
                   currentFilter.add(it)
               }

@@ -436,7 +436,7 @@
                                 <td>
                                 <ul class='inputs'>
                                 <% ctx.inputs.each { inp -> %>
-                                    <li class='input'>${inp.replaceAll("^\\./","")}</li>
+                                    <li class='input'>${inp.toString().replaceAll("^\\./","")}</li>
                                 <% } %>
                                 </ul>
                                 </td>
@@ -466,7 +466,7 @@
                             <td>
                                 <ul class='outputs'>
                                 <%ctx.outputs.each { output ->%>
-                                    <li>${output.replaceAll("^\\./","")}</li>
+                                    <li>${output.toString().replaceAll("^\\./","")}</li>
                                 <%}%>
                                 </ul>
                             </td>
