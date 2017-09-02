@@ -45,7 +45,8 @@ class InputSplitter {
      * @param input
      * @return
      */
-	Map split(String pattern, input) {
+	Map<String,List<PipelineFile>> split(String pattern, List<PipelineFile> input) {
+        
 		// Replace the two special characters (*) and (%) with 
 		// regex groups
         Map splitMap = this.convertPattern(pattern)
@@ -55,25 +56,28 @@ class InputSplitter {
         split(~regex, splitGroups, input, pattern.contains("/"))
 	}
     
-	Map split(Pattern pattern, input) {
+	Map<String,List<PipelineFile>> split(Pattern pattern, List<PipelineFile> input) {
         split(pattern,[0],input,false)
     }
     
-	Map split(Pattern pattern, List<Integer> splitGroups, input, boolean withDir=false) {
+	Map<String,List<PipelineFile>> split(Pattern pattern, List<Integer> splitGroups, List<PipelineFile> input, boolean withDir=false) {
+        
+        assert input.every { it instanceof PipelineFile }
+        
         def unsortedResult = [:]
-        for(String inp in Utils.box(input)) {
-            def fileName 
+        for(PipelineFile inp in input) {
+            String fileName 
             if(withDir)  {
                 // When the pattern explicitly contains a directory, we match on the
                 // full file name
-                fileName = new File(inp).absolutePath.replace('\\',"/")
+                fileName = inp.toPath().toAbsolutePath().toString().replace('\\',"/")
             }
             else {
                 // If no directory (ie. / ) in pattern, 
                 // split on the name of the file without directory since it may have 
                 // come from another directory and we do not want to include that 
                 // in the branch name
-                fileName = new File(inp).name
+                fileName = inp.name
             }
             Matcher m = (pattern.matcher(fileName))
             if(!m)
@@ -116,8 +120,12 @@ class InputSplitter {
      * @param v
      * @return    a reordered version of the input list
      */
-    List sortNumericThenLexically(Pattern regex, List<Integer> skipGroups, List v) {
-		return v.sort { String i1, String i2 ->
+    List<PipelineFile> sortNumericThenLexically(Pattern regex, List<Integer> skipGroups, List<PipelineFile> v) {
+		return v.sort { PipelineFile f1, PipelineFile f2 ->
+            
+            String i1 = f1.name
+            String i2 = f2.name
+            
             // Match 
 			Matcher m1 = regex.matcher(i1)
 			Matcher m2 = regex.matcher(i2)

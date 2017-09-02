@@ -308,10 +308,10 @@ class PipelineOutput {
                 
                 replaced = this.overrideOutputs[0]
                 
-                String baseInput = this.resolvedInputs.find {it.endsWith(name)}
+                PipelineFile baseInput = this.resolvedInputs.find {it.path.endsWith(name)}
                 if(!baseInput) {
                     baseInput = this.overrideOutputs[0]
-                    result = baseInput.replaceAll(FILE_EXT_PATTERN,"." + name)
+                    result = baseInput.newName(baseInput.path.replaceAll(FILE_EXT_PATTERN,"." + name))
                 }
                 else {
                     log.info "Recomputing filter on base input $baseInput to achieve match with output extension $name"
