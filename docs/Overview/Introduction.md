@@ -91,4 +91,4 @@ To see what bpipe jobs you currently have running:
 
 ### Next Steps
 
-To learn more about how Bpipe works, take a look at the [Hello, World](Tutorials/Hello,World) turorial where you can work through creating a very simple pipeline.  Or if you are already comfortable with the basics of how bpipe is working you can jump straight to an example of a [real bioinformatics pipeline](Tutorials/RealPipelineTutorial).
+To learn more about how Bpipe works, take a look at the [Hello, World](../Tutorials/Hello,World) turorial where you can work through creating a very simple pipeline.  Or if you are already comfortable with the basics of how bpipe is working you can jump straight to an example of a [real bioinformatics pipeline](../Tutorials/RealPipelineTutorial).
