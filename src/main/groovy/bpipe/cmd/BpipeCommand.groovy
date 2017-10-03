@@ -51,7 +51,7 @@ abstract class BpipeCommand {
         
         String command = bpipe.Runner.BPIPE_HOME + "/bin/$exe $commandLine"
         if(args) {
-            command = "$command " + args.join(" ")
+            command = "$command " + args.collect { "'" + it + "'" }.join(" ")
         }
         
         File tmpFile = new File(COMMAND_TMP, Utils.sha1(command) + ".sh")
@@ -73,8 +73,7 @@ abstract class BpipeCommand {
             p.waitForProcessOutput(out, out)
             int exitValue = p.waitFor()
             if(exitValue != 0) {
-                throw new Exception("Failed to start command:\n\n$command\n\nOutput: " + out.toString() + 
-                                    "\n--- stderr:\n"+err.toString()+ "\n")
+                throw new Exception("Failed to start command:\n\n$command\n\nOutput: " + out.toString()) 
             }
             output = out.toString().trim()
             log.info "Executed command with output: " + output

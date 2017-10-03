@@ -62,6 +62,8 @@ public enum PipelineEvent {
     CHECK_SUCCEEDED,
     
     CHECK_FAILED,
+    
+    CHECK_OVERRIDDEN,
 	
     /* ----------------- Command Level Events ----------------------- */
     

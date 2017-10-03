@@ -24,20 +24,41 @@
  */
 package bpipe
 
-class ChecksCommand {
+import java.io.Writer
+
+import bpipe.cmd.BpipeCommand
+import bpipe.worx.WorxEventListener
+
+class ChecksCommand extends BpipeCommand {
+    
+   public ChecksCommand(List<String> args) {
+        super("checks", args);
+    } 
     
     static void main(args) {
+		
+		Runner.initializeLogging("0", "command")
+		
+        System.out.withWriter { w ->
+            new ChecksCommand(args as List).run(w)
+        }
+    }
+    
+    @Override
+    public void run(Writer out) {
         
         if(!new File(".bpipe").exists()) {
-            println ""
-            println "Could not find a Bpipe pipeline in this folder: has Bpipe been run here?"
-            println ""
+            out.println ""
+            out.println "Could not find a Bpipe pipeline in this folder: has Bpipe been run here?"
+            out.println ""
             System.exit(1)
         }
         
         CliBuilder cli = new CliBuilder(usage: "bpipe override | bpipe checks", posix:true)
         cli.with {
             o "override specified check to force it to pass", args:1
+            f "fail specified check", args:1
+            c "comment to add to given operation", args:1
             l "list checks and exit, non-interactive mode"
             h "show help", longOpt: 'help'
         }
@@ -46,34 +67,35 @@ class ChecksCommand {
         List<Check> overrideChecks = null
         
         def opts = cli.parse(args)
-        if(opts.h) {
-            cli.usage()
+        if(!opts || opts.h) {
+            if(opts?.h)
+                cli.usage() 
             System.exit(0)
         }
         
-        if(opts.o) {
-            def parts = opts.o.split(/\./)
-            if(parts.size() == 1) {
-              overrideChecks = checks.grep { it.stage == parts[0] }
-            }
-            else {
-              overrideChecks = checks.grep { it.stage == parts[0] && it.branch == parts[1] }
+        if(opts.o || opts.f) {
+            
+            bpipe.Runner.readUserConfig()
+            
+            EventManager.instance.configure(Config.userConfig)  
+           
+            if(Config.userConfig.worx.enable) {
+                new WorxEventListener().start()
+                Thread.sleep(1000)
             }
             
-            if(overrideChecks) {
-                  overrideChecks.each { it.override = true; it.save() }
-            }
-            else {
-                System.err.println ""
-                System.err.println "Unable to find any checks matching name $opts.o"
-                System.err.println ""
-                System.exit(1)
-            }
+			if(opts.o)
+	        		setCheckState(checks, opts.o, opts.c?:null, true)
+			
+		    if(opts.f)
+	        		setCheckState(checks, opts.f, opts.c?:null, false)
+				
+		    System.exit(0)
         }
         
         printChecks(checks)
         
-        if(overrideChecks || opts.l) {
+        if(opts.l) {
             System.exit(0)
         }
         
@@ -107,7 +129,7 @@ class ChecksCommand {
                 Check check = checks[index]
                 
                 println ""
-                print "Overriding check ${check.stage} in branch ${check.branch}, OK (y/n)? "
+                print "Passing check ${check.stage} in branch ${check.branch}, OK (y/n)? "
                 if(r.readLine() == "y") {
                     check.override = true
                     check.save()
@@ -116,6 +138,32 @@ class ChecksCommand {
             }
         }
     }
+	
+	void setCheckState(List<Check> checks, String checkId, String comment, boolean pass) {
+		
+		List<Check> overrideChecks
+        List<String> parts = checkId.tokenize('.')
+        if(parts.size() == 1) {
+          overrideChecks = checks.grep { it.stage == parts[0] }
+        }
+        else {
+          overrideChecks = checks.grep { it.stage == parts[0] && it.branch == parts[1] }
+        }
+            
+        if(overrideChecks) {
+            overrideChecks.each { Check check ->
+                check.overrideCheck(pass, comment) 
+            }
+			out.println "Set check $checkId to " + (pass ? "pass" : "fail") + " state"
+            Thread.sleep(1000)
+        }
+        else {
+            out.println ""
+            out.println "Unable to find any checks matching name $checkId"
+            out.println ""
+            System.exit(1)
+        }
+	}
     
     static printChecks(List<Check> checks) {
         printChecks([:],checks)
@@ -155,22 +203,23 @@ class ChecksCommand {
         out.println "=" * columns
         out.println "|" + " Check Report ".center(columns-2) + "|"
         out.println "=" * columns
+        int index = 1
+        Utils.table(
+            headers,
+            
+            checks.collect { check ->
+                [
+                    ((index++) + '. ').padLeft(4) + (check.stage + (check.name ? ' ' + check.name:'')),
+                    check.branch,
+                    check.override?"Overridden":(check.passed?"Passed":"Failed"),
+                    check.message ?: ''
+                ]
+            },
+            out: out,
+            topborder: true
+        )
         
-        String header = [ headers, widths ].transpose().collect { it[0].padRight(it[1]+1) }.join("|")
-        out.println "|" + header + " |"
-        out.println "-" * columns
-        
-        out.println checks.collect {
-               String checkName = it.stage
-               if(it.name)
-                   checkName += "/" + it.name
-               ((count++) + ". " + Utils.truncnl(checkName,widths[0]-4)).padRight(widths[0]+2," ") +
-               (" " + (it.branch!="all"?it.branch:"")).padRight(widths[1]+2," ") +
-               (" " + (it.override?"Overridden":(it.passed?"Passed":"Failed"))).padRight(widths[2]+2) +
-               (" " + (it.message?Utils.truncnl(it.message,widths[3]-1):"")).padRight(widths[3])
-        }*.plus('\n').join("")
-        
-        out.println "-" * columns
         out.println ""
+        
     }
 }

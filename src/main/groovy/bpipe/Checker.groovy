@@ -76,6 +76,9 @@ class Checker {
         
         log.info "Check name = $check.name"
         
+        check.pguid = Config.config.pguid
+        check.script = Config.config.script
+        
         // If the check is up-to-date then simply read its result from the check file
         def inputs = Utils.box(ctx.@input) + ctx.resolvedInputs
         if(check.isUpToDate(inputs)) {
@@ -110,26 +113,20 @@ class Checker {
         
         PipelineStage pipelineStage = ctx.getCurrentStage()
 
-        Map checkDetails = [
-            name: check.name,
-            message: check.message,
-            stage:pipelineStage
-        ]
-        
         try { // Check either had not executed, or was not up-to-date
             
             EventManager.instance.signal(PipelineEvent.CHECK_EXECUTED, 
                  "Executing check $check.name", 
-                 checkDetails)
+                 check.getEventDetails(pipelineStage))
   
             runCheckClosure()
             
             check.passed = true
-            checkDetails.result = true
+			check.state = 'pass'
             
             EventManager.instance.signal(PipelineEvent.CHECK_SUCCEEDED, 
                 "Check ${check.name? /'$check.name'/:''} for stage $pipelineStage.displayName passed", 
-                checkDetails
+                check.getEventDetails(pipelineStage)
             ) 
             
             if(!Runner.opts.t && !ctx.probeMode) {
@@ -139,12 +136,11 @@ class Checker {
         catch(CommandFailedException e) {
             log.info "Check $check was executed and failed ($e)"
             check.passed = false
+			check.state = 'review'
             check.save()
-            
-            checkDetails.result = false
             EventManager.instance.signal(PipelineEvent.CHECK_FAILED, 
                 "Check ${check.name? /'$check.name'/:''} for stage $pipelineStage.displayName failed", 
-                checkDetails
+                check.getEventDetails(pipelineStage)
             )             
         }
     }
@@ -200,6 +196,8 @@ class Checker {
             }
             log.info "Computing check based on branchPath $branchPath"
             check = Check.getCheck(ctx.stageName, this.name, branchPath);
+            check.branch = pipeline.branchPath.grep { it != 'all' }.reverse().join('/')
+            return check
         }
     }
     

@@ -517,12 +517,12 @@ class Runner {
     /**
      * Set up logging for the Bpipe diagnostic log
      */
-    public static Logger initializeLogging(String pid) {
+    public static Logger initializeLogging(String pid, String logFileName="bpipe") {
         
         def parentLog = log.getParent()
         parentLog.getHandlers().each { parentLog.removeHandler(it) }
         
-        File logFile = new File(".bpipe/bpipe.log")
+        File logFile = new File(".bpipe/${logFileName}.log")
         if(logFile.exists()) {
             logFile.delete()
         }
@@ -535,7 +535,7 @@ class Runner {
         try {
             // Another log file for history
             new File(".bpipe/logs").mkdirs()
-            Handler pidLog = pid == "tests" ? new ConsoleHandler() : new FileHandler(".bpipe/logs/${pid}.bpipe.log")
+            Handler pidLog = pid == "tests" ? new ConsoleHandler() : new FileHandler(".bpipe/logs/${pid}.${logFileName}.log")
             pidLog.setFormatter(new BpipeLogFormatter())
             parentLog.addHandler(pidLog)
         }

@@ -933,6 +933,8 @@ class Utils {
         
         String indent = options.indent ? (" " * options.indent) : ""
         
+        def out = options.out ?: System.out
+        
         // Create formatters
         Map formatters = options.get('format',[:])
         headers.each { h ->
@@ -979,20 +981,25 @@ class Utils {
             
         // Now render the table
         String header = headers.collect { hd -> hd.center(columnWidths[hd]) }.join(" | ")
-        println indent + header
-        println indent + ("-" * header.size())
+        
+        if(options.topborder) {
+            out.println indent + ("-" * header.size())
+        }
+        
+        out.println indent + header
+        out.println indent + ("-" * header.size())
         
         rows.each { row ->
             int i=0
             headers.each { hd -> 
                 if(i!=0)
-                    print(" | ");
+                    out.print(" | ");
                 else
-                    print(indent)
+                    out.print(indent)
                     
                  renderers[hd](formatters[hd](row[i++]), columnWidths[hd])
             }
-            println ""
+            out.println ""
         }
     }
     
