@@ -144,13 +144,23 @@ class DefinePipelineCategory {
         return plus(j, l) + other        
     }
     
+    static executeSegmentBuilder(Closure c) {
+        // The segment usually consists of a pipeline that is built - so calling its method results
+        // in a builder which itself needs to be called to build the segment.
+        //
+        // However, the segment can return a raw pipeline stage which should NOT be invoked
+        def segmentResult = Pipeline.segmentBuilders[c]()
+        while(segmentResult in joiners) {
+            segmentResult = segmentResult()
+        }
+    }
+    
     static Object plus(Closure c, Closure other) {
         String cName = PipelineCategory.closureNames[c]
-        // println "Closure " + cName  +  " (${c.hashCode()}) + Closure " + PipelineCategory.closureNames[other]
         def result  = { 
             
             if(c in Pipeline.segmentBuilders) {
-                Pipeline.segmentBuilders[c]()()
+                executeSegmentBuilder(c)
             }
             else
             if(PipelineCategory.closureNames.containsKey(c)) {
@@ -177,8 +187,7 @@ class DefinePipelineCategory {
             }
             
             if(other in Pipeline.segmentBuilders) {
-                // println "Descend into ${other.hashCode()} closure name=" + PipelineCategory.closureNames[other]
-                Pipeline.segmentBuilders[other]()()
+                executeSegmentBuilder(other)
             }
             else
             if(PipelineCategory.closureNames.containsKey(other) 
