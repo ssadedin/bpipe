@@ -501,7 +501,7 @@ then
 elif [ "$COMMAND" == "checks" ];
 then
     shift 1
-    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=showchecks bpipe.ChecksCommand $*
+    java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=showchecks bpipe.ChecksCommand "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8"
     exit
 elif [ "$COMMAND" == "override" ];
 then

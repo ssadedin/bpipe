@@ -17,6 +17,8 @@ class AgentCommandRunner implements Runnable {
     
     BpipeCommand command
     
+    Exception errorResponse
+    
     public AgentCommandRunner(WorxConnection worx, Long worxCommandId, BpipeCommand command) {
         super();
         this.worx = worx
@@ -24,11 +26,30 @@ class AgentCommandRunner implements Runnable {
         this.command = command;
     }
     
+    /**
+     * Responds to the given command with the given exception as an error
+     * 
+     * @param worx
+     * @param worxCommandId
+     * @param e
+     */
+    public AgentCommandRunner(WorxConnection worx, Long worxCommandId, Exception e) {
+        super();
+        this.worx = worx
+        this.worxCommandId = worxCommandId;
+        this.errorResponse = e
+    }
+    
+    
     @Override
     public void run() {
         
         try {
             executeAndRespond(worxCommandId) {
+                
+                if(errorResponse)
+                    throw errorResponse
+                
                 ByteArrayOutputStream bos = new ByteArrayOutputStream()
                 Writer out = new WorxStreamingPrintStream(this.worxCommandId, new BufferedWriter(bos.newWriter(), 512), worx)
                 if(command instanceof RunPipelineCommand) {

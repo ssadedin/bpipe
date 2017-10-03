@@ -3,6 +3,7 @@ package bpipe.agent
 import java.nio.file.Files;
 import java.util.logging.Level
 
+import bpipe.ChecksCommand
 import bpipe.Config
 import bpipe.Runner
 import bpipe.Utils
@@ -20,7 +21,8 @@ class Agent extends TimerTask {
     public static Map COMMANDS = [
         "stop" : Stop,
         "log" : LogCommand,
-        "run" : RunPipelineCommand
+        "run" : RunPipelineCommand,
+        "checks" : ChecksCommand
     ]
     
     WorxConnection worx = new WorxConnection()
@@ -122,10 +124,16 @@ class Agent extends TimerTask {
             // Each command is a map, indexed by pguid mapping to a list of Command objects
             // which are serialised as Maps
             result.commands.each { Map commandAttributes -> 
-                BpipeCommand command = createCommandFromAttributes(commandAttributes)
-                command.dir = commandAttributes.directory ?: pipelines[commandAttributes.run.id].path
-                AgentCommandRunner runner = new AgentCommandRunner(new WorxConnection(), commandAttributes.id, command)
-                new Thread(runner).start()
+                try {
+                    BpipeCommand command = createCommandFromAttributes(commandAttributes)
+                    command.dir = commandAttributes.directory ?: pipelines[commandAttributes.run.id].path
+                    AgentCommandRunner runner = new AgentCommandRunner(new WorxConnection(), commandAttributes.id, command)
+                    new Thread(runner).start()
+                }
+                catch(Exception e) {
+                    AgentCommandRunner runner = new AgentCommandRunner(new WorxConnection(), commandAttributes.id, e)
+                    new Thread(runner).start()
+                }
             }
         }
     }
@@ -144,7 +152,11 @@ class Agent extends TimerTask {
         }
 
         BpipeCommand command = commandClass.newInstance()
-        command.args = commandAttributes.arguments?.split(",")?:[]
+        def args = commandAttributes.arguments 
+        if((args != null) && args instanceof String) 
+            args = new groovy.json.JsonSlurper().parseText(args)
+            
+        command.args = args
         return command
     }
 }

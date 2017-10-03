@@ -93,8 +93,8 @@ class WorxEventListener implements PipelineEventListener {
             eventDetails.event = job.event.name()
             eventDetails += [
                 pid: Config.config.pid,
-                script: Config.config.script,
-                pguid: Config.config.pguid
+                script: eventDetails.script ?: Config.config.script,
+                pguid: eventDetails.pguid ?: Config.config.pguid
             ]
             
             /*
@@ -148,6 +148,7 @@ class WorxEventListener implements PipelineEventListener {
              PipelineEvent.CHECK_EXECUTED, 
              PipelineEvent.CHECK_SUCCEEDED, 
              PipelineEvent.CHECK_FAILED, 
+             PipelineEvent.CHECK_OVERRIDDEN, 
              PipelineEvent.FINISHED,
              PipelineEvent.SHUTDOWN
         ].each { EventManager.instance.addListener(it,this) } 
@@ -174,26 +175,30 @@ class WorxEventListener implements PipelineEventListener {
         if(!ctx)
             ctx = details.ctx
        
-        File scriptFile = new File(Config.config.script)
-        if(eventType == STARTED || eventType == FINISHED) {
-            if(details.pipeline && eventType == STARTED) {
-                use(NodeListCategory) {
-                    details.pipeline = groovy.json.JsonOutput.toJson(Pipeline.getNodeGraph(details.pipeline))
-                    log.info "Sending pipeline structure: $details.pipeline"
-                } 
-            }
-            else {
-                details.remove("pipeline")
+        if(Config.config.script) {
+            File scriptFile = new File(Config.config.script)
+            if(eventType == STARTED || eventType == FINISHED) {
+                if(details.pipeline && eventType == STARTED) {
+                    use(NodeListCategory) {
+                        details.pipeline = groovy.json.JsonOutput.toJson(Pipeline.getNodeGraph(details.pipeline))
+                        log.info "Sending pipeline structure: $details.pipeline"
+                    } 
+                }
+                else {
+                    details.remove("pipeline")
+                }
+                
+                details.title = Pipeline.documentation.title
+                if(!details.title)
+                    details.title = scriptFile.name.replaceAll('\\.[^\\.]*?$', '').capitalize()
+                details.dir = Runner.runDirectory
             }
             
-            details.title = Pipeline.documentation.title
-            if(!details.title)
-                details.title = scriptFile.name.replaceAll('\\.[^\\.]*?$', '').capitalize()
-            details.dir = Runner.runDirectory
+            // All events tied to a script
+            details.script = scriptFile.canonicalPath
         }
         
         // All events
-        details.script = scriptFile.canonicalPath
         details.host = InetAddress.getLocalHost().hostName
             
         WorxEventJob job = new WorxEventJob(event:eventType, properties: [desc: desc, timeMs: System.currentTimeMillis()] + details)
