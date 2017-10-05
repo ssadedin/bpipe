@@ -103,7 +103,8 @@ class Check {
         
         Properties p = new Properties()
         p.branch = branch
-        p.branchHash = branchHash
+        if(branchHash)
+            p.branchHash = branchHash
         p.stage = stage
         p.passed = passed ? "true" : "false"
         
@@ -144,7 +145,7 @@ class Check {
     static Check getCheck(String stageName, String name, String branchHash) {
         File file = getFile(stageName, name, branchHash)
         if(file.exists()) {
-            return new Check().load(file)
+            new Check(branchHash:branchHash).load(file)
         }
         else {
             return new Check(stage: stageName, name:name, branchHash: branchHash, passed: false)
@@ -186,6 +187,7 @@ class Check {
 			this.state = (this.passed || this.override) ? 'succeeded' : 'failed'
 		}
         this.comment = p.comment
+        this.branchHash = p.branchHash
         return this
     }
     
