@@ -24,6 +24,7 @@
  */
 package bpipe
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 
 /**
@@ -135,8 +136,16 @@ class Check {
      * Return true if this check is up-to-date with respect to the given inputs
      */
     boolean isUpToDate(def inputs) {
-       File checkFile = getFile(stage, name, branch)
-       checkFile.exists() && Dependencies.instance.checkUpToDate([checkFile.absolutePath], inputs) 
+       File checkFile = getFile(stage, name, branchHash)
+       if(!checkFile.exists()) {
+           return false
+       }
+       
+       if(!Dependencies.instance.checkUpToDate([checkFile.absolutePath], inputs)) {
+           return false
+       }
+       
+       return true
     }
     
     /**
@@ -156,10 +165,10 @@ class Check {
      * Return a file for storing a check based on the branch and stage 
      * name
      */
-    static File getFile(String stageName, String name, String branch) {
-        if(branch == "")
-            branch = "all"
-        def checkName = FastUtils.dotJoin(branch,stageName,name?.toLowerCase()?.replaceAll(" ","_"),"properties")
+    static File getFile(String stageName, String name, String branchHash) {
+        if(branchHash == "")
+            branchHash = "all"
+        def checkName = FastUtils.dotJoin(branchHash,stageName,name?.toLowerCase()?.replaceAll(" ","_"),"properties")
         return new File(Checker.CHECK_DIR, checkName) 
     }
     
