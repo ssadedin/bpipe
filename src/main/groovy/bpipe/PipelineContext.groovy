@@ -1010,6 +1010,7 @@ class PipelineContext {
           // and then call this one, so we need to ensure that we restore
           // the state  upon exit
           boolean oldProbeMode = this.probeMode
+          boolean probeFailure = false
           this.probeMode = true
           this.trackedOutputs = [:]
           try {
@@ -1021,6 +1022,7 @@ class PipelineContext {
             }
             catch(Exception e) {
                 log.info "Exception occurred during proble: $e.message"
+                probeFailure = true
             }
             log.info "Finished probe"
             
@@ -1043,6 +1045,10 @@ class PipelineContext {
                 }
             }
             
+            if(probeFailure) {
+                log.info "Not up to date because probe failed"
+            }
+            else
             if(!Dependencies.instance.checkUpToDate(outputsToCheck + globExistingFiles,allInputs)) {
                 log.info "Not up to date because input inferred by probe of body newer than outputs"
             }
