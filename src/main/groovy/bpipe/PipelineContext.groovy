@@ -1549,9 +1549,13 @@ class PipelineContext {
         String cmd = """
         $SET_JH
         unset GROOVY_HOME
-        JAVA_OPTS='$javaOpts' $groovyExe $cp -e "\$(cat <<XXXX
+
+        GROOVY_CMD=\$(cat <<XXXX
         $groovyCommand
-        XXXX)"
+        XXXX
+        )
+
+        JAVA_OPTS='$javaOpts' $groovyExe $cp -e "\$GROOVY_CMD"
         """.stripIndent()
         
         if(opts.config) {
