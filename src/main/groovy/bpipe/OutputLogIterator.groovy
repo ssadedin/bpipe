@@ -37,7 +37,7 @@ class OutputLogIterator implements Iterator<OutputLogEntry> {
         reader = r
     }
     
-    static Pattern tagPattern = ~'^\\[([a-zA-Z0-9_]*)\\.([0-9]*)\\]'
+    static Pattern tagPattern = ~'^\\[([a-zA-Z0-9_-]*)\\.([0-9]*)\\]'
     
     @CompileStatic
     @Override

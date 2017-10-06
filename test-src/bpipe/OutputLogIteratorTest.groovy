@@ -64,4 +64,18 @@ cp -uv s_1.txt.take_me_to_your_leader s_1.txt.take_me_to_your_leader.a
         }
         
     }
+    
+    @Test
+    void testComplexBranches() {
+        
+        String line = "[170914_NB501544_0178_ML171430_17W000588_STAR-20170831_SSQXTCRE.1581]\t##### ERROR A USER ERROR has occurred (version 3.6-0-g89b7209):\n"
+        
+        def i = new OutputLogIterator(new StringReader(line)) 
+        assert i.hasNext()
+        
+        OutputLogEntry ole = i.next()
+        println ole.commandId
+        
+        assert ole.commandId == "1581"
+    }
 }
