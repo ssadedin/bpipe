@@ -114,7 +114,7 @@ class StatusCommand extends BpipeCommand {
         }
     }
     
-    void showCurrent(PrintStream out) {
+    void showCurrent(PrintWriter out) {
         
         CommandManager mgr = new CommandManager()
         
