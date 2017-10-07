@@ -176,7 +176,7 @@ class Tail {
         // Try to also show the command information
         Command cmd = new CommandManager().readSavedCommand(commandId)
         
-        println " Command $cmd.name ($commandId) ".center(Config.config.columns, "=")
+        println " Command ${cmd?.name?:''} ($commandId) ".center(Config.config.columns, "=")
         
         int leftWidth = 10
         if(cmd) {
@@ -194,6 +194,11 @@ class Tail {
             else {
                 println "No command output found in most recent log file"
             }
+        }
+        else {
+            println ""
+            println "No record of command $commandId was saved. This may indicate a severe error occurred."
+            println ""
         }
         
         println ""
