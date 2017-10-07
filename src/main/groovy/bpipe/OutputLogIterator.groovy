@@ -37,6 +37,15 @@ class OutputLogIterator implements Iterator<OutputLogEntry> {
         reader = r
     }
     
+    /**
+     * Legal characters in branch names are:
+     * 
+     * <li>A-Z, a-z
+     * <li>0-9
+     * <li>_, -
+     * 
+     * Should there be others?
+     */
     static Pattern tagPattern = ~'^\\[([a-zA-Z0-9_-]*)\\.([0-9]*)\\]'
     
     @CompileStatic
