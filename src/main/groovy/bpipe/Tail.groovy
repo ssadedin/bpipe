@@ -180,8 +180,21 @@ class Tail {
         
         int leftWidth = 10
         if(cmd) {
+            
+            
+            Date startTime
+            Date stopTime
+            if(cmd.stopTimeMs > 0) {
+                stopTime = new Date(cmd.stopTimeMs)
+            }
+            if(cmd.startTimeMs > 0) {
+                startTime = new Date(cmd.startTimeMs)
+            }
+
             println ""
             println "Command ".padRight(leftWidth) + " : " + cmd.command
+            println "Started ".padRight(leftWidth) + " : " + startTime?:'Unknown'
+            println "Stopped ".padRight(leftWidth) + " : " + stopTime?:'Unknown'
             println "Exit Code ".padRight(leftWidth) + " : " + cmd.exitCode
             println "Config: " 
             Utils.table(["Name","Value"], cmd.processedConfig.collect { k,v -> [k,v] }, indent:leftWidth)
