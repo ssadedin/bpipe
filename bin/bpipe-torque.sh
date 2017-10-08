@@ -203,6 +203,9 @@ set -e;
 $mods_request
 cd \$PBS_O_WORKDIR
 $COMMAND
+
+$POST_CMD
+
 HERE
 
    echo $job_script_name

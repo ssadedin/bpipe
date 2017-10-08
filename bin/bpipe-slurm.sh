@@ -229,6 +229,9 @@ set -o errexit
 $mods_request
 
 $command_prefix $COMMAND
+
+$POST_CMD
+
 HERE
 
    echo $job_script_name

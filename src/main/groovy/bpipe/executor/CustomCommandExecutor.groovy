@@ -231,6 +231,9 @@ class CustomCommandExecutor implements CommandExecutor {
         if(config?.custom)
             env.CUSTOM = String.valueOf(config.custom)
             
+        if(config?.post_cmd)
+            env.POST_CMD = String.valueOf(config.post_cmd)
+             
         if(config?.nodes)
             env.NODES = String.valueOf(config.nodes)
             

@@ -22,4 +22,9 @@ bash -e ${CMD_FILENAME.absolutePath}
 
 result=\$?
 echo -n \$result > $jobDir/$CMD_EXIT_FILENAME
+
+<%if(config?.post_cmd) {%>
+${config.post_cmd}
+<%}%>
+
 exit \$result

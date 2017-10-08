@@ -1,4 +1,4 @@
-# Notifications in Bpipe
+# Advanced Settings 
 
 ## Introduction
 
@@ -45,6 +45,19 @@ jobs to launch this will make your whole pipeline take 9000 seconds to get start
 need to balance the value of this setting against the capabilities and robustness of the
 system the jobs are running on.
 
+### Post Command Hook
+
+If you want to run something every single time after each command finishes, you can set it as 
+a "post command" using the `post_cmd` configuration. For example, to print the date and time when
+every command completes, in `bpipe.config`, you can put:
+
+```
+post_cmd="""
+echo "Command finished at: `date`"
+"""
+```
+
+*Note*: this is not supported by every executor, but is supported by most, including the local executor.
 
 
 
