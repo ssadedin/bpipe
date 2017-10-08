@@ -124,8 +124,12 @@ class QueryCommand extends BpipeCommand {
            String duration = "Unknown"
            String pendingDuration = "Unknown"
                
+           Date stopTime 
+           Date startTime 
            if(p.stopTimeMs > 0) {
-               duration = TimeCategory.minus(new Date(p.stopTimeMs),new Date(p.startTimeMs)).toString()
+               stopTime = new Date(p.stopTimeMs)
+               startTime = new Date(p.startTimeMs)
+               duration = TimeCategory.minus(stopTime,startTime).toString()
                pendingDuration = TimeCategory.minus(new Date(p.startTimeMs),new Date(p.createTimeMs)).toString()
            }
                
@@ -133,6 +137,8 @@ class QueryCommand extends BpipeCommand {
                out.println """
                    Created:             ${new Date(p.timestamp)}
                    Pipeline Stage:      ${p.stageName?:'Unknown'}
+                   Started:             ${startTime?:'Unknown'}
+                   Stopped:             ${stopTime?:'Unknown'}
                    Pending Time:        ${pendingDuration}
                    Running Time:        ${duration}
                    Inputs used:         ${p.inputs.join(',')}
