@@ -321,11 +321,9 @@ display_log() {
         TERM_HEIGHT=80
     fi
 
-    # Note that the log is not named with the PID of the Java process (unfortunately) but rather
-    # with the PID of the shell script that started it.  Therefore we have to 
-    # list files to find the 'most recent' log.
-    # TODO: for consistency / sanity should try to change this
-    LOG_ID=`ls -tc .bpipe/logs/*.log | grep -v 'bpipe\.' | grep '[0-9]' | head -1 | grep -o '[0-9]*.log$' | sed 's/[^0-9]//g'`
+    get_last_run_pid
+    
+    LOG_ID=$LAST_PID
     
     if is_running ;
     then
