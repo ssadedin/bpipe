@@ -789,6 +789,9 @@ class Dependencies {
               System.err.println "Failed to move file ${outputFile.absolutePath} to trash folder"
               return 0
             }
+            else {
+                log.info "Moved output file ${outputFile.absolutePath} to trash folder" 
+            }
         }
         else
         if(!outputFile.delete()) {
