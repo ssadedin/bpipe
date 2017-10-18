@@ -984,7 +984,7 @@ public class Pipeline implements ResourceRequestor {
                 }
                 catch(Exception ex) {
                     log.log(Level.SEVERE,"Failed to evaluate script $scriptFile: "+ ex, ex)
-                    System.err.println("WARN: Error evaluating script $scriptFile: " + ex.getMessage())
+                    throw new PipelineError("Error evaluating script '$scriptFile': " + ex.getMessage())
                 }
             }
           }
