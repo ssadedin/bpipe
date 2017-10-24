@@ -93,7 +93,7 @@ get_last_run_pid() {
     then
       LAST_PID="-1"
     else
-      LAST_PID=`ls -tc .bpipe/jobs/* | head -1 | xargs basename`
+      LAST_PID=`ls -t .bpipe/jobs/* | head -1 | xargs basename`
     fi
 }
 
