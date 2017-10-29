@@ -51,13 +51,14 @@ import bpipe.graph.Graph;
 import static Utils.isContainer 
 import static Utils.unbox 
 
+import static Edge.*
 
 /**
  * Utility to convert a Node structure to a Map structure (primarily, for export as Json)
  */
 class NodeListCategory {
     static Map toMap(Node n) {
-        return  n.children()?[name: n.name(), children: n.children()*.toMap()]:[name:n.name()]
+        return  n.children()?[name: n.name(), type: n.attributes().type, children: n.children()*.toMap()]:[name:n.name(), type: n.attributes().type]
     }
     static String toJson(Node n) {
         groovy.json.JsonOutput.toJson(n.toMap())
@@ -107,6 +108,11 @@ public class Pipeline implements ResourceRequestor {
      * by Bpipe on the first line.
      */
     static Map<String,String> scriptNames = Collections.synchronizedMap([:])
+    
+    /**
+     * Index of pipeline stage nodes, keyed of the closure that implements the stage
+     */
+    static Map<Closure, Node>   stageNodeIndex = Collections.synchronizedMap([:])
     
     /**
      * Global binding - variables and functions (including pipeline stages)
@@ -1289,7 +1295,7 @@ public class Pipeline implements ResourceRequestor {
                         
                         Node rootNode = DefinePipelineCategory.createNode(realizedBranch)
                         DefinePipelineCategory.edges.add(
-                            new Edge(DefinePipelineCategory.inputStage, rootNode))
+                            new Edge(DefinePipelineCategory.inputStage, rootNode, RESOURCE))
                     }
                 }
             }
@@ -1385,7 +1391,8 @@ public class Pipeline implements ResourceRequestor {
             nodes: structure.nodes.collect { 
               [ 
                   name: it.value.name(),
-                  id: it.value.attributes().id
+                  id: it.value.attributes().id,
+                  type: it.value.attributes().type
               ]
            },
            edges: structure.edges
@@ -1398,9 +1405,7 @@ public class Pipeline implements ResourceRequestor {
     void addStage(PipelineStage stage) {
         synchronized(this.stages) {
            
-            String branchPrefix = (this.id == "0") ? "" : this.id + DefinePipelineCategory.stageSeparator
-            
-            stage.id = branchPrefix + myStages.count { it instanceof FlattenedPipelineStage || !it.synthetic }
+            stage.id = Pipeline.stageNodeIndex[stage.body]?.attribute('id')
             
             this.stages << stage
             this.myStages << stage
