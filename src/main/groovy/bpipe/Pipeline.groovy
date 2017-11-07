@@ -459,9 +459,12 @@ public class Pipeline implements ResourceRequestor {
         
         Pipeline pipeline = new Pipeline()
         PipelineCategory.addStages(pipelineBuilder.binding)
+        
+        log.info "Segment is loading external stages"
         if(!pipelineBuilder.binding.variables.containsKey("BPIPE_NO_EXTERNAL_STAGES"))
             pipeline.loadExternalStages()
 
+        log.info "Segment finished loading external stages"
         
         Object result = pipeline.execute([], pipelineBuilder.binding, pipelineBuilder, false)
         
@@ -940,6 +943,8 @@ public class Pipeline implements ResourceRequestor {
     
     static Set allLoadedPaths = new HashSet()
     
+    static List<File> currentLoadingPaths = Collections.synchronizedList([])
+    
     private static void loadExternalStagesFromPaths(GroovyShell shell, List<File> paths, cache=true, includesLibs=false) {
         
         for(File pipeFolder in paths) {
@@ -961,7 +966,31 @@ public class Pipeline implements ResourceRequestor {
                 System.err.println("Pipeline folder $pipeFolder was not a normal directory or file")
             }
             
+            // Avoid recursive loading; caused by segments defined inside loaded files,
+            // which attempt to reload everything inside the loadedPaths list
+            libPaths = libPaths.grep { f -> !currentLoadingPaths.any { it.absolutePath == f.absolutePath } }
+            
             libPaths.sort()
+            
+            currentLoadingPaths.add(pipeFolder)
+            
+            try {
+                loadExternalStagesFromPathList(shell, libPaths, cache, includesLibs)
+            }
+            finally {
+                currentLoadingPaths.remove(pipeFolder)
+            }
+            
+            log.info "Adding stages from evaluation of $paths"
+            PipelineCategory.addStages(shell.context)
+            log.info "Added stages from evaluation of $paths"
+
+        }
+    }
+    
+    private static void loadExternalStagesFromPathList(GroovyShell shell, List<File> libPaths, boolean cache, boolean includesLibs) {
+        
+            log.info "Evaluating paths: $libPaths"
                 
             // Load all the scripts from this path / folder
             libPaths.each { File scriptFile ->
@@ -978,6 +1007,7 @@ public class Pipeline implements ResourceRequestor {
                         "bpipe.Pipeline.scriptNames['$scriptFile']=this.class.name;" +
                          scriptFile.text + "\nthis", scriptClassName)
                     
+                    log.info "Successfully evaluated " + scriptFile
                     script.getMetaClass().getMethods().grep { CachedMethod m ->
                         (m.declaringClass.name.endsWith("_bpipe") && !["__\$swapInit","run","main"].contains(m.name)) 
                     }.each { CachedMethod m ->
@@ -993,8 +1023,6 @@ public class Pipeline implements ResourceRequestor {
                     throw new PipelineError("Error evaluating script '$scriptFile': " + ex.getMessage())
                 }
             }
-          }
-          PipelineCategory.addStages(shell.context)
     }
     
     /**
