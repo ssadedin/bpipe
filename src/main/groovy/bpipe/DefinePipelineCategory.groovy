@@ -57,6 +57,7 @@ class Edge {
     final static String STAGE_TO_STAGE = "stage"
     final static String SEGMENT_IN = "in"
     final static String SEGMENT_OUT = "out"
+    final static String RESOURCE_LINK = "resource"
     
     
     // Node types
@@ -82,7 +83,7 @@ class Edge {
     
     void setType(String type) {
 //        println "set type to $type"
-        assert type in [STAGE_TO_STAGE,SEGMENT_IN,SEGMENT_OUT]
+        assert type in [STAGE_TO_STAGE,SEGMENT_IN,SEGMENT_OUT, RESOURCE_LINK]
         this.type = type
     }
     
