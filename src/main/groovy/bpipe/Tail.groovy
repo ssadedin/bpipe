@@ -84,9 +84,11 @@ class Tail {
         }
         
         String jobId = opts.arguments()[0]
+        checkValidJobId(jobId)
+            
         
         // Open the file
-        File logFile = new File(".bpipe/logs/${jobId}.log")    
+        File logFile = getJobLogFile(jobId)
         if(opts.e) {
             showFailedCommands(logFile)
         }
@@ -100,6 +102,37 @@ class Tail {
         }
         else {
             showTail(logFile, lines, threadId, opts)
+        }
+    }
+    
+    static File getJobLogFile(String jobId) {
+       new File(".bpipe/logs/${jobId}.log")     
+    }
+    
+    /**
+     * Check that the given job id is valid and that log files exist,
+     * and exit with appropriate error messages if not. 
+     * 
+     * @param jobId
+     */
+    static void checkValidJobId(String jobId) {
+        if(jobId == "-1") {
+            println ""
+            println "ERROR: could not find any Bpipe jobs in this directory!"
+            println ""
+            println "Has bpipe been run in this directory?"
+            println ""
+            System.exit(1)
+        }
+        
+        File logFile = getJobLogFile(jobId)
+        if(!logFile.exists()) {
+            println ""
+            println "ERROR: no log file found for run $jobId"
+            println ""
+            println "Although a Bpipe run occurred, the log file could not be found. This may indicate the .bpipe directory has been corrupted."            
+            println ""
+            System.exit(1)
         }
     }
     
