@@ -3,6 +3,7 @@ package bpipe.agent
 import java.util.logging.Logger
 
 import bpipe.cmd.BpipeCommand
+import bpipe.cmd.ClosurePipelineCommand
 import bpipe.cmd.RunPipelineCommand
 import bpipe.worx.WorxConnection
 import bpipe.Utils
@@ -52,7 +53,7 @@ class AgentCommandRunner implements Runnable {
                 
                 ByteArrayOutputStream bos = new ByteArrayOutputStream()
                 Writer out = new WorxStreamingPrintStream(this.worxCommandId, new BufferedWriter(bos.newWriter(), 512), worx)
-                if(command instanceof RunPipelineCommand) {
+                if(command instanceof RunPipelineCommand || command instanceof ClosurePipelineCommand) {
                     command.out = out
                     command.run(out)
                     bos.toString()

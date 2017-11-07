@@ -8,6 +8,7 @@ import bpipe.Config
 import bpipe.Runner
 import bpipe.Utils
 import bpipe.cmd.BpipeCommand
+import bpipe.cmd.ClosurePipelineCommand
 import bpipe.cmd.LogCommand;
 import bpipe.cmd.RunPipelineCommand
 import bpipe.cmd.Stop;
@@ -19,6 +20,7 @@ import groovy.json.JsonOutput
 class Agent extends TimerTask {
     
     public static Map COMMANDS = [
+        "retry" : { dir, args, writer -> bpipe(dir, ['retry'], writer)},
         "stop" : Stop,
         "log" : LogCommand,
         "run" : RunPipelineCommand,
@@ -146,17 +148,50 @@ class Agent extends TimerTask {
      * @return
      */
     private BpipeCommand createCommandFromAttributes(Map commandAttributes) {
-        Class commandClass = COMMANDS[commandAttributes.command]
-        if(commandClass == null) {
-            throw new Exception("Unknown command $commandAttributes returned by agent poll")
-        }
-
-        BpipeCommand command = commandClass.newInstance()
+        
         def args = commandAttributes.arguments 
-        if((args != null) && args instanceof String) 
+        if((args != null) && (args instanceof String) && (args!="")) {
+            log.info("Parse args as JSON: " + args)
             args = new groovy.json.JsonSlurper().parseText(args)
+        }
+        else 
+        if(args == "")
+            args = []
+        
+        BpipeCommand command
+        
+        Object commandObj = COMMANDS[commandAttributes.command]
+        if(commandObj instanceof Closure) {
+            return new ClosurePipelineCommand(commandObj, args)
+        }
+        else {
+            Class commandClass = commandObj
+            if(commandClass == null) {
+                throw new Exception("Unknown command $commandAttributes returned by agent poll")
+            }
+            command = commandClass.newInstance() // todo: should really be passing args to constructor
+        }
+        
+        if(args)
+            command.args = args
             
-        command.args = args
         return command
+    }
+    
+    static void bpipe(String dir, List bpipeArgs, Writer out) {
+        if(dir == null) 
+            throw new IllegalArgumentException("Directory parameter not set. Directory for command to run in must be specified")
+        
+        File dirFile = new File(dir).absoluteFile
+        if(!dirFile.parentFile.exists())
+            throw new IllegalArgumentException("Directory supplied $dir is not in an existing path. The directory parent must already exist.")
+        
+        log.info "Args are: " + bpipeArgs
+        List<String> cmd = [ bpipe.Runner.BPIPE_HOME + "/bin/bpipe" ] 
+        cmd.addAll(bpipeArgs)
+        log.info "Running command : " + cmd;
+        Map result = Utils.executeCommand(cmd, out:out, err: out) {
+            directory(dirFile)
+        }
     }
 }
