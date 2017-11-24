@@ -26,9 +26,15 @@ class AgentRunner {
             bpipe.Utils.configureVerboseLogging()
        
         Config.readUserConfig()
-        Timer t = new Timer()
-        bpipe.agent.Agent agent = new bpipe.agent.Agent()
-        t.schedule(agent, 1000, 3000)
+        
+        bpipe.agent.Agent agent 
+        if(Config.userConfig.containsKey('agent')) {
+            agent = new JMSAgent(Config.userConfig.agent)
+        }
+        else {
+            agent = new bpipe.agent.HttpAgent()
+        }
+        agent.run()
     }
     
     

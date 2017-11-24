@@ -5,6 +5,7 @@ import java.util.logging.Logger
 import bpipe.cmd.BpipeCommand
 import bpipe.cmd.ClosurePipelineCommand
 import bpipe.cmd.RunPipelineCommand
+import bpipe.worx.HttpWorxConnection
 import bpipe.worx.WorxConnection
 import bpipe.Utils
 
@@ -34,7 +35,7 @@ class AgentCommandRunner implements Runnable {
      * @param worxCommandId
      * @param e
      */
-    public AgentCommandRunner(WorxConnection worx, Long worxCommandId, Exception e) {
+    public AgentCommandRunner(HttpWorxConnection worx, Long worxCommandId, Exception e) {
         super();
         this.worx = worx
         this.worxCommandId = worxCommandId;

@@ -12,12 +12,13 @@ import bpipe.cmd.ClosurePipelineCommand
 import bpipe.cmd.LogCommand;
 import bpipe.cmd.RunPipelineCommand
 import bpipe.cmd.Stop;
+import bpipe.worx.HttpWorxConnection
 import bpipe.worx.WorxConnection
 import groovy.util.logging.Log;;
 import groovy.json.JsonOutput
 
 @Log
-class Agent extends TimerTask {
+abstract class Agent extends TimerTask {
     
     public static Map COMMANDS = [
         "retry" : { dir, args, writer -> bpipe(dir, ['retry'], writer)},
@@ -26,8 +27,6 @@ class Agent extends TimerTask {
         "run" : RunPipelineCommand,
         "checks" : ChecksCommand
     ]
-    
-    WorxConnection worx = new WorxConnection()
     
     Set knownPipelines = new HashSet()
     
@@ -39,24 +38,9 @@ class Agent extends TimerTask {
     
     String id = Utils.sha1(Runner.BPIPE_HOME + '::' + name + '::' + System.properties['user.name'])
     
-    void run() {
-        try {
-            scanForPipelines()
-
-            pollForCommands()
-        } 
-        catch (Throwable e) {
-            log.severe "Failed to scan for pipelines or poll remote listener: "
-            def s = new StringWriter()
-            e.printStackTrace(new PrintWriter(s))
-            log.severe s.toString()
-            
-            if(worx) {
-                worx.close()
-                worx = new WorxConnection()
-            }
-        }
-    }
+    abstract WorxConnection createConnection() 
+    
+    abstract void run()
     
     /**
      * Read the user's home directory to find running or completed pipelines
@@ -106,37 +90,16 @@ class Agent extends TimerTask {
         
     }
     
-    
-    void pollForCommands() {
-        Map details = [
-            agent: [id: this.id, name: this.name],
-            pguids: this.pipelines.keySet() as List
-        ]
-        
-        worx.sendJson("/commands", JsonOutput.toJson(details))
-        Map result = worx.readResponse()
-        
-        if(log.isLoggable(Level.FINE))
-            log.fine "Result = " + result
-            
-        if(result == null)
-            return
-        
-        if(result.commands) {
-            // Each command is a map, indexed by pguid mapping to a list of Command objects
-            // which are serialised as Maps
-            result.commands.each { Map commandAttributes -> 
-                try {
-                    BpipeCommand command = createCommandFromAttributes(commandAttributes)
-                    command.dir = commandAttributes.directory ?: pipelines[commandAttributes.run.id].path
-                    AgentCommandRunner runner = new AgentCommandRunner(new WorxConnection(), commandAttributes.id, command)
-                    new Thread(runner).start()
-                }
-                catch(Exception e) {
-                    AgentCommandRunner runner = new AgentCommandRunner(new WorxConnection(), commandAttributes.id, e)
-                    new Thread(runner).start()
-                }
-            }
+    void processCommand(Map commandAttributes) {
+        try {
+            BpipeCommand command = createCommandFromAttributes(commandAttributes)
+            command.dir = commandAttributes.directory ?: pipelines[commandAttributes.run.id].path
+            AgentCommandRunner runner = new AgentCommandRunner(createConnection(), commandAttributes.id, command)
+            new Thread(runner).start()
+        }
+        catch(Exception e) {
+            AgentCommandRunner runner = new AgentCommandRunner(createConnection(), commandAttributes.id, e)
+            new Thread(runner).start()
         }
     }
     
@@ -172,7 +135,8 @@ class Agent extends TimerTask {
             command = commandClass.newInstance() // todo: should really be passing args to constructor
         }
         
-        if(args)
+        log.info "Command args are: " + args
+        if(args != null)
             command.args = args
             
         return command

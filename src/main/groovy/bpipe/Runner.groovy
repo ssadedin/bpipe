@@ -440,6 +440,7 @@ class Runner {
             normalShutdown=true
             ExecutorPool.shutdownAll()
             EventManager.instance.signal(PipelineEvent.SHUTDOWN, "Shutting down process $pid")
+            NotificationManager.instance.shutdown()
         }
         catch(MissingPropertyException e)  {
             if(e.type?.name?.startsWith("script")) {

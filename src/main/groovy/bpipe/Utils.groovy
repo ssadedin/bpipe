@@ -1019,4 +1019,19 @@ class Utils {
             }
         ]
     }
+    
+    static Map sanitizeForSerialization(Object obj) {
+       obj.clone()
+          .collect {(it.value instanceof PipelineStage) ? ["stage",it.value.toProperties()] : it}
+          .collectEntries() 
+    }
+    
+    static closeQuietly(obj) {
+        try {
+            obj.close()
+        }
+        catch(Exception e) {
+            // ignore   
+        }
+    }
 }

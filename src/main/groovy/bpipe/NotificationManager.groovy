@@ -266,4 +266,13 @@ class NotificationManager {
        }
        throw new PipelineError("Configured notification channel type $clazz could not be created")
    }
+   
+   void shutdown() {
+       this.cfg.notifications.each { id, channelCfg ->
+           if(channelCfg.channel.respondsTo('close'))
+               channelCfg.channel.close()
+           else
+               log.info("Channel $id does not support close")
+       }
+   }
 }

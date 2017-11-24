@@ -62,7 +62,7 @@ class WorxEventListener implements PipelineEventListener {
     /**
      * Low level connection to worx server
      */
-    WorxConnection worx
+    HttpWorxConnection worx
     
     @Log
     class WorxEventJob implements Runnable {
@@ -85,9 +85,7 @@ class WorxEventListener implements PipelineEventListener {
         try {
             log.info "Sending event " + job.toString()
             
-            Map eventDetails = job.properties.clone()
-                                  .collect {(it.value instanceof PipelineStage) ? ["stage",it.value.toProperties()] : it}
-                                  .collectEntries()
+            Map eventDetails = bpipe.Utils.sanitizeForSerialization(job.properties)
                     
             eventDetails.time = System.currentTimeMillis() 
             eventDetails.event = job.event.name()
@@ -138,7 +136,7 @@ class WorxEventListener implements PipelineEventListener {
     
     void start() {
         
-        this.worx = new WorxConnection()
+        this.worx = new HttpWorxConnection()
         
         [
              PipelineEvent.STARTED,
