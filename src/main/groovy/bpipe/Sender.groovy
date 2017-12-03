@@ -28,6 +28,10 @@ import groovy.lang.Closure;
 import groovy.util.logging.Log;
 import groovy.xml.MarkupBuilder
 
+import java.util.logging.Level
+
+import groovy.json.JsonOutput
+
 /**
  * Sends information to a recipient via a communication channel
  * <p>
@@ -72,6 +76,13 @@ class Sender {
         this.content = c()
         this.contentType = "text/plain"
         this.defaultSubject = Utils.truncnl(content,80)
+        return this
+    }
+    
+    Sender json(Closure c) {
+        this.content = c()
+        this.contentType = "application/json"
+        this.defaultSubject = "JSON content from stage ${ctx.stageName}"
         return this
     }
     
@@ -147,7 +158,7 @@ class Sender {
             cfgName = "file"
         }
         
-        if(cfgName.startsWith('$'))
+        if(cfgName?.startsWith('$'))
             cfgName = cfgName.substring(1)
         
         if(details == null) {
@@ -203,8 +214,13 @@ class Sender {
             "send.contentType" : this.contentType,
             "send.file" : this.details.file
         ]
-           
-       NotificationManager.instance.sendNotification(cfgName, PipelineEvent.SEND, this.details.subject, props) 
+        
+       if(details.containsKey('url')) {
+           sendToURL(details)
+       }
+       else {
+           NotificationManager.instance.sendNotification(cfgName, PipelineEvent.SEND, this.details.subject, props) 
+       }
        
        // The file can actually be a PipelineOutput or similar which leads to 
        // bizarre errors when serializing to JSON because the whole PipelineContext
@@ -222,6 +238,61 @@ class Sender {
        if(onSend != null) {
            onSend(details)
        }
+    }
+    
+    void sendToURL(Map details) {
+        
+        def contentIn = this.content
+            
+        if((contentIn instanceof PipelineInput) || (contentIn instanceof String)) {
+            contentIn = new File(contentIn).newInputStream()
+        }
+        else
+        if(contentIn instanceof File)
+            contentIn = contentIn.newInputStream()
+        else
+        if(contentIn instanceof Map || contentIn instanceof List) {
+            contentIn = JsonOutput.toJson(contentIn)
+        }
+        
+        String url = details.url
+        if(details.params) {
+            if(!url.contains('?'))
+                url += '?'
+            
+            url += details.params.collect { key, value -> URLEncoder.encode(key) + '=' + URLEncoder.encode(value) }.join('&')
+        }
+        
+        log.info "Sending to $details.url with content type $contentType"
+        try {
+            new URL(url).openConnection().with {
+                doOutput = true
+                useCaches = false
+                setRequestProperty('Content-Type',this.contentType)
+                requestMethod = 'POST'
+                
+                connect()
+                
+                outputStream.withWriter { writer ->
+                  writer << contentIn
+                }
+                log.info "Sent to URL $details.url"
+                
+                int code = getResponseCode()
+                log.info("Received response code $code from server")
+                if(code >= 400) {
+                    String output = errorStream.text
+                    throw new PipelineError("Send to $details.url failed with error $code. Response contains: ${output.take(80)}")
+                }
+                    
+                if(log.isLoggable(Level.FINE))
+                    log.fine content.text
+            }
+        }
+        finally {
+            if(contentIn.respondsTo('close'))
+                contentIn.close()
+        }
     }
     
     /**
