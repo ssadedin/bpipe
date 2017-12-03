@@ -497,7 +497,12 @@ public class Pipeline implements ResourceRequestor {
     }
     
     static def run(Object host, Closure pipeline) {
-       run(pipeline.binding.variables.args, host, pipeline) 
+        if((host instanceof String) || (host instanceof List)) {
+            // When it is a string, interpret it as an input file
+            run(host, pipeline.binding, pipeline) 
+        }
+        else
+            run(pipeline.binding.variables.args, host, pipeline) 
     }
     
     static def run(def inputFile, Object host, Closure pipelineBuilder) {
@@ -532,7 +537,9 @@ public class Pipeline implements ResourceRequestor {
         // expect a single input do not unexpectedly get an array    
         inputFile = Utils.unbox(inputFile)
         
-        PipelineCategory.addStages(host)
+        if(host)
+            PipelineCategory.addStages(host)
+            
         if(!(host instanceof Binding))
             PipelineCategory.addStages(pipelineBuilder.binding)
             
