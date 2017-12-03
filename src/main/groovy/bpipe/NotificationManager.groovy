@@ -268,6 +268,8 @@ class NotificationManager {
    }
    
    void shutdown() {
+       if(!this.cfg)
+           return 
        this.cfg.notifications.each { id, channelCfg ->
            if(channelCfg.channel.respondsTo('close'))
                channelCfg.channel.close()

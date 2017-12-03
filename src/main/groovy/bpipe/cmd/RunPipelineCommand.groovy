@@ -42,10 +42,15 @@ class RunPipelineCommand extends BpipeCommand {
             throw new IllegalArgumentException("Directory parameter not set. Directory for command to run in must be specified")
         
         File dirFile = new File(dir).absoluteFile
-        if(!dirFile.parentFile.exists())
-            throw new IllegalArgumentException("Directory supplied $dir is not in an existing path. The directory parent must already exist.")
         
-        
+        // This was mainly for security, but is actually problematic because we need pipeline directories two deep at times
+        // TODO: figure out how to limit / constrain this - an entry in agent config?
+        //
+        // if(!dirFile.parentFile.exists())
+        //   throw new IllegalArgumentException("Directory supplied $dir is not in an existing path. The directory parent must already exist.")
+        //        
+        if(!dirFile.exists() && !dirFile.mkdir())
+            throw new IllegalArgumentException("Unable to create directory requested for pipeline run $dir.")
         
         log.info "Running with arguments: " + args;
         

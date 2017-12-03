@@ -79,7 +79,7 @@ class JMSAgent extends Agent {
         this.queue = session.createQueue(config.commandQueue)
         this.consumer = session.createConsumer(queue)
         
-        log.info "Connected to ActiveMQ $config.queue @ $config.brokerURL"
+        log.info "Connected to ActiveMQ $config.commandQueue @ $config.brokerURL"
     }
 
     @Override
