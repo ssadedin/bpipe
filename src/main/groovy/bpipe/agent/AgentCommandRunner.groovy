@@ -35,7 +35,7 @@ class AgentCommandRunner implements Runnable {
      * @param worxCommandId
      * @param e
      */
-    public AgentCommandRunner(HttpWorxConnection worx, Long worxCommandId, Exception e) {
+    public AgentCommandRunner(WorxConnection worx, Long worxCommandId, Exception e) {
         super();
         this.worx = worx
         this.worxCommandId = worxCommandId;

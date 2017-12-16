@@ -73,6 +73,8 @@ class JMSAgent extends Agent {
         if(!(config.containsKey('responseQueue')))
             throw new PipelineError("ActiveMQ configuration is missing required key 'responseQueue'")
             
+        log.info "Connecting to: ${config.brokerURL}"
+            
         this.connection = new ActiveMQConnectionFactory(brokerURL: config.brokerURL).createConnection()
         this.connection.start()        
         this.session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE)

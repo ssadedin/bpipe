@@ -33,7 +33,7 @@ class HttpAgent extends Agent implements Runnable {
     
     long pollPeriodMs = 15000
     
-    JMSWorxConnection  pollConnection
+    WorxConnection  pollConnection
     
     WorxConnection createConnection()  {
         new HttpWorxConnection()
