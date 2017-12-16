@@ -177,6 +177,17 @@ class DefinePipelineCategory {
         else
             return org.codehaus.groovy.runtime.DefaultGroovyMethods.plus(l,other)
     }
+    
+    static Closure power(List list, Closure c) {
+        sequentially(list,c)
+    }
+  
+    
+    static Closure sequentially(List list, Closure c) {
+        list.collect { Object branch -> 
+                c
+        }.sum()
+    }
 
     static Object plus(List l, Closure other) {
 //        println "List + Closure"

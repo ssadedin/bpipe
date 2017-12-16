@@ -108,6 +108,26 @@ class PipelineCategory {
         Utils.quote(value)
     }
     
+    static Closure power(List list, Closure c) {
+        sequentially(list,c)
+    }
+    
+    static Closure sequentially(List list, Closure c) {
+        List nameSetters = []
+        Closure result = list.collect { n -> 
+            def nameSetter = { it -> branch.name = n; return null; } 
+            
+            nameSetters << nameSetter
+            
+            return nameSetter + c(n)
+            
+        }.sum()
+        
+        Pipeline.currentUnderConstructionPipeline.joiners.addAll(nameSetters)
+        
+        return result
+    }
+    
     static Object plus(List l, Closure c) {
         def j = {
             return it
