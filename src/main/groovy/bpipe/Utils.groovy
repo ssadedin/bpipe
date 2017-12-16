@@ -963,7 +963,7 @@ class Utils {
         Map renderers = options.get('render',[:])
         headers.each { hd ->
             if(!renderers[hd]) {
-                renderers[hd]  = { val, width  -> print val.padRight(width) }
+                renderers[hd]  = { val, width  -> out.print val.padRight(width) }
             }
         }
         
