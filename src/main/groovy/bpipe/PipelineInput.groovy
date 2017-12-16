@@ -155,8 +155,10 @@ class PipelineInput {
      */
     def propertyMissing(String name) {
 		log.info "Searching for missing Property: $name"
-        def resolved
+        List<String> resolved
+        InputMissingError ime
         try {
+            
             if(name =="dir") {
                 log.info "Trying to resolve input as directory ...."
                 resolved = resolveInputAsDirectory()
@@ -170,27 +172,31 @@ class PipelineInput {
                   throw new PipelineError("Insufficient inputs: at least ${defaultValueIndex+1} inputs are expected with extension .${name} but only ${resolved.size()} are available")
             }
             parentError=null
+        		resolved = [mapToCommandValue(resolved)]
         }
         catch(InputMissingError e) {
-            PipelineInput childInp = new PipelineInput(this.resolvedInputs.clone(), stages, aliases)
-            childInp.parent = this
-            childInp.resolvedInputs = this.resolvedInputs
-            childInp.currentFilter = this.currentFilter
-            childInp.extensionPrefix = this.extensionPrefix ? this.extensionPrefix+"."+name : name
-            childInp.defaultValueIndex = defaultValueIndex
-            childInp.parentError = e
             log.info("No input resolved for property $name: returning child PipelineInput for possible double extension resolution")
-            return childInp;
+            resolved = this.resolvedInputs
+            ime = e
         }
-		return mapToCommandValue(resolved)
+        
+        PipelineInput childInp = new PipelineInput(resolved.clone(), stages, aliases)
+        childInp.parent = this
+        childInp.resolvedInputs = resolved.clone()
+        childInp.currentFilter = this.currentFilter
+        childInp.extensionPrefix = this.extensionPrefix ? this.extensionPrefix+"."+name : name
+        childInp.defaultValueIndex = defaultValueIndex
+        childInp.parentError = ime
+        return childInp;
+        
      }
     
-    String resolveInputAsDirectory() {
+    List<String> resolveInputAsDirectory() {
         List outputStack = this.computeOutputStack()
         for(List outputs in outputStack) {
             def result = Utils.box(outputs).find { new File(it).isDirectory() }
             if(result)
-                return result
+                return [result]
         }
     }
 	
