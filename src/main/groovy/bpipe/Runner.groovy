@@ -595,27 +595,47 @@ class Runner {
     }
     
     static void loadExternalLibs() {
-       if(Config.userConfig.containsKey("libs")) {
-            if(Config.userConfig.libs instanceof String) {
-                def jars = (Config.userConfig.libs.split(":") as List)
-                for(jar in jars) {
-                    try {
-                        File f = new File(jar)
-                        if(!f.exists()) {
-                            // Attempt to resolve the file relative to the main script location if
-                            // it cannot be resolved directly
-                            f = new File(new File(Config.config.script).canonicalFile.parentFile, jar)
-                        }
-                        log.info "Attempting to load JAR file from $f.absolutePath"
-                        Runner.class.classLoader.rootLoader.addURL(f.toURL())
-                    }
-                    catch(Exception e) {
-                        log.severe("Failed to add jar $jar to classpath: " + e)
-                        System.err.println("WARN: Error adding jar $jar to classpath: " + e.getMessage())
-                    }                    
-                }
-            }
+       if(!Config.userConfig.containsKey("libs")) 
+           return
+           
+        def jars = Config.userConfig.libs
+        if(Config.userConfig.libs instanceof String) {
+            jars = jars.tokenize(":") 
         }
+            
+        List resolvedLibs = []
+        for(String jar in jars) {
+            resolvedLibs << loadExternalLib(jar)
+        }
+        Config.userConfig.libs = resolvedLibs
+    }
+    
+    /**
+     * @param libPath   libPath to search for in predefined locations and load
+     * @return          actual resolved library
+     */
+    static String loadExternalLib(String libPath) {
+        try {
+            File f = new File(libPath)
+            if(!f.exists()) {
+                // Attempt to resolve the file relative to the main script location if
+                // it cannot be resolved directly
+                File relativeToScript = new File(new File(Config.config.script).canonicalFile.parentFile, libPath)
+                
+                log.info "Library $f does not exist: checking under path $relativeToScript"
+                if(!relativeToScript.exists()) {
+                    log.info "Path relative to script does not exist: library $libPath may be ignored"
+                }
+                f = relativeToScript
+            }
+            log.info "Attempting to add to classpath: $f.absolutePath"
+            Runner.class.classLoader.rootLoader.addURL(f.toURL())
+            return f.path
+        }
+        catch(Exception e) {
+            log.severe("Failed to add jar $libPath to classpath: " + e)
+            System.err.println("WARN: Error adding jar $libPath to classpath: " + e.getMessage())
+        }                    
     }
                     
     /**

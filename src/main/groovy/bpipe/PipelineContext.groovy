@@ -1533,7 +1533,10 @@ class PipelineContext {
         
         String cp = ""
         if(Config.userConfig.containsKey("libs")) {
-            cp = "-cp ${Config.userConfig.libs}"
+            def libs = Config.userConfig.libs
+            if(libs instanceof List)
+                libs = libs.join(':')
+            cp = "-cp ${libs}"
         }
         
         String javaOpts = "-noverify " + (opts.javaOpts?:"")
