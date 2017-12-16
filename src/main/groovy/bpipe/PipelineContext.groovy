@@ -2408,6 +2408,10 @@ class PipelineContext {
         new Sender(this).text(c)
     }
     
+    Sender json(Closure c) {
+        new Sender(this).json(c)
+    }
+    
     Sender report(String reportName) {
         new Sender(this).report(reportName)
     }

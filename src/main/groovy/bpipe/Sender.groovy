@@ -242,6 +242,27 @@ class Sender {
     
     void sendToURL(Map details) {
         
+        def contentIn = resolveJSONContentSource()
+        
+        String url = details.url
+        if(details.params) {
+            if(!url.contains('?'))
+                url += '?'
+            
+            url += details.params.collect { key, value -> URLEncoder.encode(key) + '=' + URLEncoder.encode(value) }.join('&')
+        }
+        
+        log.info "Sending to $details.url with content type $contentType"
+        try {
+            connectAndSend(contentIn, url)
+        }
+        finally {
+            if(contentIn.respondsTo('close'))
+                contentIn.close()
+        }
+    }
+    
+    def resolveJSONContentSource() {
         def contentIn = this.content
             
         if((contentIn instanceof PipelineInput) || (contentIn instanceof String)) {
@@ -254,44 +275,32 @@ class Sender {
         if(contentIn instanceof Map || contentIn instanceof List) {
             contentIn = JsonOutput.toJson(contentIn)
         }
-        
-        String url = details.url
-        if(details.params) {
-            if(!url.contains('?'))
-                url += '?'
-            
-            url += details.params.collect { key, value -> URLEncoder.encode(key) + '=' + URLEncoder.encode(value) }.join('&')
-        }
-        
-        log.info "Sending to $details.url with content type $contentType"
-        try {
-            new URL(url).openConnection().with {
-                doOutput = true
-                useCaches = false
-                setRequestProperty('Content-Type',this.contentType)
-                requestMethod = 'POST'
+        return contentIn
+    }
+    
+    void connectAndSend(def contentIn, String url) {
+        new URL(url).openConnection().with {
+            doOutput = true
+            useCaches = false
+            setRequestProperty('Content-Type',this.contentType)
+            requestMethod = 'POST'
                 
-                connect()
+            connect()
                 
-                outputStream.withWriter { writer ->
-                  writer << contentIn
-                }
-                log.info "Sent to URL $details.url"
-                
-                int code = getResponseCode()
-                log.info("Received response code $code from server")
-                if(code >= 400) {
-                    String output = errorStream.text
-                    throw new PipelineError("Send to $details.url failed with error $code. Response contains: ${output.take(80)}")
-                }
-                    
-                if(log.isLoggable(Level.FINE))
-                    log.fine content.text
+            outputStream.withWriter { writer ->
+              writer << contentIn
             }
-        }
-        finally {
-            if(contentIn.respondsTo('close'))
-                contentIn.close()
+            log.info "Sent to URL $details.url"
+                
+            int code = getResponseCode()
+            log.info("Received response code $code from server")
+            if(code >= 400) {
+                String output = errorStream.text
+                throw new PipelineError("Send to $details.url failed with error $code. Response contains: ${output.take(80)}")
+            }
+                    
+            if(log.isLoggable(Level.FINE))
+                log.fine content.text
         }
     }
     
