@@ -71,7 +71,7 @@ class PipelineTestAbort extends RuntimeException {
 
     @Override
     public String getMessage() {
-        if(this.missingOutputs.isEmpty()) {
+        if(this.missingOutputs == null || this.missingOutputs.isEmpty()) {
             return super.getMessage();
         }
         
