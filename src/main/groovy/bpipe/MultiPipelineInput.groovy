@@ -114,4 +114,8 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
     public int size() {
         return Utils.box(super.@input).size()
     }
+    
+    String asQuotedList() {
+        '["' + this.join('","') + '"]'
+    }
 }
