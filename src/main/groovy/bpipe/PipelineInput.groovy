@@ -117,7 +117,7 @@ class PipelineInput {
         String resolvedValue = boxed[defaultValueIndex]
         if(!this.resolvedInputs.contains(resolvedValue))
             this.resolvedInputs.add(resolvedValue)
-        return String.valueOf(resolvedValue);
+        return this.aliases[String.valueOf(resolvedValue)]
     }
     
     void addResolvedInputs(List<String> objs) {
