@@ -141,7 +141,7 @@ class Check {
            return false
        }
        
-       if(!Dependencies.instance.checkUpToDate([checkFile.absolutePath], inputs)) {
+       if(Dependencies.instance.getOutOfDate([checkFile.absolutePath], inputs)) {
            return false
        }
        
