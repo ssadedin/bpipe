@@ -248,13 +248,21 @@ class Tool {
     }
     
     def ask(String msg, Closure c) {
+        
         if(stdin == null)
             stdin = System.in.newReader()
             
         print msg + "? (y/n) "
-        String answer = stdin.readLine().trim()
-        if(answer == "y") {
+        
+        if(System.properties['bpipe.quiet']) {
+            println " y (auto-answered)"
             c()
+        }
+        else {
+            String answer = stdin.readLine().trim()
+            if(answer == "y") {
+                c()
+            }
         }
     }
     

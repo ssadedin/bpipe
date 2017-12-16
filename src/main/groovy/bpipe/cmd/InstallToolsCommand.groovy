@@ -12,6 +12,7 @@ class InstallToolsCommand  extends BpipeCommand {
         
         cli.with {
             v 'Verbose logging'
+            q 'Quiet: auto-answer questions with default answers'
         }
         
         def opts = cli.parse(args)
@@ -21,9 +22,13 @@ class InstallToolsCommand  extends BpipeCommand {
         if(opts.v)
             bpipe.Utils.configureVerboseLogging()
             
+        if(opts.q) {
+            out.println "Enabling quiet mode: you agree to all license conditions of installed tools"
+            System.setProperty('bpipe.quiet', 'true')
+        }
+            
         bpipe.Runner.readUserConfig()
         bpipe.ToolDatabase.instance.init(bpipe.Config.userConfig)
-
         
         ConfigObject cfg = bpipe.Config.userConfig
         if("title" in cfg.install) {
