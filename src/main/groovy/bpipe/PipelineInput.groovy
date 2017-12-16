@@ -172,7 +172,7 @@ class PipelineInput {
                   throw new PipelineError("Insufficient inputs: at least ${defaultValueIndex+1} inputs are expected with extension .${name} but only ${resolved.size()} are available")
             }
             parentError=null
-        		resolved = [mapToCommandValue(resolved)]
+        		mapToCommandValue(resolved)
         }
         catch(InputMissingError e) {
             log.info("No input resolved for property $name: returning child PipelineInput for possible double extension resolution")
