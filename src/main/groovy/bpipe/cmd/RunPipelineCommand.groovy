@@ -49,7 +49,7 @@ class RunPipelineCommand extends BpipeCommand {
         // if(!dirFile.parentFile.exists())
         //   throw new IllegalArgumentException("Directory supplied $dir is not in an existing path. The directory parent must already exist.")
         //        
-        if(!dirFile.exists() && !dirFile.mkdir())
+        if(!dirFile.exists() && !dirFile.mkdirs())
             throw new IllegalArgumentException("Unable to create directory requested for pipeline run $dir.")
         
         log.info "Running with arguments: " + args;
