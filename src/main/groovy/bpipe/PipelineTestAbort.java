@@ -25,6 +25,8 @@
  */
 package bpipe;
 
+import java.util.List;
+
 /**
  * This exception is thrown when the pipeline is aborted because
  * the user ran it in "test"mode.
@@ -33,6 +35,16 @@ class PipelineTestAbort extends RuntimeException {
     
     boolean summary = false;
     
+    List<String> missingOutputs;
+    
+    public List<String> getMissingOutputs() {
+        return missingOutputs;
+    }
+
+    public void setMissingOutputs(List<String> missingOutputs) {
+        this.missingOutputs = missingOutputs;
+    }
+
     public boolean isSummary() {
         return summary;
     }
@@ -56,5 +68,21 @@ class PipelineTestAbort extends RuntimeException {
     public PipelineTestAbort(Throwable arg0) {
         super(arg0);
     }
+
+    @Override
+    public String getMessage() {
+        if(this.missingOutputs.isEmpty()) {
+            return super.getMessage();
+        }
+        
+        StringBuilder b = new StringBuilder(super.getMessage());
+        b.append("\n\nto create outputs:\n\n");
+        for(Object o : this.missingOutputs) {
+            b.append("    " + String.valueOf(o) + "\n");
+        }
+        
+        return b.toString();
+    }
+    
     
 }

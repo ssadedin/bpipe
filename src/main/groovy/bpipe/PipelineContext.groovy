@@ -1048,18 +1048,20 @@ class PipelineContext {
             if(probeFailure) {
                 log.info "Not up to date because probe failed"
             }
-            else
-            if(!Dependencies.instance.checkUpToDate(outputsToCheck + globExistingFiles,allInputs)) {
-                log.info "Not up to date because input inferred by probe of body newer than outputs"
-            }
-            else
-            if(!Config.config.enableCommandTracking || !checkForModifiedCommands()) {
-                msg("Skipping steps to create ${Utils.box(out).unique()} because " + (lastInputs?"newer than $lastInputs" : " file already exists"))
-                log.info "Skipping produce body"
-                doExecute = false
-            }
             else {
-                log.info "Not skipping because of modified command"
+                List<String> outOfDateOutputs = Dependencies.instance.getOutOfDate(outputsToCheck + globExistingFiles,allInputs)
+                if(outOfDateOutputs) {
+                    log.info "Not up to date because input inferred by probe of body newer than outputs"
+                }
+                else
+                if(!Config.config.enableCommandTracking || !checkForModifiedCommands()) {
+                    msg("Skipping steps to create ${Utils.box(out).unique()} because " + (lastInputs?"newer than $lastInputs" : " file already exists"))
+                    log.info "Skipping produce body"
+                    doExecute = false
+                }
+                else {
+                    log.info "Not skipping because of modified command"
+                }
             }
           }
           finally {
@@ -1816,6 +1818,7 @@ class PipelineContext {
 
       log.info "Checking actual resolved inputs $actualResolvedInputs"
       
+      List<String> outOfDateOutputs = null
       if(probeMode) {
           log.info "Skip check dependencies due to probe mode"
       }
@@ -1823,9 +1826,11 @@ class PipelineContext {
       if(!checkOutputs) {
           log.info "Skip check dependencies due to no outputs to check"
       }
-      else
-      if(Dependencies.instance.checkUpToDate(checkOutputs,actualResolvedInputs)) {
-          return createUpToDateExecutor(command, checkOutputs)
+      else {
+          outOfDateOutputs = Dependencies.instance.getOutOfDate(checkOutputs,actualResolvedInputs)
+          if(!outOfDateOutputs) {
+              return createUpToDateExecutor(command, checkOutputs)
+          }
       }
           
       // Reset the inferred outputs - once they are used the user should have to refer to them
@@ -1854,6 +1859,10 @@ class PipelineContext {
           command = commandManager.start(stageName, command, config, Utils.box(this.input), 
                                          this.usedResources,
                                          deferred, this.outputLog)
+      }
+      catch(PipelineTestAbort exPta) {
+          exPta.missingOutputs = outOfDateOutputs
+          throw exPta
       }
       finally {
           // If deferred then the thread count is not allocated yet, so we can't 

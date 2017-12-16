@@ -360,29 +360,37 @@ class Dependencies {
      * @return  true iff file is newer than all inputs, but older than all 
      *          non-up-to-date outputs
      */
-    boolean checkUpToDate(List outputs, def inputs) {
+    List<String> getOutOfDate(List originalOutputs, def inputs) {
         
+        List outputs = originalOutputs.unique(false)
         inputs = Utils.box(inputs)
+        if(outputs.contains("align/NA12879.bam")) 
+            println "debug output"
+        
+        List outOfDateOutputs = []
         
         // If there are no outputs then by definition, they are all up to date
         if(!outputs)
-            return true
+            return outOfDateOutputs
         
         // Outputs are forcibly out of date if specified by remake
-        if(!overrideTimestamps.isEmpty() && outputs.any { o ->
-            String path = o instanceof File ? o.path : o
-            File cf = Utils.canonicalFileFor(path)
-            Long ts = overrideTimestamps[cf.path]
-            
-            // If the timestamps are the same then we consider the timestamp overridden
-            ts == cf.lastModified()
-        })
-            return false
-            
+        if(!overrideTimestamps.isEmpty()) { 
+            List forcedOutOfDate = outputs.grep { o ->
+                String path = o instanceof File ? o.path : o
+                File cf = Utils.canonicalFileFor(path)
+                Long ts = overrideTimestamps[cf.path]
+                
+                // If the timestamps are the same then we consider the timestamp overridden
+                ts == cf.lastModified()
+            }
+            outOfDateOutputs.addAll(forcedOutOfDate)
+        }
+        
         // If the outputs are created from nothing (no inputs)
         // then they are up to date as long as they exist
         if(!inputs)  {
-            return outputs.collect { new File(it) }.every { it.exists() }
+            outOfDateOutputs.addAll(outputs.collect { new File(it) }.grep { !it.exists() })
+            return outOfDateOutputs
         }
             
         // The most obvious case: all the outputs exist and are newer than 
@@ -390,15 +398,17 @@ class Dependencies {
         List<File> older = Utils.findOlder(outputs,inputs)
         if(!older) {
             log.info "No missing / older files from inputs: $outputs are up to date"
-            return true
+            outOfDateOutputs.addAll(older)
+            return outOfDateOutputs
         }
         else
         if(older.any { it.exists() }) { // If any of the older files exist then we have no choice but to rebuild them
             log.info "Not up to date because these files exist and are older than inputs: " + older.grep { it.exists() }
-            return false
+            outOfDateOutputs.addAll(older.grep{ it.exists()})
+            return outOfDateOutputs
         }
         else {
-            log.info "Found these missing / older files: " + older
+             log.info "These missing / older files require check for cleanup: " + older
         }
         
         GraphEntry graph = this.getOutputGraph()
@@ -425,15 +435,16 @@ class Dependencies {
         finally {
             outputGraphLock.readLock().unlock()
         }
-            
-        if(!outDated) {
+        
+        outOfDateOutputs.addAll(outDated)
+        if(!outOfDateOutputs) {
             log.info "All missing files are up to date"
-            return true
         }
         else {
-            log.info "Some files are outdated : $outDated"
-            return false
+            log.info "Some files are outdated : $outOfDateOutputs"
         }
+        
+        return outOfDateOutputs
     }
     
     /**
