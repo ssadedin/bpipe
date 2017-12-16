@@ -258,8 +258,12 @@ class PipelineStage {
         }
         catch(Throwable e) {
                 
-            if(!succeeded && !joiner) 
-                EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")
+            if(!joiner) {
+               EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", [stage:this])            
+               if(!succeeded) {
+                   EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")
+               }
+            }
                 
             log.severe "Cleaning up outputs due to error: $e"
             log.throwing("PipelineStage", "run", e)
@@ -278,8 +282,7 @@ class PipelineStage {
              Dependencies.instance.checkFiles(context.@output, pipeline.aliases, "output")
  
             if(!joiner) {
-                 EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED,
-                    "Finished stage $displayName", [stage:this])            
+                 EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", [stage:this])            
             }
         } 
         catch (PipelineError e) {

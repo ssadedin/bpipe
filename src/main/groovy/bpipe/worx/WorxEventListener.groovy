@@ -141,6 +141,7 @@ class WorxEventListener implements PipelineEventListener {
         [
              PipelineEvent.STARTED,
              PipelineEvent.STAGE_STARTED,
+             PipelineEvent.STAGE_FAILED, 
              PipelineEvent.STAGE_COMPLETED, 
              PipelineEvent.SEND, 
              PipelineEvent.CHECK_EXECUTED, 
