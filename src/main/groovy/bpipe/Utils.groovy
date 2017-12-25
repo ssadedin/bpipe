@@ -1003,6 +1003,15 @@ class Utils {
         }
     }
     
+    /**
+     * Wait until action returns a non-null result, with a timeout
+     * returns an object with ok and timeout methods that accept closure
+     * arguments for actions to take.
+     * 
+     * @param timeoutMs
+     * @param action
+     * @return
+     */
     static Map waitWithTimeout(long timeoutMs, Closure action) {
         return [
             ok: { okAction ->

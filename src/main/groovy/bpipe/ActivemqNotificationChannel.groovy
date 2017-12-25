@@ -54,20 +54,44 @@ class ActivemqNotificationChannel implements NotificationChannel {
     @Override
     public void notify(PipelineEvent event, String subject, Template template, Map<String, Object> model) {
         
-          Map eventDetails = model.collectEntries { key, value -> 
-              if(value instanceof Number)
-                  [key,value]
-              else
-                  [key, String.valueOf(value)]
-          }
+        Map eventDetails = model.collectEntries { key, value ->
+            if(value instanceof Number)
+                [key,value]
+            else {
+                if(value instanceof PipelineStage)
+                    value = value.toProperties()
+                return [key, 
+                    value instanceof Map || value instanceof List ? JsonOutput.toJson(value) : String.valueOf(value)
+                ]
+            }
+        }
+
+        eventDetails.description = subject
+
+        
+        TextMessage msg
+        String messageBody
+        if(event == PipelineEvent.SEND) {
+            messageBody = model['send.content']
+            msg = session.createTextMessage(messageBody)
+            eventDetails.each { k,v ->
+                
+                if(v instanceof PipelineStage)
+                    v = v.toProperties()
+                else
+                msg.setStringProperty(k,v)
+            }
+        }
+        else {
+          messageBody = JsonOutput.toJson(eventDetails)
+          msg = session.createTextMessage(messageBody)
+        }
+        
           
-          eventDetails.description = subject
-          
-          TextMessage msg = session.createTextMessage(JsonOutput.toJson(eventDetails))
-          msg.setJMSType(event.name())        
-          
-          log.info "Send $event to ActiveMQ queue"
-          producer.send(queue, msg)
+        msg.setJMSType(event.name())        
+        
+        log.info "Send $event to ActiveMQ queue"
+        producer.send(queue, msg)
     }
 
     @Override

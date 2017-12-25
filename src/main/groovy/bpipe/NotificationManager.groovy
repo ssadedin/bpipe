@@ -80,9 +80,12 @@ class NotificationManager {
             NotificationChannel channel = createChannel(channelCfg) 
             
             PipelineEvent [] eventFilter = [PipelineEvent.FINISHED]
-            if(channelCfg.events)  {
+            if(channelCfg.containsKey('events'))  {
                 try {
-                    eventFilter = channelCfg.events.split(",").collect { PipelineEvent.valueOf(it) }
+                    eventFilter = channelCfg.events.tokenize(",").collect { evt ->
+                        log.info("Subscribing channel $channelCfg.name to event " + evt)
+                        PipelineEvent.valueOf(evt) 
+                    }
                 }
                 catch(IllegalArgumentException e) {
                     System.err.println("ERROR: unknown type of Pipeline Event configured for notification type $name: " + channelCfg.events)
@@ -127,6 +130,17 @@ class NotificationManager {
 	 * the channel
 	 */
 	void sendNotification(ConfigObject cfg, PipelineEvent evt, String desc, Map detail) {
+        
+        log.info "Sending to channel $cfg"
+        
+        Utils.waitWithTimeout(30000) { 
+            cfg.containsKey('channel')
+        }.ok {
+            log.info("Channel for $cfg.name is active")
+        }.timeout {
+            throw new PipelineError("Notification channel $cfg.name is not configured. Please check the log files to see why this channel did not set up correctly")
+        }
+        
         
         NotificationChannel channel = cfg.channel
 		

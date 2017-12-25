@@ -80,7 +80,7 @@ class Sender {
     }
     
     Sender json(Closure c) {
-        this.content = c()
+        this.content = JsonOutput.toJson(c())
         this.contentType = "application/json"
         this.defaultSubject = "JSON content from stage ${ctx.stageName}"
         return this

@@ -2408,7 +2408,15 @@ class PipelineContext {
         new Sender(this).text(c)
     }
     
+    Sender json(Object obj) {
+        this.json({ obj })
+    }
+    
     Sender json(Closure c) {
+        new Sender(this).json(c)
+    }
+    
+    Sender jms(Closure c) {
         new Sender(this).json(c)
     }
     
