@@ -188,8 +188,15 @@ class WorxEventListener implements PipelineEventListener {
                 }
                 
                 details.title = Pipeline.documentation.title
-                if(!details.title)
-                    details.title = scriptFile.name.replaceAll('\\.[^\\.]*?$', '').capitalize()
+                details.name = Pipeline.documentation.name
+                details.documentation = Pipeline.documentation
+                if(!details.title) {
+                    if(details.name) {
+                        details.title = details.name
+                    }
+                    else
+                        details.title = scriptFile.name.replaceAll('\\.[^\\.]*?$', '').capitalize()
+                }
                 details.dir = Runner.runDirectory
             }
             
