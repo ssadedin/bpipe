@@ -1,6 +1,7 @@
 package bpipe.agent
 
 import java.nio.file.Files;
+import java.util.concurrent.Semaphore
 import java.util.logging.Level
 
 import bpipe.ChecksCommand
@@ -14,7 +15,7 @@ import bpipe.cmd.RunPipelineCommand
 import bpipe.cmd.Stop;
 import bpipe.worx.HttpWorxConnection
 import bpipe.worx.WorxConnection
-import groovy.util.logging.Log;;
+import groovy.util.logging.Log;
 import groovy.json.JsonOutput
 
 @Log
@@ -40,6 +41,12 @@ abstract class Agent extends TimerTask {
     
     abstract WorxConnection createConnection() 
     
+    boolean stopRequested = false
+    
+    boolean singleShot = false
+    
+    Semaphore concurrency = null
+    
     abstract void run()
     
     /**
@@ -50,6 +57,23 @@ abstract class Agent extends TimerTask {
         [Runner.CENTRAL_JOB_DIR, Runner.COMPLETED_DIR]*.eachFileMatch(~/[0-9]{1,10}/) { File f ->
             this.registerPotentialJob(f)
         }
+    }
+    
+    void withConcurrency(Closure c) {
+        if(this.concurrency == null) {
+            c()
+            return
+        }
+        else {
+            concurrency.acquire()
+            try {
+                c()
+            }
+            finally {
+                concurrency.release()
+            }
+        }
+            
     }
     
     void registerPotentialJob(File potentialJobFile) {

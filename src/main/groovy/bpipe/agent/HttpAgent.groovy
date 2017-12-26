@@ -21,10 +21,6 @@ import groovy.json.JsonOutput
 @Log
 class HttpAgent extends Agent implements Runnable {
     
-    Set knownPipelines = new HashSet()
-    
-    Map<String, PipelineInfo> pipelines = [:]
-    
     String name = InetAddress.localHost.hostName
     
 //    String id = Utils.sha1(String.valueOf(System.currentTimeMillis()) + new Random().nextInt())
