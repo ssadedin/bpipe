@@ -73,8 +73,14 @@ class HttpAgent extends Agent implements Runnable {
         if(log.isLoggable(Level.FINE))
             log.fine "Result = " + result
             
-        if(result == null)
+        if(result == null) {
+            log.warning "Null response from HTTP connection"
             return
+        }
+        
+        if(result.status == "error") {
+            log.error "Poll for commands failed: " + result.reason
+        }
         
         if(result.commands) {
             // Each command is a map, indexed by pguid mapping to a list of Command objects
