@@ -59,23 +59,6 @@ abstract class Agent extends TimerTask {
         }
     }
     
-    void withConcurrency(Closure c) {
-        if(this.concurrency == null) {
-            c()
-            return
-        }
-        else {
-            concurrency.acquire()
-            try {
-                c()
-            }
-            finally {
-                concurrency.release()
-            }
-        }
-            
-    }
-    
     void registerPotentialJob(File potentialJobFile) {
         
         if(!Files.isSymbolicLink(potentialJobFile.toPath()))
@@ -119,11 +102,14 @@ abstract class Agent extends TimerTask {
             BpipeCommand command = createCommandFromAttributes(commandAttributes)
             command.dir = commandAttributes.directory ?: pipelines[commandAttributes.run.id].path
             AgentCommandRunner runner = new AgentCommandRunner(createConnection(), commandAttributes.id, command)
+            runner.concurrency = this.concurrency
             new Thread(runner).start()
         }
         catch(Exception e) {
+            // report the error upstream if we can
             AgentCommandRunner runner = new AgentCommandRunner(createConnection(), commandAttributes.id, e)
-            new Thread(runner).start()
+            runner.concurrency = this.concurrency
+            new Thread(runner).start() 
         }
     }
     

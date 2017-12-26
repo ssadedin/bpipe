@@ -44,6 +44,9 @@ class HttpAgent extends Agent implements Runnable {
                 scanForPipelines()
     
                 pollForCommands()
+                
+                if(stopRequested)
+                    break
             } 
             catch (Throwable e) {
                 log.severe "Failed to scan for pipelines or poll remote listener: "
@@ -85,8 +88,11 @@ class HttpAgent extends Agent implements Runnable {
         if(result.commands) {
             // Each command is a map, indexed by pguid mapping to a list of Command objects
             // which are serialised as Maps
-            result.commands.each { Map commandAttributes -> 
+            for(Map commandAttributes in result.commands) { 
                 processCommand(commandAttributes)
+                
+                if(singleShot)
+                    stopRequested = true
             }
         }
     }

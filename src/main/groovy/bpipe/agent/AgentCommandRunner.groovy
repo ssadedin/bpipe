@@ -1,5 +1,6 @@
 package bpipe.agent
 
+import java.util.concurrent.Semaphore
 import java.util.logging.Logger
 
 import bpipe.cmd.BpipeCommand
@@ -20,6 +21,8 @@ class AgentCommandRunner implements Runnable {
     BpipeCommand command
     
     Exception errorResponse
+    
+    Semaphore concurrency
     
     public AgentCommandRunner(WorxConnection worx, Long worxCommandId, BpipeCommand command) {
         super();
@@ -42,10 +45,10 @@ class AgentCommandRunner implements Runnable {
         this.errorResponse = e
     }
     
-    
     @Override
     public void run() {
         
+        concurrency?.acquire()
         try {
             executeAndRespond(worxCommandId) {
                 
@@ -67,7 +70,8 @@ class AgentCommandRunner implements Runnable {
             }
         }
         finally {
-            worx.close()
+            bpipe.Utils.closeQuietly(worx.close())
+            concurrency?.release()
         }
     }
     

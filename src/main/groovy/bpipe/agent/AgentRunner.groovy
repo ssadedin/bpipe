@@ -1,6 +1,8 @@
 package bpipe.agent
 
 import bpipe.BpipeLogFormatter
+
+import java.util.concurrent.Semaphore
 import java.util.logging.FileHandler
 import bpipe.Config
 import groovy.util.logging.Log;
@@ -9,9 +11,11 @@ import groovy.util.logging.Log;
 class AgentRunner {
     static void main(String [] args) {
         
-        CliBuilder cli = new CliBuilder(usage: "bpipe agent [-v]")
+        CliBuilder cli = new CliBuilder(usage: "bpipe agent [-v] [-n <concurrency>")
         cli.with {
             v 'Verbose mode'
+            n 'How many concurrent jobs to run', args:1, required:false
+            s 'Wait for a single command and then exit (useful for debugging)', longOpt: 'single'
         }
         
         def opts = cli.parse(args)
@@ -34,6 +38,15 @@ class AgentRunner {
         else {
             agent = new bpipe.agent.HttpAgent()
         }
+        
+        if(opts.n) {
+            log.info("Setting concurrency = " + opts.n)
+            agent.concurrency = new Semaphore(opts.n.toInteger())
+        }
+        
+        if(opts.s)
+            agent.singleShot = true
+            
         agent.run()
     }
     
