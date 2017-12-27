@@ -27,6 +27,9 @@ package bpipe
 import java.util.logging.Level;
 import java.util.logging.Logger
 import java.util.regex.Pattern
+
+import bpipe.storage.LocalPipelineFile
+
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 
@@ -106,7 +109,7 @@ class PipelineInput {
     
     PipelineInput(def input, List<PipelineStage> stages, Aliases aliases) {
         this.stages = stages;
-        this.input = input
+        this.input = Utils.box(input).collect { String.valueOf(it) }
         this.aliases = aliases
     }
     
@@ -124,17 +127,19 @@ class PipelineInput {
         return this.aliases[String.valueOf(resolvedValue)]
     }
     
-    void addResolvedInputs(List<String> objs) {
+    void addResolvedInputs(List objs) {
         
-        for(inp in objs) {
+        List<String> stringified = objs.collect { String.valueOf(it) }
+        
+        for(inp in stringified) {
             if(!this.resolvedInputs.contains(inp))
                 this.resolvedInputs.add(inp)
         }
         
         if(parent)
-            parent.addResolvedInputs(objs)
+            parent.addResolvedInputs(stringified)
             
-        addFilterExts(objs)
+        addFilterExts(stringified)
     }
 	
 	String getPrefix() {
@@ -146,7 +151,7 @@ class PipelineInput {
      *   exec "cp ${input[0]} $output"
      */
     String getAt(int i) {
-        def inputs = Utils.box(this.input)
+        def inputs = this.input
         if(inputs.size() <= i)
             throw new PipelineError("Insufficient inputs:  at least ${i+1} inputs are expected but only ${inputs.size()} are available")
         this.addResolvedInputs([inputs[i]])
@@ -159,7 +164,7 @@ class PipelineInput {
      */
     def propertyMissing(String name) {
 		log.info "Searching for missing Property: $name"
-        List<String> resolved
+        List<PipelineFile> resolved
         InputMissingError ime
         try {
             
@@ -195,10 +200,11 @@ class PipelineInput {
         
      }
     
-    List<String> resolveInputAsDirectory() {
-        List outputStack = this.computeOutputStack()
-        for(List outputs in outputStack) {
-            def result = Utils.box(outputs).find { new File(it).isDirectory() }
+    @CompileStatic
+    List<PipelineFile> resolveInputAsDirectory() {
+        List<List<PipelineFile>> outputStack = this.computeOutputStack()
+        for(List<PipelineFile> outputs in outputStack) {
+            def result = outputs.find { PipelineFile f -> f.isDirectory() } 
             if(result)
                 return [result]
         }
@@ -346,8 +352,7 @@ class PipelineInput {
      * in the pipeline, and includes the original inputs as the last stage. This "stack" of inputs
      * provides an appropriate order for searching for inputs to a pipeline stage.
      */
-//    @CompileStatic
-    List<List<String>> computeOutputStack() {
+    List<List<PipelineFile>> computeOutputStack() {
         
         List relatedThreads = [Thread.currentThread().id, Pipeline.rootThreadId]
         
@@ -378,16 +383,16 @@ class PipelineInput {
         // Add a final stage that represents the original inputs (bit of a hack)
         // You can think of it as the initial inputs being the output of some previous stage
         // that we know nothing about
-        reverseOutputs.add(Utils.box(stages[0].context.@input) as List)
+        reverseOutputs.add(LocalPipelineFile.from(Utils.box(stages[0].context.@input) as List))
             
           // Consider not just the actual inputs to the stage, but also the *original* unmodified inputs
           if(stages[0].originalInputs)
-  	        reverseOutputs.add(Utils.box(stages[0].originalInputs) as List)
+  	        reverseOutputs.add(LocalPipelineFile.from(Utils.box(stages[0].originalInputs) as List))
         
         // Add an initial stage that represents the current input to this stage.  This way
         // if the from() spec is used and matches the actual inputs then it will go with those
         // rather than searching backwards for a previous match
-        reverseOutputs.add(0,Utils.box(this.@input) as List)        
+        reverseOutputs.add(0,LocalPipelineFile.from(Utils.box(this.@input) as List))
             
         return reverseOutputs
     }

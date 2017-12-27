@@ -35,6 +35,10 @@ class ForwardHost {
     
     transient List<Forwarder> forwarders = []
     
+    public void forward(File file, def stream) {
+        this.forward(file.path, stream)
+    }
+    
     public void forward(String fileName, def stream) {
     
    
