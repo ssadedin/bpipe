@@ -168,7 +168,8 @@ class Forwarder extends TimerTask {
                             
                             // TODO: for neater output we could trim the output to the 
                             // most recent newline here
-                            fileDestinations[f].append(new String(buffer,0,count))
+                            String content = new String(buffer,0,count)
+                            fileDestinations[f].append(content)
                             fileDestinations[f].flush()
                             filePositions[f] = filePositions[f] + count
                         }
