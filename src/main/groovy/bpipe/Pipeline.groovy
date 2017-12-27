@@ -301,6 +301,10 @@ public class Pipeline implements ResourceRequestor {
         about(title:theTitle)
     }
     
+    static name(String theName) {
+        about(name:theName)
+    }
+    
     static version(Object version) {
         about(version:version)   
     }
