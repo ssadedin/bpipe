@@ -52,16 +52,42 @@ class Utils {
     
     public static Logger log = Logger.getLogger("bpipe.Utils")
     
+    
+    /**
+     * Convert a list of heterogenous objects to Path objects
+     * 
+     * @param fileObjs
+     * @return
+     */
+    @CompileStatic
+    static List<Path> toPaths(def fileObjs) {
+        fileObjs.collect {  f ->
+            if(f instanceof File )
+                return ((File)f).toPath()
+                
+            if(f instanceof PipelineFile) {
+                PipelineFile pf = ((PipelineFile)f)
+                return pf.toPath() 
+            }
+            
+            return new File(String.valueOf(f)).toPath()
+        }
+    }
+    
     /**
      * Returns a list of output files that appear to be out of date
      * because they are either missing or older than one of the input
      * files
      * 
-     * @param outputs   a single string or collection of strings
-     * @param inputs    a single string or collection of strings
+     * @param outputs   a collection of file-like objects (strings, File, PipelineFile)
+     * @param inputs    a collection of file-like objects (strings, File, PipelineFile)
      * @return
      */
-    static List findOlder(def outputs, def inputs) {
+    @CompileStatic
+    static List<Path> findOlder(List outputs, List inputs) {
+        
+        assert inputs instanceof List 
+        assert outputs instanceof List 
         
         // Some pipeline stages don't expect any outputs
         // Fixing issue 44 - https://code.google.com/p/bpipe/issues/detail?id=44
@@ -70,65 +96,57 @@ class Utils {
             
         // Remove any directories appearing as inputs - their timestamps change whenever
         // any file in the dir changes
-        inputs = inputs.grep { (it != null) && !(new File(it).isDirectory())}
+        inputs = inputs.grep { Object f -> (f != null) && !(new File(String.valueOf(f)).isDirectory())}
 
-        // Box into a collection for simplicity
-        outputs = box(outputs)
+        def inputPaths = toPaths(inputs)
         
-        def inputFiles = inputs.collect { new File(it) }
+        TreeMap inputFileTimestamps = new TreeMap()
+        for(Path inputPath in inputPaths) {
+            // NOTE: it doesn't actually matter if two have the same 
+            // timestamp for the purposes of our algorithm
+            inputFileTimestamps[Files.getLastModifiedTime(inputPath).toMillis()] = inputPath
+        }
         
-        def inputFileTimestamps = inputFiles.collectEntries { [ it, it.lastModified() ] }
-       
-        long maxInputTimestamp = (inputFileTimestamps.max { it.value }?.value)?:0
+        long maxInputTimestamp = (long)(inputFileTimestamps.lastKey()?:0L)
+        long minInputTimestamp = (long)(inputFileTimestamps.firstKey()?:0L)
         
-        outputs.collect { new File(it) }.grep { outFile ->
-            
-            long outputTimestamp = outFile.lastModified()
-            
-            log.info "===== Check $outFile ====="
-            if(!outFile.exists()) {
-                log.info "file doesn't exist: $outFile"
-                return true
-            }
-            
-            if(maxInputTimestamp < outputTimestamp) {
-                log.info "Output newer than all inputs (quick check: $maxInputTimestamp vs $outputTimestamp)"
-                return false
-            }
-                
-            if(inputs instanceof String || inputs instanceof GString) {
-                if(outFile.name == inputs) {
-                    return false
-                }
-                else {
-                    log.info "Check $inputs : " + new File(inputs).lastModified() + " <=  " + outFile + " : " + outFile.lastModified() 
-                    return (new File(inputs).lastModified() > outFile.lastModified()) 
-                }
-            }
-            else
-            if(isContainer(inputs)) {
-                
-                if(inputs.size()<20)
-                    log.info "Checking $outFile against inputs $inputs"
-                else
-                    log.info "Checking $outFile against ${inputs.size()} inputs"
-                    
-                boolean logTimestamps = inputFiles.size()*outputs.size() < 5000 // 5k lines in the log from 1 loop is too much
-                
-                return inputFiles.any { File inFile ->
-                    long inputFileTimestamp = inputFileTimestamps[inFile]
-                    if(logTimestamps) 
-                        log.info "Check $inFile : " + inputFileTimestamp + " >  " + "$outFile : " + outputTimestamp
-                    inputFileTimestamp > outputTimestamp
-                }
-            }
-            else 
-                throw new PipelineError("Don't know how to interpret $inputs of type " + inputs.class.name)
-                
-            return true    
+        List<Path> outputPaths = toPaths(outputs)
+        outputPaths.grep { Path outFile ->
+            isOlder(outFile, inputFileTimestamps, maxInputTimestamp)
         }
     }
     
+    @CompileStatic
+    static boolean isOlder(Path outFile, TreeMap<Long,Path> inputPaths, long maxInputTimestamp) {
+        
+        log.info "===== Check $outFile ====="
+        if(Files.notExists(outFile)) {
+            log.info "file doesn't exist: $outFile"
+            return true
+        }
+            
+        long outputTimestamp = Files.getLastModifiedTime(outFile).toMillis()
+        
+        if(maxInputTimestamp < outputTimestamp) {
+            log.info "Output newer than all inputs (quick check: $maxInputTimestamp vs $outputTimestamp)"
+            return false
+        }
+                
+        if(inputPaths.size()<5)
+            log.info "Checking $outFile against inputs ${inputPaths.values()}"
+        else
+            log.info "Checking $outFile against ${inputPaths.size()} inputs" 
+                    
+        SortedMap<Long,Path> newerInputs = inputPaths.tailMap((Long)(outputTimestamp+1))
+        if(!newerInputs.isEmpty())
+            log.info "${newerInputs.size()} are newer than ${outFile} starting with ${newerInputs.iterator().next()}}"
+        else
+            log.info "No inputs are newer than $outFile"
+        
+        return !newerInputs.isEmpty()
+    }
+    
+    @CompileStatic
     static boolean fileExists(File f) {
         
        if(f.exists())
@@ -680,10 +698,9 @@ class Utils {
     }
     
    /**
-    * Coerce all of the arguments (which may be an array of Strings or a single String) to
-    * point to files in the specified directory.
+    * Coerce all of the arguments to point to files in the specified directory.
     */
-    static toDir(def outputs, dir) {
+    static List toDir(List outputs, dir) {
        
        String targetDir = dir
        File targetDirFile = new File(targetDir)
@@ -691,21 +708,28 @@ class Utils {
            targetDirFile.mkdirs()
            
        String outPrefix = targetDir == "." ? "" : targetDir + "/" 
-       def boxed = Utils.box(outputs)
-       def types = boxed.collect { it.class }
-       def newOutputs = boxed.collect { 
-           Class type = it.class
-           if(it.toString().contains("/") && it.toString().contains("*")) 
-               return it
+       
+       def types = outputs.collect { it.class }
+       def newOutputs = outputs.collect { out ->
+           Class type = out.class
+           
+           if(type == PipelineFile) {
+               out = out.path
+               type = String
+           }
+           
+           if(out.toString().contains("/") && out.toString().contains("*")) 
+               return out
            else
-           if(it.toString().contains("/") && new File(it).exists()) 
-               return it
+           if(out.toString().contains("/") && new File(out).exists()) 
+               return out
            else {
-             def result = outPrefix + new File(it.toString()).name 
+             def result = outPrefix + new File(out.toString()).name 
              return type == Pattern ? Pattern.compile(result) : result
            }
        }
-       return Utils.unbox(newOutputs)
+       
+       return newOutputs
     }
     
     static String urlToFileName(String url, String defaultExt) {
@@ -867,6 +891,10 @@ class Utils {
             result.err = err
             result.out = out
         }        
+        
+        if(options.throwOnError && result.exitValue != 0) 
+            throw new Exception("Command returned exit code ${result.exitValue}: " + stringified.join(" ") + "\n\nOutput: $result.out\n\nStd Err:\n\n$result.err")
+            
         return result
     }
     

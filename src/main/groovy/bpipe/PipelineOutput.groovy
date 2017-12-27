@@ -128,12 +128,14 @@ class PipelineOutput {
      * @param listener          a closure that will be called whenever a property is requested from this object 
      *                          and provided with the computed property value
      */
-    PipelineOutput(def output, String stageName, String defaultOutput, List<String> overrideOutputs, Closure listener) {
+    PipelineOutput(def output, String stageName, String defaultOutput, List<Object> overrideOutputs, Closure listener) {
         this.output = output
         this.outputChangeListener = listener
         this.stageName = stageName
         this.defaultOutput = defaultOutput
-        this.overrideOutputs = overrideOutputs
+        this.overrideOutputs = overrideOutputs.collect { 
+             String.valueOf(it) 
+        }
     }
     
     String toString() {
@@ -143,21 +145,21 @@ class PipelineOutput {
             List boxed = Utils.box(output).unique()
             for(String o in boxed) {
                 
-            String replaceOutput = null
-            
-            // If $output is referenced without extension, we may have to reset the outputs 
-            // if the output is based on an alternative input to the default one that was set
-            // when the filter() was executed
-            if(this.overrideOutputs && this.currentFilter != null && !(o in overrideOutputs)) {
-                if(Utils.ext(o) in currentFilter.exts) {
-                    replaceOutput = this.overrideOutputs[0]
+                String replaceOutput = null
+
+                // If $output is referenced without extension, we may have to reset the outputs
+                // if the output is based on an alternative input to the default one that was set
+                // when the filter() was executed
+                if(this.overrideOutputs && this.currentFilter != null && !(o in overrideOutputs)) {
+                    if(Utils.ext(o) in currentFilter.exts) {
+                        replaceOutput = this.overrideOutputs[0]
+                    }
                 }
+
+                if(this.outputChangeListener && o != null)
+                    this.outputChangeListener(o,replaceOutput)
             }
-            
-            if(this.outputChangeListener && o != null)
-              this.outputChangeListener(o,replaceOutput)                
-            }
-            
+
             return boxed.join(" ")
         }
         else {
@@ -315,8 +317,7 @@ class PipelineOutput {
                     log.info "Recomputing filter on base input $baseInput to achieve match with output extension $name"
                     result = this.currentFilter.transform([baseInput], this.currentFilter.nameApplied)[0]
                 }
-                
-                result = Utils.toDir(result, this.getDir())
+                result = Utils.toDir([result], this.getDir())[0]
             }
         }
         
@@ -349,21 +350,23 @@ class PipelineOutput {
     
     def synthesiseFromName(String name) {
         
+        String firstOutput = Utils.first(this.output)
+        
         // If the extension of the output is the same as the extension of the 
         // input then this is more like a filter; remove the previous output extension from the path
         // eg: foo.csv.bar => foo.baz.csv
         List branchSegment = branchName ? ['.' + branchName] : [] 
         String segments = (branchSegment + [stageName] + extraSegments + [name]).collect { 
             FastUtils.strip(it,'.')
-         }.join(".")
+        }.join(".")
          
-        File outputFile = new File(this.output)
+        File outputFile = new File(firstOutput)
          
         if(stageName.equals(outputFile.name)) {
            this.outputUsed = FastUtils.dotJoin(([this.defaultOutput] + branchSegment + [name]) as String[])
         }
         else
-        if(this.output.endsWith(name+"."+stageName)) {
+        if(firstOutput.endsWith(name+"."+stageName)) {
             log.info("Replacing " + name+"\\."+stageName + " with " +  stageName+'.'+name)
             this.outputUsed = this.defaultOutput.replaceAll("[.]{0,1}"+name+"\\."+stageName, '.' + segments)
         }
@@ -374,6 +377,7 @@ class PipelineOutput {
         if(this.outputUsed.startsWith(".") && !this.outputUsed.startsWith("./")) // occurs when no inputs given to script and output extension used
             this.outputUsed = this.outputUsed.substring(1) 
             
+        this.outputUsed = Utils.first(this.outputUsed)
         if(this.outputChangeListener != null) {
             this.outputChangeListener(this.outputUsed,null)
         }

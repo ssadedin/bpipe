@@ -33,6 +33,8 @@ import java.nio.file.Files;
 import java.nio.file.Path
 import java.util.regex.Pattern
 
+import bpipe.storage.LocalPipelineFile
+
 class PipelineBodyCategory {
     
     private static final Pattern PREFIX_PATTERN = ~'\\.[^\\.]*?$'
@@ -216,7 +218,7 @@ class PipelineStage {
         
         def pipeline = Pipeline.currentRuntimePipeline.get()
         
-        Dependencies.instance.checkFiles(context.@input, pipeline.aliases)
+        Dependencies.instance.checkFiles(context.@input.collect { new LocalPipelineFile(it) }, pipeline.aliases)
         
         copyContextBindingsToBody()
         
@@ -277,9 +279,9 @@ class PipelineStage {
             }
         }
         
-        log.info "Checking files: " + context.@output
+        log.info "Checking files: " + context.rawOutput
         try {
-             Dependencies.instance.checkFiles(context.@output, pipeline.aliases, "output")
+             Dependencies.instance.checkFiles(context.rawOutput, pipeline.aliases, "output")
  
             if(!joiner) {
                  EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", [stage:this])            
@@ -386,7 +388,7 @@ class PipelineStage {
     void setContextNextInputs() {
         def nextInputs = determineForwardedFiles()
 
-        if(!this.context.@output) {
+        if(!this.context.rawOutput) {
             log.info "No explicit output on stage ${this.hashCode()} context ${this.context.hashCode()} so output is nextInputs $nextInputs"
             this.context.rawOutput = nextInputs
         }
@@ -441,13 +443,13 @@ class PipelineStage {
      */
     private determineForwardedFiles() {
         
-        this.resolveOutputs()
+        this.context.resolveOutputs()
         
         // Start by initialzing the next inputs from any specifically 
         // set outputs
-        if(!context.nextInputs && this.context.@output != null) {
-            log.info("Inferring nextInputs from explicit output as ${context.@output}")
-            context.nextInputs = Utils.box(this.context.@output).collect { it.toString() }
+        if(!context.nextInputs && this.context.rawOutput != null) {
+            log.info("Inferring nextInputs from explicit output as ${context.rawOutput}")
+            context.nextInputs = this.context.rawOutput.collect { it.toString() }
         }
         else {
             log.info "Inputs are NOT being inferred from context.output (context.nextInputs=$context.nextInputs)"
@@ -469,18 +471,6 @@ class PipelineStage {
     }
     
     /**
-     * After a pipeline stage executes outputs can be directly in outputs or they
-     * can have been inferred through implicit references to file extensions on the
-     * output variable.
-     */
-    private resolveOutputs() {
-        if(!context.@output && context.allInferredOutputs) {
-            log.info "Using inferred outputs $context.allInferredOutputs as outputs because no explicit outputs set"
-            context.@output = context.allInferredOutputs
-        }
-    }
-
-    /**
      * Cleanup output files (ie. move them to trash folder).
      * 
      * @param keepFiles    Files that should not be removed
@@ -488,11 +478,11 @@ class PipelineStage {
     void cleanupOutputs() {
         
         // Before cleaning up, make sure we resolve the final outputs
-        this.resolveOutputs()
+        this.context.resolveOutputs()
         
         // Out of caution we don't remove output files if they existed before this stage ran.
         // Otherwise we might destroy existing data
-        if(this.context.@output != null) {
+        if(this.context.rawOutput != null) {
             
             OutputDirectoryWatcher odw 
             if(context.outputDirectory != null) {
@@ -500,7 +490,7 @@ class PipelineStage {
                 odw.sync()
             }
              
-            def newOutputFiles = Utils.box(this.context.@output).collect { it.toString() }.unique()
+            def newOutputFiles = Utils.box(this.context.rawOutput).collect { it.toString() }.unique()
             newOutputFiles.removeAll { fn ->
                 boolean keep = odw?.isPreexisting(fn)
                 if(keep)

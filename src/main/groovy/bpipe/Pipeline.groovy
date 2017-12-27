@@ -581,16 +581,12 @@ public class Pipeline implements ResourceRequestor {
             currentStage.synthetic = true
             log.info "Running segment with inputs $inputs"
             this.addStage(currentStage)
-            if(inputs instanceof List) {
-                def inputCopy = []
-                inputCopy.addAll(inputs)
-                currentStage.context.@input = inputCopy
-                currentStage.context.branchInputs = inputCopy
-            }
-            else {
-                currentStage.context.@input = inputs
-                currentStage.context.branchInputs = inputs
-            }
+            
+            def inputCopy = []
+            inputCopy.addAll(Utils.box(inputs))
+            currentStage.context.@input = inputCopy
+            currentStage.context.branchInputs = inputCopy
+            
             try {
                 currentStage.run()
                 log.info "Pipeline segment ${this.branch} in thread ${Thread.currentThread().id} has finished normally"

@@ -36,9 +36,10 @@ import java.util.regex.Pattern;
 
 import org.codehaus.groovy.runtime.ExceptionUtils;
 
-import static Utils.*
 import bpipe.executor.CommandExecutor
 import bpipe.executor.ProbeCommandExecutor
+import bpipe.storage.LocalFileSystemStorageLayer
+import bpipe.storage.StorageLayer
 
 /**
 * This context defines implicit functions and variables that are
@@ -184,7 +185,12 @@ class PipelineContext {
     * All outputs from this stage. The key to this map 
     * is the Bpipe command id (different to process id).
     */
-   Map<String,List<Command> > trackedOutputs = [:]
+   Map<String,Command> trackedOutputs = [:]
+   
+   /**
+    * Commands indexed by path to output file
+    */
+   Map<String,String> pathToCommandId = [:]
    
    /**
     * When a command is run, output variables that are referenced in 
@@ -328,25 +334,79 @@ class PipelineContext {
     * output in one of their commands, they receive an error.
     * <p>
     * More flexible outputs are specified implicitly. These are 'inferred' outputs that
-    * are tracked using allInferredOutputs.
+    * are tracked using allInferredOutputs. When a stage executes, this variable is initially
+    * empty, and it is populated as the outputs get defined - either explicitly (eg: via produce)
+    * or implicitly. When implicit, it only occurs after the stage executes (see #resolveOutputs)
     */
-   def output
+   private List<PipelineFile> output
    
    void setOutput(o) {
        setRawOutput(toOutputFolder(o))
    }
    
-   void setRawOutput(o) {
+   /**
+    * Set the specified output for this pipeline stage to the given
+    * files.
+    * 
+    * @param outs   A possibly heterogenous mix of Strings and PipelineFile objects
+    */
+   void setRawOutput(List outs) {
+       
+       assert (outs == null) || (outs instanceof List)
 
-       if(o == null || o.size()<200)
-           log.info "Setting output $o on context ${this.hashCode()} in thread ${Thread.currentThread().id}"
+       if(outs == null || outs.size()<20)
+           log.info "Setting output $outs on context ${this.hashCode()} in thread ${Thread.currentThread().id}"
        else
-           log.info "Setting ${o.size()} outputs starting with ${o[0..9]} on context ${this.hashCode()} in thread ${Thread.currentThread().id}"
+           log.info "Setting ${outs.size()} outputs starting with ${outs[0..9]} on context ${this.hashCode()} in thread ${Thread.currentThread().id}"
 
        if(Thread.currentThread().id != threadId)
-           log.warning "Thread output being set to $o from wrong thread ${Thread.currentThread().id} instead of $threadId"
+           log.warning "Thread output being set to $outs from wrong thread ${Thread.currentThread().id} instead of $threadId"
        
-       this.@output = o
+       this.@output = outs.collect { Object o ->
+           
+           assert !(o instanceof List)
+           
+           if(o instanceof PipelineFile)
+               return o
+           else {
+               String oString = String.valueOf(o)
+               StorageLayer storageLayer = resolveStorageFor(oString)
+               if(storageLayer == null)
+                   return null
+               else
+                   return new PipelineFile(oString, storageLayer)
+           }
+       }.grep { it != null }
+           
+       log.info "Actual output set: " + this.@output
+   }
+   
+   @CompileStatic
+   List<PipelineFile> getRawOutput() {
+       this.@output
+   }
+   
+   @CompileStatic
+   StorageLayer resolveStorageFor(String outputPath, Map config = null) {
+       
+       if(config == null) {
+           String commandId = pathToCommandId[outputPath]
+           if(commandId == null)
+               return null
+           assert commandId != null
+           Command command = trackedOutputs[commandId] 
+           if(command == null)
+               return null
+           config = command.processedConfig
+       }
+       
+       String storage = config.containsKey('storage') ? config.storage : null
+       if(!storage)
+           return new LocalFileSystemStorageLayer()
+           
+       StorageLayer result = StorageLayer.create(storage)
+       log.info "Create storage layer ${result?.class?.name} for output $outputPath"
+       return result
    }
    
    /**
@@ -388,7 +448,7 @@ class PipelineContext {
     */
    def getOutput() {
        String baseOutput = Utils.first(this.getDefaultOutput())
-       def out = this.@output
+       def out = this.@output?.collect { it.path }
        if(out == null || this.currentFileNameTransform) { // Output not set elsewhere, or set dynamically based on inputs
            
            // If an input property was referenced, compute the default from that instead
@@ -425,7 +485,7 @@ class PipelineContext {
                
                // Since we're resolving based on a different input than the default one,
                // the pipeline output wrapper should use a different one as a default too
-               baseOutput = toOutputFolder(out)
+               baseOutput = toOutputFolder(out)[0]
            }
            else {
                log.info "No inputs resolved by input wrappers: outputs based on default ${this.defaultOutput}"
@@ -465,6 +525,25 @@ class PipelineContext {
        return po
    }
    
+    /**
+     * A pipeline stage can specify outputs in different ways: explicitly (eg: via a 
+     * prescriptive  produce() or transform() statement), or implicitly (eg: via references
+     * to $output variables in exec statements). When outputs are specified explicitly,
+     * they are set directly on this.@output. In that case we prioritise those.
+     * However if outputs are not stated explicitly, we derive them by looking at 
+     * all outputs that were referenced implicitly during the stage execution.
+     * <p>
+     * Here we finalise the outputs by transferring the implicit ones into the explicit
+     * output set.
+     */
+   @CompileStatic
+    void resolveOutputs() {
+        if(!this.@output && this.allInferredOutputs) {
+            log.info "Using inferred outputs $allInferredOutputs as outputs because no explicit outputs set"
+            this.setRawOutput(this.allInferredOutputs)
+        }
+    }
+   
    /**
     * Outputs that have been replaced by overriding from a filter whose extension was 
     * inferred by an output property reference
@@ -486,6 +565,7 @@ class PipelineContext {
    void onNewOutputReferenced(Pipeline pipeline, Object o, String replaced = null) {
        
        assert o != null
+       assert !(o instanceof List)
        
        if(!allInferredOutputs.contains(o)) 
            allInferredOutputs << o; 
@@ -500,8 +580,12 @@ class PipelineContext {
        if(applyName && pipeline) { 
            pipeline.nameApplied=true
         } 
-       if(replaced) 
-           this.@output = Utils.box(this.@output).collect { if(it == replaced) { replacedOutputs.add(it) ; return o } else { return it } }
+        
+       if(replaced)  {
+           this.setRawOutput(Utils.box(this.@output).collect { 
+               if(it.path == replaced) { replacedOutputs.add(replaced) ; return o } else { return it } 
+           })
+       }
    }
    
    def getOutputs() {
@@ -600,11 +684,14 @@ class PipelineContext {
     * point to files in the local directory.
     * This method is (and must remain) side-effect free
     */
-   def toOutputFolder(outputs) {
+   List<String> toOutputFolder(outputs) {
+       
+       List boxed = Utils.box(outputs)
+       
        if(outputDirectory == null)
-           Utils.toDir(outputs, ".")
+           Utils.toDir(boxed, ".")
        else
-           Utils.toDir(outputs, outputDirectory)
+           Utils.toDir(boxed, outputDirectory)
    }
    
    void checkAccompaniedOutputs(List<String> inputsToCheck) {
@@ -631,7 +718,7 @@ class PipelineContext {
    /**
     * Input to a stage - can be either a single value or a list of values
     */
-   def input
+   List input
    
    /**
     * Wrapper that intercepts calls to resolve input properties. This is what
@@ -712,7 +799,7 @@ class PipelineContext {
    }
    
    def setInput(def inp) {
-       this.@input = inp
+       this.@input = Utils.box(inp)
    }
    
    def getInputs() {
@@ -810,8 +897,10 @@ class PipelineContext {
        }       
        
        
-       Command command = new Command(id:CommandId.newId(), command: "filterRows")
+       String commandId = CommandId.newId()
+       Command command = new Command(id:commandId, command: "filterRows")
        this.trackedOutputs[command.id] = command
+       this.pathToCommandId[fileName] = commandId
        command.outputs << fileName 
    }
    
@@ -869,8 +958,10 @@ class PipelineContext {
          outFile = new FileOutputStream(fileName)
        }
        
-       Command cmd = new Command(id:CommandId.newId(), command: "<streamed>", outputs:[fileName])
+       String commandId = CommandId.newId()
+       Command cmd = new Command(id:commandId, command: "<streamed>", outputs:[fileName])
        this.trackedOutputs[cmd.id] = cmd
+       this.pathToCommandId[fileName] = commandId
        
        return outFile
    }
@@ -983,7 +1074,7 @@ class PipelineContext {
         // Coerce so that files go to the right output folder
         if(explicit) { // User invoked produce directly. In that case, if they put a directory into the produce
                        // we should preserve it
-            out = Utils.box(out).collect { it.toString().contains("/") ? it : toOutputFolder(it)  }
+            out = Utils.box(out).collect { it.toString().contains("/") ? it : toOutputFolder(it)[0]  }
         }
         else {
             out = toOutputFolder(out)
@@ -992,7 +1083,11 @@ class PipelineContext {
         def lastInputs = this.@input
         boolean doExecute = true
         
-        List fixedOutputs = Utils.box(out).grep { !(it instanceof Pattern) &&  !it.contains("*") }
+        List fixedOutputs = 
+            Utils.box(out).grep { !(it instanceof Pattern) &&  !it.contains("*") }
+                          .collect { f ->
+                              new PipelineFile(f, resolveStorageFor(f))
+                          }
         
         // Check for all existing files that match the globs
         List globExistingFiles = globOutputs.collect { 
@@ -1004,7 +1099,7 @@ class PipelineContext {
         if((!globOutputs || globExistingFiles)) {
           // No inputs were newer than outputs, 
           // but were the commands that created the outputs modified?
-          this.output = fixedOutputs
+          this.setRawOutput(fixedOutputs)
           
           // Probing can be nested: ie, an outer function can initiate probe mode
           // and then call this one, so we need to ensure that we restore
@@ -1013,6 +1108,7 @@ class PipelineContext {
           boolean probeFailure = false
           this.probeMode = true
           this.trackedOutputs = [:]
+          this.pathToCommandId = [:]
           try {
             PipelineDelegate.setDelegateOn(this, body)
             log.info("Probing command using inputs ${this.@input}")
@@ -1045,6 +1141,7 @@ class PipelineContext {
                 }
             }
             
+            log.info "Checking " + (outputsToCheck + globExistingFiles)
             if(probeFailure) {
                 log.info "Not up to date because probe failed"
             }
@@ -1079,11 +1176,11 @@ class PipelineContext {
         
         if(doExecute) {
             if(boxedOutputs) {
-                this.output = Utils.box(fixedOutputs) +  Utils.box(this.@output).grep { ! (it in fixedOutputs) }
-                this.output.removeAll { it in replacedOutputs  || toOutputFolder(it) in replacedOutputs}
+                this.setRawOutput(Utils.box(fixedOutputs) +  Utils.box(this.@output).grep { ! (it in fixedOutputs) })
+                this.removeReplacedOutputs()
             }
             else {
-                this.output = fixedOutputs
+                this.setRawOutput(fixedOutputs)
             }
              
             // Store the list of output files so that if we are killed 
@@ -1099,7 +1196,7 @@ class PipelineContext {
             log.info "Adding outputs " + this.@output + " as a result of produce"
            
             String commandId = "-1"
-            Utils.box(this.@output).each { o ->
+            this.@output.each { PipelineFile o ->
                 
                 // If no inputs were resolved, we assume generically that all the inputs
                 // to the stage were used. This is necessary to deal with
@@ -1137,9 +1234,9 @@ class PipelineContext {
                 }
                 
                 if(Utils.box(this.@output))
-                    this.output = this.@output + result
+                    this.setRawOutput(this.@output + result)
                 else
-                    this.output = result
+                    this.setRawOutput(result)
             }
         }
         
@@ -1151,10 +1248,24 @@ class PipelineContext {
         return out
     }
     
+    @CompileStatic
+    void removeReplacedOutputs() {
+        this.@output.removeAll { PipelineFile f -> 
+            (f.path in replacedOutputs)  || (toOutputFolder(f.path)[0] in replacedOutputs)
+        }        
+    }
+    
+    @CompileStatic
+    void trackOutputIfNotAlreadyTracked(PipelineFile o, String command, String commandId) {
+        trackOutputIfNotAlreadyTracked(o.path, command, commandId)
+    }
+    
+    @CompileStatic
     void trackOutputIfNotAlreadyTracked(String o, String command, String commandId) {
         if(!(o in this.referencedOutputs) && !(o in this.inferredOutputs) && !(o in this.allInferredOutputs)) {
              if(!this.trackedOutputs[commandId]) {
                  this.trackedOutputs[commandId] = new Command(id: commandId, outputs: [o], command: command)
+                 this.pathToCommandId[o] = commandId
              }
              else
                  this.trackedOutputs[commandId].outputs << o
@@ -1420,6 +1531,9 @@ class PipelineContext {
       this.referencedOutputs = []
       
       Command c = async(cmd, joinNewLines, config)
+      
+      for(String o in commandReferencedOutputs)
+          pathToCommandId[o] = c.id
       
       c.outputs = commandReferencedOutputs
      
@@ -1774,45 +1888,24 @@ class PipelineContext {
       // after we have resolved the right thread / procs value
       Command command = new Command(command:joined, configName:config)
       
-      // Work out how many threads to request
-      String actualThreads = this.usedResources['threads'].amount as String  
-      
-      // If the config itself specifies procs, it should override the auto-thread magic variable
-      // which may get given a crazy high number of threads
-      def commandCfg = command.getConfig(Utils.box(this.input))
-      String configThreads = null
-      if(commandCfg.containsKey('procs')) {
-          def procs = commandCfg.procs
-          int maxProcs = 0
-          if(procs instanceof String) {
-             // Allow range of integers
-             Matcher intRangeMatch = INT_RANGE_PATTERN.matcher(procs)
-             if(intRangeMatch) {
-                 procs = intRangeMatch[0][1].toInteger()
-                 maxProcs = intRangeMatch[0][2].toInteger()
-             }
-             else {
-                 // NOTE: currently SGE is using a procs option like
-                 // 'orte 3' for 3 processes. This here is a hack to enable
-                 // that not to fail, but we need to think about how to handle that better
-                 procs = procs.trim().replaceAll('[^0-9]','').toInteger()
-             }
-          }
-          else
-          if(procs instanceof IntRange) {
-              maxProcs = procs.to
-              procs = procs.from
-          }
-          log.info "Found procs value $procs (maxProcs = $maxProcs) to override computed threads value of $actualThreads"
-          this.usedResources['threads'].amount = procs
-          this.usedResources['threads'].maxAmount = maxProcs
-      }
-      
+      this.inferUsedProcs(command)
+
       // Inferred outputs are outputs that are picked up through the user's use of 
       // $ouput.<ext> form in their commands. These are intercepted at string evaluation time
       // (prior to the async or exec command entry) and set as inferredOutputs until
       // the command is executed, and then we wipe them out
-      def checkOutputs = this.inferredOutputs + this.referencedOutputs + this.internalOutputs
+      List unconvertedOutputs = (this.inferredOutputs + this.referencedOutputs + this.internalOutputs).unique()
+      List<PipelineFile> checkOutputs = unconvertedOutputs.collect {  f ->
+          if(f instanceof PipelineFile)
+              return f
+          else {
+              String path = String.valueOf(f)
+              return new PipelineFile(path, resolveStorageFor(path, command.processedConfig))
+          }
+      }
+      
+      // TODO: here we need to resolve these to a storage layer
+      
       EventManager.instance.signal(PipelineEvent.COMMAND_CHECK, "Checking command", [ctx: this, command: cmd, joined: joined, outputs: checkOutputs])
 
       // We expect that the actual inputs will have been resolved by evaluation of the command to be executed 
@@ -1877,9 +1970,55 @@ class PipelineContext {
       // log.info "Command $command.id started with resources " + this.usedResources
           
       trackedOutputs[command.id] = command              
+      
+      
       List outputFilter = command.executor.ignorableOutputs
 
       return command
+    }
+    
+    /**
+     * Inspect the given command to figure out the actual procs it will use by combining
+     * the configured procs from bpipe.config with any configured resources by the 
+     * use(...) statement or other means.
+     * 
+     * TODO: it is not clear to me this is actually used any more. 
+     * 
+     * @param command
+     */
+    void inferUsedProcs(Command command) {
+      // Work out how many threads to request
+      String actualThreads = this.usedResources['threads'].amount as String  
+      
+      // If the config itself specifies procs, it should override the auto-thread magic variable
+      // which may get given a crazy high number of threads
+      def commandCfg = command.getConfig(Utils.box(this.input))
+      if(commandCfg.containsKey('procs')) {
+          def procs = commandCfg.procs
+          int maxProcs = 0
+          if(procs instanceof String) {
+             // Allow range of integers
+             Matcher intRangeMatch = INT_RANGE_PATTERN.matcher(procs)
+             if(intRangeMatch) {
+                 procs = intRangeMatch[0][1].toInteger()
+                 maxProcs = intRangeMatch[0][2].toInteger()
+             }
+             else {
+                 // NOTE: currently SGE is using a procs option like
+                 // 'orte 3' for 3 processes. This here is a hack to enable
+                 // that not to fail, but we need to think about how to handle that better
+                 procs = procs.trim().replaceAll('[^0-9]','').toInteger()
+             }
+          }
+          else
+          if(procs instanceof IntRange) {
+              maxProcs = procs.to
+              procs = procs.from
+          }
+          log.info "Found procs value $procs (maxProcs = $maxProcs) to override computed threads value of $actualThreads"
+          this.usedResources['threads'].amount = procs
+          this.usedResources['threads'].maxAmount = maxProcs
+      }
     }
     
     /**
@@ -2324,7 +2463,7 @@ class PipelineContext {
     void outputTo(String directoryName) {
         this.outputDirectory = directoryName
         if(this.@output)
-            this.@output = toOutputFolder(this.@output)
+            this.setRawOutput(toOutputFolder(this.@output))
             
         this.setDefaultOutput(this.@defaultOutput)
         
@@ -2445,11 +2584,11 @@ class PipelineContext {
         // If the user did not specify a directory then 
         // redirect to whatever the current output folder is
         if(new File(value).parentFile == null) 
-            value = toOutputFolder(value)
+            value = toOutputFolder(value)[0]
         
         // setOutput(value)
         this.onNewOutputReferenced(null, value)
-        this.@output = Utils.box(this.@output) + value
+        this.setRawOutput(this.@output + value)
         return value
     }
     

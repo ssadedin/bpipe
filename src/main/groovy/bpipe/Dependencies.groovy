@@ -29,8 +29,12 @@ import groovy.util.logging.Log;
 import groovyx.gpars.GParsPool
 import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
+
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import com.hazelcast.impl.base.FactoryAwareNamedProxy
 
 /**
  * A node in the dependency graph representing a set of outputs
@@ -164,9 +168,15 @@ class GraphEntry implements Serializable {
         }
     }
     
+    @CompileStatic
+    OutputMetaData propertiesFor(PipelineFile outputFile) { 
+        propertiesFor(outputFile.path)
+    }
+    
     /**
      * Search the graph for OutputMetaData for the given output file
      */
+    @CompileStatic
     OutputMetaData propertiesFor(String outputFile) { 
        // In case of non-default output directory, the outputFile itself may be in a directory
        String outputFilePath = Utils.canonicalFileFor(outputFile).path
@@ -389,22 +399,22 @@ class Dependencies {
         // If the outputs are created from nothing (no inputs)
         // then they are up to date as long as they exist
         if(!inputs)  {
-            outOfDateOutputs.addAll(outputs.collect { new File(it) }.grep { !it.exists() })
+            outOfDateOutputs.addAll(outputs.collect { it instanceof PipelineFile ? it : new File(it) }.grep { !it.exists() })
             return outOfDateOutputs
         }
             
         // The most obvious case: all the outputs exist and are newer than 
         // the inputs. We can return straight away here
-        List<File> older = Utils.findOlder(outputs,inputs)
+        List<Path> older = Utils.findOlder(outputs,inputs)
         if(!older) {
             log.info "No missing / older files from inputs: $outputs are up to date"
             outOfDateOutputs.addAll(older)
             return outOfDateOutputs
         }
         else
-        if(older.any { it.exists() }) { // If any of the older files exist then we have no choice but to rebuild them
-            log.info "Not up to date because these files exist and are older than inputs: " + older.grep { it.exists() }
-            outOfDateOutputs.addAll(older.grep{ it.exists()})
+        if(older.any { Files.exists(it) }) { // If any of the older files exist then we have no choice but to rebuild them
+            log.info "Not up to date because these files exist and are older than inputs: " + older.grep { Files.exists(it) }
+            outOfDateOutputs.addAll(older.grep{ Files.exists(it)})
             return outOfDateOutputs
         }
         else {
@@ -416,7 +426,7 @@ class Dependencies {
         def outDated 
         outputGraphLock.readLock().lock()
         try {
-            outDated = older.collect { it.canonicalPath }.grep { out ->
+            outDated = older.collect { it.normalize().toString() }.grep { String out ->
                  def p = graph.propertiesFor(out); 
                  if(!p || !p.cleaned)  {
                      if(!p)
@@ -455,49 +465,34 @@ class Dependencies {
      *
      * @param f     a String or collection of Strings representing file names
      */
-    void checkFiles(def fileNames, Aliases aliases, type="input") {
+    void checkFiles(List<PipelineFile> files, Aliases aliases, type="input") {
         
-        List<String> boxedInputs = Utils.box(fileNames).grep { String.valueOf(it) != "null" }
-        
-        log.info "Checking ${boxedInputs.size()} $type (s) " + fileNames
+        log.info "Checking ${files.size()} $type (s) " 
         
         GraphEntry graph = this.getOutputGraph()
         
-        List<File> inputFiles = boxedInputs.collect { new File(aliases[it.toString()]) }
-        
-        Closure checkInput = { File f ->
-                
-            log.info "Checking file $f"
-            if(Utils.fileExists(f))
-                return false // not missing
-                    
-            OutputMetaData p = graph.propertiesFor(f.path)
-            if(!p) {
-                log.info "There are no properties for $f.path and file is missing"
-                return true
-            }
-                
-            if(p.cleaned) {
-                log.info "File $f.path [$type] does not exist but has a properties file indicating it was cleaned up"
-                return false
-            }
-            else {
-                log.info "File $f.path [$type] does not exist, has a properties file indicating it is not cleaned up"
-                return true
-            }
-        }
+        List<PipelineFile> filesToCheck = files.collect { PipelineFile f -> f.path in aliases ? f.newName(aliases[f.path]) : f }
         
         outputGraphLock.readLock().lock()
+        
+        Closure checkInput = { PipelineFile f ->
+            OutputMetaData p = graph.propertiesFor(f.path)
+            f.isMissing(p, type)
+        }
+        
         try { 
             List missing
-            if(inputFiles.size()>40) {
-                log.info "Using parallelized file check for checking ${inputFiles.size()} inputs ..."
+            if(filesToCheck.size()>40) {
+                log.info "Using parallelized file check for checking ${filesToCheck.size()} inputs ..."
                 int concurrency = (Config.userConfig?.outputScanConcurrency)?:5
-                missing = GParsPool.withPool(concurrency) { inputFiles.grepParallel(checkInput) }
+                missing = GParsPool.withPool(concurrency) { 
+                    filesToCheck.grepParallel(checkInput) 
+                }
             }
             else {
-                missing = inputFiles.grep(checkInput)
+                missing = filesToCheck.grep(checkInput)
             }
+            
             if(missing)
                 throw new PipelineError("Expected $type file ${missing[0]} could not be found")
         }

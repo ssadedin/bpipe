@@ -33,7 +33,7 @@ abstract class Agent extends TimerTask {
     
     Map<String, PipelineInfo> pipelines = [:]
     
-    String name = InetAddress.localHost.hostName
+    String name = bpipe.Runner.HOSTNAME
     
 //    String id = Utils.sha1(String.valueOf(System.currentTimeMillis()) + new Random().nextInt())
     

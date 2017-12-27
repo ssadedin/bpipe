@@ -25,7 +25,10 @@
 package bpipe
 
 import java.util.logging.Level;
+import java.util.regex.Pattern
 
+import bpipe.storage.LocalPipelineFile
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 
 /**
@@ -103,7 +106,7 @@ class PipelineInput {
     
     PipelineInput(def input, List<PipelineStage> stages, Aliases aliases) {
         this.stages = stages;
-        this.input = input
+        this.input = Utils.box(input).collect { String.valueOf(it) }
         this.aliases = aliases
     }
     
@@ -120,17 +123,19 @@ class PipelineInput {
         return this.aliases[String.valueOf(resolvedValue)]
     }
     
-    void addResolvedInputs(List<String> objs) {
+    void addResolvedInputs(List objs) {
         
-        for(inp in objs) {
+        List<String> stringified = objs.collect { String.valueOf(it) }
+        
+        for(inp in stringified) {
             if(!this.resolvedInputs.contains(inp))
                 this.resolvedInputs.add(inp)
         }
         
         if(parent)
-            parent.addResolvedInputs(objs)
+            parent.addResolvedInputs(stringified)
             
-        addFilterExts(objs)
+        addFilterExts(stringified)
     }
 	
 	String getPrefix() {
@@ -142,7 +147,7 @@ class PipelineInput {
      *   exec "cp ${input[0]} $output"
      */
     String getAt(int i) {
-        def inputs = Utils.box(this.input)
+        def inputs = this.input
         if(inputs.size() <= i)
             throw new PipelineError("Insufficient inputs:  at least ${i+1} inputs are expected but only ${inputs.size()} are available")
         this.addResolvedInputs([inputs[i]])
@@ -155,7 +160,7 @@ class PipelineInput {
      */
     def propertyMissing(String name) {
 		log.info "Searching for missing Property: $name"
-        List<String> resolved
+        List<PipelineFile> resolved
         InputMissingError ime
         try {
             
@@ -191,10 +196,11 @@ class PipelineInput {
         
      }
     
-    List<String> resolveInputAsDirectory() {
-        List outputStack = this.computeOutputStack()
-        for(List outputs in outputStack) {
-            def result = Utils.box(outputs).find { new File(it).isDirectory() }
+    @CompileStatic
+    List<PipelineFile> resolveInputAsDirectory() {
+        List<List<PipelineFile>> outputStack = this.computeOutputStack()
+        for(List<PipelineFile> outputs in outputStack) {
+            def result = outputs.find { PipelineFile f -> f.isDirectory() } 
             if(result)
                 return [result]
         }
@@ -286,7 +292,7 @@ class PipelineInput {
 	            String pattern = extsAndOrigs[0]
 	            String origName = extsAndOrigs[1]
                 
-                String wholeMatch = '(^|^.*/)' + pattern + '$'
+                Pattern wholeMatch = ~('(^|^.*/)' + pattern + '$')
                 
                 // Special case: treat a leading dot as a literal dot.
                 // ie: if the user specifies ".xml", they probably mean
@@ -297,20 +303,21 @@ class PipelineInput {
 	            if(!pattern.startsWith("\\.") )
 	                pattern = "\\." + pattern
                     
-                pattern = '^.*' + pattern
+                Pattern patternRegex = ~('^.*' + pattern)
+                
                 log.info "Resolving inputs matching pattern $pattern"
 	            for(s in reverseOutputs) {
                     if(log.isLoggable(Level.FINE))
     	                log.fine("Checking outputs ${s}")
                         
-	                def o = s.find { it?.matches(wholeMatch) }
+	                def o = s.find { it?.path?.matches(wholeMatch) }
                     if(o)
-	                    return s.grep { it?.matches(wholeMatch) }
+	                    return s.grep { it?.path?.matches(wholeMatch) }
                         
                     if(!o) {
-    	                o = s.find { it?.matches(pattern) }
+    	                o = s.find { it?.matches(patternRegex) }
     	                if(o)
-    	                    return s.grep { it?.matches(pattern) }
+    	                    return s.grep { it?.matches(patternRegex) }
                     }
 //	                    return o
 	            }
@@ -331,7 +338,7 @@ class PipelineInput {
      * in the pipeline, and includes the original inputs as the last stage. This "stack" of inputs
      * provides an appropriate order for searching for inputs to a pipeline stage.
      */
-    List<List<String>> computeOutputStack() {
+    List<List<PipelineFile>> computeOutputStack() {
         
         def relatedThreads = [Thread.currentThread().id, Pipeline.rootThreadId]
         
@@ -351,22 +358,22 @@ class PipelineInput {
             
             // !this.is(it.context.@inputWrapper) && ( this.parent == null || !this.parent.is(it.context.@inputWrapper)    )
         }.collect { PipelineStage stage ->
-            Utils.box(stage.context.@output) 
+            stage.context.@output
         }
         
         // Add a final stage that represents the original inputs (bit of a hack)
         // You can think of it as the initial inputs being the output of some previous stage
         // that we know nothing about
-        reverseOutputs.add(Utils.box(stages[0].context.@input))
+        reverseOutputs.add(LocalPipelineFile.from(Utils.box(stages[0].context.@input)))
             
           // Consider not just the actual inputs to the stage, but also the *original* unmodified inputs
           if(stages[0].originalInputs)
-  	        reverseOutputs.add(Utils.box(stages[0].originalInputs))
+  	        reverseOutputs.add(LocalPipelineFile.from(Utils.box(stages[0].originalInputs)))
         
         // Add an initial stage that represents the current input to this stage.  This way
         // if the from() spec is used and matches the actual inputs then it will go with those
         // rather than searching backwards for a previous match
-        reverseOutputs.add(0,Utils.box(this.@input))        
+        reverseOutputs.add(0,LocalPipelineFile.from(Utils.box(this.@input)))
             
         return reverseOutputs
     }

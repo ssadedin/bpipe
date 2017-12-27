@@ -44,6 +44,8 @@ import java.util.regex.Pattern;
 
 import org.codehaus.groovy.runtime.StackTraceUtils;
 
+import bpipe.storage.LocalPipelineFile
+
 /**
  * A category that adds default Bpipe functions to closures
  * to enable basic operators such as the + operator to work.
@@ -182,7 +184,7 @@ class PipelineCategory {
             }
                 
             log.info "Checking inputs for next stage:  $nextInputs"
-            Dependencies.instance.checkFiles(nextInputs, pipeline.aliases)
+            Dependencies.instance.checkFiles(nextInputs.collect { new LocalPipelineFile(it) }, pipeline.aliases)
                 
             currentStage = new PipelineStage(pipeline.createContext(), other)
             currentStage.context.@input = nextInputs
