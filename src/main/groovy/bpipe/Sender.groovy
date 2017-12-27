@@ -24,13 +24,11 @@
  */
 package bpipe
 
-import groovy.lang.Closure;
-import groovy.util.logging.Log;
-import groovy.xml.MarkupBuilder
-
 import java.util.logging.Level
 
 import groovy.json.JsonOutput
+import groovy.util.logging.Log;
+import groovy.xml.MarkupBuilder
 
 /**
  * Sends information to a recipient via a communication channel
