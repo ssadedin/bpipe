@@ -108,8 +108,8 @@ class CommandManager {
         String cmd = command.command
         Map cfg = command.getConfig(inputs)
         
-        // Create a command id for the job
-        command.id = CommandId.newId()
+        if(command.id == null)
+            command.id = CommandId.newId()
         
         // Record this as the time the command is "created" (which is
         // really relevant to queuing systems - we wish to be able to see

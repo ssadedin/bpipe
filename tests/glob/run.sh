@@ -1,6 +1,6 @@
 source ../testsupport.sh
 
-run test.txt
+run test.txt test1.xls  test2.csv   test2.xls
 
 grep -q "Stage world" test.out || err "Failed to execute stage world"
 
