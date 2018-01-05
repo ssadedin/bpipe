@@ -1,13 +1,15 @@
 hello = {
   produce("test.csv", "test*.xml") {
+//  produce("test.csv", "test*.xml") {
     exec "cp $input $output.csv"
-    for(def i in 1..3) {
-      exec """
-        echo "executing $input"
+    exec """
 
-        cp $input ${input.replaceAll('.txt',i+'.xml')}
-      """
-    }
+        for i in 1 2 3; 
+        do
+            echo "executing $input iteration $i";
+            cp $input test${i}.xml;
+        done
+    """
   }
 }
 
