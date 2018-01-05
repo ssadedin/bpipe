@@ -12,7 +12,7 @@ import groovy.util.logging.Log
  * Data structure to track information about each tool in the tool database
  * @author ssadedin
  */
-@Log 
+@Log  
 class Tool {
     
     Tool(String name, ConfigObject obj) {

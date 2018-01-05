@@ -28,7 +28,7 @@ package bpipe
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 import groovy.xml.MarkupBuilder
-
+import java.nio.file.Path
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Matcher
@@ -39,6 +39,7 @@ import org.codehaus.groovy.runtime.ExceptionUtils;
 import bpipe.executor.CommandExecutor
 import bpipe.executor.ProbeCommandExecutor
 import bpipe.storage.LocalFileSystemStorageLayer
+import bpipe.storage.LocalPipelineFile
 import bpipe.storage.StorageLayer
 import bpipe.storage.UnknownStoragePipelineFile
 
@@ -212,6 +213,8 @@ class PipelineContext {
    List<String> internalOutputs = []
    
    List<String> internalInputs = []
+   
+   List<PipelineFile> pendingGlobOutputs = []
    
    /**
     * A list of outputs that are to be marked as preserved.
@@ -399,7 +402,6 @@ class PipelineContext {
            
            if(commandId == null)
                return new UnknownStoragePipelineFile(outputPath).storage
-//               throw new IllegalStateException("Could not identify command id for path $outputPath")
                
            assert commandId != null
            Command command = trackedOutputs[commandId] 
@@ -407,18 +409,25 @@ class PipelineContext {
                if(!strict)
                    return null
                    
+           if(command == null) {
+               log.severe "No command registered for output path $outputPath"
+           }
            assert command != null
                   
            config = command.processedConfig
        }
        
+       StorageLayer result = resolveStorageForConfig(config)
+       log.info "Create storage layer ${result?.class?.name} for output $outputPath"
+       return result
+   }
+   
+   StorageLayer resolveStorageForConfig(Map config) {
        String storage = config.containsKey('storage') ? config.storage : null
        if(!storage)
            return new LocalFileSystemStorageLayer()
            
-       StorageLayer result = StorageLayer.create(storage)
-       log.info "Create storage layer ${result?.class?.name} for output $outputPath"
-       return result
+       return StorageLayer.create(storage)
    }
    
    /**
@@ -474,6 +483,9 @@ class PipelineContext {
        def out = this.@output?.collect { it.path }
        if(out == null || this.currentFileNameTransform) { // Output not set elsewhere, or set dynamically based on inputs
            
+           if(stageName == "world")
+               println "Stage world:::"
+           
            // If an input property was referenced, compute the default from that instead
            def allResolved = allUsedInputWrappers.collect { k,v -> 
                v.resolvedInputs 
@@ -490,7 +502,7 @@ class PipelineContext {
                // otherwise multiple parallel paths will resolve to the same output.
                int defaultValueIndex = -1;
                if(branchInputs)
-                   defaultValueIndex = allResolved.findIndexOf { it in branchInputs }
+                   defaultValueIndex = allResolved.findIndexOf { PipelineFile inp -> branchInputs.any { it.path == inp.path } }
                if(defaultValueIndex<0)
                    defaultValueIndex = 0
                    
@@ -500,6 +512,7 @@ class PipelineContext {
                
                if(this.currentFileNameTransform != null) {
                    out = this.currentFileNameTransform.transform(Utils.box(allResolved), this.applyName)
+                   this.@output = toOutputFolder(out)
                }
                else
                    out = resolved.newName(resolved.name +"." + this.stageName)
@@ -525,9 +538,8 @@ class PipelineContext {
                          
        out = toOutputFolder(out)
        
-       def pipeline = Pipeline.currentRuntimePipeline.get()
+       Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
        String branchName = applyName  ? pipeline.unappliedBranchNames.join(".") : null
-       
        
        def po = new PipelineOutput(out,
                                    this.stageName, 
@@ -717,19 +729,21 @@ class PipelineContext {
            Utils.toDir(boxed, outputDirectory)
    }
    
-   void checkAccompaniedOutputs(List<String> inputsToCheck) {
+   void checkAccompaniedOutputs(List<PipelineFile> inputsToCheck) {
        def outDir = this.outputDirectory
        if(((outDir == null) || (outDir==".")) && this.activeAccompanierPattern) {
            
-           List<String> resolved = getResolvedInputs() + inputsToCheck
+           List<PipelineFile> resolved = getResolvedInputs() + inputsToCheck
            
-           String matchedInput = resolved.find { this.activeAccompanierPattern.matcher(it) }
+           PipelineFile matchedInput = resolved.find { this.activeAccompanierPattern.matcher(it.toString()) }
            
            // If one of the resolved inputs matches an accompanying pattern, then it should
            // output to the same directory as the output
            if(matchedInput) {
                log.info "Input $matchedInput matches accompanier pattern $activeAccompanierPattern"
-               File f = new File(matchedInput)
+               
+               // TODO - CLOUD - should really be java.nio.path ops
+               File f = new File(matchedInput.toString())
                if(!f.parentFile)
                    f = new File(new File("."),f.name)
                    
@@ -854,24 +868,26 @@ class PipelineContext {
     */
    void filterLines(Closure c) {
        
-       if(probeMode)
-           return
-       
        if(!input)
            throw new PipelineError("Attempt to grep on input but no input available")
            
        if(Runner.opts.t)
            throw new PipelineTestAbort("Would execute filterLines on input $input")
        
-       String usedInput = Utils.first(input)    
+       PipelineFile usedInput = Utils.first(input)    
+       
+//       if(!probeMode && !(usedInput.storage instanceof LocalFileSystemStorageLayer))
+//           throw new PipelineError("Built in filtering only works with local file system storage")
        
        // Do this just to create the file - otherwise it doesn't get created at all for
        // an empty input file
        getOut()
        
-       new File(usedInput).eachLine {  line ->
-           if(line.startsWith("#") || c(line))
-                  getOut() << line << "\n"
+       if(!probeMode) {
+           new File(usedInput.path).eachLine {  line ->
+               if(line.startsWith("#") || c(line))
+                      getOut() << line << "\n"
+           }
        }
        
        this.allResolvedInputs << usedInput
@@ -963,10 +979,30 @@ class PipelineContext {
        }
    }
    
+   /**
+    * @deprecated   this resolves files directly from the file system when it should 
+    *               actually search the pipeline branch hierarchy.
+    * 
+    * @param patterns
+    * @return
+    */
    List<String> glob(String... patterns) {
+       
+       // By default, we get the storage from one of the inputs
+       StorageLayer storage
+       if(this.@input?.any { !(it.storage instanceof UnknownStoragePipelineFile) }) {
+           storage = this.@input[0].storage
+       }
+       else {
+           storage = new LocalFileSystemStorageLayer()
+       }
+       
+       FileGlobber globber = new FileGlobber(storage:storage)
+       
        def result = []
-       for(def p in patterns) {
-           result.addAll(Utils.glob(p))
+       for(String p in patterns) {
+           List<String> globResults = globber.glob(p)
+           result.addAll(globResults)
        }
        return result
    }
@@ -979,16 +1015,17 @@ class PipelineContext {
     */
    OutputStream getOut() {
        
-       String fileName = Utils.first(getOutput())
+       PipelineFile fileName = new LocalPipelineFile(Utils.first(getOutput()).toString())
        if(!outFile) {
          if(Runner.opts.t)
              throw new PipelineTestAbort("Would write to output file $fileName")
           
-         outFile = new FileOutputStream(fileName)
+         outFile = probeMode ? null : new FileOutputStream(fileName.toString())
        }
        
        String commandId = CommandId.newId()
        Command cmd = new Command(id:commandId, command: "<streamed>", outputs:[fileName])
+       cmd.setRawProcessedConfig(storage:'local')
        this.trackedOutputs[cmd.id] = cmd
        this.pathToCommandId[fileName] = commandId
        
@@ -1091,12 +1128,22 @@ class PipelineContext {
         produceImpl(out,body,false)
     }
     
-    Object produceImpl(Object out, Closure body, boolean explicit /* the end user actually invoked produce themself */) { 
+    Object produceImpl(Object rawOut, Closure body, boolean explicit /* the end user actually invoked produce themself */) { 
         
-        log.info "Producing $out from $this"
+        log.info "Producing $rawOut from $this"
         
-        // Unwrap any files that may be wrapped in PipelineInput or PipelineOutput objects
-        out = Utils.unwrap(out)      
+        // out could be a mix of these types of objects
+        // 
+        //  (a) Strings (b) Pattern (c) PipelineFile (d) PipelineInput (d) PipelineOutput
+        // 
+        // In most cases, they should be converted back to Strings
+        //
+        List out = rawOut.collect {
+            if(it instanceof Pattern)
+                it
+            else
+                String.valueOf(it)
+        }
         
         List globOutputs = Utils.box(toOutputFolder(Utils.box(out).grep { it instanceof Pattern || it.contains("*") }))
         
@@ -1115,49 +1162,86 @@ class PipelineContext {
         List fixedOutputs = 
             Utils.box(out).grep { !(it instanceof Pattern) &&  !it.contains("*") }
                           .collect { f ->
-                              new PipelineFile(f, resolveStorageFor(f))
-                          }
+                              new UnknownStoragePipelineFile(f)
+                          } 
         
         // Check for all existing files that match the globs
         List globExistingFiles = globOutputs.collect { 
-            def result = Utils.glob(it)  
-            log.info "Files matching glob $it = $result"
-            return result
+            new GlobPipelineFile(it)
         }.flatten()
         
-        if((!globOutputs || globExistingFiles)) {
-          // No inputs were newer than outputs, 
-          // but were the commands that created the outputs modified?
-          this.setRawOutput(fixedOutputs)
-          
-          // Probing can be nested: ie, an outer function can initiate probe mode
-          // and then call this one, so we need to ensure that we restore
-          // the state  upon exit
-          boolean oldProbeMode = this.probeMode
-          boolean probeFailure = false
-          this.probeMode = true
-          this.trackedOutputs = [:]
-          this.pathToCommandId = [:]
-          try {
+        // No inputs were newer than outputs,
+        // but were the commands that created the outputs modified?
+        this.setRawOutput(fixedOutputs)
+
+        // Probing can be nested: ie, an outer function can initiate probe mode
+        // and then call this one, so we need to ensure that we restore
+        // the state  upon exit
+        boolean oldProbeMode = this.probeMode
+        boolean probeFailure = false
+        this.probeMode = true
+        this.trackedOutputs = [:]
+        this.pathToCommandId = [:]
+        List<Command> candidateCommandsToAssociate = []
+        Command associatedCommand = null
+        StorageLayer associatedStorage = null
+        
+        try {
             PipelineDelegate.setDelegateOn(this, body)
             log.info("Probing command using inputs ${this.@input}")
             List oldInferredOutputs = this.allInferredOutputs.clone()
             try {
-              body() 
+                body()
+            }
+            catch(PipelineError e) {
+                throw e
             }
             catch(Exception e) {
-                log.info "Exception occurred during proble: $e.message"
+                log.info "Exception occurred during probe: $e.message"
+                Utils.logException log, "Exception during probe: ", e
                 probeFailure = true
             }
             log.info "Finished probe"
+
+            log.info "Tracked commands after probe are: " + this.trackedOutputs*.key.join(',')
             
+            // For now, treat the last command as the one to associate: this will be possibly confusing
+            // if multiple commands exist with different storage
+            candidateCommandsToAssociate += this.trackedOutputs*.value.sort { -it.id.toInteger()  }[0]
+            associatedCommand = candidateCommandsToAssociate[0]
+            if(associatedCommand != null) {
+                associatedStorage = resolveStorageForConfig(associatedCommand.getProcessedConfig())
+            }
+            else
+            if(!this.aliases.aliases.isEmpty()) { // can we get storage from an input alias?
+                // For now, we will use just the storage of the first alias
+                // aliasing outputs to inputs derived from multiple different storages 
+                // will cause an issue here
+                associatedStorage = this.aliases.aliases*.value[0]?.to?.storage
+            }
+            
+            assert associatedStorage != null : "Unable to find any storage to associate to outputs"
+            
+            // Set the storage on any glob outputs that need it
+            globExistingFiles*.setStorage(associatedStorage)
+            
+            this.pendingGlobOutputs += globExistingFiles
+
             def allInputs = (getResolvedInputs()  + Utils.box(lastInputs)).unique()
             
+            // Associate storage to any outputs that did not resolve storage already
+            fixedOutputs = fixedOutputs.collect { o ->
+                if(o instanceof UnknownStoragePipelineFile)
+                    new PipelineFile(o.path, associatedStorage) 
+                else
+                    o
+            }
+
             def outputsToCheck = fixedOutputs.clone()
             List newInferredOutputs = this.allInferredOutputs.clone()
             newInferredOutputs.removeAll(oldInferredOutputs)
             outputsToCheck.addAll(newInferredOutputs)
-            
+
             // In some cases the user may specify an output explicitly with a direct produce(...)
             // but then not reference that output variable at all in any of their
             // commands. In such a case the command should still execute, even though the command
@@ -1170,12 +1254,14 @@ class PipelineContext {
                 }
             }
             
+
             log.info "Checking " + (outputsToCheck + globExistingFiles)
             if(probeFailure) {
                 log.info "Not up to date because probe failed"
             }
             else {
-                List<String> outOfDateOutputs = Dependencies.instance.getOutOfDate(outputsToCheck + globExistingFiles,allInputs)
+                List<PipelineFile> unaliasedInputs = allInputs.collect { aliases[it] }
+                List<String> outOfDateOutputs = Dependencies.instance.getOutOfDate(outputsToCheck + globExistingFiles, unaliasedInputs)
                 if(outOfDateOutputs) {
                     log.info "Not up to date because input inferred by probe of body newer than outputs"
                 }
@@ -1189,10 +1275,9 @@ class PipelineContext {
                     log.info "Not skipping because of modified command"
                 }
             }
-          }
-          finally {
-              this.probeMode = oldProbeMode
-          }
+        }
+        finally {
+            this.probeMode = oldProbeMode
         }
         
         List boxedOutputs = Utils.box(this.@output)
@@ -1205,7 +1290,9 @@ class PipelineContext {
         
         if(doExecute) {
             if(boxedOutputs) {
-                this.setRawOutput(Utils.box(fixedOutputs) +  Utils.box(this.@output).grep { ! (it in fixedOutputs) })
+                this.setRawOutput(
+                    (fixedOutputs  + globExistingFiles).unique { it.path }
+                )
                 this.removeReplacedOutputs()
             }
             else {
@@ -1248,18 +1335,27 @@ class PipelineContext {
         }
         
         if(globOutputs) {
-            def normalizedInputs = Utils.box(this.@input).collect { new File(it).absolutePath }
+            List<Path> normalizedInputs = Utils.box(this.@input).collect { PipelineFile pf -> pf.toPath().normalize().toAbsolutePath() }
             for(pattern in globOutputs) {
-                def result = Utils.glob(pattern).grep {  !normalizedInputs.contains( new File(it).absolutePath) }
+                
+                FileGlobber glob = new FileGlobber(storage:associatedStorage)
+                def result = glob.glob(pattern)
+                
+                // We are not interested in any outputs that were actually inputs
+                // But why are only direct inputs and not prior inputs from upstream stages considered?
+//                def result = Utils.glob(pattern).grep {  !normalizedInputs.contains( new File(it).absolutePath) }
                 
                 log.info "Found outputs for glob $pattern: [$result]"
                 
-                String commandId = "-1"
+                String commandId = associatedCommand?.id?:"-1"
                 
-                result.each { 
+                result.each { String output ->
+                    
                     if(commandId == "-1")
-                        commandId = CommandId.newId(); 
-                    trackOutputIfNotAlreadyTracked(it, "<produce>", commandId) 
+                        commandId = CommandId.newId();
+                        
+                    pathToCommandId[output] = commandId
+                    trackOutputIfNotAlreadyTracked(output, "<produce>", commandId) 
                 }
                 
                 if(Utils.box(this.@output))
@@ -1307,19 +1403,33 @@ class PipelineContext {
      * given pattern to be preserved.
      * @param pattern
      */
+    @CompileStatic
     void preserveImpl(List patterns, Closure c) {
         def oldFiles = getAllTrackedOutputs()
         c()
-        List<String> matchingOutputs = patterns.collect { Utils.glob(it).collect { new File(it).canonicalPath }}.flatten();
+        List<String> matchingOutputs = findMatchingOutputs(patterns)
+        
         matchingOutputs.removeAll(oldFiles)
+        
         log.info "Files not in previously created outputs but matching preserve patterns $patterns are: $matchingOutputs"
-        for(def entry in trackedOutputs) {
-            def preserved = entry.value.outputs.grep { matchingOutputs.contains(new File(it).canonicalPath) }
-            
-            
+        for(Map.Entry<String,Command> entry in trackedOutputs) {
+            List<PipelineFile> preserved = entry.value.outputs.grep { PipelineFile f -> matchingOutputs.contains(f.toPath().normalize()) }
             log.info "Outputs $preserved marked as preserved from stage $stageName by patterns $patterns"
-            this.preservedOutputs += preserved 
+            
+            this.preservedOutputs.addAll(preserved.toString())
         }
+    }
+    
+    /**
+     * 
+     * @param patterns
+     * @return
+     */
+    List<String> findMatchingOutputs(List patterns) {
+        return patterns.collect { 
+            Utils.glob(it).collect { new File(it).canonicalPath } // not sure what to do here
+                                                                  // how will it behave with non-local storage provider?
+        }.flatten()
     }
     
     /**
@@ -1355,11 +1465,11 @@ class PipelineContext {
           if(!pattern.contains("*")) {
               pattern = "*."+pattern;
           }
-          def accompanied = getResolvedInputs().grep { activeAccompanierPattern.matcher(it).matches() }
+          def accompanied = getResolvedInputs().grep { activeAccompanierPattern.matcher(it.path).matches() }
           if(accompanied) {
               for(def accompanyingOutput in newOutputs) {
                   log.info "Inputs $accompanied are accompanied by $accompanied (only first will be used)"
-                  this.accompanyingOutputs[accompanyingOutput] = accompanied[0]
+                  this.accompanyingOutputs[accompanyingOutput] = accompanied[0].toString()
                   forward(accompanied[0])
               }        
           }
@@ -1930,7 +2040,7 @@ class PipelineContext {
       // $ouput.<ext> form in their commands. These are intercepted at string evaluation time
       // (prior to the async or exec command entry) and set as inferredOutputs until
       // the command is executed, and then we wipe them out
-      List unconvertedOutputs = (this.inferredOutputs + this.referencedOutputs + this.internalOutputs).unique()
+      List unconvertedOutputs = (this.inferredOutputs + this.referencedOutputs + this.internalOutputs + this.pendingGlobOutputs).unique()
       List<PipelineFile> checkOutputs = convertToPipelineFiles(command, unconvertedOutputs)
       
       // TODO: here we need to resolve these to a storage layer
@@ -1939,7 +2049,8 @@ class PipelineContext {
 
       // We expect that the actual inputs will have been resolved by evaluation of the command to be executed 
       // before this method is invoked
-      def actualResolvedInputs = convertToPipelineFiles(command, Utils.box(this.@inputWrapper?.resolvedInputs) + internalInputs)
+      def actualResolvedInputs = 
+          convertToPipelineFiles(command, Utils.box(this.@inputWrapper?.resolvedInputs) + internalInputs).collect { aliases[it] }
 
       log.info "Checking actual resolved inputs $actualResolvedInputs"
       
@@ -1962,9 +2073,13 @@ class PipelineContext {
       // again to re-invoke them
       this.inferredOutputs = []
       
+      command.id = CommandId.newId()
+      trackedOutputs[command.id] = command              
+      
       if(probeMode) {
           log.info("Skip command start for $command.command due to probe mode")
-          return new Command(executor:new ProbeCommandExecutor())
+          command.executor = new ProbeCommandExecutor()
+          return command
       } 
       
       // Check the command for versions of tools it uses
@@ -2000,8 +2115,6 @@ class PipelineContext {
           
       // log.info "Command $command.id started with resources " + this.usedResources
           
-      trackedOutputs[command.id] = command              
-      
       List outputFilter = command.executor.ignorableOutputs
 
       return command
@@ -2312,19 +2425,44 @@ class PipelineContext {
     * @param values
     */
     void forwardImpl(List values) {
-       this.nextInputs = values.flatten().collect {
-           if(it instanceof MultiPipelineInput) {
-               it.input
+        
+        
+       StorageLayer storage = this.@input.find { !(it instanceof UnknownStoragePipelineFile) }?.storage
+        
+       // Note: filtering out null because some of the tests do fowrard(null) - 
+       // but not sure if that should actually be valid?
+       this.nextInputs = values.flatten().grep { it != null }.collect { inp ->
+           
+           // TODO - CLOUD - what would forwarding an output do?
+           if(inp instanceof MultiPipelineInput) {
+               return inp.resolvedValues
            }
            else
-               String.valueOf(it)
+           if(inp instanceof PipelineInput) {
+               return inp.resolvedValue
+           }
+           else
+           if((inp instanceof String) && (storage != null)) {
+               return new PipelineFile(inp,storage)
+           }
+           else
+           if((inp instanceof String) && (new File(inp).exists())) {
+               return new LocalPipelineFile(inp)
+           }
+           else {
+               assert false : "Forward of type " + inp?.class?.name + " is not supported"
+           }
        }.flatten()
+       
+       assert this.@nextInputs.every { it instanceof PipelineFile }
        
        log.info("Forwarding ${nextInputs.size()} inputs ${nextInputs}")
    }
     
-   Aliaser alias(def value) {
-       new Aliaser(this.aliases, String.valueOf(value))
+   @CompileStatic
+   Aliaser alias(PipelineInput value) {
+       PipelineFile inputFile = value.resolvedValue
+       return new Aliaser(this.aliases, inputFile)
    }
    
    /**
@@ -2440,10 +2578,10 @@ class PipelineContext {
      * An entire list of resolved inputs including those directly resolved 
      * and those inferred by input variable file extensions.
      */
-    List<String> getResolvedInputs() {
+    List<PipelineFile> getResolvedInputs() {
         List wrapperResolved = this.@inputWrapper?.resolvedInputs?:[]
         
-       (wrapperResolved + this.allResolvedInputs).flatten().unique { it.path }
+       return (wrapperResolved + this.allResolvedInputs).flatten().unique { it.path }
     }
     
     /**
@@ -2630,7 +2768,8 @@ class PipelineContext {
         
         // setOutput(value)
         this.onNewOutputReferenced(null, value)
-        this.setRawOutput(this.@output + value)
+        List newOutputs = this.@output ? output + value : [value]
+        this.setRawOutput(newOutputs)
         return value
     }
     

@@ -1,6 +1,6 @@
 source ../testsupport.sh
 
-bpipe run -n 2 test.groovy data > test.out 2>&1
+bpipe run -n 2 test.groovy data data/*.fa.gz > test.out 2>&1
 
 COUNT_RUN=`grep -c fa.gz commandlog.txt`
 

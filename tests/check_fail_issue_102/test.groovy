@@ -7,7 +7,8 @@ cp = {
  }
 }
 ls = {
- from(glob("$input/*")) {}
- forward inputs
+ from(glob("$input/*")) {
+     forward inputs
+ }
 }
 run { ls + "%.fa.gz" * [ cp ] }

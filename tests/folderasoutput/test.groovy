@@ -1,6 +1,6 @@
 folder = {
   produce("thefolder/*") {
-    exec "echo execute1; mkdir thefolder; cp $input thefolder/output.csv"
+    exec "echo execute1; mkdir -p thefolder; cp $input thefolder/output.csv"
   }
 }
 

@@ -25,6 +25,7 @@
  */
 package bpipe
 
+import bpipe.storage.UnknownStoragePipelineFile
 import groovy.transform.CompileStatic;
 import groovy.util.logging.Log
 
@@ -160,7 +161,7 @@ class PipelineOutput {
                     this.outputChangeListener(o,replaceOutput)
             }
 
-            return boxed.join(" ")
+            return boxed.collect { Utils.cleanPath(it) }.join(" ")
         }
         else {
             
@@ -168,7 +169,7 @@ class PipelineOutput {
             // any different value ourselves
             if(stringValue != null) {
                 this.outputChangeListener(stringValue, parentOutput?.stringValue)
-                return stringValue
+                return Utils.cleanPath(stringValue)
             }
             
             String firstOutput = Utils.first(output)
@@ -186,7 +187,7 @@ class PipelineOutput {
             if(this.outputChangeListener && firstOutput != null)
               this.outputChangeListener(firstOutput,replaceOutput)
               
-            return String.valueOf(firstOutput) 
+            return Utils.cleanPath(firstOutput)
         }
     }
    
@@ -310,7 +311,7 @@ class PipelineOutput {
                 
                 PipelineFile baseInput = this.resolvedInputs.find {it.path.endsWith(name)}
                 if(!baseInput) {
-                    baseInput = this.overrideOutputs[0]
+                    baseInput = new UnknownStoragePipelineFile(this.overrideOutputs[0])
                     result = baseInput.newName(baseInput.path.replaceAll(FILE_EXT_PATTERN,"." + name))
                 }
                 else {
@@ -319,7 +320,7 @@ class PipelineOutput {
                 }
                 result = Utils.toDir([result], this.getDir())[0]
             }
-        }
+       }
         
        PipelineOutput childOutput = this.createChildOutput(result, name) 
        
@@ -356,6 +357,7 @@ class PipelineOutput {
         // input then this is more like a filter; remove the previous output extension from the path
         // eg: foo.csv.bar => foo.baz.csv
         List branchSegment = branchName ? ['.' + branchName] : [] 
+        
         String segments = (branchSegment + [stageName] + extraSegments + [name]).collect { 
             FastUtils.strip(it,'.')
         }.join(".")

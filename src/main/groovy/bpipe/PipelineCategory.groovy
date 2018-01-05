@@ -598,7 +598,7 @@ class PipelineCategory {
                             it instanceof PipelineFile ? it : new UnknownStoragePipelineFile(it)
                         }
                                 
-                        log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : $dummyPriorContext.output"
+                        log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : ${dummyPriorContext.@output}"
                         child.addStage(dummyPriorStage)
                         child.branch = new Branch(name:childName)
                         child.nameApplied = !applyName
@@ -823,8 +823,19 @@ class PipelineCategory {
         }
     }
     
+    /**
+     * Pattern to match the last suffix preceded by a dot in a filename
+     */
+    private static Pattern LAST_FILE_EXTENSION = ~'\\.[^\\.]*?$'
+    
+    /**
+     * Trim the last file extension from the given String and return it
+     * 
+     * @param value
+     * @return
+     */
     static String getPrefix(String value) {
-        return value.replaceAll('\\.[^\\.]*?$', '')    
+        return value.replaceAll(LAST_FILE_EXTENSION, '')    
     }
     
     /**

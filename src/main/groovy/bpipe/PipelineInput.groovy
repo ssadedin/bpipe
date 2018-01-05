@@ -103,7 +103,7 @@ class PipelineInput {
      * Set of aliases to use in mapping file names
      */
     Aliases aliases
-    
+
     PipelineInput(List<PipelineFile> input, List<PipelineStage> stages, Aliases aliases) {
         this.stages = stages;
         this.input = input
@@ -113,9 +113,10 @@ class PipelineInput {
             throw new Exception("bad input")
     }
     
-    String toString() {
+    PipelineFile getResolvedValue() {
         if(parentError)
             throw parentError
+            
         List boxed = Utils.box(input)
         if(defaultValueIndex>=boxed.size())
            throw new PipelineError("Expected ${defaultValueIndex+1} or more inputs but fewer provided")
@@ -123,9 +124,13 @@ class PipelineInput {
         PipelineFile resolvedValue = boxed[defaultValueIndex]
         if(!this.resolvedInputs.any { it.path == resolvedValue.path })
             this.resolvedInputs.add(resolvedValue)
-        return this.aliases[String.valueOf(resolvedValue)]
             
-        return String.valueOf(resolvedValue);
+        return resolvedValue
+    }
+    
+    String toString() {
+        def resolvedValue = getResolvedValue()
+        return this.aliases[resolvedValue]
     }
     
     void addResolvedInputs(List<PipelineFile> objs) {
@@ -224,7 +229,7 @@ class PipelineInput {
         
         assert rawResolvedInput instanceof PipelineFile
         
-        def result = this.aliases[rawResolvedInput.path]
+        def result = this.aliases[rawResolvedInput]
         log.info "Adding resolved input $result (raw input = $rawResolvedInput)"
         this.addResolvedInputs([rawResolvedInput])
         return result
@@ -237,8 +242,9 @@ class PipelineInput {
      */
     def methodMissing(String name, args) {
         // faux inheritance from String class
-        if(name in String.metaClass.methods*.name)
+        if(name in String.metaClass.methods*.name) {
             return String.metaClass.invokeMethod(this.toString(), name, args?:[])
+        }
         else {
             throw new MissingMethodException(name, PipelineInput, args)
         }

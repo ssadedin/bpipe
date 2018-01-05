@@ -150,11 +150,11 @@ class OutputMetaData implements Serializable {
         PipelineContext context = stage.context
         
         this.stageName = context.stageName
-                
-        List<String> allInputs = stage.context.getResolvedInputs()
+        
+        List<PipelineFile> allInputs = stage.context.getResolvedInputs()
         log.info "Context " + context.hashCode() + " for stage " + context.stageName + " has resolved inputs " + allInputs
         
-        this.inputs = allInputs?:(List<String>)[]
+        this.inputs = allInputs*.toString()?:(List<String>)[]
         this.outputFile = o.toPath()
         this.basePath = Runner.runDirectory
         this.canonicalPath = o.toPath().toAbsolutePath().normalize()
@@ -162,7 +162,7 @@ class OutputMetaData implements Serializable {
         
         
         List<Tool> resolvedTools = (List<Tool>)context.documentation["tools"].collect { Map.Entry<String,Tool> toolEntry -> toolEntry.value }
-        this.tools = resolvedTools.collect { Tool tool -> tool.fullName + ":"+tool.version }.join(",")
+        this.tools = resolvedTools.collect { Tool tool -> tool.fullName + ":" +tool.version }.join(",")
                
         if(this.cleaned == null)
             this.cleaned = false

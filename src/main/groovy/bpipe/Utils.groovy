@@ -61,17 +61,22 @@ class Utils {
      */
     @CompileStatic
     static List<Path> toPaths(def fileObjs) {
-        fileObjs.collect {  f ->
+        (List<Path>)fileObjs.collect {  f ->
             if(f instanceof File )
                 return ((File)f).toPath()
                 
+            if(f instanceof GlobPipelineFile) {
+                GlobPipelineFile gpf = ((GlobPipelineFile)f)
+                return gpf.toPaths()
+            }
+            else
             if(f instanceof PipelineFile) {
                 PipelineFile pf = ((PipelineFile)f)
                 return pf.toPath() 
             }
             
             return new File(String.valueOf(f)).toPath()
-        }
+        }.flatten()
     }
     
     /**
@@ -255,17 +260,6 @@ class Utils {
         // Plain object
         return inputs
     }
-    
-    /**
-     * Check if any of the specified inputs are wrapped in PipelineInput and if so, unwrap them
-     * 
-     * @param inputs    a single object or array or collection of objects
-     */
-    static unwrap(inputs) {
-        def result = unbox(box(inputs).collect { it instanceof PipelineInput?it.input:it }.flatten())
-        return result
-    }
-    
     
     /**
      * Truncate the input intelligently at the first new line or at most 
@@ -475,6 +469,9 @@ class Utils {
     /**
      * Returns filenames found by expanding the passed pattern which is String or
      * a List of patterns.
+     * 
+     * TODO - CLOUD - convert this to use nio Path and DirectoryStream interfaces
+     * 
      * NOTE: that this pattern is not a regexp (it's closer to a shell glob).
      * NOTE: that case sensitivity depends on your system.
      *
@@ -619,6 +616,12 @@ class Utils {
         return fnames.sort()
     }
     
+    /**
+     * TODO   CLOUD - convert this to use directorystream / Path interface
+     * 
+     * @param globPattern
+     * @return a list of files whose name matches the given regex
+     */
     static List<String> regexGlob(Pattern globPattern) {
         File f = new File(globPattern.toString())
         File dir = f.parentFile != null ? f.parentFile : new File(".")
@@ -713,16 +716,16 @@ class Utils {
        def newOutputs = outputs.collect { out ->
            Class type = out.class
            
-           if(type == PipelineFile) {
-               out = out.path
-               type = String
-           }
-           
            if(out.toString().contains("/") && out.toString().contains("*")) 
                return out
            else
-           if(out.toString().contains("/") && new File(out).exists()) 
+           if(out instanceof PipelineFile) {
+               return out.newName(targetDir + '/' + out.toPath().fileName)
+           }
+           else
+           if(out.toString().contains("/") && new File(out).exists())  {
                return out
+           }
            else {
              def result = outPrefix + new File(out.toString()).name 
              return type == Pattern ? Pattern.compile(result) : result
@@ -1094,4 +1097,23 @@ class Utils {
             sleepTimeMs = Math.min(10000,sleepTimeMs*2)
         }
     } 
+    
+    static logException(Logger logger, String msg, Throwable t) {
+       logger.log(
+           Level.SEVERE,
+           msg + "Exception: $t.message", 
+           t)
+    }
+    
+    /**
+     * Convert the given value to a string and then do some operations to normalise
+     * the path into a nicer form (eg: remove preceding ./, etc).
+     * 
+     * @param cleanPath
+     * @return  String value representing a good path to expose to commands or the user
+     */
+    @CompileStatic
+    static String cleanPath(Object value) {
+       return String.valueOf(value).replaceAll('^./','') 
+    }
 }

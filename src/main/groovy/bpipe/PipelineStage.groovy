@@ -464,7 +464,7 @@ class PipelineStage {
             nextInputs = this.context.rawInput
         }
         
-        return nextInputs
+        return nextInputs.grep { !(it instanceof GlobPipelineFile) }.unique { it.path }
     }
     
     /**

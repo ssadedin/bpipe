@@ -300,7 +300,7 @@ class GraphEntry implements Serializable {
        
         def valuesToDump = filter != null ? filter : values
         
-        def names = values*.outputFile*.name
+        def names = values*.outputFile*.fileName*.toString()
         
         String me = names?names.collect { " " * indent + it }.join("\n") + (children?" => \n":"") :""
         
@@ -389,6 +389,7 @@ class Dependencies {
         
         // Outputs are forcibly out of date if specified by remake
         if(!overrideTimestamps.isEmpty()) { 
+            // TODO - CLOUD - convert to use nio Path
             List forcedOutOfDate = outputs.grep { o ->
                 String path = o instanceof File ? o.path : o
                 File cf = Utils.canonicalFileFor(path)
@@ -475,7 +476,11 @@ class Dependencies {
         
         GraphEntry graph = this.getOutputGraph()
         
-        List<PipelineFile> filesToCheck = files.collect { PipelineFile f -> f.path in aliases ? f.newName(aliases[f.path]) : f }
+        if(files.any { it instanceof String }) {
+            assert false : "One or more files is a string, naughty: " + files.grep { it instanceof String }.join(',')
+        }
+        
+        List<PipelineFile> filesToCheck = files.collect { PipelineFile f -> f.path in aliases.aliases ? aliases[f] : f }
         
         outputGraphLock.readLock().lock()
         
@@ -587,18 +592,21 @@ class Dependencies {
             
             String cmd = command.command
             List<PipelineFile> outputs = command.outputs
-            for(def o in outputs) {
-                o = Utils.first(o)
+            for(PipelineFile o in outputs) {
                 if(!o)
                     continue
                     
+                // TODO - CLOUD - move stageName into constructor since it is needed to have valid path
                 OutputMetaData p = new OutputMetaData(o)
+                p.stageName = stage.stageName // this needs to be set because the file name depends on it
                 
                 // Check if the output file existed before the stage ran. If so, we should not save meta data, as it will already be there
                 // Note: saving two meta data files for the same output can produce a circular dependency (exception
                 // when loading output graph).
                 if(!timestamps.containsKey(o)) { 
-                    if(p.exists() || this.outputFilesGenerated.contains(o) || Utils.box(context.@input).contains(o)) {
+                    // TODO - CLOUD - comparing just the paths will get confused if the same path exists on two
+                    // storage providers
+                    if(p.exists() || this.outputFilesGenerated.contains(o) || context.@input.any { it.path == o.path}) {
                         log.info "Not overwriting meta data for $o because it was not created or modified by stage ${context.stageName}"
                         continue
                     }
@@ -677,7 +685,7 @@ class Dependencies {
         
         // Find all the nodes that exist and match the users specs (or, if no specs, treat as wildcard)
         List internalNodes = (outputs - leaves*.values.flatten()).grep { p ->
-            if(!p.outputFile.exists()) {
+            if(!Files.exists(p.outputFile)) {
                 log.info "File $p.outputFile doesn't exist so can't be cleaned up"
                 return false
             }
@@ -698,7 +706,7 @@ class Dependencies {
             }
         }
         
-        List<String> internalNodeFileNames = internalNodes*.outputFile*.name
+        List<String> internalNodeFileNames = internalNodes*.outputFile*.fileName*.toString()
         List<String> accompanyingOutputFileNames = []
         
         // Add any "accompanying" outputs for the outputs that would be cleaned up
@@ -707,7 +715,7 @@ class Dependencies {
                 p.accompanies && p.accompanies in internalNodeFileNames 
             }
             internalNodes += accompanyingOutputs
-            accompanyingOutputFileNames += accompanyingOutputs*.outputFile*.name
+            accompanyingOutputFileNames += accompanyingOutputs*.outputFile*.fileName*.toString()
         }
         
         if(!internalNodes) {
@@ -756,26 +764,29 @@ class Dependencies {
     long removeOutputFile(OutputMetaData outputFileOutputMetaData, boolean trash=false) {
         outputFileOutputMetaData.cleaned = true
         saveOutputMetaData(outputFileOutputMetaData)
-        File outputFile = outputFileOutputMetaData.outputFile
-        long outputSize = outputFile.size()
+        Path outputFile = outputFileOutputMetaData.outputFile
+        long outputSize = Files.size(outputFile)
+        
+        // TODO - CLOUD - move needs to work on the cloud storage
+        File localFile = outputFile.toFile()
         if(trash) {
             File trashDir = new File(".bpipe/trash")
             if(!trashDir.exists())
                 trashDir.mkdirs()
             
-            if(!outputFile.renameTo(new File(".bpipe/trash", outputFile.name))) {
-              log.warning("Failed to move output file ${outputFile.absolutePath} to trash folder")
-              System.err.println "Failed to move file ${outputFile.absolutePath} to trash folder"
+            if(!localFile.renameTo(new File(".bpipe/trash", localFile.name))) {
+              log.warning("Failed to move output file ${localFile.absolutePath} to trash folder")
+              System.err.println "Failed to move file ${localFile.absolutePath} to trash folder"
               return 0
             }
             else {
-                log.info "Moved output file ${outputFile.absolutePath} to trash folder" 
+                log.info "Moved output file ${localFile.absolutePath} to trash folder" 
             }
         }
         else
-        if(!outputFile.delete()) {
-            log.warning("Failed to delete output file ${outputFile.absolutePath}")
-            System.err.println "Failed to delete file ${outputFile.absolutePath}"
+        if(!localFile.delete()) {
+            log.warning("Failed to delete output file ${localFile.absolutePath}")
+            System.err.println "Failed to delete file ${localFile.absolutePath}"
             return 0
         }
         return outputSize
@@ -915,7 +926,9 @@ class Dependencies {
             topRoot = rootTree
         
         if(!outputs.isEmpty() && !outputsWithExternalInputs)
-            throw new PipelineError("Unable to identify any outputs with only external inputs in: " + outputs*.outputFile.join('\n') + "\n\nThis may indicate a circular dependency in your pipeline")
+            throw new PipelineError("Unable to identify any outputs with only external inputs in: " + 
+                                     outputs*.outputFile.join('\n') + 
+                                     "\n\nThis may indicate a circular dependency in your pipeline")
         
 //        log.info "There are ${outputGroups.size()} output groups: ${outputGroups.values()*.outputPath}"
         log.info "There are ${outputGroups.size()} output groups"
