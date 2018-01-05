@@ -36,11 +36,7 @@ import groovy.util.logging.Log
  * Data structure to track information about each tool in the tool database
  * @author ssadedin
  */
-<<<<<<< HEAD
 @Log
-=======
-@Log 
->>>>>>> google cloud WIP - support for input files stored on Google Cloud
 class Tool {
     
     Tool(String name, ConfigObject obj) {
@@ -257,15 +253,10 @@ class Tool {
     }
     
     def ask(String msg, Closure c) {
-<<<<<<< HEAD
-        
-=======
->>>>>>> google cloud WIP - support for input files stored on Google Cloud
         if(stdin == null)
             stdin = System.in.newReader()
             
         print msg + "? (y/n) "
-<<<<<<< HEAD
         
         if(System.properties['bpipe.quiet']) {
             println " y (auto-answered)"
@@ -277,12 +268,6 @@ class Tool {
                 c()
             }
         }
-=======
-        String answer = stdin.readLine().trim()
-        if(answer == "y") {
-            c()
-        }
->>>>>>> google cloud WIP - support for input files stored on Google Cloud
     }
     
     int sh(String script, Map env = [:]) {
@@ -328,11 +313,7 @@ class Tool {
         return ("installExe" in config) && ("conda" in config.installExe.split(",")*.trim())
     }
      
-<<<<<<< HEAD
     List<String> install(String requestedVersion='*') {
-=======
-    List<String> install() {
->>>>>>> google cloud WIP - support for input files stored on Google Cloud
         
         File dir = new File(Config.config.script).absoluteFile.parentFile
         

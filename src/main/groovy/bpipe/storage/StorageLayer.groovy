@@ -12,7 +12,7 @@ abstract class StorageLayer implements Serializable {
     
     static StorageLayer create(String name) {
         
-        if(name == null)
+        if(name == null || name == 'local')
             return new LocalFileSystemStorageLayer()
         
         ConfigObject storageConfig = 

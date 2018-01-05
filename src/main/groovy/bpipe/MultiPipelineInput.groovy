@@ -54,10 +54,10 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
 		def result = Utils.box(values)
         assert result.every { it instanceof PipelineFile }
         addResolvedInputs(result)
-        return result.collect { this.aliases[String.valueOf(it)] }.join(' ')
+        return result.collect { this.aliases[it] }.join(' ')
 	}
-
-	String toString() {
+    
+    List<PipelineFile> getResolvedValues() {
        List boxed = Utils.box(super.@input).unique()
        for(PipelineFile i in boxed) {
            if(!this.resolvedInputs.any { it.path == i.path })
@@ -68,7 +68,12 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
        if(boxed.empty)
            throw new InputMissingError("Expected one or more inputs with extension '" + this.extensionPrefix + "' but none could be located from pipeline.")
            
-       return boxed.join(" ")
+       return boxed
+    }
+
+	String toString() {
+       List boxed = getResolvedValues()
+       return boxed*.toString().join(" ")
     }
     
     def propertyMissing(String name) {
