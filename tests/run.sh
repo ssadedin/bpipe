@@ -13,8 +13,11 @@ do
 	echo "============== $t ================"
 	cd "$BASE"/"$t"
 	rm -rf .bpipe
-	
-	if ./run.sh;
+
+    if [ ! -e ./run.sh ];
+    then
+        echo "Skip $t : no run.sh present"
+	elif ./run.sh;
 	then
 		echo
 		echo "SUCCEEDED"

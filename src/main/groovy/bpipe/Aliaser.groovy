@@ -24,25 +24,27 @@
  */
 package bpipe
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 
 @Log
 class Aliaser {
     
-    String input
+    PipelineFile input
     
     PipelineOutput output
     
     Aliases aliases
     
-    Aliaser(Aliases aliases, String input) {
+    Aliaser(Aliases aliases, PipelineFile input) {
         this.input = input
         this.aliases = aliases
     }
     
+    @CompileStatic
     void to(PipelineOutput output) {
         log.info "Aliasing input " + String.valueOf(input) + " to " + String.valueOf(output)
         this.output = output
-        aliases.add(String.valueOf(output), String.valueOf(input))
+        aliases.add(String.valueOf(output), input)
     }
 }

@@ -18,6 +18,11 @@ class PipelineFile implements Serializable {
     
     StorageLayer storage
     
+    protected PipelineFile(path) {
+        assert path != null
+        this.path = path
+    }
+    
     PipelineFile(String path, StorageLayer storage) {
         assert path != null
         assert storage != null
@@ -56,6 +61,11 @@ class PipelineFile implements Serializable {
     @CompileStatic
     boolean matches(Pattern pattern) {
         getName().matches(pattern)
+    }
+    
+    @CompileStatic
+    String getPrefix() {
+        PipelineCategory.getPrefix(this.toString())
     }
     
     boolean isMissing(OutputMetaData p, String type) {

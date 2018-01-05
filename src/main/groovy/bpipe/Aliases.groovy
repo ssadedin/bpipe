@@ -1,10 +1,20 @@
 package bpipe
 
 import groovy.transform.CompileStatic;
+import groovy.transform.ToString
+
+@ToString
+class AliasMapping {
+    String from
+    PipelineFile to
+}
 
 class Aliases {
     
-    private Map<String,String> aliases = [:]
+    /**
+     * Map of alias fromPath => toPath
+     */
+    private Map<String,AliasMapping> aliases = [:]
     
     private HashSet<String> aliasTargets = new HashSet()
     
@@ -12,14 +22,18 @@ class Aliases {
         aliases.containsKey(path) || aliasTargets.contains(path)
     }
     
-    synchronized add(String fromPath, String toPath) {
-        aliases[fromPath] = toPath
-        aliasTargets.add(toPath)
+    @CompileStatic
+    synchronized add(String fromPath, PipelineFile toFile) {
+        assert fromPath != null
+        assert toFile != null
+        
+        aliases[fromPath.toString()] = new AliasMapping(from:fromPath, to:toFile)
+        aliasTargets.add(toFile.toString())
     }
     
     @CompileStatic
-    synchronized String getAt(String fromPath) {
-        String result = aliases[fromPath]
+    synchronized PipelineFile getAt(PipelineFile fromPath) {
+        PipelineFile result = aliases[fromPath.toString()]?.to
         if(result)
             return result
         return fromPath

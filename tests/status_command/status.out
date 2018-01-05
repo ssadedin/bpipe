@@ -1,32 +1,6 @@
-java.lang.reflect.InvocationTargetException
-	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
-	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
-	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
-	at java.lang.reflect.Method.invoke(Method.java:498)
-	at org.codehaus.groovy.tools.GroovyStarter.rootLoader(GroovyStarter.java:109)
-	at org.codehaus.groovy.tools.GroovyStarter.main(GroovyStarter.java:131)
-Caused by: groovy.lang.MissingMethodException: No signature of method: bpipe.StatusCommand.showCurrent() is applicable for argument types: (java.io.PrintWriter) values: [java.io.PrintWriter@708f5957]
-Possible solutions: showCurrent(java.io.PrintStream)
-	at org.codehaus.groovy.runtime.ScriptBytecodeAdapter.unwrap(ScriptBytecodeAdapter.java:58)
-	at org.codehaus.groovy.runtime.callsite.PogoMetaClassSite.callCurrent(PogoMetaClassSite.java:81)
-	at org.codehaus.groovy.runtime.callsite.CallSiteArray.defaultCallCurrent(CallSiteArray.java:52)
-	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.callCurrent(AbstractCallSite.java:154)
-	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.callCurrent(AbstractCallSite.java:166)
-	at bpipe.StatusCommand.run(StatusCommand.groovy:85)
-	at bpipe.cmd.BpipeCommand.run(BpipeCommand.groovy:37)
-	at bpipe.cmd.BpipeCommand$run.callCurrent(Unknown Source)
-	at org.codehaus.groovy.runtime.callsite.CallSiteArray.defaultCallCurrent(CallSiteArray.java:52)
-	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.callCurrent(AbstractCallSite.java:154)
-	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.callCurrent(AbstractCallSite.java:166)
-	at bpipe.StatusCommand.execute(StatusCommand.groovy:48)
-	at bpipe.StatusCommand$execute.call(Unknown Source)
-	at org.codehaus.groovy.runtime.callsite.CallSiteArray.defaultCall(CallSiteArray.java:48)
-	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.call(AbstractCallSite.java:113)
-	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.call(AbstractCallSite.java:125)
-	at bpipe.Runner.runStatus(Runner.groovy:806)
-	at bpipe.Runner$runStatus.callStatic(Unknown Source)
-	at org.codehaus.groovy.runtime.callsite.CallSiteArray.defaultCallStatic(CallSiteArray.java:56)
-	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.callStatic(AbstractCallSite.java:194)
-	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.callStatic(AbstractCallSite.java:206)
-	at bpipe.Runner.main(Runner.groovy:219)
-	... 6 more
+
+Found 1 currently executing commands:
+
+    1.    echo "Hello there, I am sleeping for 5 seconds";          sleep 5, running since Thu Jan 04 10:37:46 AEDT 2018 (local command, pid=76428)
+          RUNNING for 1.288 seconds
+

@@ -112,6 +112,10 @@ class Command implements Serializable {
         if(cfg != null)
             return cfg
             
+            
+        if(command == null)
+            throw new IllegalStateException("Cannot generate a configuration for a null command (id=$id)")
+            
         // How to run the job?  look in user config
         if(!configName)
             configName = command.trim().tokenize(' \t')[0].trim()
@@ -165,6 +169,10 @@ class Command implements Serializable {
     Map getProcessedConfig() {
         assert this.cfg != null
         return this.cfg
+    }
+    
+    Map setRawProcessedConfig(Map config) {
+        this.cfg = config
     }
     
     private String formatWalltime(def walltime) {
