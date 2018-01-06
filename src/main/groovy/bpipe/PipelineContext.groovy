@@ -2146,7 +2146,7 @@ class PipelineContext {
       
       // If the config itself specifies procs, it should override the auto-thread magic variable
       // which may get given a crazy high number of threads
-      def commandCfg = command.getConfig(Utils.box(this.input))
+      def commandCfg = command.getConfig(Utils.box(this.resolvedInputs))
       if(commandCfg.containsKey('procs')) {
           def procs = commandCfg.procs
           int maxProcs = 0
