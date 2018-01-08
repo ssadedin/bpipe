@@ -1,1 +1,1 @@
-rm -f foo.txt bar.txt fubar.txt
+rm -rf .bpipe foo.txt bar.txt fubar.txt
