@@ -1,9 +1,91 @@
-Changes for Bpipe Version 0.9.9.3 
-===================================
+=========== Changes for Bpipe Version 0.9.9.5 ============
 
-TODO
+  Features:
+
+   - Support for Bpipe 'agent' which can listen to requests via
+     JMS (activemq for now) to run pipelines
+     
+   - Support sending json to JMS/ActiveMQ via send command 
+     
+   - Support for sending JSON content to URLs via send command
+     
+   - Utilitity function 'asQuotedList' formats lists of inputs
+     as syntax compatible with js,python,groovy scripts 
+     
+   - Experimental support for "sequential" or power operator 
+
+   - Print out the outputs to be created when run in test mode, 
+     in addition to the command to run (existing behavior)
+     
+   - Support for post-command hook to execute a script after every 
+     command 
+     
+   - Add command start and stop time to output from 'bpipe query' 
+     
+   - Add start and stop time to display in 'bpipe errors' 
+     
+   - You can now specify java libraries as list in bpipe.config,
+     in addition to the existing string form
+     
+   - Support for check review states, and improved check display 
+     
+
+  Fixes:
 
 
+   - Fix exception/error if double input extension overlaps 
+     output with sng ext, eg. $input.foo.bar  happens to match
+     upstream $output.foo
+     
+   - Fix completed event sometimes not sent for failed stages 
+     
+   - Fix failed checks written to std out at end of run 
+     
+   - Fix situations where checks are re-executed when not 
+     required 
+     
+   - Support supplying input files explicitly to run in 
+     run([...])
+     
+   - Support for JMS notifications of pipeline events
+     
+   - Fix error displayed by 'bpipe log' if no pipeline has ever 
+     been executed in dir 
+     
+   - Prevent recursive load caused defining a segment inside a 
+     loaded file
+   
+   - Add segment structure to JSON pipeline representation
+     Previously segments were expanded into their constituent stages 
+     in the JSON representation, and thus the higher level pipeline
+     structure was lost.  Now each node and edge in the group
+     is given a type, and both the segment and its intenral
+     structure are output as nodes / edges.  
+     
+   - Fix sometimes getting wrong last run pid (thinks still 
+     running) 
+     
+   - Change to make error in loaded script terminate pipeline 
+     instead of just printing error and continuing
+     
+   - Fix bpipe log stops working after some commands until bpipe run 
+     again 
+     
+   - Avoid printing out cleanup message if zero files to cleanup
+     
+   - Move some of the docs out of Language and into Guides 
+
+   - Prevent exception in bpipe errors if command state not saved 
+
+   - Fix 'bpipe errors' not showing log output if hyphen in branch 
+     
+   - Fix status command, add regression test 
+     
+   - Groovy command in script now handles embedded quotes,
+     which previously caused syntax errors
+     
+   - Fix error when nested segment made of single stage defined 
+     
 
 Changes for Bpipe Version 0.9.9.2 
 ===================================
