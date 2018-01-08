@@ -141,6 +141,13 @@ class GraphEntry implements Serializable {
     }
     
     @CompileStatic
+    GraphEntry entryFor(PipelineFile pipelineFile) {
+        // In case of non-default output directory, the outputFile itself may be in a directory
+        final String outputFilePath = Utils.canonicalFileFor(pipelineFile.toPath().normalize().toString()).path
+        return entryForCanonicalPath(outputFilePath)
+    } 
+    
+    @CompileStatic
     GraphEntry entryForCanonicalPath(String canonicalPath) {
         GraphEntry entry = index?.get(canonicalPath)
         if(entry)
@@ -698,7 +705,7 @@ class Dependencies {
             if(arguments.isEmpty())
                 return true 
                 
-            if(arguments.contains(p.outputFile.name) || arguments.contains(p.outputPath))  
+            if(arguments.contains(p.outputFile.fileName.toString()) || arguments.contains(p.outputPath.toString()))  
                 return true
             else {
                 log.info "File $p.outputFile doesn't match the arguments $arguments, so can't be cleaned up"
@@ -766,28 +773,30 @@ class Dependencies {
         saveOutputMetaData(outputFileOutputMetaData)
         Path outputFile = outputFileOutputMetaData.outputFile
         long outputSize = Files.size(outputFile)
-        
-        // TODO - CLOUD - move needs to work on the cloud storage
-        File localFile = outputFile.toFile()
         if(trash) {
-            File trashDir = new File(".bpipe/trash")
-            if(!trashDir.exists())
-                trashDir.mkdirs()
-            
-            if(!localFile.renameTo(new File(".bpipe/trash", localFile.name))) {
-              log.warning("Failed to move output file ${localFile.absolutePath} to trash folder")
-              System.err.println "Failed to move file ${localFile.absolutePath} to trash folder"
+            Path trashDir = outputFile.resolveSibling('.bpipe/trash')
+            if(!Files.exists(trashDir))
+                Files.createDirectories(trashDir)
+                
+            try {
+                Files.move(outputFile, trashDir.resolve(outputFile.fileName.toString()))
+                log.info "Moved output file ${outputFile.toAbsolutePath()} to trash folder" 
+            }
+            catch(Exception e) {
+              log.warning("Failed to move output file ${outputFile.toAbsolutePath()} to trash folder")
+              System.err.println "Failed to move file ${outputFile.toAbsolutePath()} to trash folder"
               return 0
             }
-            else {
-                log.info "Moved output file ${localFile.absolutePath} to trash folder" 
-            }
         }
-        else
-        if(!localFile.delete()) {
-            log.warning("Failed to delete output file ${localFile.absolutePath}")
-            System.err.println "Failed to delete file ${localFile.absolutePath}"
-            return 0
+        else {
+            try {
+                Files.deleteIfExists(outputFile) 
+            }
+            catch(Exception e) {
+                log.warning("Failed to delete output file ${outputFile.toAbsolutePath()}")
+                System.err.println "Failed to delete file ${outputFile.toAbsolutePath()}"
+                return 0
+            }
         }
         return outputSize
     }
@@ -1127,5 +1136,16 @@ class Dependencies {
         filePaths.collect { Utils.canonicalFileFor(it) }.each { File f ->
             overrideTimestamps[f.absolutePath] = f.lastModified()
         }
+    }
+    
+    /**
+     * This exists because I found compile static can't recognise the default provided
+     * instance variable from other classes as being the right type.
+     * 
+     * @return  the Dependencies instance
+     */
+    @CompileStatic
+    static Dependencies get() {
+        return getInstance()
     }
 }

@@ -1,6 +1,13 @@
 #!/bin/bash
 
-TESTS=`find . -maxdepth 1 -type d | grep -E "^\.\/[A-Za-z]"`
+FILTER="$1"
+
+if [ ! -z "$FILTER" ];
+then
+    TESTS=`find . -maxdepth 1 -type d | grep -E "^\.\/[A-Za-z]" | grep $FILTER`
+else
+    TESTS=`find . -maxdepth 1 -type d | grep -E "^\.\/[A-Za-z]"`
+fi
 
 source testsupport.sh
 

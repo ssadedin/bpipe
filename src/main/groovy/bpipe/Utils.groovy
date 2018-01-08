@@ -61,7 +61,7 @@ class Utils {
      */
     @CompileStatic
     static List<Path> toPaths(def fileObjs) {
-        (List<Path>)fileObjs.collect {  f ->
+        (List<Path>)fileObjs.grep { it != null }.collect {  f ->
             if(f instanceof File )
                 return ((File)f).toPath()
                 
@@ -89,7 +89,7 @@ class Utils {
      * @return
      */
     @CompileStatic
-    static List<Path> findOlder(List outputs, List inputs) {
+    static List<Path> findOlder(List<PipelineFile> outputs, List<PipelineFile> inputs) {
         
         assert inputs instanceof List 
         assert outputs instanceof List 
@@ -99,17 +99,23 @@ class Utils {
         if( !outputs || !inputs )
             return []
             
+        List<Path> inputPaths = toPaths(inputs)
+        
         // Remove any directories appearing as inputs - their timestamps change whenever
-        // any file in the dir changes
-        inputs = inputs.grep { Object f -> (f != null) && !(new File(String.valueOf(f)).isDirectory())}
-
-        def inputPaths = toPaths(inputs)
+        // any file in the dir changes        
+        inputPaths = inputPaths.grep { Path p -> !Files.isDirectory(p) }
         
         TreeMap inputFileTimestamps = new TreeMap()
         for(Path inputPath in inputPaths) {
             // NOTE: it doesn't actually matter if two have the same 
             // timestamp for the purposes of our algorithm
-            inputFileTimestamps[Files.getLastModifiedTime(inputPath).toMillis()] = inputPath
+            if(Files.exists(inputPath))
+                inputFileTimestamps[Files.getLastModifiedTime(inputPath).toMillis()] = inputPath
+            else
+                // TODO - CLOUD - this is replicating old behavior for refactoring to 
+                // use nio Paths, but is it actually correct? It will make the input look very old
+                // and therefore never trigger dependency update
+                inputFileTimestamps[0L] = inputPath 
         }
         
         long maxInputTimestamp = (long)(inputFileTimestamps.lastKey()?:0L)
@@ -720,7 +726,8 @@ class Utils {
                return out
            else
            if(out instanceof PipelineFile) {
-               return out.newName(targetDir + '/' + out.toPath().fileName)
+               String newPath = targetDir == "." ? out.name : targetDir + '/' + out.name
+               return out.newName(newPath)
            }
            else
            if(out.toString().contains("/") && new File(out).exists())  {

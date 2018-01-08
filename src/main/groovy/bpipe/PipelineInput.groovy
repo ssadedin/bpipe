@@ -268,17 +268,17 @@ class PipelineInput {
      * previous stages to find the first output that ends with the extension specified
      * for each of the given exts.
      */
-    List<String> resolveInputsEndingWith(def exts) {    
+    List<PipelineFile> resolveInputsEndingWith(def exts) {    
         resolveInputsEndingWithPatterns(exts.collect { it.replace('.','\\.')+'$' }, exts)
     }
     
-    List<String> probe(def pattern) {
+    List<PipelineFile> probe(def pattern) {
         if(pattern instanceof String)
             pattern = pattern.replace('.','\\.')+'$' 
         
         // TODO: refactor the resolveInputsEndingWithPatterns method to not return a
         // list with [null] when there is no result
-        List<String> result = resolveInputsEndingWithPatterns([pattern], [pattern], false)
+        List<PipelineFile> result = resolveInputsEndingWithPatterns([pattern], [pattern], false)
         if(result.size()==1 && result[0]  == null)
             return []
         return result
@@ -295,7 +295,7 @@ class PipelineInput {
      * @param origs user friendly versions of the above to display in errors
      * @return  list of inputs matching given patterns
      */
-    List<String> resolveInputsEndingWithPatterns(def exts, def origs, failIfNotFound=true) {    
+    List<PipelineFile> resolveInputsEndingWithPatterns(def exts, def origs, failIfNotFound=true) {    
         
         def orig = exts
         synchronized(stages) {

@@ -26,9 +26,11 @@
 package bpipe
 
 import groovy.transform.CompileStatic
+import groovy.transform.Memoized
 import groovy.util.logging.Log;
 import groovy.xml.MarkupBuilder
 import java.nio.file.Path
+import java.nio.file.Files
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Matcher
@@ -483,9 +485,6 @@ class PipelineContext {
        def out = this.@output?.collect { it.path }
        if(out == null || this.currentFileNameTransform) { // Output not set elsewhere, or set dynamically based on inputs
            
-           if(stageName == "world")
-               println "Stage world:::"
-           
            // If an input property was referenced, compute the default from that instead
            def allResolved = allUsedInputWrappers.collect { k,v -> 
                v.resolvedInputs 
@@ -640,12 +639,12 @@ class PipelineContext {
            String origDefaultOutput = origOutput.defaultOutput
            if(result == null) {
                log.info "No previously set output at $index from ${o.size()} outputs. Synthesizing from index based on first output"
-               if(o[0].indexOf('.')>=0) {
-                   result = o[0].replaceAll("\\.([^.]*)\$",".${index+1}.\$1")
+               if(o[0].path.indexOf('.')>=0) {
+                   result = o[0].path.replaceAll("\\.([^.]*)\$",".${index+1}.\$1")
                    origDefaultOutput = origDefaultOutput.replaceAll("\\.([^.]*)\$",".${index+1}.\$1")
                }
                else
-                   result = o[0] + (index+1)
+                   result = o[0].path + (index+1)
            }
            
            log.info "Query for output $index base result = $result"
@@ -1572,48 +1571,6 @@ class PipelineContext {
     }
     
     /**
-     * Causes the given closure to execute and for files that appear during the
-     * execution, and which match the pattern, to be considered as 
-     * outputs.  This makes it easy to define a pipeline stage that has an 
-     * unknown number of outputs.  A common example is splitting input files
-     * into size-based or line-based chunks:
-     * <code>split -b 100kb $input</code>
-     * The number of output files is not known, and explicit output file names
-     * are not provided to the command, but should be discovered afterward, 
-     * based on the input pattern.
-     * 
-     * @param pattern
-     * @deprecated      This functionality is migrated into {@link #produce(Object, Closure)}
-     */
-    void split(String pattern, Closure c) {
-        
-        def files = Utils.glob(pattern)
-        try {
-            if(files && !Utils.findOlder(files, this.@input)) {
-                msg "Skipping execution of split because inputs [" + this.@input + "] are newer than ${files.size()} outputs starting with " + Utils.first(files)
-                log.info "Split body not executed because inputs " + this.@input + " older than files matching split: $files"
-                return
-            }
-            
-            // Execute the body
-            log.info "Executing split body with pattern $pattern in stage $stageName"
-            c()
-        }
-        finally {
-            
-            def normalizedInputs = Utils.box(this.@input).collect { new File(it).absolutePath }
-            def result = Utils.glob(pattern).grep {  !normalizedInputs.contains( new File(it).absolutePath) }
-            
-            log.info "Found outputs for split by scanning pattern $pattern: [$output]" 
-            
-            if(Utils.box(this.@output)) 
-                this.output = this.@output + out
-            else
-                this.output = result
-        }
-    }
-    
-    /**
      * @see #exec(String, boolean, String)
      * @param cmd
      * @param config
@@ -2358,6 +2315,9 @@ class PipelineContext {
 //               log.info("Checking outputs ${s} vs $inp N")
            }
           
+           // Finally, resolve inputs using the default storage layer where they exist 
+           // in the file system, are not known outputs, AND are older than the start time of the pipeline
+           return resolveAsPreExistingFile(ext)
        }
        
        log.info "Found inputs $resolvedInputs for spec $orig"
@@ -2383,6 +2343,53 @@ class PipelineContext {
            return this.nextInputs
        else
            return this // Allows chaining of the next command
+   }
+   
+   /**
+    * Check if the given file is resolvable as a pre-existing file.
+    * <p>
+    * A pre-existing file is a file that existed before the pipeline executed,
+    * and is not any of the outputs of the pipeline.
+    * 
+    * @param    pathValue
+    * @return   a PipelineFile representing the file, or null if not resolvable
+    */
+   @CompileStatic
+   PipelineFile resolveAsPreExistingFile(String pathValue) {
+       Path path = defaultStorage.toPath(pathValue)
+       if(!Files.exists(path)) 
+           return null
+           
+       log.info "Path $pathValue exists as a file using default storage: checking if a pipeline output"
+       OutputMetaData props = (OutputMetaData)Dependencies.get().withOutputGraph { GraphEntry g -> g.propertiesFor(pathValue) }
+       if(props) {
+           log.info "File $pathValue resolved existing file that is a known output but NOT from branch $branch"
+           throw new PipelineError(
+               """
+                   Path $pathValue is referenced via 'from' but is resolved from a different pipeline branch. 
+               
+                   Cross-branch file resolution is now disabled to avoid risk of file mixup between branches.
+               
+               """.stripIndent())
+       }
+
+      long lastModified = Files.getLastModifiedTime(path).toMillis()
+      if(lastModified > Runner.startTimeMs)  {
+          log.info "File $pathValue resolved as external file newer than pipeline run time: flagging as error"
+          throw new PipelineError("""
+               The following path is referenced via 'from' but is newer than the pipeline run time,
+               even though it is not a recognised output of your pipeline:
+
+                   $pathValue 
+
+               Due to the risk that an unexpected file from outside your pipeline may be resolved.
+               If this file is expected, please ensure it is marked as an output of your pipeline
+               by adding it to a 'produce' statement, referencing it as an output variable or similar.
+          """)
+      }
+          
+      log.info "File $pathValue resolved as existing file using default storage"
+      return new PipelineFile(pathValue, defaultStorage)
    }
    
    /**
@@ -2426,7 +2433,6 @@ class PipelineContext {
     */
     void forwardImpl(List values) {
         
-        
        StorageLayer storage = this.@input.find { !(it instanceof UnknownStoragePipelineFile) }?.storage
         
        // Note: filtering out null because some of the tests do fowrard(null) - 
@@ -2438,12 +2444,31 @@ class PipelineContext {
                return inp.resolvedValues
            }
            else
+           if(inp instanceof PipelineOutput) {
+               
+               // Any reference to a pipeline output in a forward should already have been resolved
+               // to a file by a command. We have to search both the raw outputs and commands because the command
+               // outputs may not have been resolved to raw outputs yet.
+               PipelineOutput po = inp
+               String poName = po.toString()
+               PipelineFile correspondingFile = this.rawOutput.find { PipelineFile pf -> pf.path == poName }
+               if(correspondingFile == null)
+                   correspondingFile = this.trackedOutputs*.value.find { Command cmd -> cmd.outputs.find { it.path == poName } }?.outputs?.find { it.path == poName }
+                   
+               assert correspondingFile != null : "Output $poName was forwarded but does not correspond to any identified output in ${this.rawOutput*.path}"
+               return correspondingFile
+           }
+           else
            if(inp instanceof PipelineInput) {
                return inp.resolvedValue
            }
            else
            if((inp instanceof String) && (storage != null)) {
                return new PipelineFile(inp,storage)
+           }
+           else
+           if(inp instanceof PipelineFile) {
+               return inp
            }
            else
            if((inp instanceof String) && (new File(inp).exists())) {
@@ -2832,12 +2857,11 @@ class PipelineContext {
 //                log.info "Estimate of files matching cleanup patterns is $countMatches"
 //            }
 //                               
-            List resultFiles = results.collect { new File(it) }
-            
+           
 //            List<OutputMetaData> props = Dependencies.instance.scanOutputFolder()
             
-            List<File> cleaned = []
-            for(File result in resultFiles) {
+            List<PipelineFile> cleaned = []
+            for(PipelineFile result in results) {
                 
                 // Note we protect attempt to resolve canonical path with 
                 // the file name equality because it is very slow!
@@ -2862,7 +2886,7 @@ class PipelineContext {
                 }
                 
                 if(resultProps == null) {
-                    log.warning "Unable to file matching known output $result.name"
+                    log.warning "Unable to locate file matching known output $result.name"
                     System.err.println("WARNING: unable to cleanup output $result because meta data file could not be resolved")
                 }
                 else
@@ -2901,6 +2925,11 @@ class PipelineContext {
         while(console.frame.visible) {
             Thread.sleep(1000);
         }
+    }
+    
+    @Memoized
+    StorageLayer getDefaultStorage() {
+        StorageLayer.create(Config.userConfig.get('storage',null))
     }
 }
 
