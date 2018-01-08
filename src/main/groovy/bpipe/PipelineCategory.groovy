@@ -459,6 +459,12 @@ class PipelineCategory {
     
     static Object multiply(Map branches, List segments) {
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
+        
+        // Ensure the keys and values are normalised to expected structure downstream
+        Map<String,List> cleanBranches = branches.collectEntries { e ->
+            [String.valueOf(e.key),  Utils.box(e.value)]
+        }
+        
         def multiplyImplementation = { input ->
             
             def inputs = Utils.box(input)
@@ -468,7 +474,7 @@ class PipelineCategory {
             // Map filteredBranches = branches.keySet().collectEntries { key -> 
             //   [key, Utils.box(branches[key]).removeAll { !(it in inputs) }]
             //}
-            splitOnMap(input, branches,segments)
+            splitOnMap(input, cleanBranches, segments)
         }
         
 //        log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
@@ -533,6 +539,9 @@ class PipelineCategory {
     }
     
     static Object splitOnMap(def input, Map<String, List> samples, List segments, boolean applyName=false) {
+        
+        assert samples*.value.every { it instanceof List }
+        
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
         segments = segments.collect { 
             if(it instanceof List) {
