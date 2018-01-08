@@ -22,6 +22,10 @@ class Aliases {
         aliases.containsKey(path) || aliasTargets.contains(path)
     }
     
+    synchronized boolean isAliased(PipelineFile file) {
+        isAliased(file.path)
+    } 
+    
     @CompileStatic
     synchronized add(String fromPath, PipelineFile toFile) {
         assert fromPath != null

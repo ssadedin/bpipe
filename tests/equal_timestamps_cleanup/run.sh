@@ -6,7 +6,7 @@ run test.groovy
 exists foo.txt bar.txt fubar.txt
 
 # Now cleanup just bar.txt
-bpipe cleanup -y bar.txt
+bpipe cleanup -y bar.txt > test.out
 
 notexists bar.txt
 

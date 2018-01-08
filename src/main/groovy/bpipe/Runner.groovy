@@ -57,7 +57,9 @@ class Runner {
     
     final static String version = System.getProperty("bpipe.version")
     
-    final static String builddate = System.getProperty("bpipe.builddate")?:System.currentTimeMillis()
+    final static long startTimeMs = System.currentTimeMillis()
+    
+    final static String builddate = System.getProperty("bpipe.builddate")?:startTimeMs
     
     final static String runDirectory = new File(".").absoluteFile.parentFile.absolutePath
     

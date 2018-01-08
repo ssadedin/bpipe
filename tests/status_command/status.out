@@ -1,6 +1,0 @@
-
-Found 1 currently executing commands:
-
-    1.    echo "Hello there, I am sleeping for 5 seconds";          sleep 5, running since Thu Jan 04 10:37:46 AEDT 2018 (local command, pid=76428)
-          RUNNING for 1.288 seconds
-
