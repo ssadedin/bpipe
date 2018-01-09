@@ -1036,6 +1036,8 @@ class Utils {
     }
     
     static closeQuietly(obj) {
+        if(obj == null)
+            return
         try {
             obj.close()
         }

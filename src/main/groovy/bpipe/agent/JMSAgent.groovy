@@ -154,9 +154,6 @@ class JMSAgent extends Agent {
         if(!(config.containsKey('commandQueue')))
             throw new PipelineError("ActiveMQ configuration is missing required key 'queue'")
             
-        if(!(config.containsKey('responseQueue')))
-            throw new PipelineError("ActiveMQ configuration is missing required key 'responseQueue'")
-            
         log.info "Connecting to: ${config.brokerURL}"
             
         this.connection = new ActiveMQConnectionFactory(brokerURL: config.brokerURL).createConnection()
@@ -170,8 +167,21 @@ class JMSAgent extends Agent {
 
     @Override
     public WorxConnection createConnection() {
-        Queue queue = this.session.createQueue(config.responseQueue)
-        return new JMSWorxConnection(queue, session)
+        if(config.containsKey('responseQueue')) {
+            Queue queue = this.session.createQueue(config.responseQueue)
+            return new JMSWorxConnection(queue, session)
+        }
+        else {
+            // Create a dummy connection that does not send anything
+            return new WorxConnection() {
+                
+                    void sendJson(String path, String json) {}
+    
+                     Object readResponse()  { [:] }
+                
+                     void close()  { }
+            }
+        }
     }
 
 }
