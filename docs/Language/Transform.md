@@ -7,10 +7,12 @@
     }
 
     
-    transform(<input file pattern>) to(replacement pattern)  {
+    transform(<input file pattern>,...) to(replacement pattern, ...)  {
         < statements to transform inputs >
     
     }
+
+    
 ### Behavior
 
 Transform is a convenient alias for [produce](Language/Produce) where the name of the
@@ -38,7 +40,9 @@ ie: ".xml" is treated as literal ".xml", not "any character followed by xml".
 *Note*: when the form '*.ext' is used, all inputs with the given extension are 
 matched and their transforms become expected outputs. By contrast, the form
 '.ext' or 'ext' causes only the first input matching the extension '.ext' to 
-generate an expected output.
+generate an expected output. Specifying a single extension multiple times 
+does not map multiple inputs with that extension. Instead use the wildcard
+form to match multiple inputs.
 
 ### Annotation
 
@@ -60,7 +64,10 @@ transform("xml") {
 ```
 
 **Run FastQC on a Gzipped FASTQ file**
-Fastqc produces output files following an unusual convention for naming. To match this convention, we can use the extended form of transform:
+
+Fastqc produces output files following an unusual convention for naming. To
+match this convention, we can use the extended form of transform:
+
 ```groovy 
 
 fastqc = {
@@ -71,4 +78,28 @@ fastqc = {
 }
 ```
 
-Note also that since the output zip files from FastQC are usually not used downstream, we forward the input files rather than the default of letting the output files be forwarded to the next stage.
+Note also that since the output zip files from FastQC are usually not used
+downstream, we forward the input files rather than the default of letting the
+output files be forwarded to the next stage.
+
+**Gunzip Two Files Using a Wildcard Pattern**
+
+```groovy 
+    transform('*.fastq.gz') to('.fastq') {
+        exec """
+            gunzip -cf $input1.fastq.gz > $output1.fastq
+
+            gunzip -cf $input2.fastq.gz > $output2.fastq
+        """
+    }
+```
+
+Here the pattern sets a rule for all input files ending with `.fastq.gz`, which 
+are all mapped so that .fastq.gz is replaced with .fastq.
+
+
+
+
+
+
+
