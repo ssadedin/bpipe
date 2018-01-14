@@ -51,7 +51,7 @@ dependencies {
     compile 'org.apache.xmlgraphics:batik-svggen:1.7@jar'
     compile 'org.apache.xmlgraphics:batik-awt-util:1.7@jar'
     compile group: 'org.fusesource.jansi', name: 'jansi', version: '1.16'
-    compile group: 'org.apache.activemq', name: 'activemq-client', version: '5.15.2'
+    compile group: 'org.apache.activemq', name: 'activemq-client', version: '5.14.5'
 
 
     compile ('com.hazelcast:hazelcast-all:2.1.2') { transitive = false }
