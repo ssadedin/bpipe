@@ -344,7 +344,7 @@ class PipelineContext {
     * empty, and it is populated as the outputs get defined - either explicitly (eg: via produce)
     * or implicitly. When implicit, it only occurs after the stage executes (see #resolveOutputs)
     */
-   private List<PipelineFile> output
+   private List<PipelineFile> output = null
    
    void setOutput(o) {
        setRawOutput(toOutputFolder(o))
@@ -483,6 +483,7 @@ class PipelineContext {
        
        String baseOutput = Utils.first(this.getDefaultOutput())
        List<String> out = this.@output?.collect { it.path }
+       List<Object> overrideOutputs = this.@output?.clone()?:[]
        if(out == null || this.currentFileNameTransform) { // Output not set elsewhere, or set dynamically based on inputs
            
            // If an input property was referenced, compute the default from that instead
@@ -511,7 +512,7 @@ class PipelineContext {
                
                if(this.currentFileNameTransform != null) {
                    out = this.currentFileNameTransform.transform(Utils.box(allResolved), this.applyName)*.path
-                   this.@output = toOutputFolder(out)
+                   overrideOutputs = toOutputFolder(out)
                }
                else
                    out = [resolved.newName(resolved.name +"." + this.stageName).path]
@@ -533,7 +534,7 @@ class PipelineContext {
        }
       
        if(!out)
-              out = getDefaultOutput()
+              out = [getDefaultOutput()]
                          
        out = toOutputFolder(out)
        
@@ -543,7 +544,7 @@ class PipelineContext {
        def po = new PipelineOutput(out,
                                    this.stageName, 
                                    baseOutput,
-                                   Utils.box(this.@output),
+                                   overrideOutputs,
                                    { o,replaced -> onNewOutputReferenced(pipeline, o, replaced)}) 
        
        po.branchName = branchName
