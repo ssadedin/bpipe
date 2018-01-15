@@ -112,12 +112,8 @@ class Command implements Serializable {
         if(cfg != null)
             return cfg
             
-            
-        if(command == null)
-            throw new IllegalStateException("Cannot generate a configuration for a null command (id=$id)")
-            
         // How to run the job?  look in user config
-        if(!configName)
+        if(!configName && (command != null)) // preallocated executors use a null command
             configName = command.trim().tokenize(' \t')[0].trim()
         
         log.info "Checking for configuration for command $configName"
