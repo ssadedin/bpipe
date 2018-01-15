@@ -56,7 +56,7 @@ dependencies {
 
     compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.0'
 
-    compile group: 'com.google.cloud', name: 'google-cloud-nio', version: '0.21.1-alpha'
+    compile group: 'com.google.cloud', name: 'google-cloud-nio', version: '0.32.0-alpha'
 
 
     compile ('com.hazelcast:hazelcast-all:2.1.2') { transitive = false }
