@@ -1087,6 +1087,10 @@ class Utils {
     static Object withRetries(Map options=[:], int maxRetries, Closure action) {
        int count = 0
        long sleepTimeMs = 1000
+       long backoffBaseTime = 10000
+       if(options.backoffBaseTime)
+           backoffBaseTime = options.backoffBaseTime
+           
         while(true) {
             try {
                 return action()
@@ -1101,7 +1105,7 @@ class Utils {
                 log.info "Try $count of $maxRetries ..."
             Thread.sleep(sleepTimeMs)
             ++count
-            sleepTimeMs = Math.min(10000,sleepTimeMs*2)
+            sleepTimeMs = Math.min(backoffBaseTime,sleepTimeMs*2)
         }
     } 
     
