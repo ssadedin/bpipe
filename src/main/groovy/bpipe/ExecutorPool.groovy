@@ -612,6 +612,8 @@ class ExecutorPool {
             return status 
         }
         
+        log.info "Pooled executor state counts are: " + executors.collect { it.key.toString() + ": " + it.value.size() }.join(", ")
+        
         // Clean up old executors - anything not in active state
         List<PooledExecutor> nonRunningExecutors = executors.collect { !(it.key in ACTIVE_STATUSES) ? it.value : [] }.sum()
         if(nonRunningExecutors.size()>0) {
@@ -754,9 +756,11 @@ class ExecutorPool {
      * 
      * @param command
      * @param outputLog
-     * @return
+     * @return  true iff an executor was assigned to the command
      */
     synchronized boolean take(Command command, OutputLog outputLog) {
+        
+        assert command != null
         
         if(availableExecutors.isEmpty())
             return false
@@ -774,6 +778,7 @@ class ExecutorPool {
             return false
         }
         
+        log.info "Take $pe for command $command.id ($command.command)"
         availableExecutors.remove(pe)
         activeExecutors.add(pe)
         
