@@ -62,7 +62,7 @@ class FilterFileNameTransformer implements FileNameTransformer {
             typeCounts[e] = 0
       
         def files = types.collect { String type ->
-            def inp = inputs[typeCounts[type] % inputs.size()]
+            PipelineFile inp = inputs[typeCounts[type] % inputs.size()]
             if(!inp)
                throw new PipelineError("Expected input but no input provided")
                
