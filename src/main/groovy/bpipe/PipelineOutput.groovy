@@ -282,7 +282,7 @@ class PipelineOutput {
     }
     
     PipelineOutput createChildOutput(String result, String extraSegment) {
-        def po = new PipelineOutput([result],
+        def po = new PipelineOutput(result ? [result] : [],
             this.stageName,
             this.defaultOutput,
             this.overrideOutputs,
