@@ -325,12 +325,12 @@ class PipelineContext {
         }
     }
    
-   def getDefaultOutput() {
+   String getDefaultOutput() {
 //       log.info "Returning default output " + this.@defaultOutput
        return this.@defaultOutput
    }
    
-   def setDefaultOutput(defOut) {
+   void setDefaultOutput(Object defOut) {
        this.@defaultOutput = toOutputFolder(defOut)[0]
    }
    
@@ -482,7 +482,7 @@ class PipelineContext {
    def getOutputImpl() {
        
        String baseOutput = Utils.first(this.getDefaultOutput())
-       def out = this.@output?.collect { it.path }
+       List<String> out = this.@output?.collect { it.path }
        if(out == null || this.currentFileNameTransform) { // Output not set elsewhere, or set dynamically based on inputs
            
            // If an input property was referenced, compute the default from that instead
@@ -510,11 +510,11 @@ class PipelineContext {
                log.info("Using non-default output due to input property reference: " + resolved + " from resolved inputs " + allResolved)
                
                if(this.currentFileNameTransform != null) {
-                   out = this.currentFileNameTransform.transform(Utils.box(allResolved), this.applyName)
+                   out = this.currentFileNameTransform.transform(Utils.box(allResolved), this.applyName)*.path
                    this.@output = toOutputFolder(out)
                }
                else
-                   out = resolved.newName(resolved.name +"." + this.stageName)
+                   out = [resolved.newName(resolved.name +"." + this.stageName).path]
                    
                this.checkAccompaniedOutputs([resolved])
                
@@ -525,7 +525,7 @@ class PipelineContext {
            else {
                log.info "No inputs resolved by input wrappers: outputs based on default ${this.defaultOutput}"
                if(out == null)
-                   out = this.getDefaultOutput()
+                   out = [this.getDefaultOutput()]
            }
        }
        else {
@@ -634,17 +634,18 @@ class PipelineContext {
    def getOutputByIndex(int index) {
        try {
            PipelineOutput origOutput = getOutput()
-           def o = Utils.box(origOutput.output)
-           def result = o[index]
+           List o = origOutput.output
+           assert o instanceof List
+           String result = o[index]
            String origDefaultOutput = origOutput.defaultOutput
            if(result == null) {
                log.info "No previously set output at $index from ${o.size()} outputs. Synthesizing from index based on first output"
-               if(o[0].path.indexOf('.')>=0) {
-                   result = o[0].path.replaceAll("\\.([^.]*)\$",".${index+1}.\$1")
+               if(o[0].indexOf('.')>=0) {
+                   result = o[0].replaceAll("\\.([^.]*)\$",".${index+1}.\$1")
                    origDefaultOutput = origDefaultOutput.replaceAll("\\.([^.]*)\$",".${index+1}.\$1")
                }
                else
-                   result = o[0].path + (index+1)
+                   result = o[0] + (index+1)
            }
            
            log.info "Query for output $index base result = $result"
@@ -655,7 +656,7 @@ class PipelineContext {
            
            def overrideOutputs = (origOutput.overrideOutputs && origOutput.overrideOutputs.size() >= index ? [ origOutput.overrideOutputs[index] ] : [] )
            
-           return new PipelineOutput(result, 
+           return new PipelineOutput([result],
                                      origOutput.stageName, 
                                      origDefaultOutput,
                                      overrideOutputs, { op,replaced -> onNewOutputReferenced(pipeline, op, replaced)}) 
@@ -2011,6 +2012,10 @@ class PipelineContext {
 
       log.info "Checking actual resolved inputs $actualResolvedInputs"
       
+      command.id = CommandId.newId()
+      
+      trackedOutputs[command.id] = command              
+      
       List<String> outOfDateOutputs = null
       if(probeMode) {
           log.info "Skip check dependencies due to probe mode"
@@ -2022,16 +2027,14 @@ class PipelineContext {
       else {
           outOfDateOutputs = Dependencies.instance.getOutOfDate(checkOutputs,actualResolvedInputs)
           if(!outOfDateOutputs) {
+              command.outputs = checkOutputs.unique() // TODO: unique { it.path } ?
               return createUpToDateExecutor(command, checkOutputs)
           }
       }
-          
+      
       // Reset the inferred outputs - once they are used the user should have to refer to them
       // again to re-invoke them
       this.inferredOutputs = []
-      
-      command.id = CommandId.newId()
-      trackedOutputs[command.id] = command              
       
       if(probeMode) {
           log.info("Skip command start for $command.command due to probe mode")
@@ -2454,6 +2457,11 @@ class PipelineContext {
                PipelineFile correspondingFile = this.rawOutput.find { PipelineFile pf -> pf.path == poName }
                if(correspondingFile == null)
                    correspondingFile = this.trackedOutputs*.value.find { Command cmd -> cmd.outputs.find { it.path == poName } }?.outputs?.find { it.path == poName }
+                   
+                   
+               if(correspondingFile == null) {
+                   println "oh no"
+               }
                    
                assert correspondingFile != null : "Output $poName was forwarded but does not correspond to any identified output in ${this.rawOutput*.path}"
                return correspondingFile

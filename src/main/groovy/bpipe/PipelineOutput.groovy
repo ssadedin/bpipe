@@ -48,9 +48,9 @@ class PipelineOutput {
     }
     
     /**
-     * Raw inputs
+     * Raw outputs
      */
-    def output
+    List<String> output
     
     /**
      * The name of the stage that this output is being created for.
@@ -129,7 +129,9 @@ class PipelineOutput {
      * @param listener          a closure that will be called whenever a property is requested from this object 
      *                          and provided with the computed property value
      */
-    PipelineOutput(def output, String stageName, String defaultOutput, List<Object> overrideOutputs, Closure listener) {
+    PipelineOutput(List<String> output, String stageName, String defaultOutput, List<Object> overrideOutputs, Closure listener) {
+        assert output instanceof List
+        assert output.isEmpty() || output[0] instanceof String
         this.output = output
         this.outputChangeListener = listener
         this.stageName = stageName
@@ -280,7 +282,7 @@ class PipelineOutput {
     }
     
     PipelineOutput createChildOutput(String result, String extraSegment) {
-        def po = new PipelineOutput(result,
+        def po = new PipelineOutput([result],
             this.stageName,
             this.defaultOutput,
             this.overrideOutputs,
