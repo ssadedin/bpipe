@@ -147,6 +147,21 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
               ])
         if(result.exitValue != 0) 
             throw new PipelineError("Failed to acquire google cloud instance based (image=$image) for command $cmd.id: \n\n" + result.out + "\n\n" + result.err)
+            
+        // It can take a small amount of time before the instance can be ssh'd to - downstream 
+        // functions will assume that an instance is available for SSH, so it's best to do
+        // that check now
+        Utils.withRetries(5, backoffBaseTime:3000, message:"Test connect to $instanceId") { 
+            canSSH() 
+        }
+    }
+    
+    boolean canSSH() {
+        String sdkHome = getSDKHome()
+        
+        List<String> sshCommand = ["$sdkHome/bin/gcloud","compute","ssh","--command","true",this.instanceId]*.toString()
+        
+        Utils.executeCommand(sshCommand, throwOnError: true)        
     }
     
     void mountStorage(Map config) {
