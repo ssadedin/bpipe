@@ -1228,7 +1228,13 @@ class PipelineContext {
             
             this.pendingGlobOutputs += globExistingFiles
 
-            def allInputs = (getResolvedInputs()  + Utils.box(lastInputs)).unique()
+            List<PipelineFile> probeResolvedInputs = getResolvedInputs()
+            
+            // Update transformed inputs if a different input was selected
+            // than was expected by default
+            retransformOutputs(lastInputs, probeResolvedInputs, fixedOutputs)
+            
+            def allInputs = (probeResolvedInputs  + Utils.box(lastInputs)).unique()
             
             // Associate storage to any outputs that did not resolve storage already
             fixedOutputs = fixedOutputs.collect { o ->
@@ -1372,6 +1378,30 @@ class PipelineContext {
         this.inputResets = []
         
         return out
+    }
+
+    /**
+     * Search the specified resolved inputs and for any not found in the 
+     * original input set, replace the corresponding output with a re-transformed
+     * value.
+     * 
+     * @param lastInputs
+     * @param probeResolvedInputs
+     * @param fixedOutputs
+     */
+    @CompileStatic
+    private void retransformOutputs(List<PipelineFile> originalInputFiles, List<PipelineFile> probeResolvedInputs, List<PipelineFile> fixedOutputs) {
+        if(currentFileNameTransform != null) {
+            List<String> origInputPaths = originalInputFiles*.path
+            probeResolvedInputs.eachWithIndex { PipelineFile inpFile, int i ->
+                if(!origInputPaths.contains(inpFile.path))  {
+                    String newPath = this.currentFileNameTransform.transform([inpFile], this.applyName)[0].path
+                    log.info "Replace output ${fixedOutputs[i]} => $newPath after probe due to alternative input reference with filter"
+                    fixedOutputs[i] =
+                            new UnknownStoragePipelineFile(newPath)
+                }
+            }
+        }
     }
     
     @CompileStatic
