@@ -33,6 +33,7 @@ import java.nio.file.Path
 import java.nio.file.Files
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.logging.Logger
 import java.util.regex.Matcher
 import java.util.regex.Pattern;
 
@@ -1391,12 +1392,13 @@ class PipelineContext {
      */
     @CompileStatic
     private void retransformOutputs(List<PipelineFile> originalInputFiles, List<PipelineFile> probeResolvedInputs, List<PipelineFile> fixedOutputs) {
+        Logger logger = log
         if(currentFileNameTransform != null) {
             List<String> origInputPaths = originalInputFiles*.path
             probeResolvedInputs.eachWithIndex { PipelineFile inpFile, int i ->
                 if(!origInputPaths.contains(inpFile.path))  {
                     String newPath = this.currentFileNameTransform.transform([inpFile], this.applyName)[0].path
-                    log.info "Replace output ${fixedOutputs[i]} => $newPath after probe due to alternative input reference with filter"
+                    logger.info "Replace output ${fixedOutputs[i]} => $newPath after probe due to alternative input reference with filter"
                     fixedOutputs[i] =
                             new UnknownStoragePipelineFile(newPath)
                 }
