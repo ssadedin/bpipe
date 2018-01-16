@@ -534,9 +534,17 @@ class PipelineContext {
            log.info "Using previously set output: ${this.@output}"
        }
       
-       if(!out)
-              out = [getDefaultOutput()]
+       if(!out) {
+           String defaultOut = getDefaultOutput()
+           if(defaultOut != null)
+               out = [getDefaultOutput()]
+           else
+               out = []
+       }
                          
+       assert out != null
+       assert out.isEmpty() || out[0] != null
+       
        out = toOutputFolder(out)
        
        Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
