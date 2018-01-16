@@ -9,7 +9,7 @@
 
     <h2>Here are all the XML files:</h2>
     <ul>
-        <% outputGraph.findAllOutputsBy { it.outputFile.name.endsWith(".xml") && it.branchPath.split("/").contains("bar") }.each { o -> %>
+        <% outputGraph.findAllOutputsBy { it.outputFile.toString().endsWith(".xml") && it.branchPath.split("/").contains("bar") }.each { o -> %>
             <li><%=o.outputFile%>
         <%}%>
     </body>
