@@ -7,6 +7,10 @@ import groovy.util.logging.Log
 
 @Log
 class LocalFileSystemStorageLayer extends StorageLayer {
+    
+    LocalFileSystemStorageLayer() {
+        this.name = "local"
+    }
 
     @Override
     public boolean exists(String path) {

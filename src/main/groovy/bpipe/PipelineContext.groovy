@@ -1202,6 +1202,7 @@ class PipelineContext {
             PipelineDelegate.setDelegateOn(this, body)
             log.info("Probing command using inputs ${this.@input}")
             List oldInferredOutputs = this.allInferredOutputs.clone()
+            
             try {
                 body()
             }
@@ -1215,12 +1216,12 @@ class PipelineContext {
             }
             log.info "Finished probe"
 
-            log.info "Tracked commands after probe are: " + this.trackedOutputs*.key.join(',')
             
             // For now, treat the last command as the one to associate: this will be possibly confusing
             // if multiple commands exist with different storage
             candidateCommandsToAssociate += this.trackedOutputs*.value.sort { -it.id.toInteger()  }[0]
             associatedCommand = candidateCommandsToAssociate[0]
+            log.info "Tracked commands after probe are: " + this.trackedOutputs*.key.join(',') + " with associated command: " + associatedCommand?.id
             if(associatedCommand != null) {
                 associatedStorage = resolveStorageForConfig(associatedCommand.getProcessedConfig())
             }
@@ -1680,6 +1681,10 @@ class PipelineContext {
      * @see #async(Closure, String)
      */
     void exec(String cmd, boolean joinNewLines, String config=null) {
+        execImpl(cmd, joinNewLines, config)
+    }
+    
+    Command execImpl(String cmd, boolean joinNewLines, String config=null) {
         
       log.info "Tracking outputs referenced=[$referencedOutputs] inferred=[$inferredOutputs] for command $cmd" 
       
@@ -1722,6 +1727,8 @@ class PipelineContext {
       
       if(!this.probeMode)
             this.commandManager.cleanup(c)
+            
+      return c
     }
     
     /**
@@ -1735,14 +1742,10 @@ class PipelineContext {
     void R(Closure c, String config) {
         
         // When probing, just evaluate the string and return
-        if(probeMode) {
-            String rCode = c()
-            return
-        }
-        
+        Command rCommand 
+       
         if(!inputWrapper)
            inputWrapper = new PipelineInput(this.@input, pipelineStages, this.aliases)
-           
            
        // On OSX and Linux, R actively attaches to and listens to signals on the
        // whole process group. This means that any SIGINT gets intercepted
@@ -1760,12 +1763,14 @@ class PipelineContext {
             log.info("Entering echo mode on context " + this.hashCode())
             String rTempDir = Utils.createTempDir().absolutePath
             String scr = c()
-            exec("""unset TMP; unset TEMP; TEMPDIR="$rTempDir" $setSid $rscriptExe - <<'!'
+            rCommand = execImpl("""unset TMP; unset TEMP; TEMPDIR="$rTempDir" $setSid $rscriptExe - <<'!'
             $scr
 !
 """,false, config)
+            
        }
        finally {
+           trackedOutputs[rCommand.id] = rCommand
            this.echoWhenNotFound = oldEchoFlag
        }
     }
