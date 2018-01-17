@@ -1,1 +1,1 @@
-rm -f *.csv *.tsv *.xls *.xml
+rm -rf .bpipe/outputs *.csv *.tsv *.xls *.xml
