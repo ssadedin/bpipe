@@ -171,7 +171,7 @@ class GraphEntry implements Serializable {
             if(p.canonicalPath != null)
                 return p.canonicalPath
                 
-            p.canonicalPath = Utils.canonicalFileFor(String.valueOf(p.outputFile)).path
+            p.canonicalPath = Utils.canonicalFileFor(p.outputFile.path).path
         }
     }
     
@@ -307,7 +307,7 @@ class GraphEntry implements Serializable {
        
         def valuesToDump = filter != null ? filter : values
         
-        def names = values*.outputFile*.fileName*.toString()
+        def names = values*.outputFile*.name*.toString()
         
         String me = names?names.collect { " " * indent + it }.join("\n") + (children?" => \n":"") :""
         
@@ -556,8 +556,8 @@ class Dependencies {
                 outputMetaDataFiles = Utils.box(inps).collect { PipelineFile inputFile ->
                     String inputFileValue = String.valueOf(inputFile)
                     OutputMetaData omd = new OutputMetaData(inputFile)
-                    omd.timestamp = new File(inputFileValue).lastModified()
-                    omd.outputFile = inputFile.toPath()
+                    omd.timestamp = inputFile.lastModified()
+                    omd.outputFile = inputFile
                     omd
                 }
             }
@@ -691,8 +691,8 @@ class Dependencies {
         leaves.removeAll { it.values.every { it.intermediate } }
         
         // Find all the nodes that exist and match the users specs (or, if no specs, treat as wildcard)
-        List internalNodes = (outputs - leaves*.values.flatten()).grep { p ->
-            if(!Files.exists(p.outputFile)) {
+        List<OutputMetaData> internalNodes = (outputs - leaves*.values.flatten()).grep { p ->
+            if(!p.outputFile.exists()) {
                 log.info "File $p.outputFile doesn't exist so can't be cleaned up"
                 return false
             }
@@ -705,7 +705,7 @@ class Dependencies {
             if(arguments.isEmpty())
                 return true 
                 
-            if(arguments.contains(p.outputFile.fileName.toString()) || arguments.contains(p.outputPath.toString()))  
+            if(arguments.contains(p.outputFile.path))  
                 return true
             else {
                 log.info "File $p.outputFile doesn't match the arguments $arguments, so can't be cleaned up"
@@ -713,7 +713,7 @@ class Dependencies {
             }
         }
         
-        List<String> internalNodeFileNames = internalNodes*.outputFile*.fileName*.toString()
+        List<String> internalNodeFileNames = internalNodes*.outputFile*.name*.toString()
         List<String> accompanyingOutputFileNames = []
         
         // Add any "accompanying" outputs for the outputs that would be cleaned up
@@ -771,7 +771,7 @@ class Dependencies {
     long removeOutputFile(OutputMetaData outputFileOutputMetaData, boolean trash=false) {
         outputFileOutputMetaData.cleaned = true
         saveOutputMetaData(outputFileOutputMetaData)
-        Path outputFile = outputFileOutputMetaData.outputFile
+        Path outputFile = outputFileOutputMetaData.outputFile.toPath()
         long outputSize = Files.size(outputFile)
         if(trash) {
             Path trashDir = outputFile.resolveSibling('.bpipe/trash')
@@ -986,7 +986,7 @@ class Dependencies {
                 if(newerInputs) {
                     p.upToDate = false
                     log.info "$p.outputFile is older than inputs " +
-                       (newerInputs.collect { it.outputFile.fileName + ' / ' + it.timestamp + ' / ' + it.maxTimestamp + ' vs ' + p.timestamp })
+                       (newerInputs.collect { it.outputFile.name + ' / ' + it.timestamp + ' / ' + it.maxTimestamp + ' vs ' + p.timestamp })
                     continue
                 }
                 
@@ -994,7 +994,7 @@ class Dependencies {
 
                 // The entry may still not be up to date if it
                 // does not exist and a downstream target needs to be updated
-                if(Files.exists(p.outputFile)) {
+                if(p.outputFile.exists()) {
                     p.upToDate = true
                     continue
                 }

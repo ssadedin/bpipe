@@ -2,10 +2,18 @@ package bpipe.storage
 
 import java.nio.file.Path
 
+import groovy.transform.CompileStatic
+
 abstract class StorageLayer implements Serializable {
     
     public static final long serialVersionUID = 0L
-
+    
+    /**
+     * The name of the configuration from which this storage was
+     * generated
+     */
+    String name
+    
     abstract boolean exists(String path)
     
     abstract Path toPath(String path)
@@ -27,6 +35,7 @@ abstract class StorageLayer implements Serializable {
         String className = "bpipe.storage." + storageConfig.type + "StorageLayer"
         
         StorageLayer result = Class.forName(className).newInstance()
+        result.name = name 
         
         for(kvp in storageConfig) {
             if(result.hasProperty(kvp.key))

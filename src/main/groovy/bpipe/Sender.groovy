@@ -26,6 +26,7 @@ package bpipe
 
 import java.util.logging.Level
 
+import bpipe.storage.UnknownStoragePipelineFile
 import groovy.json.JsonOutput
 import groovy.util.logging.Log;
 import groovy.xml.MarkupBuilder
@@ -143,7 +144,23 @@ class Sender {
      * @param details
      */
     void to(Map extraDetails) {
-        
+       
+        if(this.ctx.inferredOutputs) {
+            Command cmd = new Command(
+                id:CommandId.newId(), 
+                command:"send in stage $ctx.stageName" 
+            )
+            
+            if(extraDetails.config != null)
+                cmd.configName = extraDetails.config
+            
+            Map cfg = cmd.getConfig(this.ctx.rawInput)
+            
+            cmd.outputs = this.ctx.inferredOutputs.collect { new PipelineFile(it, ctx.resolveStorageForConfig(cfg)) }
+            this.ctx.trackedOutputs[cmd.id] = cmd
+            this.ctx.inferredOutputs = []
+        }
+       
         // Don't send anything if the pipeline stage was just being probed
         if(ctx.probeMode)
             return
