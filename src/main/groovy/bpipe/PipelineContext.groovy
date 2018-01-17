@@ -30,6 +30,7 @@ import groovy.transform.Memoized
 import groovy.util.logging.Log;
 import groovy.xml.MarkupBuilder
 import java.nio.file.Path
+import java.nio.file.PathMatcher
 import java.nio.file.Files
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -224,7 +225,7 @@ class PipelineContext {
     * These will not be deleted automatically by user initiated
     * cleanup operations (see {@link Dependencies#cleanup(java.util.List)}
     */
-   List<String> preservedOutputs = []
+   List<PipelineFile> preservedOutputs = []
    
    /**
     * A list of outputs that are to be marked as intermediate.
@@ -232,7 +233,7 @@ class PipelineContext {
     * cleanup operations (see {@link Dependencies#cleanup(java.util.List)},
     * even if they are leaf outputs from the pipeline
     */
-   List<String> intermediateOutputs = []
+   List<PipelineFile> intermediateOutputs = []
    
    /**
     * A Map of files that are not independent outputs, but which
@@ -1446,31 +1447,14 @@ class PipelineContext {
      */
     @CompileStatic
     void preserveImpl(List patterns, Closure c) {
-        def oldFiles = getAllTrackedOutputs()
-        c()
-        List<String> matchingOutputs = findMatchingOutputs(patterns)
         
-        matchingOutputs.removeAll(oldFiles)
-        
-        log.info "Files not in previously created outputs but matching preserve patterns $patterns are: $matchingOutputs"
-        for(Map.Entry<String,Command> entry in trackedOutputs) {
-            List<PipelineFile> preserved = entry.value.outputs.grep { PipelineFile f -> matchingOutputs.contains(f.toPath().normalize()) }
-            log.info "Outputs $preserved marked as preserved from stage $stageName by patterns $patterns"
-            
-            this.preservedOutputs.addAll(preserved.toString())
+        for(String pattern in patterns) {
+            forEachNewFileMatching(pattern, c) { PipelineFile preservedFile ->
+                c()
+                log.info "Outputs $preservedFile marked as preserved from stage $stageName by patterns $patterns"
+                this.preservedOutputs.add(preservedFile)
+            }
         }
-    }
-    
-    /**
-     * 
-     * @param patterns
-     * @return
-     */
-    List<String> findMatchingOutputs(List patterns) {
-        return patterns.collect { 
-            Utils.glob(it).collect { new File(it).canonicalPath } // not sure what to do here
-                                                                  // how will it behave with non-local storage provider?
-        }.flatten()
     }
     
     /**
@@ -1479,15 +1463,32 @@ class PipelineContext {
      * cleanup operation, even if they are leaf outputs from the pipeline.
      */
     void intermediate(String pattern, Closure c) {
-        def oldFiles = getAllTrackedOutputs()
-        c()
-        List<String> matchingOutputs = Utils.glob(pattern) - oldFiles
-        log.info "Files not in previously created outputs but matching intermediate patterns $pattern are: $matchingOutputs"
+        forEachNewFileMatching(pattern, c) { PipelineFile intermediateFile ->
+            log.info "Output $intermediateFile marked as intermediate files from stage $stageName by pattern $pattern"
+            this.intermediateOutputs << intermediateFile
+        }
+    }
+    
+    void forEachNewFileMatching(String glob, Closure body, Closure callback) {
+        List<PipelineFile> oldFiles = getAllTrackedOutputs()*.path
+        body()
+        
+        if(!glob.contains('/') && this.outputDirectory != null && this.outputDirectory != ".")
+            glob = this.outputDirectory + "/" + glob
+        
+        // Look for at least one file that can tell us the file system
+        List<PipelineFile> newFiles = getAllTrackedOutputs()
+        if(newFiles.isEmpty())
+            return
+        
+        java.nio.file.FileSystem fs = newFiles[0].toPath().fileSystem
+        PathMatcher matcher = fs.getPathMatcher('glob:' + glob)
         for(def entry in trackedOutputs) {
-            def intermediates = entry.value.outputs.grep { matchingOutputs.contains(it) }
-            log.info "Outputs $intermediates marked as intermediate files from stage $stageName by pattern $pattern"
-            this.intermediateOutputs += intermediates
-        }        
+            List<PipelineFile> intermediates = entry.value.outputs.grep { !(it.path in oldFiles) && matcher.matches(it.toPath()) }
+            
+            for(PipelineFile pf in intermediates)
+                callback(pf)
+        }                
     }
     
     /**
@@ -1522,8 +1523,8 @@ class PipelineContext {
         }
     }
     
-    List<String> getAllTrackedOutputs() {
-        trackedOutputs.values()*.outputs.flatten().unique()       
+    List<PipelineFile> getAllTrackedOutputs() {
+        trackedOutputs.values()*.outputs.flatten().unique { it.path }
     }
     
     void uses(ResourceUnit newResources, Closure block) {
