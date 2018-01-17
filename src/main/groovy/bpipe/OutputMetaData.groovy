@@ -33,6 +33,8 @@ import java.nio.file.Files;
 import java.nio.file.Path
 import java.util.regex.Pattern
 
+import bpipe.storage.StorageLayer
+
 
 
 /**
@@ -71,7 +73,7 @@ class OutputMetaData implements Serializable {
     
     boolean cleaned = false
     
-    transient Path outputFile
+    transient PipelineFile outputFile
     
     String outputPath
     
@@ -156,7 +158,7 @@ class OutputMetaData implements Serializable {
         log.info "Context " + context.hashCode() + " for stage " + context.stageName + " has resolved inputs " + allInputs
         
         this.inputs = allInputs*.toString()?:(List<String>)[]
-        this.outputFile = o.toPath()
+        this.outputFile = o
         this.basePath = Runner.runDirectory
         this.canonicalPath = o.toPath().toAbsolutePath().normalize()
         this.fingerprint = Utils.sha1(command.command+"_"+o)
@@ -197,14 +199,14 @@ class OutputMetaData implements Serializable {
         
         p.cleaned = String.valueOf(cleaned)
         
-        if(p.outputFile instanceof Path)
-            p.outputFile = p.outputFile.fileName
+        p.outputFile = String.valueOf(outputFile)
+        p.storage = outputFile.storage.name
             
         // TODO: the whole point of storing the timestampe is to get better resolution than
         // is offered by the file system. So overwriting this here does not make
         // make sense
-        if(Files.exists(outputFile))
-            p.timestamp = String.valueOf(Files.getLastModifiedTime(outputFile).toMillis())
+        if(outputFile.exists())
+            p.timestamp = String.valueOf(outputFile.lastModified())
         else
         if(!timestamp)
             p.timestamp = "0"
@@ -246,8 +248,7 @@ class OutputMetaData implements Serializable {
             return 
         }
             
-        // TODO: create using correct storage
-        this.outputFile = new File(p.outputFile).toPath() 
+        this.outputFile = new PipelineFile(p.outputFile, StorageLayer.create(p.storage))
         
         // Normalizing the slashes in the path is necessary for Cygwin compatibility
         this.outputPath = String.valueOf(outputFile).replace('\\',"/")
@@ -255,8 +256,8 @@ class OutputMetaData implements Serializable {
         // If the file exists then we should get the timestamp from there
         // Otherwise just use the timestamp recorded
         // todo: should use the LATER of these two!
-        if(Files.exists(this.outputFile))
-            this.timestamp = Files.getLastModifiedTime(outputFile).toMillis() // todo: performance
+        if(this.outputFile.exists())
+            this.timestamp = outputFile.lastModified()
         else {
             if(p.timestamp != null) {
                 this.timestamp = Long.parseLong(p.timestamp)

@@ -54,6 +54,24 @@ class PipelineFile implements Serializable {
         Files.isDirectory(toPath())
     }
     
+    @CompileStatic
+    long lastModified() {
+       Files.getLastModifiedTime(toPath()).toMillis() 
+    }
+    
+    @CompileStatic
+    long length() {
+        if(exists())
+            return Files.size(toPath())
+        else
+            return 0L
+    }
+    
+    @CompileStatic
+    String getAbsolutePath() {
+        toPath().toAbsolutePath().toString()
+    }
+    
     /**
      * @param pattern   compiled regex pattern
      * @return  true iff the name (not whole path) of this file matches the given pattern
