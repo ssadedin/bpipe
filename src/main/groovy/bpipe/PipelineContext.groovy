@@ -58,8 +58,9 @@ import bpipe.storage.UnknownStoragePipelineFile
 * <li>PipelineCategory
 * <li>PipelineDelegate
 */
-@Log
 class PipelineContext {
+    
+    static Logger log = Logger.getLogger(PipelineContext.name)
     
     /**
      * File where half processed files will be listed on shutdown
