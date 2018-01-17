@@ -167,7 +167,7 @@ class OutputMetaData implements Serializable {
         if(this.cleaned == null)
             this.cleaned = false
                 
-        this.preserve = (o in context.preservedOutputs)
+        this.preserve = (o.path in context.preservedOutputs*.path)
                 
         this.intermediate = context.intermediateOutputs.contains(o)
         if(context.accompanyingOutputs.containsKey(o))

@@ -1451,7 +1451,7 @@ class PipelineContext {
         for(String pattern in patterns) {
             forEachNewFileMatching(pattern, c) { PipelineFile preservedFile ->
                 c()
-                log.info "Outputs $preservedFile marked as preserved from stage $stageName by patterns $patterns"
+                log.info "Outputs $preservedFile marked as preserved from stage $stageName by pattern $pattern"
                 this.preservedOutputs.add(preservedFile)
             }
         }
@@ -1476,6 +1476,12 @@ class PipelineContext {
         if(!glob.contains('/') && this.outputDirectory != null && this.outputDirectory != ".")
             glob = this.outputDirectory + "/" + glob
         
+        String dir = null
+        if(glob.startsWith('/')) {
+            dir = glob.substring(0, glob.lastIndexOf('/'))
+            glob = glob.substring(glob.lastIndexOf('/')+1)
+        }
+            
         // Look for at least one file that can tell us the file system
         List<PipelineFile> newFiles = getAllTrackedOutputs()
         if(newFiles.isEmpty())
@@ -1484,7 +1490,20 @@ class PipelineContext {
         java.nio.file.FileSystem fs = newFiles[0].toPath().fileSystem
         PathMatcher matcher = fs.getPathMatcher('glob:' + glob)
         for(def entry in trackedOutputs) {
-            List<PipelineFile> intermediates = entry.value.outputs.grep { !(it.path in oldFiles) && matcher.matches(it.toPath()) }
+            List<PipelineFile> intermediates = entry.value.outputs.grep { 
+                
+                if(it.path in oldFiles) 
+                    return false
+                    
+                if(!matcher.matches(it.toPath()))
+                    return false
+                    
+                if(dir == null || dir == it.toPath().toAbsolutePath().parent?.toString()) {
+                    return true
+                }
+                    
+                return false
+            }
             
             for(PipelineFile pf in intermediates)
                 callback(pf)
