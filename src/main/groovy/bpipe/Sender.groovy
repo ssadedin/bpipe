@@ -263,8 +263,8 @@ class Sender {
     def resolveJSONContentSource() {
         def contentIn = this.content
             
-        if((contentIn instanceof PipelineInput) || (contentIn instanceof String)) {
-            contentIn = new File(contentIn).newInputStream()
+        if(contentIn instanceof PipelineInput) {
+            contentIn = new File(contentIn.toString()).newInputStream()
         }
         else
         if(contentIn instanceof File)
