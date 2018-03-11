@@ -2536,18 +2536,29 @@ class PipelineContext {
                // to a file by a command. We have to search both the raw outputs and commands because the command
                // outputs may not have been resolved to raw outputs yet.
                PipelineOutput po = inp
-               String poName = po.toString()
-               PipelineFile correspondingFile = this.rawOutput.find { PipelineFile pf -> pf.path == poName }
-               if(correspondingFile == null)
-                   correspondingFile = this.trackedOutputs*.value.find { Command cmd -> cmd.outputs.find { it.path == poName } }?.outputs?.find { it.path == poName }
-                   
-                   
+               String poName = po.toString()			   
+	           List<PipelineStage> reverseStages = pipelineStages.reverse()
+			   
+			   PipelineFile correspondingFile 
+			   for(PipelineStage stage in reverseStages) {
+				   PipelineContext ctx = stage.context
+	               correspondingFile = ctx.rawOutput.find { PipelineFile pf -> pf.path == poName }
+	               if(correspondingFile == null)
+	                   correspondingFile = ctx.trackedOutputs*.value.find { Command cmd -> cmd.outputs.find { it.path == poName } }?.outputs?.find { it.path == poName }
+					   
+				   if(correspondingFile != null)
+					   break
+					   
+				   log.info "Forwarded output $poName not found in $stage.stageName, searching preceding branches"
+			   }
+			   
                if(correspondingFile == null) {
                    println "oh no"
                }
                    
-               assert correspondingFile != null : "Output $poName was forwarded but does not correspond to any identified output in ${this.rawOutput*.path}"
+               assert correspondingFile != null : "Output $poName was forwarded but does not correspond to any identified output in branch $branch"
                return correspondingFile
+			   
            }
            else
            if(inp instanceof PipelineInput) {
