@@ -57,14 +57,16 @@ class GlobPipelineFile extends PipelineFile {
     boolean exists() {
         return getDirectoryStream().any { true }
     }
+	
+	@CompileStatic
+	List<PipelineFile> toPipelineFiles() {
+		toPaths().collect { new PipelineFile(it.toString(), storage) }
+	}
     
     @CompileStatic
     List<Path> toPaths() {
         List<Path> paths = (List<Path>)getDirectoryStream().collect { it }
-        if(paths.isEmpty())
-            return [this.toPath()]
-        else
-            return paths
+        return paths
     }
     
     DirectoryStream getDirectoryStream() {
