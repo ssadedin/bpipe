@@ -1,7 +1,5 @@
 source ../testsupport.sh
 
-rm -f *.csv *.xml
-
 run test.txt
 
 grep -q "Stage hello" test.out || err "Failed to find expected stage hello"
