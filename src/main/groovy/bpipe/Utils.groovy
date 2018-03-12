@@ -94,6 +94,9 @@ class Utils {
         assert inputs instanceof List 
         assert outputs instanceof List 
         
+        if(outputs.any { it instanceof String })
+            assert false : "Output specified as raw string: internal error"
+        
         // Some pipeline stages don't expect any outputs
         // Fixing issue 44 - https://code.google.com/p/bpipe/issues/detail?id=44
         if( !outputsToCheck || !inputs )
@@ -124,9 +127,11 @@ class Utils {
         final boolean logTimestamps = inputFiles.size()*outputs.size() < 5000 // 5k lines in the log from 1 loop is too much
 
         List<Path> outputPaths = toPaths(outputs)
-        outputPaths.grep { Path outFile ->
+        List<Path> result = outputPaths.grep { Path outFile ->
             isOlder(outFile, inputFileTimestamps, maxInputTimestamp)
-        }
+        } + outputs.grep { PipelineFile pf -> !pf.exists() }*.toPath()
+        
+        return result.unique { it.toString() }
     }
     
     @CompileStatic
@@ -472,7 +477,7 @@ class Utils {
         return text.split().collect { it.capitalize() }.join(' ')
     }
     
-	// See https://gist.github.com/310321
+    // See https://gist.github.com/310321
     // Licensed under the "Apache License, Version 2.0" (c) 2010
     /**
      * Returns filenames found by expanding the passed pattern which is String or

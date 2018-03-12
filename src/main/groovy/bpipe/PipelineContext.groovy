@@ -361,6 +361,19 @@ class PipelineContext {
     */
    void setRawOutput(List outs) {
        
+	   this.@output = this.resolvePipelineFiles(outs)
+           
+       log.info "Actual output set: " + this.@output
+   }
+   
+   /**
+    * Convert a heterogenous list of outputs (strings, files, etc) to standardised
+    * {@link PipelineFile} objects.
+    * 
+    * @param outs	heterogeneous list of file-like objects
+    * @return list of PipelineFile
+    */
+   List<PipelineFile> resolvePipelineFiles(List outs) {
        assert (outs == null) || (outs instanceof List)
 
        if(outs == null || outs.size()<20)
@@ -371,7 +384,7 @@ class PipelineContext {
        if(Thread.currentThread().id != threadId)
            log.warning "Thread output being set to $outs from wrong thread ${Thread.currentThread().id} instead of $threadId"
        
-       this.@output = outs.collect { Object o ->
+       return outs.collect { Object o ->
            
            assert !(o instanceof List)
            
@@ -386,8 +399,6 @@ class PipelineContext {
                    return new PipelineFile(oString, storageLayer)
            }
        }.grep { it != null }
-           
-       log.info "Actual output set: " + this.@output
    }
    
    @CompileStatic
@@ -452,9 +463,11 @@ class PipelineContext {
    
    /**
     * All outputs referenced through output property extensions during the 
-    * execution of the pipeline stage
+    * execution of the pipeline stage. Note that these are stored in string format
+    * and have to be converted to PipelineFile objects to localise to the correct
+    * storage before being used for most purposes (see {@link #resolvePipelineFiles}).
     */
-   List allInferredOutputs = []
+   List<String> allInferredOutputs = []
    
    /**
     * A list of inputs resolved directly by references to $input
@@ -1178,7 +1191,7 @@ class PipelineContext {
                           } 
         
         // Check for all existing files that match the globs
-        List globExistingFiles = globOutputs.collect { 
+        List<GlobPipelineFile> globExistingFiles = globOutputs.collect { 
             new GlobPipelineFile(it)
         }.flatten()
         
@@ -1256,10 +1269,12 @@ class PipelineContext {
                     o
             }
 
-            def outputsToCheck = fixedOutputs.clone()
+            List<PipelineFile> outputsToCheck = fixedOutputs.clone()
             List newInferredOutputs = this.allInferredOutputs.clone()
             newInferredOutputs.removeAll(oldInferredOutputs)
-            outputsToCheck.addAll(newInferredOutputs)
+			
+			List<PipelineFile> newInferredOutputFiles = resolvePipelineFiles(newInferredOutputs)
+            outputsToCheck.addAll(newInferredOutputFiles)
 
             // In some cases the user may specify an output explicitly with a direct produce(...)
             // but then not reference that output variable at all in any of their
@@ -1309,8 +1324,11 @@ class PipelineContext {
         
         if(doExecute) {
             if(boxedOutputs) {
+				
+				List<PipelineFile> globActualFiles = globExistingFiles*.toPipelineFiles().flatten()
+				
                 this.setRawOutput(
-                    (fixedOutputs  + globExistingFiles).unique { it.path }
+                    (fixedOutputs  + globActualFiles).unique { it.path }
                 )
                 this.removeReplacedOutputs()
             }

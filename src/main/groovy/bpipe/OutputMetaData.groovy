@@ -202,9 +202,9 @@ class OutputMetaData implements Serializable {
         p.outputFile = String.valueOf(outputFile)
         p.storage = outputFile.storage.name
             
-        // TODO: the whole point of storing the timestampe is to get better resolution than
-        // is offered by the file system. So overwriting this here does not make
-        // make sense
+        // TODO: the whole point of storing the timestamp is to get better resolution than
+        // is offered by the file system. On the other hand, if the file exists and has a timestamp,
+		// shouldn't we believe that over what we recorded? Perhaps it should be the latest of either?
         if(outputFile.exists())
             p.timestamp = String.valueOf(outputFile.lastModified())
         else
