@@ -1411,9 +1411,8 @@ class PipelineContext {
     }
 
     /**
-     * Search the specified resolved inputs and for any not found in the 
-     * original input set, replace the corresponding output with a re-transformed
-     * value.
+     * Search the specified resolved inputs and for any whose transform result is not reflected
+     * in the outputs and replace the corresponding output in the given output list.
      * 
      * @param lastInputs
      * @param probeResolvedInputs
@@ -1425,8 +1424,8 @@ class PipelineContext {
         if(currentFileNameTransform != null) {
             List<String> origInputPaths = originalInputFiles*.path
             probeResolvedInputs.eachWithIndex { PipelineFile inpFile, int i ->
-                if(!origInputPaths.contains(inpFile.path))  {
-                    String newPath = this.currentFileNameTransform.transform([inpFile], this.applyName)[0].path
+                String newPath = this.currentFileNameTransform.transform([inpFile], this.applyName)[0].path
+                if(!fixedOutputs.contains(inpFile.path))  {
                     logger.info "Replace output ${fixedOutputs[i]} => $newPath after probe due to alternative input reference with filter"
                     fixedOutputs[i] =
                             new UnknownStoragePipelineFile(newPath)
