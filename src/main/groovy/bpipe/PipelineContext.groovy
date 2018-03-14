@@ -1466,10 +1466,8 @@ class PipelineContext {
      */
     @CompileStatic
     void preserveImpl(List patterns, Closure c) {
-        
         for(String pattern in patterns) {
             forEachNewFileMatching(pattern, c) { PipelineFile preservedFile ->
-                c()
                 log.info "Outputs $preservedFile marked as preserved from stage $stageName by pattern $pattern"
                 this.preservedOutputs.add(preservedFile)
             }
