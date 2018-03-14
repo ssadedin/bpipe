@@ -1424,11 +1424,11 @@ class PipelineContext {
         if(currentFileNameTransform != null) {
             List<String> origInputPaths = originalInputFiles*.path
             probeResolvedInputs.eachWithIndex { PipelineFile inpFile, int i ->
-                String newPath = this.currentFileNameTransform.transform([inpFile], this.applyName)[0].path
+                String newPath = toOutputFolder(this.currentFileNameTransform.transform([inpFile], this.applyName)[0].path)[0]
                 if(!fixedOutputs.contains(inpFile.path))  {
                     logger.info "Replace output ${fixedOutputs[i]} => $newPath after probe due to alternative input reference with filter"
                     fixedOutputs[i] =
-                            new UnknownStoragePipelineFile(newPath)
+                            new UnknownStoragePipelineFile(newPath) // could inherit from input?
                 }
             }
         }
