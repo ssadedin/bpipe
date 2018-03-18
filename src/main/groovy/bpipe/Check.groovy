@@ -24,6 +24,7 @@
  */
 package bpipe
 
+import bpipe.storage.LocalPipelineFile
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 
@@ -141,7 +142,7 @@ class Check {
            return false
        }
        
-       if(Dependencies.instance.getOutOfDate([checkFile.absolutePath], inputs)) {
+       if(Dependencies.instance.getOutOfDate([new LocalPipelineFile(checkFile.absolutePath)], inputs)) {
            return false
        }
        
