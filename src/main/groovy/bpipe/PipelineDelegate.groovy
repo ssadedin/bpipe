@@ -84,8 +84,15 @@ class PipelineDelegate {
             if(args.size()<1) 
                 throw new IllegalArgumentException("from requires an argument: please supply a pattern or file extension that from should match on")
                 
-            def actualArgs 
             Closure body = null
+            
+            def actualArgs 
+            Map options = [:]
+            if(args[0] instanceof Map) {
+                options = args[0]
+				args = args[1..-1]
+			}
+            
             if(args[-1] instanceof Closure) {
                 actualArgs = args[0..-2] as List
                 body = args[-1]
@@ -96,7 +103,7 @@ class PipelineDelegate {
             if(actualArgs[0] instanceof List && actualArgs.size()==1)
                 actualArgs = actualArgs[0]
                 
-            context.get().invokeMethod("fromImpl", [actualArgs, body] as Object[])
+            context.get().invokeMethod("fromImpl", [options, actualArgs, body] as Object[])
         }
         else
         if(name in ["produce","transform","filter","preserve"]) {
