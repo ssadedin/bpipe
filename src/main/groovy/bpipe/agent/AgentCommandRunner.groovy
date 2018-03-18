@@ -49,6 +49,7 @@ class AgentCommandRunner implements Runnable {
     public void run() {
         
         concurrency?.acquire()
+        log.info "Gained concurrency permit to run command $worxCommandId"
         try {
             executeAndRespond(worxCommandId) {
                 
@@ -71,6 +72,7 @@ class AgentCommandRunner implements Runnable {
         }
         finally {
             bpipe.Utils.closeQuietly(worx.close())
+            log.info "Releasing concurrency permit from command $worxCommandId"
             concurrency?.release()
         }
     }
