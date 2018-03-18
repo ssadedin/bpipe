@@ -26,6 +26,7 @@ package bpipe
 
 import java.util.logging.Level
 
+import bpipe.storage.LocalPipelineFile
 import bpipe.storage.UnknownStoragePipelineFile
 import groovy.json.JsonOutput
 import groovy.util.logging.Log;
@@ -215,7 +216,7 @@ class Sender {
        sentFolder.mkdirs()
        
        File sentFile = new File(sentFolder, cfgName + "." + ctx.stageName + "." + Utils.sha1(this.details.subject + content))
-       if(sentFile.exists() && !Dependencies.instance.getOutOfDate([sentFile.absolutePath], ctx.@input)) {
+       if(sentFile.exists() && !Dependencies.instance.getOutOfDate([new LocalPipelineFile(sentFile.absolutePath)], ctx.@input)) {
            log.info "Sent file $sentFile.absolutePath already exists - skipping send of this message"
            if(onSend != null) {
              onSend(details)
