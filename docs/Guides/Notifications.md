@@ -159,14 +159,35 @@ When searching for a template, Bpipe will resolve files found in the local Bpipe
 
 ## HTML and other Emails
 
-By default Bpipe sticks to sending plain text notifications. However if you name your template ending with ".html", Bpipe will change the content type to "text/html" so that an HTML email is sent instead. At this stage you cannot embed images, although you can reference remote images.
+By default Bpipe sticks to sending plain text notifications. However if you
+name your template ending with ".html", Bpipe will change the content type to
+"text/html" so that an HTML email is sent instead. At this stage you cannot
+embed images, although you can reference remote images.
 
 ## Sending Arbitrary Notifications
 
-You may wish to send out notifications explicitly as part of your pipeline, rather than relying on Bpipe to do it in response to pipeline events. This is possible via the [send](Language/Send), [succeed](Language/Succeed) and [fail](Language/Fail) commands. See documentation on these commands for more information.
+You may wish to send out notifications explicitly as part of your pipeline,
+rather than relying on Bpipe to do it in response to pipeline events. This
+is possible via the [send](Language/Send), [succeed](Language/Succeed) and
+[fail](Language/Fail) commands. See documentation on these commands for
+more information.
+
+When you send custom notifications, you may wish to configure the corresponding
+notification channel not to receive any ordinary events. This can be done
+by setting the events to be received to be empty:
 
 
+```
+  gmail {
+    to="recipient@any.email.com"
+    username="your.address@gmail.com"
+    password="your password"
+    events='' // Don't send normal pipeline events to this channel
+  }
+```
 
+Notifications sent explicitly using the [send](Language/Send) command will still
+be sent. This just disables events from Bpipe itself.
 
 
 

@@ -47,7 +47,19 @@ A `json` utility method is available to format data as JSON. The `json` method
 accepts a JSON-encodable object (eg: groovy/java list, map, string, integer, etc),
 which is encoded to JSON and then sent as the body of the message.
 
-*Note*: a common scenario is to terminate a branch of a pipeline due to a failure or exceptional situation and to send a status message about that. To make this convenient, the [succeed](Language/Succeed) and [fail](Language/Fail) commands can accept the same syntax as `send`, but also have the effect of terminating the execution of the current pipeline branch with a corresponding status message.
+*Note*: a common scenario is to terminate a branch of a pipeline due to a
+failure or exceptional situation and to send a status message about that. To
+make this convenient, the [succeed](Language/Succeed) and [fail](Language/Fail)
+commands can accept the same syntax as `send`, but also have the effect of
+terminating the execution of the current pipeline branch with a
+corresponding status message.
+
+**Note**: In Bpipe's generic notification framework, configuring a
+notification channel automatically enables certain events from the pipeline
+operation to be forwarded to the channel. If you only want to receive
+the events you explicitly send using `send`, you must set the 
+`events` property for the channel to blank (`''`). See the 
+full example below for more details.
 
 ### Examples
 
