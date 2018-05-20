@@ -84,6 +84,14 @@ class Sender {
         return this
     }
     
+    Sender issue(Map details) {
+        this.content = details
+        this.contentType = "application/json"
+        this.defaultSubject = details.title
+        return this
+    }
+ 	
+    
     /**
      * Support for sending HTML through a communication channel - 
      * the message is provided by building HTML with a MarkupBuilder.
@@ -252,7 +260,7 @@ class Sender {
         
         log.info "Sending to $details.url with content type $contentType"
         try {
-            connectAndSend(contentIn, url)
+            Utils.connectAndSend(contentIn, url, ['Content-Type':this.contentType])
         }
         finally {
             if(contentIn.respondsTo('close'))
@@ -274,32 +282,6 @@ class Sender {
             contentIn = JsonOutput.toJson(contentIn)
         }
         return contentIn
-    }
-    
-    void connectAndSend(def contentIn, String url) {
-        new URL(url).openConnection().with {
-            doOutput = true
-            useCaches = false
-            setRequestProperty('Content-Type',this.contentType)
-            requestMethod = 'POST'
-                
-            connect()
-                
-            outputStream.withWriter { writer ->
-              writer << contentIn
-            }
-            log.info "Sent to URL $details.url"
-                
-            int code = getResponseCode()
-            log.info("Received response code $code from server")
-            if(code >= 400) {
-                String output = errorStream.text
-                throw new PipelineError("Send to $details.url failed with error $code. Response contains: ${output.take(80)}")
-            }
-                    
-            if(log.isLoggable(Level.FINE))
-                log.fine content.text
-        }
     }
     
     /**

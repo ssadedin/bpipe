@@ -1974,6 +1974,14 @@ class PipelineContext {
     */
    Object fromImpl(Object exts, Closure body) {
        
+       // If from is invoked in the form from('a','b',option:'someValue')
+	   // then we get the first argument as a map of options
+       Map options = [:]
+	   if((exts instanceof List) && (exts[0] instanceof Map)) {
+           options = exts[0]
+           exts = exts.tail()
+	   }
+       
        log.info "From clause searching for inputs matching spec $exts"
        
        if(!exts || exts.every { it == null })
@@ -2404,6 +2412,10 @@ class PipelineContext {
         new Sender(this).html(c)
     }
     
+    Sender issue(Map details) {
+        new Sender(this).issue(details)
+    }
+ 	
     Sender text(Closure c) {
         new Sender(this).text(c)
     }

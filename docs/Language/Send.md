@@ -134,7 +134,19 @@ specifying a Map as an argument to a function. The equivalent is:
     ) to analysis_finished_queue
 ```
 
+**Send an Issue to Gitlab**
 
+Note that you need to set up the Project, Gitlab URL and authentication token
+in the `bpipe.config` file (see Gitlab Guide).
+
+```
+    send issue(                                                                         
+            title: 'Hello there from bpipe',                            
+            description: 'This issue was created by bpipe.\n\n- super awesome',         
+            assignee: 'joe.bloggs',                                                  
+            label: 'testlabel'                                                         
+            ) to gitlab                                                                 
+```
 
 
 

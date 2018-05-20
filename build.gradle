@@ -52,8 +52,7 @@ dependencies {
     compile 'org.apache.xmlgraphics:batik-awt-util:1.7@jar'
     compile group: 'org.fusesource.jansi', name: 'jansi', version: '1.16'
     compile group: 'org.apache.activemq', name: 'activemq-client', version: '5.14.5'
-
-
+    compile group: 'org.gitlab4j', name: 'gitlab4j-api', version: '4.7.17' // note 4.8 not compatible with jdk1.7
     compile ('com.hazelcast:hazelcast-all:2.1.2') { transitive = false }
     testCompile group: 'junit', name: 'junit', version: '4.8.2'
 

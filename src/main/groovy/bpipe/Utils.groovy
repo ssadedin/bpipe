@@ -1034,6 +1034,63 @@ class Utils {
           .collect {(it.value instanceof PipelineStage) ? ["stage",it.value.toProperties()] : it}
           .collectEntries() 
     }
+	
+    static String sendURL(Map params, String method, String baseURL, Map headers=[:]) {
+		String paramString = params.collect {
+			URLEncoder.encode(it.key)+'='+URLEncoder.encode(String.valueOf(it.value))
+		}.join('&')
+		
+		String url
+		if(baseURL.contains("?"))
+			url = baseURL + '&' + paramString
+		else
+			url = baseURL + '?' + paramString
+			
+        connectAndSend(method, null,url, headers)
+	}
+	
+    static String connectAndSend(def contentIn, String url, Map headers=[:]) {
+		connectAndSend('POST', contentIn, url, headers)
+	}
+	
+    static String connectAndSend(String method, def contentIn, String url, Map headers=[:]) {
+        
+        new URL(url).openConnection().with {
+            if(method == 'POST')
+                doOutput = true
+            useCaches = false
+			headers.each { h ->
+	            setRequestProperty(h.key,h.value)
+            }
+			
+            requestMethod = method
+                
+            connect()
+                
+			if(contentIn != null) {
+	            outputStream.withWriter { writer ->
+	              writer << contentIn
+	            }
+			}
+			else {
+                if(method == 'POST')
+    				outputStream.close()
+			}
+            log.info "Sent to URL $url"
+                
+            int code = getResponseCode()
+            log.info("Received response code $code from server")
+            if(code >= 400) {
+                String output = errorStream.text
+                throw new PipelineError("Send to $url failed with error $code. Response contains: ${output.take(80)}")
+            }
+                    
+            if(log.isLoggable(Level.FINE))
+                log.fine content.text
+				
+			return inputStream.text
+        }
+    }
     
     static closeQuietly(obj) {
         if(obj == null)
@@ -1045,4 +1102,5 @@ class Utils {
             // ignore   
         }
     }
+    
 }

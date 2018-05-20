@@ -175,12 +175,15 @@ class NotificationManager {
             }
         }
         
-        File templateFile = ReportGenerator.resolveTemplateFile(templateName)
-        if(!templateFile.exists()) {
-            def msg = "WARNING: unable to send notification: template $templateName mapped to file $templateFile.absolutePath, but this file does not exist!"
-            log.error msg
-            println msg
-            return
+        File templateFile 
+        if(templateName != null) {
+            templateFile = ReportGenerator.resolveTemplateFile(templateName)
+            if(!templateFile.exists()) {
+                def msg = "WARNING: unable to send notification: template $templateName mapped to file $templateFile.absolutePath, but this file does not exist!"
+                log.error msg
+                println msg
+                return
+            }
         }
         
         if(detail.checks) {
@@ -192,7 +195,7 @@ class NotificationManager {
         String contentType = 'text/plain'
         
         // Default content type to HTML when extension is HTML
-        if(templateName.endsWith('.html'))
+        if(templateName?.endsWith('.html'))
             contentType = 'text/html'
             
         // In case the content type is explicitly specified for the message
@@ -215,16 +218,19 @@ class NotificationManager {
             pipeline : Pipeline.rootPipeline
         ]
         
-        log.info "Generating template from file $templateFile.absolutePath"
-        def template = engine.createTemplate(templateFile.getText())
-	
-		sendTimestamps[category] = System.currentTimeMillis()
+        def template
+        if(templateFile != null) {
+            log.info "Generating template from file $templateFile.absolutePath"
+            template = engine.createTemplate(templateFile.getText())
+        }
+    	
+    		sendTimestamps[category] = System.currentTimeMillis()
 		
 		try {
 			channel.notify(evt, desc, template, detail)
 		}
 		catch(Throwable t) {
-			log.warning("Failed to send notification via channel "+ channel + " with using template file $templateFile.absolutePath,configuration " + cfg + ": " + t)
+			log.warning("Failed to send notification via channel "+ channel + " with using template file $templateFile?.absolutePath,configuration " + cfg + ": " + t)
             log.log(Level.SEVERE, "Failed to send notification to channel $channel using template $templateFile, coniguration $cfg", t)
 			System.err.println "MSG: unable to send notification to channel $channel due to $t"
 		}
