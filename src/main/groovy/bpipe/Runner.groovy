@@ -405,6 +405,12 @@ class Runner {
         }
 
         def gcl = new GroovyClassLoader()
+        
+        if('parameters' in Config.userConfig) {
+            Config.userConfig.parameters.collect { k,v ->
+                binding.setParam(k,v)
+            }
+        }
 
         // add all user specified parameters to the binding
         if( opts.params ) {  // <-- note: ending with the 's' character the 'param' option, will force to return it as list of string
