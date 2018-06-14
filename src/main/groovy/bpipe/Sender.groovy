@@ -221,6 +221,12 @@ class Sender {
             "send.file" : this.details.file
         ]
         
+       if('properties' in details) {
+           details.properties.each { k,v ->
+               props[k] = v
+           }
+       }
+        
        if(details.containsKey('url')) {
            sendToURL(details)
        }
@@ -255,7 +261,9 @@ class Sender {
             if(!url.contains('?'))
                 url += '?'
             
-            url += details.params.collect { key, value -> URLEncoder.encode(key) + '=' + URLEncoder.encode(value) }.join('&')
+            url += details.params.collect { key, value -> 
+                URLEncoder.encode(key) + '=' + (value==null?'':URLEncoder.encode(value)) 
+            }.join('&')
         }
         
         log.info "Sending to $details.url with content type $contentType"
