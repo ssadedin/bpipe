@@ -542,14 +542,15 @@ class Concurrency {
        this.resourceAllocations.put(resourceName, new Semaphore(amount))
    }
    
-   void initFromConfig() {
+   void initFromConfig(boolean override=true) {
        
        if(!Config.userConfig.limits) 
            return
        
        Config.userConfig.limits.each { key, value ->
            log.info "Setting limit $key with value $value from user configuration"
-           setLimit(key, value)
+           if(override || !resourceAllocations.containsKey(key))
+               setLimit(key, value)
        }
    }
 }

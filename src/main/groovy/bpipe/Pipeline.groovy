@@ -1120,6 +1120,10 @@ public class Pipeline implements ResourceRequestor {
     static synchronized void config(Closure cfgClosure) {
         ConfigObject newConfig = new ConfigSlurper().parse(new ClosureScript(closure:cfgClosure))
         Config.userConfig.merge(newConfig)
+        
+        // In case there were any limits set, update the concurrency 
+        // But we do not want to override settings from command line or bpipe.config here
+        Concurrency.instance.initFromConfig(false)
     }
     
     /**
