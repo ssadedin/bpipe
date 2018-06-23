@@ -78,7 +78,19 @@ class Sender {
     }
     
     Sender json(Closure c) {
-        this.content = JsonOutput.toJson(c())
+        Object result = c()
+        if(result instanceof PipelineInput) {
+            result = Pipeline.file(result)
+        }
+        
+        // If it is a file object, send the content of the file, not the literal file object
+        if(result instanceof File) {
+            log.info "Sent JSON resolves to file: sending content of file $result"
+            this.content = result.text
+        }
+        else
+            this.content = JsonOutput.toJson(result)
+            
         this.contentType = "application/json"
         this.defaultSubject = "JSON content from stage ${ctx.stageName}"
         return this
