@@ -929,7 +929,7 @@ class Utils {
     
     static Pattern TRIM_ZEROS = ~'\\.000 seconds$'
     
-    static String table(Map options = [:], List<String> headers, List<List> rows) {
+    static void table(Map options = [:], List<String> headers, List<List> rows) {
         
         String indent = options.indent ? (" " * options.indent) : ""
         
