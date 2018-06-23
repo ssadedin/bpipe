@@ -730,9 +730,8 @@ public class Pipeline implements ResourceRequestor {
             this.checkRequiredInputs(Utils.box(inputFile))
             
             if(!Runner.opts.t) {
-                new File(".bpipe/run.pid").text = Config.config.pid
-                File jobFile = new File(Runner.LOCAL_JOB_DIR, Config.config.pid)
-                jobFile.append("-----------------------\npguid: " + Config.config.pguid+"\n")
+                writeJobPIDFile()
+                scheduleStatsUpdate()
             }
             runSegment(inputFile, constructedPipeline)
                     
@@ -813,15 +812,42 @@ public class Pipeline implements ResourceRequestor {
             summarizeOutputs(stages)
         }
     }
+
+    private writeJobPIDFile() {
+        new File(".bpipe/run.pid").text = Config.config.pid
+        File jobFile = new File(Runner.LOCAL_JOB_DIR, Config.config.pid)
+        jobFile.append("-----------------------\npguid: " + Config.config.pguid+"\n")
+    }
+    
+    private final static int STATS_POLLER_INTERVAL = 120000
+    
+    private scheduleStatsUpdate() {
+        long intervalMs = Config.userConfig.get('stats_update_interval', STATS_POLLER_INTERVAL)
+        Poller.instance.timer.schedule({
+            try {
+                saveResultState(failed, [], [])
+            }
+            catch(Throwable t) {
+                log.severe "Failed to save result state!"
+            }
+        }, intervalMs, intervalMs)
+    }
     
     static String DATE_FORMAT="yyyy-MM-dd HH:mm:ss"
     
     void saveResultState(boolean failed, List<Check> allChecks, List<Check> failedChecks) {
        
+        long nowMs = System.currentTimeMillis()
+        
         new File(".bpipe/results").mkdirs()
         
         // Compute the total runtime of all tools
-        long commandTimeMs = CommandManager.executedCommands.sum {  Command cmd -> (cmd.stopTimeMs - cmd.startTimeMs) }
+        final List<Command> commandList
+        synchronized(CommandManager.executedCommands) {
+          commandList = CommandManager.executedCommands.collect { it } // clone not supported natively
+        }
+        
+        long commandTimeMs = commandList.sum {  Command cmd -> (cmd.stopTimeMs - cmd.startTimeMs) }
         if(commandTimeMs == null)
             commandTimeMs = 0
                   
@@ -830,11 +856,12 @@ public class Pipeline implements ResourceRequestor {
             xml.job(id:Config.config.pid) {
                 succeeded(String.valueOf(!failed))
                 startDateTime(startDate.format(DATE_FORMAT))
-                endDateTime(finishDate.format(DATE_FORMAT))
+                if(finishDate)
+                    endDateTime(finishDate.format(DATE_FORMAT))
                 totalCommandTimeSeconds(commandTimeMs/1000)
                 
                 commands {
-                   CommandManager.executedCommands.each {  Command cmd ->
+                   commandList.each {  Command cmd ->
                         command {
                             id(cmd.id)
                             stage(cmd.name)
@@ -848,6 +875,8 @@ public class Pipeline implements ResourceRequestor {
                 }
             }
         }
+        
+        log.info "Saved pipeline state in ${System.currentTimeMillis() - nowMs}ms"
     }
     
     void initializeRunLogs(def inputFile) {
