@@ -14,6 +14,10 @@ branch. This can allow a particular branch of your pipeline to override
 pipeline stages and variables within that branch to have different 
 values and behavior.
 
+**Note**: Although you can override the definition of individual pipeline
+stages dynamically within a branch using `load`, currently overriding 
+the definition of a segment is not supported.
+
 ### Examples
 
 **1. Include a file "dependencies.groovy" explicitly into your pipeline**
