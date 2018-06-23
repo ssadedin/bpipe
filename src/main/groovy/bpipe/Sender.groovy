@@ -168,7 +168,7 @@ class Sender {
         if(ctx.probeMode)
             return
             
-        this.details = extraDetails
+        this.details = extraDetails.collectEntries { it }
         
         // Find the config object
         String cfgName = details.channel
@@ -197,8 +197,6 @@ class Sender {
        File sentFolder = new File(".bpipe/sent/")
        sentFolder.mkdirs()
        
-       String contentHash = (content instanceof File) ? content.absolutePath + content.length() : content
-       
        File sentFile = new File(sentFolder, cfgName + "." + ctx.stageName + "." + Utils.sha1(this.details.subject + content))
        if(sentFile.exists() && !Dependencies.instance.getOutOfDate([sentFile.absolutePath], ctx.@input)) {
            log.info "Sent file $sentFile.absolutePath already exists - skipping send of this message"
@@ -208,6 +206,21 @@ class Sender {
            return
        }
        
+       if(Runner.opts.t) {
+           log.info "Would send $content to $cfgName, but we are in test mode"
+           if(onSend != null) {
+             onSend(details)
+           } 
+           
+           StringWriter sw = new StringWriter()
+           
+           Utils.table(['Property','Value'], [extraDetails*.key, extraDetails*.value].transpose(), out: sw)
+           
+           throw new PipelineTestAbort("Would send message to channel '$cfgName' using details:\n\n" + sw.toString())
+       }
+       else
+           log.info "Sending $content to $cfgName"
+           
        if(content instanceof String)
            sentFile.text = content
        else
@@ -215,16 +228,6 @@ class Sender {
            sentFile << content.bytes
        }
        
-       if(Runner.opts.t) {
-           log.info "Would send $content to $cfgName, but we are in test mode"
-           if(onSend != null) {
-             onSend(details)
-           } 
-       }
-       else
-           log.info "Sending $content to $cfgName"
-       
-           
        Map props = [
             "stage" : ctx.currentStage,
             "send.content": content,
