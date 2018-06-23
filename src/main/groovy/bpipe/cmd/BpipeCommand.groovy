@@ -117,7 +117,7 @@ abstract class BpipeCommand {
             out.println """
                 Error: no result file exists for the run requested.
                 
-                This may indicate that the Bpipe process was terminated in an unexpected manner.
+                This may indicate that the Bpipe process was terminated in an unexpected manner, or that the pipeline is still running.
             """
             System.exit(1)
         }
