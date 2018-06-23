@@ -3,12 +3,15 @@ package bpipe.agent
 import bpipe.PipelineError
 import bpipe.worx.JMSWorxConnection
 import bpipe.worx.WorxConnection
+import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import groovy.util.logging.Log
 
 import javax.jms.Connection
+import javax.jms.Destination
 import javax.jms.Message
 import javax.jms.MessageConsumer
+import javax.jms.MessageProducer
 import javax.jms.Session
 import javax.jms.Queue
 import javax.jms.TextMessage
@@ -110,7 +113,11 @@ class JMSAgent extends Agent {
             this.stopRequested = true
             return
         }
-            
+        
+        if(tm.text == "ping") {
+            this.respondToPing(tm)
+            return
+        }            
         
         Map commandAttributes = new JsonSlurper().parseText(tm.text)
         
@@ -123,6 +130,34 @@ class JMSAgent extends Agent {
         
         if(this.singleShot)
             stopRequested=true
+    }
+    
+    void respondToPing(TextMessage tm) {
+        
+         Destination dest = tm.getJMSReplyTo()
+         if(dest == null)
+             dest = session.createQueue(tm.getStringProperty('reply-to'))
+            
+        log.info "Received ping: responding to $dest"
+        String responseJSON = formatPingResponse()
+        TextMessage response = session.createTextMessage(responseJSON)
+        MessageProducer producer = session.createProducer(dest)
+        producer.send(response)
+    }
+    
+    String formatPingResponse() {
+       return JsonOutput.prettyPrint(JsonOutput.toJson([
+            [ 
+                status: 'ok',
+                timestamp: System.currentTimeMillis(),
+                details: [
+                    user: System.properties['user.name'],
+                    dir: System.properties['user.dir'],
+                    executed: executed,
+                    errors: errors
+                ]
+            ]
+        ])) 
     }
     
     void waitForPermits() {

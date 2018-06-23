@@ -26,7 +26,8 @@ abstract class Agent extends TimerTask {
         "stop" : Stop,
         "log" : LogCommand,
         "run" : RunPipelineCommand,
-        "checks" : ChecksCommand
+        "checks" : ChecksCommand,
+        "ping" :  { dir, args, writer -> println("Ping received") }
     ]
     
     Set knownPipelines = new HashSet()
@@ -46,6 +47,10 @@ abstract class Agent extends TimerTask {
     boolean singleShot = false
     
     Semaphore concurrency = null
+    
+    int executed = 0
+    
+    int errors = 0
     
     abstract void run()
     
@@ -99,6 +104,7 @@ abstract class Agent extends TimerTask {
     
     void processCommand(Map commandAttributes) {
         try {
+            ++this.executed
             BpipeCommand command = createCommandFromAttributes(commandAttributes)
             command.dir = commandAttributes.directory ?: pipelines[commandAttributes.run.id].path
             AgentCommandRunner runner = new AgentCommandRunner(createConnection(), commandAttributes.id, command)
@@ -109,6 +115,7 @@ abstract class Agent extends TimerTask {
             // report the error upstream if we can
             AgentCommandRunner runner = new AgentCommandRunner(createConnection(), commandAttributes.id, e)
             runner.concurrency = this.concurrency
+            ++this.errors
             new Thread(runner).start() 
         }
     }
