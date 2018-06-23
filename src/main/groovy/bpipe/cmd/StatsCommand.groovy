@@ -73,20 +73,6 @@ class StatsCommand extends BpipeCommand {
             Date.parse('yyyy-MM-dd HH:mm:ss', value.text())
         }
         
-        Closure formatTimeSpan = { t ->
-            
-            if(t==null)
-                return "-"
-            
-           long longTime = t.toLong()
-           if(longTime == 0) {
-               return "-"
-           }
-           
-           TimeCategory.minus(new Date(longTime), new Date(0)).toString()
-                       .replaceAll('\\.[0-9]{1,} seconds$',' seconds')
-                       .replaceAll('minutes,.* seconds$',' minutes')
-        }
         
         List<GPathResult> doms = resultFiles.collect { 
             try {
@@ -103,18 +89,20 @@ class StatsCommand extends BpipeCommand {
             System.exit(1)
         }
         
-        long totalTimeMs = doms.collect { dom -> toDate(dom.endDateTime).time - toDate(dom.startDateTime).time }.sum()
+        long nowMs = System.currentTimeMillis()
+        
+        long totalTimeMs = doms.collect { dom -> 
+            (dom.endDateTime.text()?toDate(dom.endDateTime).time:nowMs) - toDate(dom.startDateTime).time 
+        }.sum()
+        
         String runTime = formatTimeSpan(totalTimeMs)
-        
         out.println ""
-        
         out.println(" " + (" Pipeline " + (doms.every { it.succeeded.text() == "true"} ? "Succeeded" : "Failed")).center(Config.config.columns-2,"="))
         out.println(("| Started: " + doms[0].startDateTime.text()).padRight(Config.config.columns-1) + "|")
         out.println(("| Ended: " + doms[-1].endDateTime.text()).padRight(Config.config.columns-1) + "|")
         out.println(("| Run Time: " + runTime).padRight(Config.config.columns-1) + "|")
         out.println (" " + "="*(Config.config.columns-2))
         out.println ""
-        
 
         List<List> stats = doms.collect { dom ->dom.commands.command }.sum().groupBy {  cmdNode ->
             cmdNode.stage.text()
@@ -146,5 +134,18 @@ class StatsCommand extends BpipeCommand {
         
         out.println ""
     }
+    
+    String formatTimeSpan(t) {
+        if(t==null)
+            return "-"
 
+        long longTime = t.toLong()
+        if(longTime == 0) {
+            return "-"
+        }
+
+        TimeCategory.minus(new Date(longTime), new Date(0)).toString()
+                .replaceAll('\\.[0-9]{1,} seconds$',' seconds')
+                .replaceAll('minutes,.* seconds$',' minutes')
+    }
 }
