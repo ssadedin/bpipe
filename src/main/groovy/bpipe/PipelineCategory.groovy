@@ -723,11 +723,16 @@ class PipelineCategory {
                 // Create a merged stage
                 PipelineContext mergedContext = new PipelineContext(null, parent.stages, stages[0].context.pipelineJoiners, stages[0].context.branch)
                 def mergedOutputs = stages.collect { s ->
-                    Utils.box(s.context.nextInputs ?: s.context.@output)
+                    Utils.box(s.context.@output)
                 }.sum()
+                
+                def mergedNextInputs = stages.collect { s ->
+                    Utils.box(s?.context?.nextInputs)
+                }.sum() 
                   
-                log.info "Merged outputs are $mergedOutputs"
+                log.info "Merged outputs for $stageName(s) are $mergedOutputs"
                 mergedContext.setRawOutput(mergedOutputs)
+                mergedContext.setNextInputs(mergedNextInputs)
                   
                 PipelineStage mergedStage = new PipelineStage(mergedContext, stages[0].body)
                 mergedStage.stageName = stages[0].stageName
@@ -743,12 +748,18 @@ class PipelineCategory {
         def joiners = finalStages.context.pipelineJoiners
         PipelineContext mergedContext = 
             new PipelineContext(null, parent.stages, joiners, new Branch(name:'all'))
+            
         def mergedOutputs = finalStages.collect { s ->
-            Utils.box(s?.context?.nextInputs ?: s?.context?.@output) 
+            Utils.box(s?.context?.@output) 
+        }.sum().collect { Utils.canonicalFileFor(it).path }.unique()
+        
+        def mergedNextInputs = finalStages.collect { s ->
+            Utils.box(s?.context?.nextInputs)
         }.sum().collect { Utils.canonicalFileFor(it).path }.unique()
         
         log.info "Last merged outputs are $mergedOutputs"
         mergedContext.setRawOutput(mergedOutputs)
+        mergedContext.setNextInputs(mergedNextInputs)
         
         Closure flattenedBody = finalStages.find { it != null }?.body
         if(flattenedBody == null) {

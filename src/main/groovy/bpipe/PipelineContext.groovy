@@ -2006,7 +2006,9 @@ class PipelineContext {
        // Add an initial stage that represents the current input to this stage.  This way
        // if the from() spec is used and matches the actual inputs then it will go with those
        // rather than searching backwards for a previous match
-       reverseOutputs.add(0,Utils.box(this.@input))
+       List myInput = Utils.box(this.@input)
+       log.info "Forcing input $myInput to head of resolution queue"
+       reverseOutputs.add(0,myInput)
        
        int outputCount = reverseOutputs*.size().sum()
        if(outputCount<20) {

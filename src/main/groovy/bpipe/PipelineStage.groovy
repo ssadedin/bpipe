@@ -390,8 +390,10 @@ class PipelineStage {
         def nextInputs = determineForwardedFiles()
 
         if(!this.context.@output) {
-            log.info "No explicit output on stage ${this.hashCode()} context ${this.context.hashCode()} so output is nextInputs $nextInputs"
-            this.context.rawOutput = nextInputs
+            log.info "No explicit output on stage ${this.hashCode()} context ${this.context.hashCode()}"
+            // used to set output to next inputs here but this causes later confusion when 
+            // outputs need to be prioritised over inputs
+            // (see PipelineCategory#mergeChildStagesToParent)
         }
 
         context.defaultOutput = null
