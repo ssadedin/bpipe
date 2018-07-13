@@ -165,7 +165,7 @@ class PipelineOutput {
             // Value set by parent, and we have not resolved
             // any different value ourselves
             if(stringValue != null) {
-                this.outputChangeListener(stringValue, parentOutput?.stringValue)
+                this.outputChangeListener(stringValue, null)
                 return stringValue
             }
             
@@ -374,9 +374,6 @@ class PipelineOutput {
         if(this.outputUsed.startsWith(".") && !this.outputUsed.startsWith("./")) // occurs when no inputs given to script and output extension used
             this.outputUsed = this.outputUsed.substring(1) 
             
-        if(this.outputChangeListener != null) {
-            this.outputChangeListener(this.outputUsed,null)
-        }
         return this.outputUsed
     }
     
