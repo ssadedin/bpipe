@@ -25,6 +25,7 @@
 package bpipe
 
 import groovy.util.logging.Log;
+import java.util.regex.Pattern
 
 /**
  * Database of tools, indexed by tool name.  Tracks the version of each tool
@@ -129,6 +130,84 @@ class ToolDatabase {
                 
             println ""
             println "Please resolve these before trying to run!"
+        }
+    }
+    
+    static Pattern GROOVY_ALL_PATTERN = null
+    
+    /**
+     * Set automatic variables pointing to tool dependencies, for tools defined in the 'install' or
+     * 'dependencies' section of the configuration (these are aliases for each other).
+     */
+    public void setToolVariables(Binding externalBinding) {
+        
+        setGroovyVariables(externalBinding)
+        
+        if(!Config.userConfig.containsKey('install') && !Config.userConfig.containsKey('dependencies'))
+            return
+            
+        ConfigObject installCfg = Config.userConfig.install.merge(Config.userConfig.dependencies)
+        ConfigObject toolsCfg = installCfg.tools
+        
+        String scriptPath = new File(Config.config.script).absoluteFile.parentFile.absolutePath
+        String basePath = ('base' in installCfg) ? installCfg.base : scriptPath
+        File toolBaseDir = new File(basePath)
+        for(String toolName in toolsCfg.keySet()) {
+            String toolVariable = toolName.toUpperCase()
+            if(externalBinding.variables.containsKey(toolVariable)) {
+                log.info "Skip setting tool variable $toolVariable because already defined"
+                continue
+            }
+                    
+            Tool tool = ToolDatabase.instance.tools[toolName]
+            if(!tool) {
+                throw new PipelineError("A tool $toolName was referenced in the install section but is not a known tool in the tool database. Please define this tool in your 'tools' section.")
+            }
+                
+            if(tool.config.containsKey("installExe") && tool.config.containsKey("installPath")) {
+                File exeFile = new File(toolBaseDir, tool.config.installPath + "/" + tool.config.installExe)
+                log.info "Setting tool variable $toolVariable automatically to $exeFile.absolutePath based on install section of config"
+                externalBinding.variables.put(toolVariable,exeFile.absolutePath)
+            }
+        }
+    }
+    
+    /**
+     * To make using groovy based tools in pipelines easier, there is some special logic
+     * to help within locating the groovy-all jar.
+     */
+    private void setGroovyVariables(Binding externalBinding) {
+        if(Config.userConfig.executable.containsKey('groovy')) {
+            File groovyBin = new File(Config.userConfig.executable.groovy)
+            
+            if(!groovyBin.exists()) {
+                groovyBin = new File(Config.scriptDirectory, groovyBin.path).canonicalFile
+                log.info "Configured groovy executable located relative to pipeline directory at $groovyBin"
+            }
+            
+            if(groovyBin.exists()) {
+                
+                if(GROOVY_ALL_PATTERN == null) {
+                    GROOVY_ALL_PATTERN = ~/groovy-all-[0-9].[0-9].[0-9].jar/
+                }
+                
+                externalBinding.variables.put('GROOVY',groovyBin.absolutePath)
+                
+                // Find groovy-all
+                File groovyInstallDir = groovyBin.absoluteFile.parentFile.parentFile
+                externalBinding.variables.put('GROOVY_HOME',groovyInstallDir.absolutePath)
+                
+                log.info "Found groovy specified as executable: setting up GROOVY_ALL_JAR variable based on groovy dir: $groovyInstallDir"
+                
+                File groovyAll = new File(groovyInstallDir,'embeddable').listFiles().find { it.name.matches(GROOVY_ALL_PATTERN) }
+                if(groovyAll != null) {
+                    log.info "GROOVY_ALL_JAR set to $groovyAll"
+                    externalBinding.variables.put('GROOVY_ALL_JAR',groovyAll)
+                }
+                else {
+                    log.info "No groovy-all jar could be located relative to groovy binary $groovyBin"
+                }
+            }
         }
     }
 }

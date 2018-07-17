@@ -543,7 +543,8 @@ public class Pipeline implements ResourceRequestor {
         if(!(host instanceof Binding))
             PipelineCategory.addStages(pipelineBuilder.binding)
             
-        pipeline.loadToolVariables()
+        ToolDatabase.instance.setToolVariables(pipeline.externalBinding)
+        
         pipeline.loadExternalStages()
         pipeline.joiners += segmentJoiners
 
@@ -951,31 +952,6 @@ public class Pipeline implements ResourceRequestor {
         ++this.childCount
             
         return p
-    }
-    
-    private void loadToolVariables() {
-        if('install' in Config.userConfig) {
-            ConfigObject toolsCfg = Config.userConfig.install.tools
-            for(String toolName in toolsCfg.keySet()) {
-                String toolVariable = toolName.toUpperCase()
-                if(externalBinding.variables.containsKey(toolVariable)) {
-                    log.info "Skip setting tool variable $toolVariable because already defined"
-                    continue
-                }
-                    
-                Tool tool = ToolDatabase.instance.tools[toolName]
-                if(!tool) {
-                    throw new PipelineError("A tool $toolName was referenced in the install section but is not a known tool in the tool database. Please define this tool in your 'tools' section.")
-                }
-                
-                if(tool.config.containsKey("installExe") && tool.config.containsKey("installPath")) {
-                    File scriptParentDir = new File(Config.config.script).absoluteFile.parentFile
-                    File exeFile = new File(scriptParentDir, tool.config.installPath + "/" + tool.config.installExe)
-                    log.info "Setting tool variable $toolVariable automatically to $exeFile.absolutePath based on install section of config"
-                    externalBinding.variables.put(toolVariable,exeFile.absolutePath)
-                }
-            }
-        }
     }
     
     private void loadExternalStages() {
