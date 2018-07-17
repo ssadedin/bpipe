@@ -200,6 +200,13 @@ class Config {
        }
     }
     
+    /**
+     * Return the directory in which the main pipeline script is situated
+     */
+    static File getScriptDirectory() {
+        new File(config.script).canonicalFile.parentFile
+    }
+    
     static void initializePlugins() {
         // Check for plugins
         File pluginsDir = new File(System.properties["user.dir"]+"/.bpipe/plugins")

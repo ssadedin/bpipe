@@ -509,26 +509,22 @@ public class Pipeline implements ResourceRequestor {
             run(pipeline.binding.variables.args, host, pipeline) 
     }
     
+    /**
+     * Launch a pipeline, possibly in one of the subsidiary modes (test, diagram, etc)
+     * 
+     * @param inputFile
+     * @param host
+     * @param pipelineBuilder
+     */
     static def run(def inputFile, Object host, Closure pipelineBuilder) {
         
         if(Config.config.mode in ["run","retry","resume","remake"]) { 
             ExecutorPool.startPools(ExecutorFactory.instance, Config.userConfig) 
         }  
         
-        log.info("Running with input " + inputFile)
+        log.info("Running with INPUT " + inputFile)
         
-        Integer.metaClass.getProperty = { String name -> 
-            Integer n = delegate
-            if(name == "GB") {
-                return new ResourceUnit(amount: n * 1024 as Integer, key: "memory")
-            }
-            else
-            if(name == "MB") {
-                return new ResourceUnit(amount: n as Integer, key: "memory")
-            }
-            else
-                return new ResourceUnit(amount:n as Integer, key: name)
-        }
+        initResourceUnitMetaClass()
         
         Pipeline pipeline = new Pipeline()
         
@@ -562,6 +558,25 @@ public class Pipeline implements ResourceRequestor {
             pipeline.documentation(host, pipelineBuilder, Runner.opts.arguments()[0])
             
         return pipeline;    
+    }
+
+    /**
+     * Set some magic properties on integers that let you (ab)use them
+     * to create resource specifications, such as 1024.GB, etc.
+     */
+    private static void initResourceUnitMetaClass() {
+        Integer.metaClass.getProperty = { String name ->
+            Integer n = delegate
+            if(name == "GB") {
+                return new ResourceUnit(amount: n * 1024 as Integer, key: "memory")
+            }
+            else
+            if(name == "MB") {
+                return new ResourceUnit(amount: n as Integer, key: "memory")
+            }
+            else
+                return new ResourceUnit(amount:n as Integer, key: name)
+        }
     }
     
     /**
@@ -1111,7 +1126,7 @@ public class Pipeline implements ResourceRequestor {
         if(!Utils.fileExists(f)) {
             // Attempt to resolve the file relative to the main script location if
             // it cannot be resolved directly
-            f = new File(new File(Config.config.script).canonicalFile.parentFile, path)
+            f = new File(Config.scriptDirectory, path)
         }
         
         if(!f.exists() && (path ==~ 'http(s){0,1}://.*$')) {
