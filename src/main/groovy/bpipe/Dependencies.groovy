@@ -545,8 +545,8 @@ class Dependencies {
                 outputMetaDataFiles = Utils.box(inps).collect { inputFile ->
                     String inputFileValue = String.valueOf(inputFile)
                     OutputMetaData omd = new OutputMetaData(inputFileValue)
-                    omd.timestamp = new File(inputFileValue).lastModified()
-                    omd.outputFile = new File(inputFile)
+                    omd.outputFile = new File(inputFileValue)
+                    omd.timestamp = omd.outputFile.lastModified()
                     omd
                 }
             }
