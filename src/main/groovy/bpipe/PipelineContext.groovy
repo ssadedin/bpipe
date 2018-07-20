@@ -2317,7 +2317,6 @@ class PipelineContext {
        
        // If from is invoked in the form from('a','b',option:'someValue')
 	   // then we get the first argument as a map of options
-       Map options = [:]
 	   if((exts instanceof List) && (exts[0] instanceof Map)) {
            options = exts[0]
            exts = exts.tail()
