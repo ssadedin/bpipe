@@ -353,11 +353,7 @@ class Tool {
             }
             
             if(isPipPackage()) {
-<<<<<<< HEAD
                 def pipErrors =  installPipPackage(requestedVersion)
-=======
-                def pipErrors =  installPipPackage()
->>>>>>> google cloud WIP - support for input files stored on Google Cloud
                 
                 // If pip fails but the package could possibly be installed by Conda,
                 // then try that.
@@ -448,12 +444,7 @@ class Tool {
         */
     }
     
-<<<<<<< HEAD
     List<String> installPipPackage(String requestedVersion='*') {
-=======
-    List<String> installPipPackage() {
->>>>>>> google cloud WIP - support for input files stored on Google Cloud
-        
         String python = Utils.resolveExe("python",null)
         String pip = "pip"
         if(python != null) 
@@ -461,7 +452,6 @@ class Tool {
         
         println "Installing  python package via pip: $name"
         
-<<<<<<< HEAD
 		if(requestedVersion != '*')
             println "Requested version = $requestedVersion"
         
@@ -469,9 +459,6 @@ class Tool {
         
         int exitCode = sh """$pip install -q $name $versionSuffix"""
             
-=======
-        int exitCode = sh """$pip install -q $name"""
->>>>>>> google cloud WIP - support for input files stored on Google Cloud
         if(exitCode != 0)
             return ["Python package $name installation failed, please check for errors in output"]
         else
@@ -509,7 +496,6 @@ local({r <- getOption("repos")
 })
 
 source("https://bioconductor.org/biocLite.R")
-<<<<<<< HEAD
 biocLite("$name", suppressUpdates=TRUE, ask=FALSE)
 !
 """
@@ -517,19 +503,8 @@ biocLite("$name", suppressUpdates=TRUE, ask=FALSE)
             println "Installation of R package $name appears to have failed."
             return ["R package installation failed, please check for errors in output"]
         }
-=======
-biocLite("$name")
-!
-"""
-        if(exitCode != 0)
-            return ["R package installation failed, please check for errors in output"]
->>>>>>> google cloud WIP - support for input files stored on Google Cloud
         else
             return []
     }
 }
 
-<<<<<<< HEAD
-=======
-
->>>>>>> google cloud WIP - support for input files stored on Google Cloud
