@@ -26,6 +26,7 @@ package bpipe
 
 import java.util.logging.Level;
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 
 /**
@@ -279,43 +280,17 @@ class PipelineInput {
         def orig = exts
         synchronized(stages) {
             
-            def reverseOutputs = computeOutputStack()
+            List<List<String>> reverseOutputs = computeOutputStack()
 	        
             List missingExts = []
 	        def filesWithExts = [Utils.box(exts),origs].transpose().collect { extsAndOrigs ->
 	            String pattern = extsAndOrigs[0]
 	            String origName = extsAndOrigs[1]
                 
-                String wholeMatch = '(^|^.*/)' + pattern + '$'
-                
-                // Special case: treat a leading dot as a literal dot.
-                // ie: if the user specifies ".xml", they probably mean
-                // literally ".xml" and not "any character" + "xml"
-                if(pattern.startsWith("."))
-                    pattern = "\\." + pattern.substring(1)
-                    
-	            if(!pattern.startsWith("\\.") )
-	                pattern = "\\." + pattern
-                    
-                pattern = '^.*' + pattern
-                log.info "Resolving inputs matching pattern $pattern"
-	            for(s in reverseOutputs) {
-                    if(log.isLoggable(Level.FINE))
-    	                log.fine("Checking outputs ${s}")
-                        
-	                def o = s.find { it?.matches(wholeMatch) }
-                    if(o)
-	                    return s.grep { it?.matches(wholeMatch) }
-                        
-                    if(!o) {
-    	                o = s.find { it?.matches(pattern) }
-    	                if(o)
-    	                    return s.grep { it?.matches(pattern) }
-                    }
-//	                    return o
-	            }
-                missingExts << origName
-                null
+	            List<String> resolved = resolveInputFromExtension(pattern, origName, reverseOutputs)
+                if(resolved == null)
+                    missingExts << origName
+                return resolved
 	        }
             
 	        if(missingExts && failIfNotFound)
@@ -324,6 +299,40 @@ class PipelineInput {
 			log.info "Found files with exts $exts : $filesWithExts"
 	        return filesWithExts.flatten().unique()
         }
+    }
+    
+    
+    @CompileStatic
+    List<String> resolveInputFromExtension(String pattern, String origName, List<List<String>> reverseOutputs) {
+        
+            String wholeMatch = '(^|^.*/)' + pattern + '$'
+                
+            // Special case: treat a leading dot as a literal dot.
+            // ie: if the user specifies ".xml", they probably mean
+            // literally ".xml" and not "any character" + "xml"
+            if(pattern.startsWith("."))
+                pattern = "\\." + pattern.substring(1)
+                    
+            if(!pattern.startsWith("\\.") )
+                pattern = "\\." + pattern
+                    
+            pattern = '^.*' + pattern
+            log.info "Resolving inputs matching pattern $pattern"
+            for(s in reverseOutputs) {
+                if(log.isLoggable(Level.INFO))
+	                log.info("Checking outputs ${s}")
+                        
+                String o = s.find { String p -> p?.matches(wholeMatch) }
+                if(o)
+                    return s.grep { String p -> p?.matches(wholeMatch) }
+                        
+                if(!o) {
+	                o = s.find { String p -> p?.matches(pattern) }
+	                if(o)
+	                    return s.grep { String p -> p?.matches(pattern) }
+                }
+            }
+            return null
     }
     
     /**
@@ -351,7 +360,12 @@ class PipelineInput {
             
             // !this.is(it.context.@inputWrapper) && ( this.parent == null || !this.parent.is(it.context.@inputWrapper)    )
         }.collect { PipelineStage stage ->
-            Utils.box(stage.context.@output) 
+            
+            List outputs = Utils.box(stage.context.@output) 
+            log.info "Outputs in search from $stage.stageName will be $outputs"
+            if(outputs.isEmpty() && stage.context.nextInputs != null)
+                outputs = Utils.box(stage.context.nextInputs)
+            return outputs
         }
         
         // Add a final stage that represents the original inputs (bit of a hack)
