@@ -25,7 +25,7 @@
 package bpipe
 
 import java.util.logging.Level;
-
+import java.util.regex.Pattern
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 
@@ -303,21 +303,24 @@ class PipelineInput {
     
     
     @CompileStatic
-    List<String> resolveInputFromExtension(String pattern, String origName, List<List<String>> reverseOutputs) {
+    List<String> resolveInputFromExtension(String regex, String origName, List<List<String>> reverseOutputs) {
         
-            String wholeMatch = '(^|^.*/)' + pattern + '$'
+            Pattern wholeMatch = ~('(^|^.*/)' + regex + '$')
                 
             // Special case: treat a leading dot as a literal dot.
             // ie: if the user specifies ".xml", they probably mean
             // literally ".xml" and not "any character" + "xml"
-            if(pattern.startsWith("."))
-                pattern = "\\." + pattern.substring(1)
+            if(regex.startsWith("."))
+                regex = "\\." + regex.substring(1)
                     
-            if(!pattern.startsWith("\\.") )
-                pattern = "\\." + pattern
+            if(!regex.startsWith("\\.") )
+                regex = "\\." + regex
                     
-            pattern = '^.*' + pattern
-            log.info "Resolving inputs matching pattern $pattern"
+            regex = '^.*' + regex
+            
+            Pattern regexPattern = ~regex
+            
+            log.info "Resolving inputs matching pattern $regex"
             for(s in reverseOutputs) {
                 if(log.isLoggable(Level.INFO))
 	                log.info("Checking outputs ${s}")
@@ -327,9 +330,9 @@ class PipelineInput {
                     return s.grep { String p -> p?.matches(wholeMatch) }
                         
                 if(!o) {
-	                o = s.find { String p -> p?.matches(pattern) }
+	                o = s.find { String p -> p?.matches(regexPattern) }
 	                if(o)
-	                    return s.grep { String p -> p?.matches(pattern) }
+	                    return s.grep { String p -> p?.matches(regexPattern) }
                 }
             }
             return null
@@ -342,7 +345,7 @@ class PipelineInput {
      */
     List<List<String>> computeOutputStack() {
         
-        def relatedThreads = [Thread.currentThread().id, Pipeline.rootThreadId]
+        List relatedThreads = [Thread.currentThread().id, Pipeline.rootThreadId]
         
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
         while(pipeline.parent && pipeline.parent!=pipeline) {
@@ -391,6 +394,7 @@ class PipelineInput {
      * 
      * @param stage
      */
+    @CompileStatic
     boolean inputBelongsToStage(PipelineStage stage) {
         PipelineInput stageInputWrapper = stage.context.@inputWrapper
         PipelineInput pinp = this
