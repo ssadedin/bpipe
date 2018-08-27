@@ -106,7 +106,7 @@ class Branch extends Expando implements Serializable {
         
         if((name in PipelineCategory.closureNames.values()) && !(value instanceof Closure)) {
             throw new PipelineError("""
-                Attempt to define a branch variable $name with same name as a pipeline stage. 
+                Attempt to define a branch variable $name with same name as a pipeline stage, but which isn't a pipeline stage. 
             
                 Please ensure that pipeline stages have different names to branch variables.
             """.stripIndent())
