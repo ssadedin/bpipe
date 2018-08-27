@@ -27,6 +27,8 @@ package bpipe
 import java.lang.reflect.Constructor;
 import java.util.logging.Level;
 
+import org.codehaus.groovy.runtime.StackTraceUtils
+
 import groovy.text.SimpleTemplateEngine
 import groovy.util.ConfigObject;
 import groovy.util.logging.Log;
@@ -77,7 +79,13 @@ class NotificationManager {
         cfg.notifications.each { String name, ConfigObject channelCfg -> 
             channelCfg.type = channelCfg.type?:name
 			
-            NotificationChannel channel = createChannel(channelCfg) 
+            NotificationChannel channel
+            try {
+                channel = createChannel(channelCfg) 
+            } catch (Exception e) {
+                System.err.println("ERROR: Unable to create connection to notification channel $name (error: ${StackTraceUtils.sanitizeRootCause(e)}) - see bpipe log for full stack trace.")  
+                return
+            } 
             
             PipelineEvent [] eventFilter = [PipelineEvent.FINISHED]
             if(channelCfg.containsKey('events'))  {
@@ -134,13 +142,15 @@ class NotificationManager {
         log.info "Sending to channel $cfg"
         
         Utils.waitWithTimeout(30000) { 
-            cfg.containsKey('channel')
+            cfg.containsKey('channel') 
         }.ok {
             log.info("Channel for $cfg.name is active")
         }.timeout {
             throw new PipelineError("Notification channel $cfg.name is not configured. Please check the log files to see why this channel did not set up correctly")
         }
         
+        if(cfg.channel instanceof ConfigObject)
+            throw new PipelineError("Notification channel $cfg.name is not configured properly. Please check the log files to see why this channel did not set up correctly")
         
         NotificationChannel channel = cfg.channel
 		
@@ -262,6 +272,7 @@ class NotificationManager {
        // of the class name rather than making the user use the fully qualified one.
        // For example, "xmpp" =>  bpipe.XMPPNotificationChannel, etc.
        String upperFirst = clazz[0].toUpperCase() + clazz.substring(1)
+       Exception ex
        for(String fullClazz in [clazz, "bpipe."+clazz.toUpperCase()+"NotificationChannel", "bpipe." + clazz, "bpipe."+upperFirst+"NotificationChannel"]) {
            try {
                log.info "Trying class name $fullClazz for notification channel $clazz"
@@ -280,11 +291,17 @@ class NotificationManager {
                log.info("Unable to create notification channel using class " + fullClazz + ": " + e)
            }
            catch(Exception e) {
-               log.severe("Unable to create notification channel using class " + fullClazz + ": " + e)
-               e.printStackTrace()
+               ex = e
+               StringWriter s = new StringWriter()
+               e.printStackTrace(new PrintWriter(s))
+               log.severe("Unable to create notification channel using class " + fullClazz + ": \n" + s.toString())
            }
        }
-       throw new PipelineError("Configured notification channel type $clazz could not be created")
+       
+       if(ex)
+           throw new PipelineError("Configured notification channel type $clazz could not be created", ex)
+       else
+           throw new PipelineError("Configured notification channel type $clazz could not be created")
    }
    
    void shutdown() {
