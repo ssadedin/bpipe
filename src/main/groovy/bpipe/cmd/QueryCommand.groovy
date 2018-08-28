@@ -33,6 +33,7 @@ import bpipe.Command;
 import bpipe.CommandManager;
 import bpipe.Config
 import bpipe.OutputMetaData
+import bpipe.Utils
 import groovy.json.JsonOutput;
 import groovy.time.TimeCategory;
 import groovy.util.logging.Log;
@@ -54,11 +55,18 @@ class QueryCommand extends BpipeCommand {
         
         CliBuilder cli = new CliBuilder()
         cli.with {
+            v 'Use verbose logging'
             s 'Show information for stage id <arg>', args:1
             f 'Output format [json|txt]', args:1
         }
         
-        def opts = cli.parse(this.args)
+        
+        OptionAccessor opts = cli.parse(this.args)
+        
+        if(opts.v) {
+            Utils.configureVerboseLogging()
+        }
+        
         if(opts.f) {
             if(opts.f in ["json","txt"]) {
                 this.format = opts.f
