@@ -177,37 +177,46 @@ class ToolDatabase {
      * to help within locating the groovy-all jar.
      */
     private void setGroovyVariables(Binding externalBinding) {
-        if(Config.userConfig.executable.containsKey('groovy')) {
-            File groovyBin = new File(Config.userConfig.executable.groovy)
+        if(!Config.userConfig.groovy.containsKey('executable'))
+            return 
             
-            if(!groovyBin.exists()) {
-                groovyBin = new File(Config.scriptDirectory, groovyBin.path).canonicalFile
-                log.info "Configured groovy executable located relative to pipeline directory at $groovyBin"
-            }
+        String rawExe = Config.userConfig.groovy.executable
+        log.info "Groovy executable is configured as ${rawExe}"
+        
+        File groovyBin = new File(rawExe)
             
-            if(groovyBin.exists()) {
+        if(!groovyBin.exists()) {
+            groovyBin = new File(Config.scriptDirectory, groovyBin.path).canonicalFile
+            log.info "Configured groovy executable located relative to pipeline directory at $groovyBin"
+        }
+            
+        if(groovyBin.exists()) {
                 
-                if(GROOVY_ALL_PATTERN == null) {
-                    GROOVY_ALL_PATTERN = ~/groovy-all-[0-9].[0-9].[0-9].jar/
-                }
-                
-                externalBinding.variables.put('GROOVY',groovyBin.absolutePath)
-                
-                // Find groovy-all
-                File groovyInstallDir = groovyBin.absoluteFile.parentFile.parentFile
-                externalBinding.variables.put('GROOVY_HOME',groovyInstallDir.absolutePath)
-                
-                log.info "Found groovy specified as executable: setting up GROOVY_ALL_JAR variable based on groovy dir: $groovyInstallDir"
-                
-                File groovyAll = new File(groovyInstallDir,'embeddable').listFiles().find { it.name.matches(GROOVY_ALL_PATTERN) }
-                if(groovyAll != null) {
-                    log.info "GROOVY_ALL_JAR set to $groovyAll"
-                    externalBinding.variables.put('GROOVY_ALL_JAR',groovyAll)
-                }
-                else {
-                    log.info "No groovy-all jar could be located relative to groovy binary $groovyBin"
-                }
+            if(GROOVY_ALL_PATTERN == null) {
+                GROOVY_ALL_PATTERN = ~/groovy-all-[0-9].[0-9].[0-9].jar/
             }
+                
+            externalBinding.variables.put('GROOVY',groovyBin.absolutePath)
+                
+            // Find groovy-all
+            File groovyInstallDir = groovyBin.absoluteFile.parentFile.parentFile
+            externalBinding.variables.put('GROOVY_HOME',groovyInstallDir.absolutePath)
+                
+            log.info "Found groovy specified as executable: setting up GROOVY_ALL_JAR variable based on groovy dir: $groovyInstallDir"
+                
+            File groovyAll = new File(groovyInstallDir,'embeddable').listFiles().find { it.name.matches(GROOVY_ALL_PATTERN) }
+            if(groovyAll != null) {
+                log.info "GROOVY_ALL_JAR set to $groovyAll"
+                externalBinding.variables.put('GROOVY_ALL_JAR',groovyAll)
+            }
+            else {
+                log.info "No groovy-all jar could be located relative to groovy binary $groovyBin"
+            }
+        }
+        else {
+            String msg = 'Groovy executable was configured but the configured location could not be resovled: ' + groovyBin + ' or ' + rawExe
+            log.warning(msg)
+            System.err.println(msg)
         }
     }
 }
