@@ -26,6 +26,7 @@
 package bpipe
 
 import groovy.transform.CompileStatic;
+import groovy.transform.Memoized
 import groovy.util.logging.Log
 
 import java.nio.file.Files;
@@ -222,12 +223,7 @@ class OutputMetaData implements Serializable {
         // The properties file may have a cached version of the "canonical path" to the
         // output file. However this is an absolute path, so we can only use it if the
         // base directory is still the same as when this property file was saved.
-        if(!p.containsKey("basePath") || (p["basePath"] != Runner.runDirectory)) {
-            this.canonicalPath = null
-        }
-        else {
-            this.canonicalPath = p.canonicalPath
-        }
+        initializeCanonicalPath(p)
         
         basePath = p.basePath
         
@@ -258,6 +254,16 @@ class OutputMetaData implements Serializable {
         fingerprint = p.fingerprint
         accompanies = p.accompanies
         command = p.command
+    }
+
+    @CompileStatic
+    private void initializeCanonicalPath(Properties p) {
+        if(!p.containsKey("basePath") || (p["basePath"] != Runner.runDirectory)) {
+            this.canonicalPath = Utils.canonicalFileFor(this.outputFile.path)
+        }
+        else {
+            this.canonicalPath = p.canonicalPath
+        }
     }
     
     @CompileStatic
@@ -329,4 +335,18 @@ class OutputMetaData implements Serializable {
     String toString() {
         outputPath +  " <= " + this.inputs.join(",")
     }
+    
+    @CompileStatic
+    boolean hasInput(String inp) {
+        this.canonicalInputs.contains(inp)
+    }
+    
+    List<String> canonicalInputs = null
+    
+    @CompileStatic
+    List<String> getCanonicalInputs() {
+        if(this.canonicalInputs == null)
+            this.canonicalInputs = this.inputs.collect { Utils.canonicalFileFor(it).path }
+        return this.canonicalInputs
+    } 
 }

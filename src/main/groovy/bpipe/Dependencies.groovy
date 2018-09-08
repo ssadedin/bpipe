@@ -29,6 +29,8 @@ import groovy.util.logging.Log;
 import groovyx.gpars.GParsPool
 import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
+
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -64,6 +66,7 @@ class GraphEntry implements Serializable {
     List<GraphEntry> parents = []
     
     List<GraphEntry> children = []
+    
     
     /**
      * An optional index to speed up lookups by canonical path - not populated by default,
@@ -249,19 +252,21 @@ class GraphEntry implements Serializable {
     }
     
     /**
-     * Divide the outputs into groups depending on their 
-     * inputs.
-     * @return
+     * Divide the outputs into groups depending on their inputs.
+     * 
+     * @return  Map keyed on sorted inputs separated by commas (as string), 
+     *          with values being the list of outputs having those inputs
      */
-    def groupOutputs(List<OutputMetaData> outputs = null) {
-        def outputGroups = [:]
+    @CompileStatic
+    Map<String,List> groupOutputs(List<OutputMetaData> outputs = null) {
+        Map<String,List> outputGroups = [:]
         if(outputs == null)
             outputs = this.values
             
-        for(def o in outputs) {
+        for(OutputMetaData o in outputs) {
             def key = o.inputs.sort().join(',')
             if(!outputGroups.containsKey(key)) {
-              outputGroups[key] = [o]
+                outputGroups[key] = [o]
             }
             else {
                 outputGroups[key] << o
@@ -272,10 +277,10 @@ class GraphEntry implements Serializable {
     
     String dump() {
         
-        def inputs = children*.values*.inputs.flatten()
+        def inputs = children*.values*.inputs.flatten().unique()
         if(!inputs)
             inputs = ["<no inputs>"]
-                  
+            
         String inputValue = inputs.join('\n') + ' => \n'
         return inputValue + dumpChildren(Math.min(20,inputs.collect {it.size()}.max()))
         
@@ -314,6 +319,20 @@ class GraphEntry implements Serializable {
         }
         int maxIndent = 20
         return me + filteredChildren*.dumpChildren(indent+Math.min((names.collect{it.size()}.max()?:0), maxIndent)).join('\n')
+    }
+    
+    /**
+     * Return the set of dependencies (inputs) to this graph entry that the given output
+     * depends on
+     * 
+     * @param out
+     * @return
+     */
+    @CompileStatic
+    List<OutputMetaData> getParentDependencies(OutputMetaData out) {
+       (List<OutputMetaData>)parents*.values.flatten().grep { OutputMetaData parentOutput -> 
+           out.hasInput(parentOutput.canonicalPath) 
+       } 
     }
     
     String toString() {
@@ -677,6 +696,17 @@ class Dependencies {
      */
     void cleanup(List arguments) {
         
+        CliBuilder cli = new CliBuilder(usage: 'cleanup [-v] <files...>')
+        cli.with {
+            v 'Use verbose logging'
+        }
+        
+        OptionAccessor opts = cli.parse(arguments)
+        if(opts.v) {
+            Utils.configureVerboseLogging()
+        }
+        arguments = opts.arguments()
+        
         log.info "Executing cleanup with arguments $arguments"
         
         List<OutputMetaData> outputs = scanOutputFolder() 
@@ -702,10 +732,12 @@ class Dependencies {
         // log.info "\nOutput graph is: \n\n" + graph.dump()
         
         // Identify the leaf nodes
-        List leaves = findLeaves(graph)
+        List<GraphEntry> leaves = findLeaves(graph)
         
         //  Filter out leaf nodes from this list if they are explicitly specified as intermediate files
         leaves.removeAll { it.values.every { it.intermediate } }
+        
+        log.info "Leaf nodes are: " + leaves.collect { GraphEntry e -> e.values*.outputFile.join(',') }.join(',')
         
         // Find all the nodes that exist and match the users specs (or, if no specs, treat as wildcard)
         List internalNodes = (outputs - leaves*.values.flatten()).grep { p ->
@@ -879,10 +911,15 @@ class Dependencies {
         // the whole graph from the original inputs through to the final outputs
         
         List allInputs = Utils.time("Calculate unique inputs") { outputs*.inputs.flatten().unique() }
-        List allOutputs = outputs*.outputPath
+        Set allOutputs = outputs*.canonicalPath as Set
         
-        // Find all entries with inputs that are not outputs of any other entry
-        def outputsWithExternalInputs = outputs.grep { p -> ! p.inputs.any { allOutputs.contains(it) } }
+        // Find outputs with "external" inputs - these are the top layer of outputs which
+        // are fed purely by external inputs.
+        //
+        // That is: find all entries with inputs that are not outputs of any other entry
+        def outputsWithExternalInputs = outputs.grep { OutputMetaData p -> 
+             ! p.canonicalInputs.any { ip -> allOutputs.contains(ip) }
+        }
         
         // NOTE: turning this log on can be expensive for large numbers of inputs and outputs
 //        log.info "External inputs: " + outputsWithExternalInputs*.inputs + " for outputs " + outputsWithExternalInputs*.outputPath
@@ -891,11 +928,10 @@ class Dependencies {
         
         // find groups of outputs (ie. ones that belong in the same branch of the tree)
         // If there is no tree to attach to, make one
-        def entries = []
-        def outputGroups = [:]
-        def createdEntries = [:]
+        List entries = []
+        Map<String,List> outputGroups = [:]
+        Map createdEntries = [:]
         if(rootTree == null) {
-            
             rootTree = new GraphEntry()
             outputGroups = rootTree.groupOutputs(outputsWithExternalInputs)
             outputGroups.each { key,outputGroup ->
@@ -918,14 +954,14 @@ class Dependencies {
             for(OutputMetaData out in outputsWithExternalInputs) {
                 
                 GraphEntry entry = new GraphEntry(values: [out])
-                log.info "New entry for ${out.outputPath}"
+//                log.info "New entry for ${out.outputPath}"
                 entries << entry
                 createdEntries[out.outputPath] = entry
                 outputGroups[out.outputPath] = entry.values
                 
                 // find all nodes in the tree which this output depends on 
-                out.inputs.each { inp ->
-                    GraphEntry parentEntry = topRoot.findBy { it.outputPath == inp } 
+                out.canonicalInputs.each { String inp ->
+                    GraphEntry parentEntry = topRoot.findBy { OutputMetaData o -> o.canonicalPath == inp } 
                     if(parentEntry) {
                         if(!(entry in parentEntry.children))
                           parentEntry.children << entry
@@ -935,7 +971,7 @@ class Dependencies {
                         log.info "Dependency $inp for $out.outputPath is external root input"
                 }
                
-                def dependenciesOnParents = entry.parents*.values.flatten().grep { out.inputs.contains(it.outputPath) }
+                List<OutputMetaData> dependenciesOnParents = entry.getParentDependencies(out)
                 out.maxTimestamp = (dependenciesOnParents*.maxTimestamp.flatten() + out.timestamp).max()
                     
                 log.info "Maxtimestamp for $out.outputFile = $out.maxTimestamp"
@@ -956,7 +992,6 @@ class Dependencies {
         Set outputsWithExternalInputsSet = outputsWithExternalInputs as Set
         
         List remainingOutputs = outputs.grep { !outputsWithExternalInputsSet.contains(it) }
-        // remainingOutputs.removeAll(outputsWithExternalInputs)
         
         List remainingWithoutExternal = new ArrayList(remainingOutputs.size())
         
@@ -1120,6 +1155,7 @@ class Dependencies {
         def result = []
         def outputs = [] as Set
         graph.depthFirst { GraphEntry e ->
+//            log.info "$e.values has children? " + !e.children.isEmpty()
             if(e.children.isEmpty() && e.values*.outputPath.every { !outputs.contains(it) } ) {
               result << e
               outputs += e.values*.outputPath
@@ -1149,4 +1185,6 @@ class Dependencies {
             overrideTimestamps[f.absolutePath] = f.lastModified()
         }
     }
+    
+    
 }

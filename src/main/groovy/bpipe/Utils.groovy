@@ -61,11 +61,11 @@ class Utils {
      * @param inputs    a single string or collection of strings
      * @return
      */
-    static List findOlder(def outputs, def inputs) {
+    static List findOlder(def outputsToCheck, def inputs) {
         
         // Some pipeline stages don't expect any outputs
         // Fixing issue 44 - https://code.google.com/p/bpipe/issues/detail?id=44
-        if( !outputs || !inputs )
+        if( !outputsToCheck || !inputs )
             return []
             
         // Remove any directories appearing as inputs - their timestamps change whenever
@@ -73,15 +73,17 @@ class Utils {
         inputs = inputs.grep { (it != null) && !(new File(it).isDirectory())}
 
         // Box into a collection for simplicity
-        outputs = box(outputs)
+        List<File> outputs = box(outputsToCheck)
         
-        def inputFiles = inputs.collect { new File(it) }
+        List<File> inputFiles = inputs.collect { new File(it) }
         
-        def inputFileTimestamps = inputFiles.collectEntries { [ it, it.lastModified() ] }
+        Map<File, Long> inputFileTimestamps = inputFiles.collectEntries { [ it, it.lastModified() ] }
        
-        long maxInputTimestamp = (inputFileTimestamps.max { it.value }?.value)?:0
+        final long maxInputTimestamp = (inputFileTimestamps.max { it.value }?.value)?:0
         
-        outputs.collect { new File(it) }.grep { outFile ->
+        final boolean logTimestamps = inputFiles.size()*outputs.size() < 5000 // 5k lines in the log from 1 loop is too much
+        
+        outputs.collect { new File(it) }.grep { File outFile ->
             
             long outputTimestamp = outFile.lastModified()
             
@@ -113,8 +115,6 @@ class Utils {
                 else
                     log.info "Checking $outFile against ${inputs.size()} inputs"
                     
-                boolean logTimestamps = inputFiles.size()*outputs.size() < 5000 // 5k lines in the log from 1 loop is too much
-                
                 return inputFiles.any { File inFile ->
                     long inputFileTimestamp = inputFileTimestamps[inFile]
                     if(logTimestamps) 
@@ -751,6 +751,7 @@ class Utils {
     
     static HashMap<String,File> canonicalFiles = new ConcurrentHashMap<String, File>(1000)
     
+    @CompileStatic
     static File canonicalFileFor(String path) {
         File result = canonicalFiles[path]
         if(result != null)

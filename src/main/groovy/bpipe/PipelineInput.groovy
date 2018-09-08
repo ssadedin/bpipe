@@ -25,6 +25,7 @@
 package bpipe
 
 import java.util.logging.Level;
+import java.util.logging.Logger
 import java.util.regex.Pattern
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
@@ -40,8 +41,9 @@ import groovy.util.logging.Log;
  * 
  * @author simon.sadedin@mcri.edu.au
  */
-@Log
 class PipelineInput {
+    
+    private static Logger log = Logger.getLogger('PipelineInput')
     
     /**
      * Support implicit cast to String when creating File objects
@@ -108,10 +110,11 @@ class PipelineInput {
         this.aliases = aliases
     }
     
+    @CompileStatic
     String toString() {
         if(parentError)
             throw parentError
-        List boxed = Utils.box(input)
+        Collection boxed = Utils.box(input)
         if(defaultValueIndex>=boxed.size())
            throw new PipelineError("Expected ${defaultValueIndex+1} or more inputs but fewer provided")
             
@@ -343,6 +346,7 @@ class PipelineInput {
      * in the pipeline, and includes the original inputs as the last stage. This "stack" of inputs
      * provides an appropriate order for searching for inputs to a pipeline stage.
      */
+//    @CompileStatic
     List<List<String>> computeOutputStack() {
         
         List relatedThreads = [Thread.currentThread().id, Pipeline.rootThreadId]
@@ -364,26 +368,26 @@ class PipelineInput {
             // !this.is(it.context.@inputWrapper) && ( this.parent == null || !this.parent.is(it.context.@inputWrapper)    )
         }.collect { PipelineStage stage ->
             
-            List outputs = Utils.box(stage.context.@output) 
+            List outputs = Utils.box(stage.context.@output)  as List
             log.info "Outputs in search from $stage.stageName will be $outputs"
             if(outputs.isEmpty() && stage.context.nextInputs != null)
-                outputs = Utils.box(stage.context.nextInputs)
+                outputs = Utils.box(stage.context.nextInputs) as List
             return outputs
         }
         
         // Add a final stage that represents the original inputs (bit of a hack)
         // You can think of it as the initial inputs being the output of some previous stage
         // that we know nothing about
-        reverseOutputs.add(Utils.box(stages[0].context.@input))
+        reverseOutputs.add(Utils.box(stages[0].context.@input) as List)
             
           // Consider not just the actual inputs to the stage, but also the *original* unmodified inputs
           if(stages[0].originalInputs)
-  	        reverseOutputs.add(Utils.box(stages[0].originalInputs))
+  	        reverseOutputs.add(Utils.box(stages[0].originalInputs) as List)
         
         // Add an initial stage that represents the current input to this stage.  This way
         // if the from() spec is used and matches the actual inputs then it will go with those
         // rather than searching backwards for a previous match
-        reverseOutputs.add(0,Utils.box(this.@input))        
+        reverseOutputs.add(0,Utils.box(this.@input) as List)        
             
         return reverseOutputs
     }
