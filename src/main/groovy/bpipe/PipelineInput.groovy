@@ -304,7 +304,7 @@ class PipelineInput {
         def orig = exts
         synchronized(stages) {
             
-            List<List<String>> reverseOutputs = computeOutputStack()
+            List<List<PipelineFile>> reverseOutputs = computeOutputStack()
 	        
             List missingExts = []
 	        def filesWithExts = [Utils.box(exts),origs].transpose().collect { extsAndOrigs ->
@@ -327,7 +327,7 @@ class PipelineInput {
     
     
     @CompileStatic
-    List<String> resolveInputFromExtension(String regex, String origName, List<List<String>> reverseOutputs) {
+    List<PipelineFile> resolveInputFromExtension(String regex, String origName, List<List<PipelineFile>> reverseOutputs) {
         
             Pattern wholeMatch = ~('(^|^.*/)' + regex + '$')
                 
@@ -349,14 +349,14 @@ class PipelineInput {
                 if(log.isLoggable(Level.INFO))
 	                log.info("Checking outputs ${s}")
                         
-                String o = s.find { String p -> p?.matches(wholeMatch) }
+                PipelineFile o = s.find { PipelineFile p -> p?.toString()?.matches(wholeMatch) }
                 if(o)
-                    return s.grep { String p -> p?.matches(wholeMatch) }
+                    return s.grep { PipelineFile p -> p?.toString()?.matches(wholeMatch) }
                         
                 if(!o) {
-	                o = s.find { String p -> p?.matches(regexPattern) }
+	                o = s.find { PipelineFile p -> p?.matches(regexPattern) }
 	                if(o)
-	                    return s.grep { String p -> p?.matches(regexPattern) }
+	                    return s.grep { PipelineFile p -> p?.toString()?.matches(regexPattern) }
                 }
             }
             return null
@@ -367,6 +367,7 @@ class PipelineInput {
      * in the pipeline, and includes the original inputs as the last stage. This "stack" of inputs
      * provides an appropriate order for searching for inputs to a pipeline stage.
      */
+    @CompileStatic
     List<List<PipelineFile>> computeOutputStack() {
         
         List relatedThreads = [Thread.currentThread().id, Pipeline.rootThreadId]

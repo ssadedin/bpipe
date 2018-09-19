@@ -92,9 +92,9 @@ class Utils {
     static List<Path> findOlder(List<PipelineFile> outputsToCheck, List<PipelineFile> inputs) {
         
         assert inputs instanceof List 
-        assert outputs instanceof List 
+        assert outputsToCheck instanceof List 
         
-        if(outputs.any { it instanceof String })
+        if(outputsToCheck.any { it instanceof String })
             assert false : "Output specified as raw string: internal error"
         
         // Some pipeline stages don't expect any outputs
@@ -124,12 +124,12 @@ class Utils {
         final long maxInputTimestamp = (long)(inputFileTimestamps.lastKey()?:0L)
         final long minInputTimestamp = (long)(inputFileTimestamps.firstKey()?:0L)
         
-        final boolean logTimestamps = inputFiles.size()*outputs.size() < 5000 // 5k lines in the log from 1 loop is too much
+        final boolean logTimestamps = inputPaths.size()*outputsToCheck.size() < 5000 // 5k lines in the log from 1 loop is too much
 
-        List<Path> outputPaths = toPaths(outputs)
+        List<Path> outputPaths = toPaths(outputsToCheck)
         List<Path> result = outputPaths.grep { Path outFile ->
             isOlder(outFile, inputFileTimestamps, maxInputTimestamp)
-        } + outputs.grep { PipelineFile pf -> !pf.exists() }*.toPath()
+        } + outputsToCheck.grep { PipelineFile pf -> !pf.exists() }*.toPath()
         
         return result.unique { it.toString() }
     }
