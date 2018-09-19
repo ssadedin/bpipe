@@ -48,6 +48,7 @@ import org.codehaus.groovy.reflection.CachedMethod;
 import org.codehaus.groovy.runtime.ReverseListIterator
 
 import bpipe.graph.Graph;
+import bpipe.storage.StorageLayer
 import bpipe.storage.UnknownStoragePipelineFile
 
 import static Utils.isContainer 
@@ -600,15 +601,12 @@ public class Pipeline implements ResourceRequestor {
             log.info "Running segment with inputs $inputs"
             this.addStage(currentStage)
             
-            def inputCopyOld = []
-            inputCopyOld.addAll(Utils.box(inputs))
-            
-            
             List<PipelineFile> inputCopy = Utils.box(inputs).collect { inp ->
                 if(inp instanceof PipelineFile)
                     return inp
-                else
-                    return new UnknownStoragePipelineFile(String.valueOf(inp))
+                else {
+                    return new PipelineFile(String.valueOf(inp),StorageLayer.getDefaultStorage())
+                }
             }
             
             currentStage.context.@input = inputCopy
