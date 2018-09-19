@@ -3057,7 +3057,7 @@ class PipelineContext {
     
     @Memoized
     StorageLayer getDefaultStorage() {
-        StorageLayer.create(Config.userConfig.get('storage',null))
+        StorageLayer.getDefaultStorage()
     }
 }
 
