@@ -2,6 +2,7 @@ package bpipe.storage
 
 import java.nio.file.Path
 
+import bpipe.Config
 import groovy.transform.CompileStatic
 
 abstract class StorageLayer implements Serializable {
@@ -42,5 +43,13 @@ abstract class StorageLayer implements Serializable {
                 result[kvp.key] = storageConfig[kvp.key]
         }
         return result
+    }
+    
+    private static StorageLayer defaultStorage
+    
+    static StorageLayer getDefaultStorage() {
+        if(defaultStorage == null)
+            defaultStorage = create(Config.userConfig.get('storage',null))
+        return defaultStorage
     }
 }
