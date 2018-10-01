@@ -496,6 +496,11 @@ class Dependencies {
      */
     void checkFiles(List<PipelineFile> files, Aliases aliases, type="input") {
         
+        if(files == null) {
+            log.info "$type files to check are null, skipping."
+            return
+        }
+
         log.info "Checking ${files.size()} $type (s) " 
         
         GraphEntry graph = this.getOutputGraph()
