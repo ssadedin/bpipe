@@ -88,3 +88,13 @@ Note that the message payload is still expected to be JSON and is pre-parsed int
 a Java object structure (Map, List, etc). The transform needs to produce a 
 Map / List structure identical to the JSON format of the standard message, 
 however it is defined using Groovy code.
+
+## Monitoring Status - Ping Message
+
+The Bpipe agent recognises a special message where the body is composed only of the word `ping`. When this message
+is received, it will respond by sending a message to the queue specified in the `JMSReplyTo` or `reply-to` header.
+This message will have a JSON body containing information about the agent, and receiving it can be used to confirm
+that the agent is alive and processing messages.
+
+
+
