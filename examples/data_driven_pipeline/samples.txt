@@ -1,0 +1,4 @@
+sample_id	sex	file
+S001	male	data001.txt
+S002	female	data002.txt
+S003	male	data003.txt
