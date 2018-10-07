@@ -101,27 +101,8 @@ class Stop extends BpipeCommand {
            if(pes.size() > 0) {
                println ""
                for(PooledExecutor pe in pes) {
-                   String oldState = pe.executor.status()
                    try {
-                       pe.stopPooledExecutor()
-                       pe.deletePoolFiles()
-                       String newState 
-                       int retries = 0
-                       while(true) {
-                           newState = pe.executor.status()
-                          if(newState != CommandStatus.RUNNING.name()) 
-                              break
-                              
-                          if(++retries > 5) {
-                              log.warning("Command $pe.command.id did not respond to stop command")
-                              break
-                          }
-                              
-                          Thread.sleep(1000)
-                          
-                       } 
-                       
-                       println "Pool: $pool.cfg.name".padLeft(20) + " Command: ${pe.command.id}".padLeft(15) + " State: ${oldState} => ${newState}"
+                       stopPooledExcecutor(pool, pe)
                    }
                    catch(Exception e) {
                        println "ERROR: Stop command for pool job $pe.hostCommandId returned error: $e"
@@ -135,5 +116,33 @@ class Stop extends BpipeCommand {
        println ""
        println "".center(Config.config.columns, "=")
        println "\nDone.\n"
+    }
+
+    /**
+     * Stop the given executor, with retries in case of error
+     * 
+     * @param pool  pool to which executor belongs
+     * @param pe    executor to stop
+     */
+    private void stopPooledExcecutor(ExecutorPool pool, PooledExecutor pe) {
+        String oldState = pe.executor.status()
+        pe.stopPooledExecutor()
+        pe.deletePoolFiles()
+        String newState
+        int retries = 0
+        while(true) {
+            newState = pe.executor.status()
+            if(newState != CommandStatus.RUNNING.name())
+                break
+
+            if(++retries > 5) {
+                log.warning("Command $pe.command.id did not respond to stop command")
+                break
+            }
+
+            Thread.sleep(1000)
+        }
+
+        println "Pool: $pool.cfg.name".padLeft(20) + " Command: ${pe.command.id}".padLeft(15) + " State: ${oldState} => ${newState}"
     }
 }
