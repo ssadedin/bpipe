@@ -92,8 +92,6 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
     @Override
     public void cleanup() {
         
-        return;
-        
         String sdkHome = getSDKHome()
         List<String> deleteCommand = ["$sdkHome/bin/gcloud","compute","instances","delete","--quiet",instanceId]
         log.info "Executing delete command: " + deleteCommand.join(' ')
@@ -182,6 +180,8 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         List<String> sshCommand = ["$sdkHome/bin/gcloud","compute","ssh","--command",mountCommand,this.instanceId]*.toString()
         
         Utils.executeCommand(sshCommand, throwOnError: true)
+        
+        log.info "Bucket $bucketName has been successfully mounted using command: $sshCommand"
     }
     
     void launchSSH(Command command, Appendable outputLog, Appendable errorLog) {
@@ -193,7 +193,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         File jobDir = this.getJobDir(command)
         
         File cmdFile = new File(jobDir, "cmd.sh")
-        cmdFile.text = 'cd work;\n' + command.command
+        cmdFile.text = 'cd work || { echo "Unable to change to expected working directory: work"; exit 1; }\n\n' + command.command
         
         List<String> sshCommand = ["$sdkHome/bin/gcloud","compute","ssh","--command","bash",this.instanceId]*.toString()
         
@@ -295,5 +295,10 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         if(!jobDirFile.exists())
 		    jobDirFile.mkdirs() 
         return jobDirFile
+    }
+
+    @Override
+    public void reconnect(Appendable outputLog, Appendable errorLog) {
+        this.launchSSH(outputLog, errorLog)
     }
 }

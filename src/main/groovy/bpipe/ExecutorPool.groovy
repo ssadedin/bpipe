@@ -27,6 +27,12 @@ enum RescheduleResult {
   * passed a command to run. A command is passed by writing a file in a
   * specific format to its commandtmp directory. When this file appears, 
   * the pooled executor picks it up and executes it.
+  * <p>
+  * Terminology:
+  *  <li>Host command - the permanently running command that sits idle until 
+  *      a job runs.
+  *  <li>Hosted command - the actual job commands that are doing the work. The
+  *      host command executes the hosted commands.
   */
 @Log
 @Mixin(ForwardHost)
@@ -90,7 +96,11 @@ class PooledExecutor implements CommandExecutor {
         
         Path cmdScript = storage.toPath(".bpipe/commandtmp/$hostCommandId/" + ExecutorPool.POOLED_COMMAND_FILENAME + ".${currentCommandId}.sh")
         Path cmdScriptTmp = storage.toPath(".bpipe/commandtmp/$hostCommandId/" + ExecutorPool.POOLED_COMMAND_FILENAME + ".tmp")
+        
+        log.info "Write command $cmd.command to command script at $cmdScriptTmp"
         cmdScriptTmp.text = cmd.command
+        
+        log.info "Move command from tmp file $cmdScriptTmp to $cmdScript"
         Files.move(cmdScriptTmp, cmdScript)
         
         log.info "Created pool executor command script $cmdScript using storage " + storage.class.name
@@ -249,6 +259,9 @@ class PooledExecutor implements CommandExecutor {
         this.forward(".bpipe/commandtmp/$command.id/pool.err", outputLog)
     }
     
+    /**
+     * Stops the host command that executes jobs on behalf of the pool
+     */
     void stopPooledExecutor() {
         
         try {
@@ -294,7 +307,14 @@ class PooledExecutor implements CommandExecutor {
         return state.name();
     }
 
+    /**
+     * Stop the underlying command being executed by this executor. If the pool to which this
+     * executor belongs is persistent, this will not stop the actual host command job, rather,
+     * it will just write out a "stop" file asking the job to stop the underlying command itself
+     * (accomplished with a "kill" or similar within the host job)
+     */
     @Override
+    @CompileStatic
     public void stop() {
         if(!poolConfig.get('persist', false)) {
             this.stopPooledExecutor()
@@ -370,22 +390,13 @@ class ExecutorPool {
     }
     
     /**
-     * Launches a wrapper job that waits for child jobs to be assigned and executes them.
+     * Start this executor pool by acquiring the designated number of PooledExecutors.
      * <p>
-     * This job loops "forever" waiting for child jobs, which are assigned by writing a file
-     * in the file "pool_cmd.<job_id>.sh". When such a file is observed, the wrapper job 
-     * parses out the job id and executes the job.
-     * <p>
-     * One key aspect is how the wrapper job knows when to exit. It occurs via multiple
-     * mechanisms:
-     * <li> Bpipe writes a "stop" file as a flag that it should exit; this is checked
-     *      once every second and the job exits as soon as this flag is observed.
-     * <li> In case Bpipe is killed, a "heartbeat" file is checked every 15 seconds.
-     *      at each 15 second interval, the file is removed. If the file is not recreated,
-     *      the wrapper script exits. This ensures that it Bpipe exits, so too does the
-     *      wrapper script, so we do not "leak" jobs.
-     * <li> The job can be stopped by the regular "stop" mechanism that Bpipe uses 
-     *      as well
+     * If the pool is persistent, then they might be already running, so the first
+     * step is to search for them (see {@link #searchForExistingPools}). When an existing
+     * executor is identified, it must be connected to. When insufficient existing pools are 
+     * identified, or if the existing ones are identified (for example, their jobs expire
+     * sooner than the usable time window), then new executors must be created. 
      */
     synchronized void start() {
         
@@ -431,7 +442,7 @@ class ExecutorPool {
     /**
      * Acquire a usable executor and add it to our pool.
      * <p>
-     * If a usable exeuctor is found in the provided list, it is initialised
+     * If a usable executor is found in the provided list, it is initialised
      * and added to our pool. If not, a new executor is started.
      * 
      * @param existingExecutors
@@ -551,7 +562,9 @@ class ExecutorPool {
     
     /**
      * Connect a previously started executor pool to this Bpipe
-     * instance.
+     * instance. This primarily means tapping into its output streams and
+     * adding event handlers so that if it ends we are notified and can 
+     * replace it.
      * 
      * @param pe
      */
@@ -629,6 +642,25 @@ class ExecutorPool {
     
     static final long HEARTBEAT_INTERVAL_SECONDS = 10
     
+    /**
+     * Starts a new pooled executor by launching a wrapper job that waits for child jobs 
+     * to be assigned and executes them.
+     * <p>
+     * This job loops "forever" waiting for child jobs, which are assigned by writing a file
+     * in the file "pool_cmd.<job_id>.sh". When such a file is observed, the wrapper job 
+     * parses out the job id and executes the job.
+     * <p>
+     * One key aspect is how the wrapper job knows when to exit. It occurs via multiple
+     * mechanisms:
+     * <li> Bpipe writes a "stop" file as a flag that it should exit; this is checked
+     *      once every second and the job exits as soon as this flag is observed.
+     * <li> In case Bpipe is killed, a "heartbeat" file is checked every 15 seconds.
+     *      at each 15 second interval, the file is removed. If the file is not recreated,
+     *      the wrapper script exits. This ensures that if Bpipe exits, so too does the
+     *      wrapper script, so we do not "leak" jobs.
+     * <li> The job can be stopped by the regular "stop" mechanism that Bpipe uses 
+     *      as well
+     */ 
     PooledExecutor startNewPooledExecutor() {
         
         long nowMs = System.currentTimeMillis()
@@ -665,8 +697,6 @@ class ExecutorPool {
         
         pe.poolConfig = this.cfg.collectEntries { it }
         pe.resolveStorage()
-        
-        
         
         cmd.command = new CommandTemplate().renderCommandTemplate("executor/pool-command.template.sh", 
             [

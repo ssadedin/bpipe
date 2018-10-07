@@ -12,7 +12,7 @@ import bpipe.Command
  * 
  * @author Simon Sadedin
  */
-abstract class CloudExecutor implements CommandExecutor {
+abstract class CloudExecutor implements PersistentExecutor {
 
 
 }
