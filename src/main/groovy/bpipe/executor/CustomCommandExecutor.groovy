@@ -44,7 +44,7 @@ import groovy.util.logging.Log
  * @author simon.sadedin@mcri.edu.au
  */
 @Log
-class CustomCommandExecutor implements CommandExecutor {
+class CustomCommandExecutor implements PersistentExecutor {
     
     public static final long serialVersionUID = 0L
     
@@ -475,5 +475,14 @@ class CustomCommandExecutor implements CommandExecutor {
     
     String statusMessage() {
         "$runningCommand, running since $startedAt ($config), Job ID = #${commandId}"
+    }
+
+    /**
+     * Note: because the currently implemented CustomCommandExecutors all store a Job ID which is not
+     * transient, all of them are considered automatically re-connected.
+     */
+    @Override
+    public void reconnect(Appendable outputLog, Appendable errorLog) {
+        log.info "Reconnecting to command $commandId"
     }
 }
