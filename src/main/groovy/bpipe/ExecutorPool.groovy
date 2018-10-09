@@ -130,6 +130,8 @@ class PooledExecutor implements CommandExecutor {
     }
     
     final static List<String> ENDED_JOB_STATUSES = [CommandStatus.COMPLETE.name(), CommandStatus.UNKNOWN.name()]
+
+   final private static int EXECUTOR_EXIT_FILE_TIMEOUT = 30000
     
     @Override
     int waitFor() {
@@ -270,14 +272,27 @@ class PooledExecutor implements CommandExecutor {
         try {
             this.executor.stop()
         }
-        catch(Exception e) {
+        catch(Throwable e) {
             log.warning("Attempt to stop pooled executor returned error: " + e)
         }
             
         // Write out the stop flag
-        log.info "Writing stop file: $stopFile"
-        this.stopFile.text = String.valueOf(System.currentTimeMillis())
+        Path stopFilePath = storage.toPath(this.stopFile.path)
+        log.info "Writing stop file: $stopFilePath"
+        stopFilePath.text = String.valueOf(System.currentTimeMillis())
         this.heartBeatFile.delete()
+        
+        String exitFilePath = ".bpipe/commandtmp/$hostCommandId/pool.exit"
+        Utils.waitWithTimeout(EXECUTOR_EXIT_FILE_TIMEOUT) {
+            storage.exists(exitFilePath)
+        }.timeout {
+            String msg = "Exit file $exitFilePath was not observed after ${EXECUTOR_EXIT_FILE_TIMEOUT}ms"
+            log.warning(msg)
+            System.err.println "WARNING: $msg"
+        }
+        
+        log.info "Cleaning up executor for pool $command.id"
+        this.executor.cleanup()
     }
     
     /**
