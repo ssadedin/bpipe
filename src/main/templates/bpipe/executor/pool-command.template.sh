@@ -53,10 +53,12 @@ i=0
         POOL_COMMAND_SCRIPT_BASE=\${POOL_COMMAND_SCRIPT%%.sh}
         POOL_COMMAND_ID=\${POOL_COMMAND_SCRIPT_BASE##*.}
     
-        $debugLog && { echo "Pool $cmd.id Executing command: \$POOL_COMMAND_ID" >> pool.log; }
+        $debugLog && { echo "`date`: Pool $cmd.id Executing command: \$POOL_COMMAND_ID" >> pool.log; }
     
         mv \$POOL_COMMAND_SCRIPT $pooledCommandScript
-    
+        
+        $debugLog && { echo "`date`: Pool $cmd.id moved pool command script to $pooledCommandScript" >> pool.log; }
+
         POOL_COMMAND_EXIT_FILE=.bpipe/commandtmp/$cmd.id/\${POOL_COMMAND_ID}.pool.exit
         POOL_COMMAND_STOP_FILE=.bpipe/commandtmp/$cmd.id/\${POOL_COMMAND_ID}.pool.stop
     
@@ -85,6 +87,8 @@ i=0
         $debugLog && { echo "Pool $cmd.id finished command: \$POOL_COMMAND_ID" >> pool.log; }
     done
 )
+
+touch .bpipe/commandtmp/$cmd.id/pool.exit
 
 $debugLog && { echo "Removing pool file $poolFile" >> pool.log; }
 
