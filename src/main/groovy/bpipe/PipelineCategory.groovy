@@ -766,13 +766,25 @@ class PipelineCategory {
             new PipelineContext(null, parent.stages, joiners, new Branch(name:'all'))
             
         def mergedOutputs = finalStages.collect { s ->
+            
+            if(s?.context) {
+                assert s.context.@output.every { it instanceof PipelineFile }
+            }
+            
+            if(s?.context?.nextInputs) {
+                if(!s.context.nextInputs.every { it instanceof PipelineFile }) {
+                    assert false: "Stage $s.stageName output a nexInput that was not a PipelineFile!"
+                }
+            }
+  
+            
             Utils.box(s?.context?.nextInputs ?: s?.context?.@output) 
-        }.sum().collect { it.path.normalize() }.unique()
+        }.sum().collect { it.normalize() }.unique()
 
        
         def mergedNextInputs = finalStages.collect { s ->
             Utils.box(s?.context?.nextInputs)
-        }.sum().collect { it.path.normalize() }.unique()
+        }.sum().collect { it.normalize() }.unique()
         
         log.info "Last merged outputs are $mergedOutputs"
         mergedContext.setRawOutput(mergedOutputs)

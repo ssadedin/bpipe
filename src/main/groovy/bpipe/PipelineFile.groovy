@@ -39,6 +39,7 @@ class PipelineFile implements Serializable {
     }
     
 //    @Memoized
+    @CompileStatic
     Path toPath() {
         storage.toPath(path)
     }
@@ -47,6 +48,11 @@ class PipelineFile implements Serializable {
     @CompileStatic
     String getName() {
         toPath().fileName
+    }
+    
+    @CompileStatic
+    PipelineFile normalize() {
+        new PipelineFile(toPath().normalize().toString(), storage)
     }
     
     @CompileStatic

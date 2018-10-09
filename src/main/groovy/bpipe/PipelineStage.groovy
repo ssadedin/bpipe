@@ -359,9 +359,9 @@ class PipelineStage {
                         bindingVariables += extras
                     }
                         
-                    def returnedInputs 
+                    List returnedInputs 
                     Runner.binding.withLocalVariables(bindingVariables) {
-                        returnedInputs = body(context.@input)
+                        returnedInputs = Utils.box(body(context.@input))
                         runOutstandingChecks()
                     }
                     if(joiner || (body in Pipeline.currentRuntimePipeline.get().segmentJoiners)) {

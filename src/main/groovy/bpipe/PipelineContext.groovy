@@ -814,6 +814,16 @@ class PipelineContext {
        return this.@input
    }
    
+   @CompileStatic
+   void setNextInputs(List<PipelineFile> nextInps) {
+       assert nextInps instanceof List
+       List notPF = nextInps.grep { !(it instanceof PipelineFile) }
+       if(!notPF.isEmpty()) {
+           assert false:  "The following next inputs were not pipeline files!: " + notPF.join(',')
+       }
+       this.nextInputs = nextInps
+   }
+   
    /**
     * Return the value of the specified input<n> where n is the 
     * parameter supplied (index of input to resolve).
