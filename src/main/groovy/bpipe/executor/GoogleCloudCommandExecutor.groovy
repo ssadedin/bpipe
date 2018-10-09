@@ -101,6 +101,8 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
             log.severe(msg)
             System.err.println "WARNING: " + msg
         }
+        else
+            log.info "Successfully shut down Google Cloud instance $instanceId"
     }
 
     @Override
@@ -174,7 +176,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         
         log.info "Bucket is $bucketName"
         
-        String mountCommand = "mkdir work; gcsfuse --implicit-dirs --stat-cache-ttl 0 --type-cache-ttl 0 $bucketName work"
+        String mountCommand = "mkdir work; gcsfuse --implicit-dirs --stat-cache-ttl 60s --type-cache-ttl 60s $bucketName work"
         
         // Finally mount the storage
         List<String> sshCommand = ["$sdkHome/bin/gcloud","compute","ssh","--command",mountCommand,this.instanceId]*.toString()
