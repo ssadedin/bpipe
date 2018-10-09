@@ -1198,7 +1198,7 @@ public class Pipeline implements ResourceRequestor {
         }
         
         if(!cachedGenome.exists()) {
-            String url = "http://hgdownload.soe.ucsc.edu/goldenPath/$ucscName/database/ensGene.txt.gz"
+            String url = "http://hgdownload.soe.ucsc.edu/goldenPath/$ucscName/database/refGene.txt.gz"
             log.info "Downloading ensembl gene database from $url"
             println "MSG: Downloading genome from $url"
             new URL(url).openStream().withStream { stream ->
