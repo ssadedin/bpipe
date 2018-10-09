@@ -100,6 +100,9 @@ class PooledExecutor implements CommandExecutor {
         log.info "Write command $cmd.command to command script at $cmdScriptTmp"
         cmdScriptTmp.text = cmd.command
         
+        log.info "File to move is created"
+        Thread.sleep(2000)
+        
         log.info "Move command from tmp file $cmdScriptTmp to $cmdScript"
         Files.move(cmdScriptTmp, cmdScript)
         
