@@ -382,17 +382,18 @@ class PipelineStage {
         }
     }
     
+    @CompileStatic
     void runOutstandingChecks() {
-        for(Checker checker in context.checkers.grep { !it.executed }) {
+        for(Checker checker in context.checkers.grep { Checker c -> !c.executed }) {
             log.info "Executing un-executed check $checker.name for stage $stageName"
             checker.otherwise({})
         }
     }
     
-    @TypeChecked
+    @CompileStatic
     void setContextNextInputs() {
         List<PipelineFile> nextInputs = determineForwardedFiles()
-
+        
         if(!this.context.rawOutput) {
             log.info "No explicit output on stage ${this.hashCode()} context ${this.context.hashCode()}"
             // used to set output to next inputs here but this causes later confusion when 
