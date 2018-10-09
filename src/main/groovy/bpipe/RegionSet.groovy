@@ -111,6 +111,7 @@ class RegionSet implements Serializable {
     }
     
     Set<RegionSet> partition(int sizeBp) {
+        log.info "Partition ${this.sequences.size()} sequences into $sizeBp bp chunks"
         this.sequences.collect { String name, Sequence s ->
             (s.range.from..s.range.to).step(sizeBp).collect { int startBp ->
                 Sequence seq = new Sequence(s.name)
