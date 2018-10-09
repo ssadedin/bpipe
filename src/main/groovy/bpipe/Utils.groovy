@@ -1071,7 +1071,22 @@ class Utils {
                     if(System.currentTimeMillis() - startMs > timeoutMs)
                         return [ timeout: {  it() }]
                 }
-            }
+            },
+            
+            timeout: { timeoutAction ->
+                long startMs = System.currentTimeMillis()
+                while(true) {
+                    def result = action()
+                    if(result != null && result != false)
+                        return 
+                    Thread.sleep(100)
+                    
+                    if(System.currentTimeMillis() - startMs > timeoutMs) {
+                        timeoutAction()
+                        return
+                    }
+                }
+            } 
         ]
     }
     
