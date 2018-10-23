@@ -9,6 +9,7 @@ import bpipe.Config
 import bpipe.PipelineError
 import bpipe.Utils
 import bpipe.storage.GoogleCloudStorageLayer
+import bpipe.storage.StorageLayer
 import bpipe.ForwardHost;
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
@@ -36,6 +37,11 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
      * Set to true after the command is observed to be finished
      */
     transient boolean finished = false
+    
+    /**
+     * The directory that the executor will execute in within the hosted VM instance
+     */
+    String workingDirectory = 'work'
     
     @Override
     public void start(Map cfg, Command cmd, Appendable outputLog, Appendable errorLog) {
@@ -172,18 +178,14 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         
         log.info "Region for Google Cloud is $region"
         
-        String bucketName = this.makeBucket(config, region)
+        List<GoogleCloudStorageLayer> storages = this.makeBuckets(config, region)
+        for(GoogleCloudStorageLayer storage in storages) {
+            storage.mount(this)
+        }
         
-        log.info "Bucket is $bucketName"
-        
-        String mountCommand = "mkdir work; gcsfuse --implicit-dirs --stat-cache-ttl 60s --type-cache-ttl 60s $bucketName work"
-        
-        // Finally mount the storage
-        List<String> sshCommand = ["$sdkHome/bin/gcloud","compute","ssh","--command",mountCommand,this.instanceId]*.toString()
-        
-        Utils.executeCommand(sshCommand, throwOnError: true)
-        
-        log.info "Bucket $bucketName has been successfully mounted using command: $sshCommand"
+        if(storages.size()>0) {
+            this.workingDirectory = storages[0].path
+        }
     }
     
     void launchSSH(Command command, Appendable outputLog, Appendable errorLog) {
@@ -217,13 +219,15 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         
     }
     
-    String getRegion(Map config) {
+    static String getRegion(Map config) {
         String sdkHome = getSDKHome()
         String region
         if(config.containsKey('region')) {
+            log.info "Using region from configuration"
             region = config.region
         }
         else {
+            log.info "Probing region using gcloud command"
             region = Utils.executeCommand([
                 "$sdkHome/bin/gcloud","config","get-value","compute/region"
             ], throwOnError:true).out?.toString()?.trim()
@@ -237,51 +241,32 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
     
     final static String BUCKET_ALREADY_EXISTS_ERROR = 'ServiceException: 409'
     
-    String makeBucket(Map config, String region) {
+    List<GoogleCloudStorageLayer> makeBuckets(Map config, String region) {
         
         String sdkHome = getSDKHome()
         
         // Create a bucket based on the file path of the Bpipe instance
-        String storageConfigName = config.get('storage',null)
-        if(storageConfigName == null)
+        def storageConfigs = config.get('storage',null)
+        if(storageConfigs == null)
             throw new PipelineError("Use of Google Cloud executors requires that the 'storage' configuration element be defined. Please define this to point to Google Cloud storage")
-        
-        String defaultBucket = GoogleCloudStorageLayer.defaultBucket
-        
-        String bucketName = Config.userConfig.filesystems.get(storageConfigName,[:]).get('bucket',defaultBucket)
-        
-        log.info "Work directory is bucket: $bucketName"
-        
-        List<String> makeBucketCommand = [
-            "$sdkHome/bin/gsutil",
-            "mb",
-            "-c",
-            "regional",
-             "-l",
-             region,
-             "gs://$bucketName"
-        ]
-        
-        log.info "Creating bucket for work directory using command: " + makeBucketCommand.join(' ')
-        Map result = Utils.executeCommand(makeBucketCommand)
-        if(result.exitValue != 0) {
-            String stdOut = result.out.toString().trim()
-            String stdErr = result.err.toString().trim()
             
-            println "stdOut: $stdOut\nstdErr: $stdErr\n"
-            
-            if(stdOut.contains(BUCKET_ALREADY_EXISTS_ERROR) || stdErr.contains(BUCKET_ALREADY_EXISTS_ERROR)) {
-                log.info "Bucket already exists: reusing bucket $bucketName"
-            }
-            else {
-                throw new Exception("Unable to create bucket $bucketName: " + result.out + "\n\n" + result.err)
-            }
+        if(storageConfigs instanceof String) {
+            storageConfigs = storageConfigs.tokenize(',')*.trim()
         }
         
-        return bucketName
+        log.info "Storages configured are $storageConfigs"
+        
+        List<GoogleCloudStorageLayer> storages = storageConfigs.collect { String storageConfig ->
+            log.info "Creating storage $storageConfig"
+            GoogleCloudStorageLayer storageLayer = StorageLayer.create(storageConfig)
+            storageLayer.makeBucket()
+            return storageLayer
+        }
+        
+        return storages
     }
     
-    String getSDKHome() {
+    static String getSDKHome() {
         ConfigObject gcloud = Config.userConfig.gcloud
         
         String sdkHome = gcloud.get('sdk',null)

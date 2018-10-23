@@ -3,6 +3,7 @@ package bpipe.storage
 import java.nio.file.Path
 
 import bpipe.Config
+import bpipe.executor.CommandExecutor
 import groovy.transform.CompileStatic
 
 abstract class StorageLayer implements Serializable {
@@ -18,6 +19,8 @@ abstract class StorageLayer implements Serializable {
     abstract boolean exists(String path)
     
     abstract Path toPath(String path)
+    
+    abstract void mount(CommandExecutor executor)
     
     static StorageLayer create(String name) {
         

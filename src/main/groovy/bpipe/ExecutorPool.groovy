@@ -183,8 +183,13 @@ class PooledExecutor implements CommandExecutor {
     }
     
     void resolveStorage() {
-        String storageName = poolConfig.containsKey('storage') ? poolConfig.storage : null
-        this.storage = StorageLayer.create(storageName)
+        List<String> storageNames = poolConfig.containsKey('storage') ? poolConfig.storage.tokenize(',')*.trim() : ['local']
+        
+        for(storageName in storageNames) {
+            StorageLayer storage = StorageLayer.create(storageName)
+            if(this.storage == null)
+                this.storage = storage
+        }
     }
     
     /**
