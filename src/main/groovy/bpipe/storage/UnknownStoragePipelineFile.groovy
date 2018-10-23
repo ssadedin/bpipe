@@ -3,6 +3,7 @@ package bpipe.storage
 import java.nio.file.Path
 
 import bpipe.PipelineFile
+import bpipe.executor.CommandExecutor
 import groovy.transform.CompileStatic
 
 class UnknownStoragePipelineFile extends PipelineFile {
@@ -15,6 +16,10 @@ class UnknownStoragePipelineFile extends PipelineFile {
             
             public Path toPath(String path) {
                 new File(path).toPath()
+            }
+
+            @Override
+            public void mount(CommandExecutor executor) {
             }
         })
     }
