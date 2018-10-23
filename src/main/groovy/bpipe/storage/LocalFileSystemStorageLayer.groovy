@@ -3,6 +3,7 @@ package bpipe.storage
 import java.io.File
 import java.nio.file.Path
 
+import bpipe.executor.CommandExecutor
 import groovy.util.logging.Log
 
 @Log
@@ -32,5 +33,10 @@ class LocalFileSystemStorageLayer extends StorageLayer {
     @Override
     public Path toPath(String path) {
         return new File(path).toPath()
+    }
+
+    @Override
+    public void mount(CommandExecutor executor) {
+        // No-op - local storage is assumed to be already mounted
     }
 }
