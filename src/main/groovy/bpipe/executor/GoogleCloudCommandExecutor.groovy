@@ -143,14 +143,18 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         
         this.instanceId = "bpipe-" + cmd.id
         
-        // Create the instance
-        log.info "Creating google cloud instance from image $image for command $cmd.id"
-        Map result = Utils.executeCommand(["$sdkHome/bin/gcloud", "compute", "instances", 
+        List machineTypeFlag = ('machineType' in config) ? ["--machine-type", config.machineType] : []
+        
+        List<String> commandArgs = ["$sdkHome/bin/gcloud", "compute", "instances", 
               "create", this.instanceId,
               "--image", image,
               "--service-account", serviceAccount,
               "--scopes", "https://www.googleapis.com/auth/cloud-platform"
-              ])
+        ] + machineTypeFlag
+        
+        // Create the instance
+        log.info "Creating google cloud instance from image $image for command $cmd.id"
+        Map result = Utils.executeCommand(commandArgs)
         if(result.exitValue != 0) 
             throw new PipelineError("Failed to acquire google cloud instance based (image=$image) for command $cmd.id: \n\n" + result.out + "\n\n" + result.err)
             
