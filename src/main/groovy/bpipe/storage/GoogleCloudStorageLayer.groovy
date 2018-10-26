@@ -13,6 +13,7 @@ import bpipe.executor.GoogleCloudCommandExecutor
 import static bpipe.executor.GoogleCloudCommandExecutor.*
 
 import bpipe.Config
+import bpipe.ExecutedProcess
 import bpipe.PipelineError
 import groovy.transform.CompileStatic
 import groovy.transform.Memoized
@@ -102,7 +103,7 @@ class GoogleCloudStorageLayer extends StorageLayer {
         ]*.toString()
         
         log.info "Creating bucket for work directory using command: " + makeBucketCommand.join(' ')
-        Map result = Utils.executeCommand((List<Object>)makeBucketCommand)
+        ExecutedProcess result = Utils.executeCommand((List<Object>)makeBucketCommand)
         if(result.exitValue != 0) {
             String stdOut = result.out.toString().trim()
             String stdErr = result.err.toString().trim()

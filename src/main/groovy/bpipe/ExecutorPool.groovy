@@ -496,8 +496,9 @@ class ExecutorPool {
     
     void verify() {
         int timeoutSecs = 30
+        
         Utils.waitWithTimeout(timeoutSecs*1000) {
-            availableExecutors.any { PooledExecutor pe ->
+            !availableExecutors.any { PooledExecutor pe ->
                 pe.executor.status() == CommandStatus.WAITING.name()
             }
         }.ok {
@@ -506,7 +507,7 @@ class ExecutorPool {
             Thread.sleep(5000)
             
             int countRunning = availableExecutors.count { PooledExecutor pe ->
-                pe.executor.status() == CommandStatus.WAITING.name()
+                pe.executor.status() == CommandStatus.RUNNING.name()
             }            
             
             if(countRunning == availableExecutors.size())
@@ -874,7 +875,8 @@ class ExecutorPool {
     
     /**
      * Read the given userConfig and parse the "preallocate" section to find configurations
-     * which should have preallocation pools created.
+     * which should have preallocation pools created. Creates an {@link ExecutorPool} object for 
+     * each pool identified in the configuration. The pools are not started.
      * 
      * @param executorFactory
      * @param userConfig

@@ -30,6 +30,7 @@ import java.util.logging.Level
 
 import bpipe.ChecksCommand
 import bpipe.Config
+import bpipe.ExecutedProcess
 import bpipe.Runner
 import bpipe.Utils
 import bpipe.cmd.BpipeCommand
@@ -195,7 +196,7 @@ abstract class Agent extends TimerTask {
         List<String> cmd = [ bpipe.Runner.BPIPE_HOME + "/bin/bpipe" ] 
         cmd.addAll(bpipeArgs)
         log.info "Running command : " + cmd;
-        Map result = Utils.executeCommand(cmd, out:out, err: out) {
+        ExecutedProcess result = Utils.executeCommand(cmd, out:out, err: out) {
             directory(dirFile)
         }
     }
