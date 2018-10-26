@@ -25,6 +25,7 @@
 package bpipe
 
 import groovy.time.TimeCategory;
+
 import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;
 import groovy.xml.XmlUtil;
@@ -42,6 +43,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern
 import org.codehaus.groovy.runtime.StackTraceUtils
+
+class ExecutedProcess {
+    StringBuilder err
+    StringBuilder out
+    int exitValue
+}
 
 /**
  * Miscellaneous internal utilities used by Bpipe
@@ -883,7 +890,7 @@ class Utils {
      * @param startCmd  List of objects (will be converted to strings) as args to command
      * @return Map with exitValue, err and out keys
      */
-    static Map<String,Object> executeCommand(Map options = [:], List<Object> startCmd, Closure builder = null) {
+    static ExecutedProcess executeCommand(Map options = [:], List<Object> startCmd, Closure builder = null) {
         
         List<String> stringified = startCmd*.toString()
         
@@ -896,7 +903,7 @@ class Utils {
         }
         
         Process p = pb.start()
-        Map result = [:]
+        ExecutedProcess result = new ExecutedProcess()
         Utils.withStreams(p) {
             Appendable out = options.out ?: new StringBuilder()
             Appendable err = options.err ?: new StringBuilder()

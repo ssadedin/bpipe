@@ -24,6 +24,7 @@
  */
 package bpipe.cmd
 
+import bpipe.ExecutedProcess
 import bpipe.Utils
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
@@ -56,7 +57,7 @@ class RunPipelineCommand extends BpipeCommand {
         
         List<String> cmd = [ bpipe.Runner.BPIPE_HOME + "/bin/bpipe", "run" ] 
         cmd.addAll(args)
-        Map result = Utils.executeCommand(cmd, out:out, err: out) {
+        ExecutedProcess result = Utils.executeCommand(cmd, out:out, err: out) {
             directory(dirFile)
         }
     }
