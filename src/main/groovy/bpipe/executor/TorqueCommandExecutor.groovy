@@ -26,6 +26,7 @@ package bpipe.executor
 
 import groovy.util.logging.Log
 import bpipe.Command;
+import bpipe.ExecutedProcess
 import bpipe.ForwardHost;
 import bpipe.Utils
 
@@ -108,7 +109,7 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
     
     void setJobName(String jobName) {
         log.info("Setting job name for $commandId to $jobName")
-        Map result = Utils.executeCommand(["qalter","-N",jobName, this.commandId])
+        ExecutedProcess result = Utils.executeCommand(["qalter","-N",jobName, this.commandId])
         if(result.exitValue != 0) {
             log.warning("Unable to set job name to $jobName for $commandId. Command output: " + result.out)
         }
