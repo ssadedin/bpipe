@@ -265,8 +265,15 @@ class PooledExecutor implements CommandExecutor {
             outputLog = new ForwardingOutputLog()
         
         this.outputLog = outputLog
-        this.forward(".bpipe/commandtmp/$command.id/pool.out", outputLog)
-        this.forward(".bpipe/commandtmp/$command.id/pool.err", outputLog)
+        
+        String storageName = this.command.getProcessedConfig().getOrDefault('storage', 'local')
+        
+        log.info "Capturing output via storage layer type $storageName"
+        
+        StorageLayer storage = StorageLayer.create(storageName)
+        
+        this.forward(storage.toPath(".bpipe/commandtmp/$command.id/pool.out"), outputLog)
+        this.forward(storage.toPath(".bpipe/commandtmp/$command.id/pool.err"), outputLog)
     }
     
     /**

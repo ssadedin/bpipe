@@ -9,6 +9,17 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.regex.Pattern
 
+/**
+ * A class that abstracts the type of underlying storage that a file is stored in,
+ * while presenting a common API.
+ * <p>
+ * Note: to some extent this mirrors the purpose of the {@link java.nio.file.Path} class.
+ * Unfortunately, that class is not serializable, and presents a very differnet API to
+ * {@link java.io.File}. This class offers a serializable wrapper that unifies the APIs 
+ * a little bit more.
+ * 
+ * @author simon.sadedin
+ */
 @Log
 class PipelineFile implements Serializable {
    
