@@ -32,6 +32,7 @@ import bpipe.ForwardHost
 import bpipe.Utils
 import bpipe.PipelineError
 import bpipe.CommandStatus
+import bpipe.ExecutedProcess
 
 /**
  * Implements a command executor based on the Sun Grid Engine (SGE) resource manager
@@ -160,7 +161,7 @@ class SgeCommandExecutor implements CommandExecutor {
          */
         log.info "Starting command: '${startCmd}'"
         
-        Map<String,Object> startResult = Utils.executeCommand(startCmd)
+        ExecutedProcess startResult = Utils.executeCommand(startCmd)
         
         if(startResult.exitValue != 0) {
             reportStartError(startCmd, startResult.out,startResult.err,startResult.exitValue)
@@ -223,7 +224,7 @@ class SgeCommandExecutor implements CommandExecutor {
         
         log.info "Probing state of command $commandId using command $probeCommand"
         
-        Map probeResult = Utils.executeCommand(probeCommand)
+        ExecutedProcess probeResult = Utils.executeCommand(probeCommand)
         if(probeResult.exitValue != 0) {
             
             String err = String.valueOf(probeResult.err)

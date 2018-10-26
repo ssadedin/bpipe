@@ -6,6 +6,7 @@ import java.util.Map
 import bpipe.Command
 import bpipe.CommandStatus
 import bpipe.Config
+import bpipe.ExecutedProcess
 import bpipe.PipelineError
 import bpipe.Utils
 import bpipe.storage.GoogleCloudStorageLayer
@@ -20,6 +21,9 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
     
     public static final long serialVersionUID = 0L
     
+    /**
+     * The google cloud instance that this executor started to service its command
+     */
     String instanceId
     
     /**
@@ -38,6 +42,8 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
      */
     transient boolean finished = false
     
+    boolean acquiring = false
+    
     /**
      * The directory that the executor will execute in within the hosted VM instance
      */
@@ -47,8 +53,9 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
     public void start(Map cfg, Command cmd, Appendable outputLog, Appendable errorLog) {
         
         // Acquire my instance
+        acquiring = true
         this.acquireInstance(cfg, cmd)
-        
+       
         this.mountStorage(cfg)
         
         // Execute the command via SSH
@@ -58,22 +65,44 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
     @Override
     public String status() {
         
-        if(this.process == null)
+        if(acquiring)
             return CommandStatus.WAITING
-            
+        else
         if(finished) 
             return command.exitCode
-            
-        try {
-            log.info "Checking exit code for ${command?.id}"
-            command.exitCode = this.process.exitValue()
-            this.finished = true
-            log.info "Command ${command?.id} is finished"
-            return CommandStatus.COMPLETE
+        else
+        if(process != null) {
+            try {
+                log.info "Checking exit code for ${command?.id}"
+                command.exitCode = this.process.exitValue()
+                this.finished = true
+                log.info "Command ${command?.id} is finished"
+                return CommandStatus.COMPLETE
+            }
+            catch(IllegalThreadStateException exStillRunning) {
+                return CommandStatus.RUNNING
+            }
         }
-        catch(IllegalThreadStateException exStillRunning) {
-            return CommandStatus.RUNNING
+        else
+        if(instanceId) {
+            // This logic is a little bit special
+            // There are two cases: 
+            //  - non-pooled - we should always have a process stored so should not arrive here (what about bpipe status?)
+            //  - pooled - we arrive here on second execution of bpipe
+            //             In that case we expect the command still to be running, as long as the VM is - it runs forever!
+            log.info "No local process launched but instance $instanceId found: assume command already running, probing instance"
+            String sdkHome = getSDKHome()
+            List<String> statusCommand = ["$sdkHome/bin/gcloud","compute","ssh","--command","true",this.instanceId]*.toString()
+            ExecutedProcess result = Utils.executeCommand(statusCommand)
+            if(result.exitValue == 0) {
+                return CommandStatus.RUNNING
+            }
+            else {
+                return CommandStatus.COMPLETE
+            }
         }
+        else
+            assert false // I think this shouldn't happen
     }
 
     @Override
@@ -83,7 +112,9 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         while(true) {
             CommandStatus status = this.status()
             if(status == CommandStatus.COMPLETE) 
-                return command.exitCode;
+                // note anomaly: we could come in here after command is lost and process is detached
+                // this happens for pooled executor
+                return command?.exitCode?:0;
                 
             Thread.sleep(5000)
         }
@@ -101,7 +132,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         String sdkHome = getSDKHome()
         List<String> deleteCommand = ["$sdkHome/bin/gcloud","compute","instances","delete","--quiet",instanceId]
         log.info "Executing delete command: " + deleteCommand.join(' ')
-        Map result = Utils.executeCommand(deleteCommand)
+        ExecutedProcess result = Utils.executeCommand(deleteCommand)
         if(result.exitValue != 0) {
             String msg = "Unable to shut down google cloud instance $instanceId : error ${result.exitValue}. Output:\n\n$result.out\n\nStd Err:\n\n$result.err"
             log.severe(msg)
@@ -154,7 +185,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         
         // Create the instance
         log.info "Creating google cloud instance from image $image for command $cmd.id"
-        Map result = Utils.executeCommand(commandArgs)
+        ExecutedProcess result = Utils.executeCommand(commandArgs)
         if(result.exitValue != 0) 
             throw new PipelineError("Failed to acquire google cloud instance based (image=$image) for command $cmd.id: \n\n" + result.out + "\n\n" + result.err)
             
@@ -217,6 +248,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         
         this.command = command
         this.process = pb.start()
+        this.acquiring = false
         
         forward(stdOut, outputLog)
         forward(stdErr, errorLog)
@@ -267,7 +299,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
             return storageLayer
         }
         
-        return storages
+        return storages 
     }
     
     static String getSDKHome() {
