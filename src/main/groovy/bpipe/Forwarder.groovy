@@ -24,6 +24,7 @@
 */
 package bpipe
 
+import java.nio.file.*
 import java.util.logging.Level;
 
 import groovy.util.logging.Log
@@ -59,29 +60,38 @@ class Forwarder extends TimerTask {
     /**
      * The list of files that are being 'tailed'
      */
-    List<File> files = []
+    List<Path> files = []
     
     /**
      * Current position in each file that we know about
      */
-    Map<File, Long> filePositions = [:]
+    Map<Path, Long> filePositions = [:]
     
     /**
      * Destinations to which the file should be forwarded
      */
-    Map<File, Appendable> fileDestinations = [:]
+    Map<Path, Appendable> fileDestinations = [:]
     
     Forwarder(File f, Appendable out) {
         forward(f,out)
     }
-   
-    void forward(File file, Appendable out) {
-        synchronized(files) {
-            files << file
-            fileDestinations[file] = out
-            filePositions[file] = file.exists()? file.length() : 0L
-        }
+    
+    Forwarder(Path f, Appendable out) {
+        forward(f,out)
     }
+ 
+    void forward(File file, Appendable out) {
+        Path path = file.toPath()
+        forward(path, out)
+    }
+    
+    void forward(Path path, Appendable out) {
+        synchronized(files) {
+            files << path
+            fileDestinations[path] = out
+            filePositions[path] = Files.exists(path) ? Files.size(path) : 0L
+        }
+    }    
     
     void cancel(File file) {
         synchronized(files) {
@@ -102,21 +112,22 @@ class Forwarder extends TimerTask {
             long startTimeMs = System.currentTimeMillis()
             long now = startTimeMs
             
-            this.files.collect { it.parentFile }.unique { it.canonicalFile.absolutePath }*.listFiles()
+            // This is done to synchronized distributed file systems with sync issues
+            this.files.collect { it.toAbsolutePath().parent }.unique { it.normalize() }.collect { Files.newDirectoryStream(it).toList() }
             
             while(now - startTimeMs < MAX_WAIT_MISSING_FILE) {
-                if(this.files.every { it.exists() })
+                if(this.files.every { Files.exists(it) })
                     break
                 now = System.currentTimeMillis()
                 Thread.sleep(1000)
             }
             if(now - startTimeMs >= MAX_WAIT_MISSING_FILE) {
-                def msg = "Exceeded $MAX_WAIT_MISSING_FILE ms waiting for one or more output files ${files*.absolutePath} to appear: output may be incomplete"
+                def msg = "Exceeded $MAX_WAIT_MISSING_FILE ms waiting for one or more output files ${files*.toAbsolutePath()} to appear: output may be incomplete"
                 System.err.println  msg
                 log.warning msg
             }
             else {
-                log.info "All files ${files*.absolutePath} exist"
+                log.info "All files ${files*.toAbsolutePath()} exist"
             }
         }
         
@@ -146,15 +157,15 @@ class Forwarder extends TimerTask {
         List<File> scanFiles
         synchronized(files) {
             try {
-                scanFiles = files.clone().grep { it.exists() }
+                scanFiles = files.clone().grep { Files.exists(it) }
                 byte [] buffer = new byte[8096]
                 if(log.isLoggable(Level.FINE)) 
                     log.fine "Scanning ${scanFiles.size()} / ${files.size()} files "
                     
-                for(File f in scanFiles) {
+                for(Path p in scanFiles) {
                     try {
-                        f.withInputStream { ifs ->
-                            long skip = filePositions[f]
+                        p.withInputStream { InputStream ifs ->
+                            long skip = filePositions[p]
                             ifs.skip(skip)
                             int count = ifs.read(buffer)
                             if(count < 0) {
@@ -164,18 +175,18 @@ class Forwarder extends TimerTask {
                             
                             modified = true
                             
-                            log.info "Read " + count + " chars from $f starting with " + Utils.truncnl(new String(buffer, 0, Math.min(count,30)),25)
+                            log.info "Read " + count + " chars from $p starting with " + Utils.truncnl(new String(buffer, 0, Math.min(count,30)),25)
                             
                             // TODO: for neater output we could trim the output to the 
                             // most recent newline here
                             String content = new String(buffer,0,count)
-                            fileDestinations[f].append(content)
-                            fileDestinations[f].flush()
-                            filePositions[f] = filePositions[f] + count
+                            fileDestinations[p].append(content)
+                            fileDestinations[p].flush()
+                            filePositions[p] = filePositions[p] + count
                         }
                     }
                     catch(Exception e) {
-                        log.warning "Unable to read file $f"
+                        log.warning "Unable to read file $p"
                         e.printStackTrace()
                     }
                 }
