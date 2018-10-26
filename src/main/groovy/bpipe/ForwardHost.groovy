@@ -24,24 +24,41 @@
 */
 package bpipe
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 
 import java.io.OutputStream;
+import java.nio.file.Path
 import java.util.List;
 import java.util.Timer;
 
+/**
+ * A mixin that can be added to any class to add functions for it to forward 
+ * lines written to files to arbitrary output streams.
+ * 
+ * @author simon.sadedin
+ */
 @Log
 class ForwardHost {
     
     transient List<Forwarder> forwarders = []
     
+    @CompileStatic
     public void forward(File file, def stream) {
         this.forward(file.path, stream)
     }
     
+    public void forward(Path file, def stream) {
+        Forwarder f = new Forwarder(file, stream)
+        log.info "Forwarding path $file using forwarder $f"
+        
+        Poller.instance.timer.schedule(f, 0, 2000)
+    
+        this.forwarders << f 
+    }
+     
     public void forward(String fileName, def stream) {
     
-   
         Forwarder f = new Forwarder(new File(fileName), stream)
         log.info "Forwarding file $fileName using forwarder $f"
         
@@ -53,6 +70,7 @@ class ForwardHost {
     /**
      * Ensure any remaining output is copied
      */
+    @CompileStatic
     void stopForwarding() {
         this.forwarders*.cancel()
         
