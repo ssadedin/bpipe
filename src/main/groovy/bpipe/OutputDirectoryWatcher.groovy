@@ -270,20 +270,21 @@ class OutputDirectoryWatcher extends Thread {
     void initialize() {
         List<Path> oldPaths = NewFileFilter.scanOutputDirectory(directory.toFile().path, null)
         
-        log.info "Initialising watcher for $directory with ${oldPaths.size()} paths"
-        for(Path path in oldPaths) {
-            long timestamp = Files.getLastModifiedTime(path).toMillis()
-            String fileName = path.fileName
-            List<String> tsPaths = this.timestamps[timestamp] 
-            if(!tsPaths)
-                this.timestamps[timestamp] = [fileName]
-            else
-                tsPaths.add(fileName)
-                
-            files[fileName] = timestamp
+        synchronized(timestamps) {
+            log.info "Initialising watcher for $directory with ${oldPaths.size()} paths"
+            for(Path path in oldPaths) {
+                long timestamp = Files.getLastModifiedTime(path).toMillis()
+                String fileName = path.fileName
+                List<String> tsPaths = this.timestamps[timestamp] 
+                if(!tsPaths)
+                    this.timestamps[timestamp] = [fileName]
+                else
+                    tsPaths.add(fileName)
+                    
+                files[fileName] = timestamp
+            }
+            this.initTimeMs = System.currentTimeMillis()
         }
-        
-        this.initTimeMs = System.currentTimeMillis()
     }
     
     @CompileStatic
