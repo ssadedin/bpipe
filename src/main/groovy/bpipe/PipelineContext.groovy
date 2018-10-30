@@ -359,6 +359,7 @@ class PipelineContext {
     * 
     * @param outs   A possibly heterogenous mix of Strings and PipelineFile objects
     */
+   @CompileStatic
    void setRawOutput(List outs) {
        
 	   this.@output = this.resolvePipelineFiles(outs)
@@ -373,6 +374,7 @@ class PipelineContext {
     * @param outs	heterogeneous list of file-like objects
     * @return list of PipelineFile
     */
+   @CompileStatic
    List<PipelineFile> resolvePipelineFiles(List outs) {
        assert (outs == null) || (outs instanceof List)
 
@@ -384,7 +386,7 @@ class PipelineContext {
        if(Thread.currentThread().id != threadId)
            log.warning "Thread output being set to $outs from wrong thread ${Thread.currentThread().id} instead of $threadId"
        
-       return outs.collect { Object o ->
+       return (List<PipelineFile>)outs.collect { Object o ->
            
            assert !(o instanceof List)
            
@@ -410,33 +412,40 @@ class PipelineContext {
    StorageLayer resolveStorageFor(String outputPath, Map config = null, boolean strict=true) {
        
        if(config == null) {
-           String commandId = pathToCommandId[outputPath]
-           if(commandId == null) {
-               if(!strict)
-                   return null
-           }
-           
-           if(commandId == null)
-               return new UnknownStoragePipelineFile(outputPath).storage
-               
-           assert commandId != null
-           Command command = trackedOutputs[commandId] 
-           if(command == null)
-               if(!strict)
-                   return null
-                   
-           if(command == null) {
-               log.severe "No command registered for output path $outputPath"
-           }
-           assert command != null
-                  
-           config = command.processedConfig
+           config = resolveStorageConfig(outputPath, strict)
+           if(config == null)
+                return new UnknownStoragePipelineFile(outputPath).storage
        }
        
        StorageLayer result = resolveStorageForConfig(config)
        log.info "Create storage layer ${result?.class?.name} for output $outputPath"
        return result
    }
+
+    @CompileStatic
+    private Map resolveStorageConfig(String outputPath, boolean strict) {
+        String commandId = pathToCommandId[outputPath]
+        if(commandId == null) {
+            if(!strict)
+                return null
+        }
+
+        if(commandId == null)
+            return null
+
+        assert commandId != null
+        Command command = trackedOutputs[commandId]
+        if(command == null)
+            if(!strict)
+                return null
+
+        if(command == null) {
+            log.severe "No command registered for output path $outputPath"
+        }
+        assert command != null
+
+        return command.processedConfig
+    }
    
    StorageLayer resolveStorageForConfig(Map config) {
        String storage = config.containsKey('storage') ? config.storage : null
