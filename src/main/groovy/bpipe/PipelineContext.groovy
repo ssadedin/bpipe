@@ -97,7 +97,7 @@ class PipelineContext {
     public PipelineContext(Binding extraBinding, List<PipelineStage> pipelineStages, List<Closure> pipelineJoiners, Branch branch) {
         super();
         if(pipelineStages == null)
-            throw new IllegalArgumentException("pipelineStages cannot be null")
+            throw new IllegalArgumentException("PipelineStages cannot be null")
             
         this.pipelineStages = pipelineStages
         this.extraBinding = extraBinding
