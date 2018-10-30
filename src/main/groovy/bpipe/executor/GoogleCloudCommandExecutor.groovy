@@ -27,6 +27,11 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
     String instanceId
     
     /**
+     * The command executed by the executor
+     */
+    String commandId 
+    
+    /**
      * If the command is running, the process representing the SSH command
      * that is executing the remote process.
      */
@@ -92,7 +97,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
             //             In that case we expect the command still to be running, as long as the VM is - it runs forever!
             log.info "No local process launched but instance $instanceId found: assume command already running, probing instance"
             String sdkHome = getSDKHome()
-            List<String> statusCommand = ["$sdkHome/bin/gcloud","compute","ssh","--command","true",this.instanceId]*.toString()
+            List<String> statusCommand = ["$sdkHome/bin/gcloud","compute","ssh","--command","ps -p `cat $workingDirectory/.bpipe/gcloud/$commandId`",this.instanceId]*.toString()
             ExecutedProcess result = Utils.executeCommand(statusCommand)
             if(result.exitValue == 0) {
                 return CommandStatus.RUNNING
@@ -227,12 +232,22 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         
         assert this.instanceId != null
         
+        this.commandId = command.id
+        
         String sdkHome = getSDKHome()
         
         File jobDir = this.getJobDir(command)
         
         File cmdFile = new File(jobDir, "cmd.sh")
-        cmdFile.text = 'cd work || { echo "Unable to change to expected working directory: work"; exit 1; }\n\n' + command.command
+        cmdFile.text = """
+            cd $workingDirectory || { echo "Unable to change to expected working directory: $workingDirectory"; exit 1; }
+
+            mkdir -p .bpipe/gcloud
+
+            echo \$\$ > .bpipe/gcloud/$command.id
+
+            $command.command
+        """.stripIndent()
         
         List<String> sshCommand = ["$sdkHome/bin/gcloud","compute","ssh","--command","bash",this.instanceId]*.toString()
         
