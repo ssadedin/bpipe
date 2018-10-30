@@ -72,8 +72,8 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
     }
 
 	String toString() {
-       List boxed = getResolvedValues()
-       return boxed*.toString().join(" ")
+       List<PipelineFile> boxed = getResolvedValues()
+       return boxed*.renderToCommand().join(" ")
     }
     
     def propertyMissing(String name) {
