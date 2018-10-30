@@ -1545,7 +1545,12 @@ class PipelineContext {
         String SET_JH = ""
         if(javaExe != null) {
            String javaHome = new File(javaExe).absoluteFile.parentFile.parentFile 
-           SET_JH="""unset JAVA_HOME; export PATH="$javaHome/bin:\$PATH";"""
+           SET_JH = """export PATH="$javaHome/bin:\$PATH";"""
+           
+           // Only unset JAVA_HOME if javac exists: otherwise it could be needed to
+           // point groovy to the correct location
+           if(new File("$javaHome/bin/javac").exists())
+               SET_JH="""unset JAVA_HOME; """ + SET_JH
         } 
         
         String groovyExe = Utils.resolveExe("groovy","groovy")
