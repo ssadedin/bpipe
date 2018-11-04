@@ -261,6 +261,7 @@ get_classpath() {
   then
      CP=`cygpath -pm "$CP"`
   fi
+  echo "CLASSPATH=$CP"
 }
 
 #----------------------------------------------------------
@@ -629,7 +630,6 @@ LAUNCH_CMD='
              -Dbpipe.version='$VERSION' \
              -Dbpipe.builddate='$BUILDDATE' \
                  org.codehaus.groovy.tools.GroovyStarter \
-                    --classpath "'"$CP"'" \
                     --main bpipe.Runner '$TESTMODE' '$BPIPE_ARGS' > .bpipe/logs/$$.log 2>&1
 '
 
