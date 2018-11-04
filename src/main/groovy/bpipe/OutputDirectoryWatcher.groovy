@@ -346,6 +346,11 @@ class OutputDirectoryWatcher extends Thread {
         // return 
         int rand = new Random().nextInt()
         File directoryFile = directory.toFile()
+        if(!directoryFile.exists()) {
+            log.warning("Cannot sync directory $directoryFile because it doesn't exist")
+            return
+        }
+            
         File tmpFile = new File(directoryFile,".bpipe.tmp-"+rand)
         tmpFile.text = ""
         
