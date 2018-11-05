@@ -551,8 +551,6 @@ class PipelineContext {
            }
            else {
                log.info "No inputs resolved by input wrappers: outputs based on default ${this.defaultOutput}"
-               if(out == null)
-                   out = [this.getDefaultOutput()]
            }
        }
        else {
