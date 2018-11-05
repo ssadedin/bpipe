@@ -414,7 +414,7 @@ class PipelineContext {
        if(config == null) {
            config = resolveStorageConfig(outputPath, strict)
            if(config == null)
-                return new UnknownStoragePipelineFile(outputPath).storage
+                return StorageLayer.defaultStorage
        }
        
        StorageLayer result = resolveStorageForConfig(config)
@@ -1206,7 +1206,7 @@ class PipelineContext {
         List fixedOutputs = 
             Utils.box(out).grep { !(it instanceof Pattern) &&  !it.contains("*") }
                           .collect { f ->
-                              new UnknownStoragePipelineFile(f)
+                              new PipelineFile(f, StorageLayer.defaultStorage)
                           } 
         
         // Check for all existing files that match the globs
