@@ -1019,16 +1019,16 @@ class Dependencies {
 //                
 //                log.info "Values: " + entry.parents*.values
 //                
-                def newerInputs = findNewerInputs(p, inputValues)
+                List newerInputs = findNewerInputs(p, inputValues)
                 
                 if(newerInputs) {
                     p.upToDate = false
-                    log.info "$p.outputFile is older than inputs " +
+                    log.info "$p.outputFile is older than ${newerInputs.size()} inputs " +
                        (newerInputs.collect { it.outputFile.name + ' / ' + it.timestamp + ' / ' + it.maxTimestamp + ' vs ' + p.timestamp })
                     continue
                 }
                 
-                log.info "$p.outputPath is newer than input files"
+//                log.info "$p.outputPath is newer than ${inputValues?.size()?:0} input files"
 
                 // The entry may still not be up to date if it
                 // does not exist and a downstream target needs to be updated
