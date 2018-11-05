@@ -403,14 +403,14 @@ class PipelineInput {
         // that we know nothing about
         reverseOutputs.add(LocalPipelineFile.from(Utils.box(stages[0].context.@input) as List))
             
-          // Consider not just the actual inputs to the stage, but also the *original* unmodified inputs
-          if(stages[0].originalInputs)
+        // Consider not just the actual inputs to the stage, but also the *original* unmodified inputs
+        if(stages[0].originalInputs)
   	        reverseOutputs.add(LocalPipelineFile.from(Utils.box(stages[0].originalInputs) as List))
         
         // Add an initial stage that represents the current input to this stage.  This way
         // if the from() spec is used and matches the actual inputs then it will go with those
         // rather than searching backwards for a previous match
-        reverseOutputs.add(0,LocalPipelineFile.from(Utils.box(this.@input) as List))
+        reverseOutputs.add(0,this.@input)
             
         return reverseOutputs
     }
