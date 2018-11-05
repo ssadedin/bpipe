@@ -6,6 +6,7 @@ import groovy.transform.Memoized
 import groovy.util.logging.Log
 
 import java.nio.file.Files
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.util.regex.Pattern
 
@@ -73,7 +74,12 @@ class PipelineFile implements Serializable {
     
     @CompileStatic
     long lastModified() {
-       Files.getLastModifiedTime(toPath()).toMillis() 
+       try {
+           Files.getLastModifiedTime(toPath()).toMillis() 
+       }
+       catch(NoSuchFileException ex) {
+           return 0
+       }
     }
     
     @CompileStatic
