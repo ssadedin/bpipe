@@ -118,6 +118,11 @@ class HazelcastCommandExecutor extends AbstractGridBashExecutor {
          */
         classpathConfigured = true
     }
+    @Override
+    public String localPath(String storageName) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 
 
 }

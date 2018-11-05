@@ -5,11 +5,18 @@ import java.nio.file.Path
 import bpipe.PipelineFile
 import bpipe.executor.CommandExecutor
 import groovy.transform.CompileStatic
+import groovy.util.logging.Log
 
+@Log
 class UnknownStoragePipelineFile extends PipelineFile {
 
     UnknownStoragePipelineFile(String thePath) {
         super(thePath, new StorageLayer() {
+            
+            {
+                name='unknown'
+            }
+            
             public boolean exists(String path) {
                 true
             }
@@ -19,8 +26,16 @@ class UnknownStoragePipelineFile extends PipelineFile {
             }
 
             @Override
-            public void mount(CommandExecutor executor) {
+            public String mount(CommandExecutor executor) {
+                return "."
             }
         })
+        
+        log.info "Created new unknown storage pipeline file: $thePath"
+    }
+
+    @Override
+    public String renderToCommand() {
+        assert false
     }
 }

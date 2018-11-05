@@ -53,7 +53,7 @@ class GoogleCloudStorageLayer extends StorageLayer {
     }
 
     @Override
-    public void mount(CommandExecutor executor) {
+    public String mount(CommandExecutor executor) {
         
         init()
         
@@ -78,6 +78,8 @@ class GoogleCloudStorageLayer extends StorageLayer {
         Utils.executeCommand(sshCommand, throwOnError: true)
         
         log.info "Bucket $bucket has been successfully mounted using command: $sshCommand"
+        
+        return "/home/${System.properties['user.name']}/$path"
     }
     
     final static String BUCKET_ALREADY_EXISTS_ERROR = 'ServiceException: 409'

@@ -485,4 +485,9 @@ class CustomCommandExecutor implements PersistentExecutor {
     public void reconnect(Appendable outputLog, Appendable errorLog) {
         log.info "Reconnecting to command $commandId"
     }
+
+    @Override
+    public String localPath(String storageName) {
+        return '';
+    }
 }

@@ -351,4 +351,10 @@ class LsfCommandExecutor implements CommandExecutor {
     public String statusMessage() {
         return "LSF [$name] JobID: $commandId, command: $cmd"
     }
+
+    @Override
+    public String localPath(String storageName) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }

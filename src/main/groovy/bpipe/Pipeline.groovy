@@ -744,19 +744,22 @@ public class Pipeline implements ResourceRequestor {
      * @param constructedPipeline
      * @param inputFile
      */
-    void launchPipeline(def constructedPipeline, def inputFile, Date startDate) {
+    void launchPipeline(def constructedPipeline, def rawInputFiles, Date startDate) {
         
         def cmdlog = CommandLog.cmdLog
         
         String failureMessage = null
         try {
-            this.checkRequiredInputs(Utils.box(inputFile))
+            
+            this.checkRequiredInputs(rawInputFiles)
+            
+            List<PipelineFile> resolvedInputFiles = this.resolveInputsToStorage(Utils.box(rawInputFiles))
             
             if(!Runner.opts.t) {
                 writeJobPIDFile()
                 scheduleStatsUpdate()
             }
-            runSegment(inputFile, constructedPipeline)
+            runSegment(resolvedInputFiles, constructedPipeline)
                     
             if(failed) {
                 failureMessage = ("\n" + failExceptions*.message.join("\n"))
@@ -833,6 +836,29 @@ public class Pipeline implements ResourceRequestor {
         
         if(!failed) {
             summarizeOutputs(stages)
+        }
+    }
+    
+    /**
+     * For each raw input path, resolve it to the first configured storage where the
+     * path exists. If no configured storage has the value, returnes an UnknownStoragePipelineFile
+     * instance for that path.
+     * 
+     * @param rawInputs
+     * @return  a list of {@link PipelineFile} objects, one for each raw input
+     */
+    @CompileStatic
+    List<PipelineFile> resolveInputsToStorage(List<String> rawInputs) {
+        List<String> storageNames = (Config.listValue('storage') + ['local'])
+        List storages = storageNames.collect { String storageType -> StorageLayer.create(storageType) }
+        return rawInputs.collect { filePath ->
+            StorageLayer layerWithFile = storages.find { it.exists(filePath) }
+            if(layerWithFile) {
+                log.info "Input $filePath resolved to storage type $layerWithFile"
+                return new PipelineFile(filePath,layerWithFile)
+            }
+            else
+                return new UnknownStoragePipelineFile(filePath)
         }
     }
 

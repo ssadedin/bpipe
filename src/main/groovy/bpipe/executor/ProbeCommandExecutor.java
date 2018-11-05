@@ -73,4 +73,9 @@ public class ProbeCommandExecutor implements CommandExecutor {
         return "Probe command executor";
     }
 
+    @Override
+    public String localPath(String storageName) {
+        return null;
+    }
+
 }
