@@ -1276,7 +1276,7 @@ class PipelineContext {
             
             // Update transformed inputs if a different input was selected
             // than was expected by default
-            retransformOutputs(lastInputs, probeResolvedInputs, fixedOutputs)
+//            retransformOutputs(lastInputs, probeResolvedInputs, fixedOutputs)
             
             def allInputs = (probeResolvedInputs  + Utils.box(lastInputs)).unique()
             
