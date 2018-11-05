@@ -386,7 +386,7 @@ class PipelineContext {
        if(Thread.currentThread().id != threadId)
            log.warning "Thread output being set to $outs from wrong thread ${Thread.currentThread().id} instead of $threadId"
        
-       return (List<PipelineFile>)outs.collect { Object o ->
+       return (List<PipelineFile>)Utils.box(outs).collect { Object o ->
            
            assert !(o instanceof List)
            
