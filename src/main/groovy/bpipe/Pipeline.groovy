@@ -41,6 +41,7 @@ import groovy.xml.MarkupBuilder;
 import groovy.transform.CompileStatic;
 
 import java.util.logging.Level;
+import java.util.logging.Logger
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream
 
@@ -82,8 +83,9 @@ class ClosureScript extends Script {
  * running by specifying initial inputs and setting up 
  * surrounding category to enable implicit pipeline stage functions.
  */
-@Log
 public class Pipeline implements ResourceRequestor {
+    
+    public final static Logger log = Logger.getLogger('bpipe.Pipeline')
     
     /**
      * Default imports added to the top of all files executed by Bpipe
