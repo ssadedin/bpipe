@@ -778,6 +778,8 @@ public class Pipeline implements ResourceRequestor {
         }
         catch(PipelineError e) {
             failed = true
+            failExceptions << e
+            failureMessage = e.getMessage()
         }
         catch(Exception e) {
             log.throwing "Pipeline", "Unexpected failure", e
