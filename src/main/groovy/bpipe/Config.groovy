@@ -1,5 +1,6 @@
 package bpipe
 
+import groovy.transform.CompileStatic
 import groovy.util.ConfigObject;
 
 import groovy.util.logging.Log;
@@ -88,6 +89,30 @@ class Config {
      * Configuration loaded from the local directory
      */
     public static ConfigObject userConfig
+    
+    /**
+     * Return an element from the user config (bpipe.config) that is expected to be a List
+     * (multiple valued element), but which can be provided as an actual list or a comma separated string
+     * 
+     * @param name  the name of the config to query
+     * @return      a List object containing the values. If the config is not specified, an empty list is returned.
+     */
+    @CompileStatic
+    public static List<String> listValue(String name) {
+        return listValue(Config.userConfig, name)
+    }
+
+    @CompileStatic
+    public static List<String> listValue(Map cfg, String name) {
+        Object rawValue = cfg.getOrDefault(name,[])
+        if(rawValue instanceof List)
+            return (List)rawValue
+        else
+        if(rawValue instanceof String || rawValue instanceof GString)
+            return rawValue.toString().tokenize(',')*.trim()
+        else
+            throw new PipelineError("Configuration value ${name} is expected to be a string (text) value or a List object but was provided as type " + rawValue.class?.name)
+    }
     
     /**
      * Read user controlled configuration file from several cascading locations.
