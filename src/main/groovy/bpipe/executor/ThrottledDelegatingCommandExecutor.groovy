@@ -2,10 +2,14 @@ package bpipe.executor
 
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
+
+import java.util.regex.Matcher
+import java.util.regex.Pattern
 import bpipe.Command;
 import bpipe.Concurrency;
 import bpipe.PipelineContext;
 import bpipe.ResourceUnit;
+import bpipe.storage.StorageLayer
 import bpipe.RescheduleResult
 import bpipe.PipelineError
 
@@ -107,6 +111,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
             cfg.procs = threadCount
 
         command.command = command.command.replaceAll(PipelineContext.THREAD_LAZY_VALUE, threadAmount)
+        command.command = this.replaceStorageMountPoints(command)
         
         command.allocated = true
         command.createTimeMs = System.currentTimeMillis()
@@ -314,5 +319,31 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
     @Override
     void cleanup() {
         this.commandExecutor.cleanup()
+    }
+    
+    final static Pattern mountPointPattern = ~/\{bpipe:([a-zA-Z0-9]{1,}):(.*?)\}/
+    
+    @CompileStatic
+    protected String replaceStorageMountPoints(Command command) {
+        Matcher matches = mountPointPattern.matcher(command.command)
+        StringBuffer newCommand = new StringBuffer(command.command.size())
+        log.info "Checking for mount paths in $command.command"
+        while(matches.find()) {
+            String path = matches.group(2)
+            String storageName = matches.group(1)
+            
+            log.info "Replacement path is $path via storage $storageName"
+            
+            StorageLayer storage = StorageLayer.create(storageName)
+//            String mountedPath = commandExecutor.localPath(storageName)
+            String mountedPath = storage.mount(commandExecutor)
+            log.info "Storage $storageName mounted to path $mountedPath in executor $commandExecutor"
+            String newPath = mountedPath ? "$mountedPath/$path" : path
+            matches.appendReplacement(newCommand, newPath)
+        }
+        matches.appendTail(newCommand)
+        
+        log.info "Replacing storage mount points in $command.command => $newCommand"
+        return newCommand
     }
 }

@@ -13,7 +13,9 @@ class TestStorageLayer extends StorageLayer {
 
     @Override
     public boolean exists(String path) {
-        return Files.exists(toPath(path))
+        Path fullPath = toPath(path)
+        log.info "Checking if $fullPath exists"
+        return Files.exists(fullPath)
     }
 
     @Override
@@ -22,9 +24,9 @@ class TestStorageLayer extends StorageLayer {
     }
 
     @Override
-    public void mount(CommandExecutor executor) {
-        log.info "Mounting test storage ..."
+    public String mount(CommandExecutor executor) {
         // noop
+        return base
     }
 
 }

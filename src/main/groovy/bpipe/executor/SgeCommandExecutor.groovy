@@ -355,4 +355,10 @@ class SgeCommandExecutor implements CommandExecutor {
     public String statusMessage() {
         return "SGE Job ID: $commandId command: $cmd"
     }
+
+    @Override
+    public String localPath(String storageName) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }

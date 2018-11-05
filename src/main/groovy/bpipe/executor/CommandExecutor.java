@@ -77,6 +77,11 @@ public interface CommandExecutor extends Serializable {
     
     void cleanup();
     
+    /**
+     * Return the path at which the given named storage is mounted within this executor
+     */
+    String localPath(String storageName);
+    
     String statusMessage(); 
     
     /**

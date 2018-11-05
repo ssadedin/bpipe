@@ -28,6 +28,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger
 import java.util.regex.Pattern
 
+import bpipe.storage.LocalFileSystemStorageLayer
 import bpipe.storage.LocalPipelineFile
 
 import groovy.transform.CompileStatic
@@ -133,8 +134,9 @@ class PipelineInput {
     }
     
     String toString() {
-        def resolvedValue = getResolvedValue()
-        return this.aliases[resolvedValue]
+        PipelineFile resolvedValue = getResolvedValue()
+        PipelineFile resolvedFile =  this.aliases[resolvedValue]
+        return resolvedFile.renderToCommand()
     }
     
     void addResolvedInputs(List<PipelineFile> objs) {

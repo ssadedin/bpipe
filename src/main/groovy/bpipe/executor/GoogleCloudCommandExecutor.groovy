@@ -339,4 +339,12 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
     public void reconnect(Appendable outputLog, Appendable errorLog) {
         this.launchSSH(outputLog, errorLog)
     }
+
+    @CompileStatic
+    @Override
+    public String localPath(String storageName) {
+        // the storage will get mapped to t
+        // /home/<user>/<storage name>
+        return "/home/${System.properties['user.name']}/$storageName"
+    }
 }
