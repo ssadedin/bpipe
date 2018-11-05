@@ -1,6 +1,8 @@
 package bpipe
 
+import bpipe.storage.LocalFileSystemStorageLayer
 import bpipe.storage.StorageLayer
+import bpipe.storage.UnknownStoragePipelineFile
 import groovy.transform.CompileStatic
 import groovy.transform.Memoized
 import groovy.util.logging.Log
@@ -109,9 +111,10 @@ class PipelineFile implements Serializable {
         PipelineCategory.getPrefix(this.toString())
     }
     
+    @CompileStatic
     boolean isMissing(OutputMetaData p, String type) {
                 
-        log.info "Checking file " + this.path
+        log.info "Checking file " + this.path + " in storage " + this.storage
         
         if(this.exists())
             return false // not missing
@@ -136,5 +139,14 @@ class PipelineFile implements Serializable {
     String toString() {
         path
     }
-
+    
+    @CompileStatic
+    String renderToCommand() {
+        assert storage.name != 'unknown'
+        
+        if(storage instanceof LocalFileSystemStorageLayer) 
+            return this.toString()
+        else
+            return "{bpipe:$storage.name://${this.toString()}}"
+    }
 }

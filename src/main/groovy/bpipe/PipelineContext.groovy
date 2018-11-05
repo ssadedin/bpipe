@@ -447,11 +447,11 @@ class PipelineContext {
         return command.processedConfig
     }
    
+   @CompileStatic
    StorageLayer resolveStorageForConfig(Map config) {
-       String storage = config.containsKey('storage') ? config.storage : null
+       String storage = Config.listValue(config, 'storage')[0]
        if(!storage)
            return new LocalFileSystemStorageLayer()
-           
        return StorageLayer.create(storage)
    }
    
@@ -1262,6 +1262,7 @@ class PipelineContext {
                 // For now, we will use just the storage of the first alias
                 // aliasing outputs to inputs derived from multiple different storages 
                 // will cause an issue here
+                log.info "No command: resolving storage via alias"
                 associatedStorage = this.aliases.aliases*.value[0]?.to?.storage
             }
             

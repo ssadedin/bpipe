@@ -367,6 +367,11 @@ class PooledExecutor implements CommandExecutor {
     public List<String> getIgnorableOutputs() {
         return [];
     }
+
+    @Override
+    public String localPath(String storageName) {
+        return this.executor.localPath(storageName);
+    }
 }
 
 @Log
