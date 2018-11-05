@@ -757,7 +757,7 @@ class Dependencies {
                 p.accompanies && p.accompanies in internalNodeFileNames 
             }
             internalNodes += accompanyingOutputs
-            accompanyingOutputFileNames += accompanyingOutputs*.outputFile*.fileName*.toString()
+            accompanyingOutputFileNames += accompanyingOutputs*.outputFile*.name*.toString()
         }
         
         if(!internalNodes) {
