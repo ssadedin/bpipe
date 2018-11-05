@@ -839,7 +839,10 @@ class Utils {
        resolveExe("R", "Rscript")
    }
    
-   public static resolveExe(String name, String defaultExe) {
+   /**
+    * Check if an executable has been configured by the user and if so, return the full path to it
+    */
+   public static String resolveExe(String name, String defaultExe) {
        String resolvedExe = defaultExe
        if(Config.userConfig.containsKey(name) && Config.userConfig[name].containsKey("executable")) {
            resolvedExe = Config.userConfig[name].executable
