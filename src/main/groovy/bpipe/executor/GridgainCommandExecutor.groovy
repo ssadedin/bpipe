@@ -110,4 +110,9 @@ class GridgainCommandExecutor extends AbstractGridBashExecutor {
 
         return true
     }
+
+    @Override
+    public String localPath(String storageName) {
+        return null;
+    }
 }

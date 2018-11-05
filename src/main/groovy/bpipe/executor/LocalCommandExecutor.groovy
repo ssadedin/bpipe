@@ -33,6 +33,7 @@ import java.lang.ProcessBuilder.Redirect;
 import bpipe.Command;
 import bpipe.OutputLog;
 import bpipe.Utils
+import bpipe.storage.StorageLayer
 import bpipe.CommandStatus
 import bpipe.ExecutedProcess
 import bpipe.ForwardHost;
@@ -312,6 +313,20 @@ class LocalCommandExecutor implements CommandExecutor {
     
     String statusMessage() {
         "$runningCommand, running since $startedAt (local command, pid=$pid)"
+    }
+    
+    Map mountedStorage = [:]
+
+    @Override
+    public String localPath(String storageName) {
+        if(mountedStorage.containsKey(storageName))
+            return mountedStorage[storageName]
+        
+        StorageLayer storage = StorageLayer.create(storageName)
+        storage.mount(this)
+        mountedStorage[storageName] 
+        
+        
     }
     
 }
