@@ -778,7 +778,7 @@ class PipelineCategory {
             }
   
             
-            Utils.box(s?.context?.nextInputs ?: s?.context?.@output) 
+            Utils.box(s?.context?.@output) 
         }.sum().collect { it.normalize() }.unique()
 
        
