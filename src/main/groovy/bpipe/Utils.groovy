@@ -724,7 +724,7 @@ class Utils {
     * Coerce all of the arguments to point to files in the specified directory.
     */
     static List toDir(List outputs, dir) {
-       
+        
        String targetDir = dir
        File targetDirFile = new File(targetDir)
        if(!targetDirFile.exists())
@@ -732,7 +732,7 @@ class Utils {
            
        String outPrefix = targetDir == "." ? "" : targetDir + "/" 
        
-       def types = outputs.collect { it.class }
+       List<Class> types = outputs.collect { it.class }
        def newOutputs = outputs.collect { out ->
            Class type = out.class
            
