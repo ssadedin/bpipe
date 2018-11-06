@@ -58,7 +58,6 @@ dependencies {
     compile group: 'com.fasterxml.jackson.jaxrs', name: 'jackson-jaxrs-json-provider', version: '2.9.1'
     compile group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.0' // needed for gitlab4j
     compile(group: 'org.gitlab4j', name: 'gitlab4j-api', version: '4.7.17') { transitive = false } // note 4.8 not compatible with jdk1.7
-    compile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.25'
 
     compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.0'
 
@@ -91,6 +90,7 @@ jar {
         !it.name.startsWith("hazelcast") &&
         !it.name.startsWith("xalan-") &&
         !it.name.startsWith("xml-apis")
+        !it.name.startsWith("slf4j-jdk14")
     }.collect {
         it.isDirectory() ? it : zipTree(it)
     }
@@ -100,6 +100,7 @@ task stage(dependsOn: jar) << {
   ant.mkdir(dir: STAGE)
   ant.mkdir(dir: "$STAGE/bin")
   ant.mkdir(dir: "$STAGE/lib")
+  ant.mkdir(dir: "$STAGE/lib/slf4j")
   ant.copy(todir: "$STAGE/bin") {
     ant.fileset(dir: 'bin', includes: "**")
   }
@@ -109,9 +110,14 @@ task stage(dependsOn: jar) << {
   ant.copy(todir: "$STAGE/lib") {
     // do not distribute mail.jar due to license
     ant.fileset(dir: 'local-lib', includes: "*.jar",
-        excludes: "mail.jar,gridgain-*.jar,hazelcast-*.jar,batik*.jar,commons-cli*.jar,jgraphx.jar,smack-*.jar,xml-*.jar,gpars*.jar,jsr*.jar,extra166y*.jar,groovy-all-*.jar")
+        excludes: "slf4j-*,mail.jar,gridgain-*.jar,hazelcast-*.jar,batik*.jar,commons-cli*.jar,jgraphx.jar,smack-*.jar,xml-*.jar,gpars*.jar,jsr*.jar,extra166y*.jar,groovy-all-*.jar")
     ant.fileset(dir: 'build/libs', includes: "bpipe.jar")
   }
+  
+  ant.copy(todir: "$STAGE/lib/slf4j") {
+    ant.fileset(dir: 'local-lib', includes: "slf4j-jdk14*.jar")
+  }
+  
 
   ["templates","html"].each { type ->
       ant.mkdir(dir: "$STAGE/$type")
