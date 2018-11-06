@@ -4,8 +4,8 @@
 hello = {
     from("txt","txt") {
             filter("hello","hello2") {
-              msg "$input1 => $output1"
-              msg "$input2 => $output2"
+              println  "$input1 => $output1"
+              println  "$input2 => $output2"
               exec "cp $input1 $output1"
               exec "cp $input2 $output2"
             }
@@ -15,7 +15,7 @@ hello = {
 world = {
     from("txt","txt") {
     filter("world") {
-      msg "$input => $output"
+      println "$input => $output"
       exec "cp $input $output"
     }
     }

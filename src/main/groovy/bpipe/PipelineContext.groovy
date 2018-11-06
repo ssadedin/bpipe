@@ -751,15 +751,17 @@ class PipelineContext {
     * Coerce all of the arguments (which may be an array of Strings or a single String) to
     * point to files in the local directory.
     * This method is (and must remain) side-effect free
+    * 
+    * @return   A list of the same type as the inputs (PipelineFile,String)
     */
-   List<String> toOutputFolder(outputs) {
+   List toOutputFolder(outputs) {
        
        List boxed = Utils.box(outputs)
        
        if(outputDirectory == null)
-           Utils.toDir(boxed, ".")
+           return Utils.toDir(boxed, ".")
        else
-           Utils.toDir(boxed, outputDirectory)
+           return Utils.toDir(boxed, outputDirectory)
    }
    
    void checkAccompaniedOutputs(List<PipelineFile> inputsToCheck) {
@@ -1199,7 +1201,7 @@ class PipelineContext {
             out = toOutputFolder(out)
         }
         
-        def lastInputs = this.@input
+        List<PipelineFile> lastInputs = this.@input
         boolean doExecute = true
         
         List fixedOutputs = 
@@ -1276,9 +1278,9 @@ class PipelineContext {
             
             // Update transformed inputs if a different input was selected
             // than was expected by default
-//            retransformOutputs(lastInputs, probeResolvedInputs, fixedOutputs)
+            retransformOutputs(lastInputs, probeResolvedInputs, fixedOutputs)
             
-            def allInputs = (probeResolvedInputs  + Utils.box(lastInputs)).unique()
+            List<PipelineFile> allInputs = (probeResolvedInputs  + Utils.box(lastInputs)).unique()
             
             // Associate storage to any outputs that did not resolve storage already
             fixedOutputs = fixedOutputs.collect { o ->
@@ -1442,12 +1444,18 @@ class PipelineContext {
         Logger logger = log
         if(currentFileNameTransform != null) {
             List<String> origInputPaths = originalInputFiles*.path
+            List<String> origOutputPaths = fixedOutputs*.path
+            
+            List<PipelineFile> retransformed = this.currentFileNameTransform.transform(probeResolvedInputs, this.applyName)
+            
             probeResolvedInputs.eachWithIndex { PipelineFile inpFile, int i ->
-                String newPath = toOutputFolder(this.currentFileNameTransform.transform([inpFile], this.applyName)[0].path)[0]
-                if(!fixedOutputs.contains(inpFile.path))  {
-                    logger.info "Replace output ${fixedOutputs[i]} => $newPath after probe due to alternative input reference with filter"
-                    fixedOutputs[i] =
-                            new UnknownStoragePipelineFile(newPath) // could inherit from input?
+                if(!origOutputPaths.contains(inpFile.path))  {
+                    if(retransformed[i] != null) {
+                        List<PipelineFile> newNames = toOutputFolder(retransformed[i])
+                        String newPath = newNames[0].toString()
+                        logger.info "Replace output ${fixedOutputs[i]} => $newPath after probe due to alternative input reference with filter"
+                        fixedOutputs[i] = inpFile.newName(newPath)
+                    }
                 }
             }
         }
