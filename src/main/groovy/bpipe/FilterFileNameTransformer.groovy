@@ -50,6 +50,9 @@ class FilterFileNameTransformer implements FileNameTransformer {
     @Override
     public List<PipelineFile> transform(List<PipelineFile> inputs,  boolean applyName) {
         
+        
+        log.info("Inputs to transform: " + inputs.join(','))
+        
         this.nameApplied = applyName
         
         def pipeline = Pipeline.currentRuntimePipeline.get()
@@ -66,7 +69,7 @@ class FilterFileNameTransformer implements FileNameTransformer {
             if(!inp)
                throw new PipelineError("Expected input but no input provided")
                
-            log.info "Filtering based on input $inp"
+            log.info "Filtering based on input of type $type (instance ${typeCounts[type]}) $inp"
             
             typeCounts[type]++
             String oldExt = (inp =~ '\\.[^\\.]*$')[0]
