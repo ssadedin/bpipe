@@ -619,6 +619,12 @@ tmsg " Launching Java"
 # to pass through to Bpipe
 set -f
 
+BPIPE_JAR="$BPIPE_HOME/lib/bpipe.jar"
+if [ -e "$BPIPE_HOME/build/libs/bpipe.jar" ];
+then
+    BPIPE_JAR="$BPIPE_HOME/eclipse-build:$BPIPE_HOME/build/libs/bpipe.jar"
+fi
+
 LAUNCH_CMD='
    printf $$ > .bpipe.'$LAUNCHER_PID'.run.pid &
    exec java -Xmx'${MAX_JAVA_MEM}' \
@@ -629,7 +635,7 @@ LAUNCH_CMD='
              -Dbpipe.version='$VERSION' \
              -Dbpipe.builddate='$BUILDDATE' \
                  org.codehaus.groovy.tools.GroovyStarter \
-                    --classpath "'"$BPIPE_HOME/lib/bpipe.jar"'" \
+                    --classpath "'"$BPIPE_JAR:$BPIPE_HOME/lib/slf4j/*"'" \
                     --main bpipe.Runner '$TESTMODE' '$BPIPE_ARGS' > .bpipe/logs/$$.log 2>&1
 '
 
