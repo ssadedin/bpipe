@@ -1442,7 +1442,7 @@ class PipelineContext {
     @CompileStatic
     private void retransformOutputs(List<PipelineFile> originalInputFiles, List<PipelineFile> probeResolvedInputs, List<PipelineFile> fixedOutputs) {
         Logger logger = log
-        if(currentFileNameTransform != null) {
+        if(currentFileNameTransform != null && !probeResolvedInputs.isEmpty()) {
             List<String> origInputPaths = originalInputFiles*.path
             List<String> origOutputPaths = fixedOutputs*.path
             
