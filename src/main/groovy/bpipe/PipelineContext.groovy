@@ -509,7 +509,7 @@ class PipelineContext {
        
        String baseOutput = Utils.first(this.getDefaultOutput())
        List<String> out = this.@output?.collect { it.path }
-       List<Object> overrideOutputs = this.@output?.clone()?:[]
+       List<Object> overrideOutputs = toOutputFolder(this.@output?.clone()?:[])
        if(out == null || this.currentFileNameTransform) { // Output not set elsewhere, or set dynamically based on inputs
            
            // If an input property was referenced, compute the default from that instead
