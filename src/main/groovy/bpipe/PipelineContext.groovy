@@ -538,7 +538,7 @@ class PipelineContext {
             }
         }
 
-        @CompileStatic
+//        @CompileStatic - causes error when compiled with gradle
         private void resolveFromInputs(List<PipelineFile> allResolved) {
               
            // By default, if multiple inputs were resolved by the input wrapper,
@@ -552,9 +552,9 @@ class PipelineContext {
             PipelineFile resolved = allResolved[defaultValueIndex]
     
             log.info("Using non-default output due to input property reference: " + resolved + " from resolved inputs " + allResolved)
-    
+            
             if(currentFileNameTransform != null) {
-                out = currentFileNameTransform.transform((List)Utils.box(allResolved), applyName)*.path
+                out = currentFileNameTransform.transform(allResolved, applyName)*.path
                 overrideOutputs = toOutputFolder(out)
             }
             else
