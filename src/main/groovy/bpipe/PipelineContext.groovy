@@ -60,6 +60,7 @@ import bpipe.storage.UnknownStoragePipelineFile
 */
 class PipelineContext {
     
+   
     static Logger log = Logger.getLogger(PipelineContext.name)
     
     /**
@@ -505,86 +506,131 @@ class PipelineContext {
        }
    }
    
-   def getOutputImpl() {
+   /**
+    * Internal class to encapsulate logic for resolving outputs
+    * 
+    * @author simon.sadedin
+    */
+   private class OutputResolver {
+        String baseOutput 
+        List<String> out 
+        List<PipelineFile> overrideOutputs 
+        OutputResolver() {
+            baseOutput = Utils.first(getDefaultOutput())
+            out = rawOutput?.collect { it.path }
+            overrideOutputs = (List)rawOutput?.clone()?:[]            
+        }
+        
+        @CompileStatic
+        void resolveOutput() {
+            
+            // If an input property was referenced, compute the default from that instead
+            List<PipelineFile> allResolved = (List<PipelineFile>)allUsedInputWrappers.collect { Object k, PipelineInput v -> 
+                v.resolvedInputs 
+            }.flatten()
+            
+            if(!allResolved) {
+                log.info "No inputs resolved by input wrappers: outputs will be based on default ${defaultOutput}"
+                return
+            }
+            else {
+                resolveFromInputs(allResolved)
+            }
+        }
+
+        @CompileStatic
+        private void resolveFromInputs(List<PipelineFile> allResolved) {
+              
+           // By default, if multiple inputs were resolved by the input wrapper,
+           // we take the first UNLESS one of the inputs corresponds to a branching
+           // file (a file responsible for splitting the pipeline into multiple parallel
+           // paths). In the case of a branching file we use that in preference because 
+           // otherwise multiple parallel paths will resolve to the same output.
+              
+            int defaultValueIndex = computeDefaultInputIndex(allResolved)
+    
+            PipelineFile resolved = allResolved[defaultValueIndex]
+    
+            log.info("Using non-default output due to input property reference: " + resolved + " from resolved inputs " + allResolved)
+    
+            if(currentFileNameTransform != null) {
+                out = currentFileNameTransform.transform((List)Utils.box(allResolved), applyName)*.path
+                overrideOutputs = toOutputFolder(out)
+            }
+            else
+                out = [resolved.newName(resolved.name +"." + stageName).path]
+    
+            checkAccompaniedOutputs([resolved])
+   
+            // Since we're resolving based on a different input than the default one,
+            // the pipeline output wrapper should use a different one as a default too
+            baseOutput = toOutputFolder(out)[0]
+        }
+
+        /**
+         * Compute the input index that should be used if no particular input can be inferred from the command created.
+         * <p>
+         * By default, it's the first input, unless the user split the pipeline into branches by filename, in which case
+         * it's a the input corresponding to the branch that is executing.
+         * 
+         * @return  the index in the given input list that should be used to compute the output by default
+         */
+        // CompileStatic causes internal error here
+        private int computeDefaultInputIndex(List<PipelineFile> allResolved) {
+            int defaultValueIndex = -1;
+            if(branchInputs) {
+                defaultValueIndex = allResolved.findIndexOf { PipelineFile inp ->
+                    branchInputs.any { PipelineFile pf -> pf.path == inp.path }
+                }
+            }
+            if(defaultValueIndex<0)
+                defaultValueIndex = 0
+            return defaultValueIndex
+        }
+
+        @CompileStatic
+        void setDefaultIfNull() {
+            if(!out) {
+                String defaultOut = getDefaultOutput()
+                if(defaultOut != null)
+                    out = [getDefaultOutput()]
+                else
+                    out = []
+            }
+                              
+            assert out != null
+            assert out.isEmpty() || out[0] != null
+        }
+     }
+    
+   PipelineOutput getOutputImpl() {
        
-       String baseOutput = Utils.first(this.getDefaultOutput())
-       List<String> out = this.@output?.collect { it.path }
-       List<Object> overrideOutputs = this.@output?.clone()?:[]
-       if(out == null || this.currentFileNameTransform) { // Output not set elsewhere, or set dynamically based on inputs
-           
-           // If an input property was referenced, compute the default from that instead
-           def allResolved = allUsedInputWrappers.collect { k,v -> 
-               v.resolvedInputs 
-           }
-           
-           allResolved = allResolved.flatten()
-//           if(inputWrapper?.resolvedInputs) {
-           if(allResolved) {
-               
-               // By default, if multiple inputs were resolved by the input wrapper,
-               // we take the first UNLESS one of the inputs corresponds to a branching
-               // file (a file responsible for splitting the pipeline into multiple parallel
-               // paths). In the case of a branching file we use that in preference because 
-               // otherwise multiple parallel paths will resolve to the same output.
-               int defaultValueIndex = -1;
-               if(branchInputs)
-                   defaultValueIndex = allResolved.findIndexOf { PipelineFile inp -> branchInputs.any { it.path == inp.path } }
-               if(defaultValueIndex<0)
-                   defaultValueIndex = 0
-                   
-               PipelineFile resolved = Utils.unbox(allResolved[defaultValueIndex])
-               
-               log.info("Using non-default output due to input property reference: " + resolved + " from resolved inputs " + allResolved)
-               
-               if(this.currentFileNameTransform != null) {
-                   out = this.currentFileNameTransform.transform(Utils.box(allResolved), this.applyName)*.path
-                   overrideOutputs = toOutputFolder(out)
-               }
-               else
-                   out = [resolved.newName(resolved.name +"." + this.stageName).path]
-                   
-               this.checkAccompaniedOutputs([resolved])
-               
-               // Since we're resolving based on a different input than the default one,
-               // the pipeline output wrapper should use a different one as a default too
-               baseOutput = toOutputFolder(out)[0]
-           }
-           else {
-               log.info "No inputs resolved by input wrappers: outputs based on default ${this.defaultOutput}"
-           }
+       OutputResolver resolver = new OutputResolver()
+       if(resolver.out == null || this.currentFileNameTransform) { // Output not set elsewhere, or set dynamically based on inputs
+           resolver.resolveOutput()
        }
        else {
            log.info "Using previously set output: ${this.@output}"
        }
       
-       if(!out) {
-           String defaultOut = getDefaultOutput()
-           if(defaultOut != null)
-               out = [getDefaultOutput()]
-           else
-               out = []
-       }
-                         
-       assert out != null
-       assert out.isEmpty() || out[0] != null
+       resolver.setDefaultIfNull()
        
-       out = toOutputFolder(out)
+       resolver.out = toOutputFolder(resolver.out)
        
        Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
        String branchName = applyName  ? pipeline.unappliedBranchNames.join(".") : null
        
-       def po = new PipelineOutput(out,
+       PipelineOutput po = new PipelineOutput(resolver.out,
                                    this.stageName, 
-                                   baseOutput,
-                                   overrideOutputs,
+                                   resolver.baseOutput,
+                                   resolver.overrideOutputs,
                                    { o,replaced -> onNewOutputReferenced(pipeline, o, replaced)}) 
        
        po.branchName = branchName
        if(this.currentFileNameTransform instanceof FilterFileNameTransformer)
          po.currentFilter = currentFileNameTransform
-         
        po.resolvedInputs = this.resolvedInputs
-       po.outputDirChangeListener = { outputTo(it) }
+       po.outputDirChangeListener = this.&outputTo
        
        if(this.activeAccompanierPattern)
            po.transformMode = "extend"
