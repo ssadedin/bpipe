@@ -45,8 +45,8 @@ import java.util.regex.Pattern
 import org.codehaus.groovy.runtime.StackTraceUtils
 
 class ExecutedProcess {
-    StringBuilder err
-    StringBuilder out
+    Appendable err
+    Appendable out
     int exitValue
 }
 
