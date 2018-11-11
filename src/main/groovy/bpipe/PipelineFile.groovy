@@ -24,6 +24,7 @@ import java.util.regex.Pattern
  * @author simon.sadedin
  */
 @Log
+@CompileStatic
 class PipelineFile implements Serializable {
    
     public static final long serialVersionUID = 0L
@@ -53,28 +54,23 @@ class PipelineFile implements Serializable {
     }
     
 //    @Memoized
-    @CompileStatic
     Path toPath() {
         storage.toPath(path)
     }
     
 //    @Memoized
-    @CompileStatic
     String getName() {
         toPath().fileName
     }
     
-    @CompileStatic
     PipelineFile normalize() {
         new PipelineFile(toPath().normalize().toString(), storage)
     }
     
-    @CompileStatic
     boolean isDirectory() {
         Files.isDirectory(toPath())
     }
     
-    @CompileStatic
     long lastModified() {
        try {
            Files.getLastModifiedTime(toPath()).toMillis() 
@@ -84,7 +80,6 @@ class PipelineFile implements Serializable {
        }
     }
     
-    @CompileStatic
     long length() {
         if(exists())
             return Files.size(toPath())
@@ -92,7 +87,6 @@ class PipelineFile implements Serializable {
             return 0L
     }
     
-    @CompileStatic
     String getAbsolutePath() {
         toPath().toAbsolutePath().toString()
     }
@@ -101,17 +95,14 @@ class PipelineFile implements Serializable {
      * @param pattern   compiled regex pattern
      * @return  true iff the name (not whole path) of this file matches the given pattern
      */
-    @CompileStatic
     boolean matches(Pattern pattern) {
         getName().matches(pattern)
     }
     
-    @CompileStatic
     String getPrefix() {
         PipelineCategory.getPrefix(this.toString())
     }
     
-    @CompileStatic
     boolean isMissing(OutputMetaData p, String type) {
                 
         log.info "Checking file " + this.path + " in storage " + this.storage
@@ -135,12 +126,10 @@ class PipelineFile implements Serializable {
     }
    
     @Override
-    @CompileStatic
     String toString() {
         path
     }
     
-    @CompileStatic
     String renderToCommand() {
         assert storage.name != 'unknown'
         
