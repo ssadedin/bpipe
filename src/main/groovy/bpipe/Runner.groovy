@@ -772,12 +772,12 @@ class Runner {
         dirtyFiles.each { String file ->
             println "Attempting cleanup of file: $file"
             List failed 
-            for(int i=0; i<5; ++i) {
+            for(int i=0; i<3; ++i) {
                 failed = Utils.cleanup(file)  
                 if(!failed)
                     break
                 println "Cleanup of $file failed: retry $i"
-                Thread.sleep(2000)
+                Thread.sleep(500)
             }
             
             if(failed) {
