@@ -142,6 +142,8 @@ class JMSAgent extends Agent {
         String responseJSON = formatPingResponse()
         TextMessage response = session.createTextMessage(responseJSON)
         MessageProducer producer = session.createProducer(dest)
+        if(tm.JMSCorrelationID)
+            response.JMSCorrelationID = tm.JMSCorrelationID
         producer.send(response)
     }
     
