@@ -1312,7 +1312,15 @@ class PipelineContext {
                 log.info "No command: resolving storage via alias"
                 associatedStorage = this.aliases.aliases*.value[0]?.to?.storage
             }
-            
+            else {
+                // The output file COULD have been created by inline code (even though that
+                // would be discouraged)
+                if(fixedOutputs && fixedOutputs.every { it.exists() }) {
+                    log.warning "Fixed outputs were created by probe: assuming inline code created $fixedOutputs"
+                    associatedStorage = fixedOutputs[0].storage
+                }
+            }
+           
             assert associatedStorage != null : "Unable to find any storage to associate to outputs"
             
             // Set the storage on any glob outputs that need it
