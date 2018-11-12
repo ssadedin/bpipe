@@ -94,6 +94,11 @@ jar {
     }.collect {
         it.isDirectory() ? it : zipTree(it)
     }
+    
+    exclude { details ->
+        details.relativePath.pathString.startsWith('javax/xml') ||
+        details.relativePath.pathString.startsWith('org/xml')
+    }
 }
 
 task stage(dependsOn: jar) << {
