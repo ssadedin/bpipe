@@ -246,6 +246,12 @@ get_classpath() {
   then
     LIB="local-lib"
   fi
+  
+  BPIPE_JAR="$BPIPE_HOME/lib/bpipe.jar"
+  if [ -e "$BPIPE_HOME/build/libs/bpipe.jar" ];
+  then
+        BPIPE_JAR="$BPIPE_HOME/eclipse-build:$BPIPE_HOME/build/libs/bpipe.jar"
+  fi
 
   CP="$BPIPE_HOME"/$LIB/*:$HOME/bpipes/extra-lib.jar
 
@@ -619,11 +625,6 @@ tmsg " Launching Java"
 # to pass through to Bpipe
 set -f
 
-BPIPE_JAR="$BPIPE_HOME/lib/bpipe.jar"
-if [ -e "$BPIPE_HOME/build/libs/bpipe.jar" ];
-then
-    BPIPE_JAR="$BPIPE_HOME/eclipse-build:$BPIPE_HOME/build/libs/bpipe.jar"
-fi
 
 LAUNCH_CMD='
    printf $$ > .bpipe.'$LAUNCHER_PID'.run.pid &
