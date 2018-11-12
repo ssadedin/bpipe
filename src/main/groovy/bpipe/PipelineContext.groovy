@@ -2498,7 +2498,7 @@ class PipelineContext {
           
            // Finally, resolve inputs using the default storage layer where they exist 
            // in the file system, are not known outputs, AND are older than the start time of the pipeline
-           return resolveAsPreExistingFile(ext, (boolean)options.crossBranch)
+           return resolveAsPreExistingFile(ext, (boolean)options.crossBranch, (boolean)options.allowForeign)
        }
        
        log.info "Found inputs $resolvedInputs for spec $orig"
@@ -2536,7 +2536,7 @@ class PipelineContext {
     * @return   a PipelineFile representing the file, or null if not resolvable
     */
    @CompileStatic
-   PipelineFile resolveAsPreExistingFile(String pathValue, boolean allowCrossBranch) {
+   PipelineFile resolveAsPreExistingFile(String pathValue, boolean allowCrossBranch, boolean allowForeign=false) {
        Path path = defaultStorage.toPath(pathValue)
        if(!Files.exists(path)) 
            return null
@@ -2546,24 +2546,24 @@ class PipelineContext {
        if(props) {
            
            if(allowCrossBranch) {
-               log.info("Allowing $pathValue from alternative branch due to explicit crossBranch flag provided")
-              return new PipelineFile(pathValue, defaultStorage)
-        	   }
-        	   else {
-    		   
-               log.info "File $pathValue resolved existing file that is a known output but NOT from branch $branch"
-               throw new PipelineError(
-                   """
+                log.info("Allowing $pathValue from alternative branch due to explicit crossBranch flag provided")
+                return new PipelineFile(pathValue, defaultStorage)
+            }
+            else {
+
+                log.info "File $pathValue resolved existing file that is a known output but NOT from branch $branch"
+                throw new PipelineError(
+                """
                        Path $pathValue is referenced via 'from' but is resolved from a different pipeline branch. 
                    
                        Cross-branch file resolution is now disabled to avoid risk of file mixup between branches.
                    
                    """.stripIndent())
-        	   }
+            }
        }
 
       long lastModified = Files.getLastModifiedTime(path).toMillis()
-      if(lastModified > Runner.startTimeMs)  {
+      if(!allowForeign && (lastModified > Runner.startTimeMs))  {
           log.info "File $pathValue resolved as external file newer than pipeline run time: flagging as error"
           throw new PipelineError("""
                The following path is referenced via 'from' but is newer than the pipeline run time,
