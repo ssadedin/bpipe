@@ -1633,4 +1633,16 @@ public class Pipeline implements ResourceRequestor {
         return branches
     }
     
+    /**
+     * Define an optional variable, only if it was not already defined
+     * 
+     * @param variablesWithDefaults
+     */
+    static void var(Map variablesWithDefaults) {
+        for(Map.Entry e in variablesWithDefaults) {
+            if(!Runner.binding.variables.containsKey(e.key)) {
+                Runner.binding.variables[e.key] = e.value
+            }
+        }
+    }
 }
