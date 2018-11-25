@@ -107,6 +107,19 @@ is_running() {
     # Sets LAST_PID
     get_last_run_pid
 
+    # Check that the pid actually belongs to a running bpipe
+    PID_IS_BPIPE=0
+    for PID in $(pidof java); do
+      if [ "x$LAST_PID" == "x$PID" ];
+      then
+        PID_IS_BPIPE=1
+      fi
+    done
+    if [ $PID_IS_BPIPE == 0 ];
+    then
+      LAST_PID="-1"
+    fi
+
     # Never run before?
     if [ "$LAST_PID" == "-1" ];
     then
