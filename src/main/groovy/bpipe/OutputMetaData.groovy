@@ -125,6 +125,11 @@ class OutputMetaData implements Serializable {
      */
     long maxTimestamp
     
+    /**
+     * The type of storage - if null, assume local
+     */
+    StorageLayer storage
+    
     private OutputMetaData() {
     }
     
@@ -179,6 +184,15 @@ class OutputMetaData implements Serializable {
         this.startTimeMs = command.startTimeMs
         this.createTimeMs = command.createTimeMs
         this.stopTimeMs = command.stopTimeMs
+    }
+    
+    @CompileStatic
+    private void readObject(java.io.ObjectInputStream ins) throws IOException, ClassNotFoundException {
+        ins.defaultReadObject()
+        if(storage == null)
+            storage = StorageLayer.getDefaultStorage()
+            
+        this.outputFile = new PipelineFile(this.outputPath, this.storage) 
     }
     
     /**
@@ -248,7 +262,9 @@ class OutputMetaData implements Serializable {
             return 
         }
             
-        this.outputFile = new PipelineFile(p.outputFile, StorageLayer.create(p.storage))
+        this.storage = StorageLayer.create(p.storage?:'local')
+        
+        this.outputFile = new PipelineFile(outputPath, storage) 
         
         // Normalizing the slashes in the path is necessary for Cygwin compatibility
         this.outputPath = String.valueOf(outputFile).replace('\\',"/")
@@ -299,6 +315,7 @@ class OutputMetaData implements Serializable {
         accompanies = p.accompanies
         command = p.command
     }
+    
 
     @CompileStatic
     private void initializeCanonicalPath(Properties p) {
