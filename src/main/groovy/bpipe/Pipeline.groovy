@@ -1639,6 +1639,10 @@ public class Pipeline implements ResourceRequestor {
      * @param variablesWithDefaults
      */
     static void var(Map variablesWithDefaults) {
+        if(currentContext.get()) { // called from within pipeline stage
+            currentContext.get().var(variablesWithDefaults)
+        }
+        else 
         for(Map.Entry e in variablesWithDefaults) {
             if(!Runner.binding.variables.containsKey(e.key)) {
                 Runner.binding.variables[e.key] = e.value
