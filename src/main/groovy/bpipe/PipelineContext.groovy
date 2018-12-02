@@ -1281,7 +1281,7 @@ class PipelineContext {
             PipelineDelegate.setDelegateOn(this, body)
             log.info("Probing command using inputs ${this.@input}")
             List oldInferredOutputs = this.allInferredOutputs.clone()
-            
+            Exception probeError = null
             try {
                 body()
             }
@@ -1292,6 +1292,7 @@ class PipelineContext {
                 log.info "Exception occurred during probe: $e.message"
                 Utils.logException log, "Exception during probe: ", e
                 probeFailure = true
+                probeError = e
             }
             log.info "Finished probe"
 
@@ -1321,7 +1322,12 @@ class PipelineContext {
                 }
             }
            
-            assert associatedStorage != null : "Unable to find any storage to associate to outputs"
+            if(associatedStorage==null && probeFailure) {
+                println "WARNING: An error occurred evaluating your pipeline stage: $probeError. Please see Bpipe log file for full details."
+                associatedStorage = StorageLayer.defaultStorage
+            }
+            else
+                assert associatedStorage != null : "Unable to find any storage to associate to outputs: (fixed outputs: $fixedOutputs, associatedCommand=$associatedCommand, stage = $stageName)"
             
             // Set the storage on any glob outputs that need it
             globExistingFiles*.setStorage(associatedStorage)
