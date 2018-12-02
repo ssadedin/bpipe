@@ -9,6 +9,8 @@ import groovy.util.logging.Log
 @Log
 class LocalFileSystemStorageLayer extends StorageLayer {
     
+    public static final long serialVersionUID = 0L
+    
     LocalFileSystemStorageLayer() {
         this.name = "local"
     }
