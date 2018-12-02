@@ -1,12 +1,14 @@
 package bpipe
 
 import groovy.lang.IntRange
+import groovy.transform.CompileStatic
 
 import java.io.Serializable;
 
 /**
  * Extends the normal Integer Range class to make it serializable
  */
+@CompileStatic
 class GenomicRange implements Serializable {
     
     private static final long serialVersionUID = 1L;
