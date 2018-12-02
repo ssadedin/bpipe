@@ -1,5 +1,7 @@
 package bpipe
 
+import groovy.transform.CompileStatic
+import groovy.transform.Memoized
 import groovy.util.logging.Log;
 import static bpipe.GenomicRange.range
 
@@ -155,10 +157,13 @@ class Sequence implements Serializable {
         ]
     }
     
+    @CompileStatic
     int size() {
         return this.range.size()
     }
     
+    @CompileStatic
+    @Memoized
     String toString() {
         "$name:$range.from-$range.to"
     }
