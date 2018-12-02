@@ -97,7 +97,8 @@ jar {
     
     exclude { details ->
         details.relativePath.pathString.startsWith('javax/xml') ||
-        details.relativePath.pathString.startsWith('org/xml')
+        details.relativePath.pathString.startsWith('org/xml') // ||
+//        details.relativePath.pathString.startsWith('org/slf4j')
     }
 }
 
@@ -115,12 +116,12 @@ task stage(dependsOn: jar) << {
   ant.copy(todir: "$STAGE/lib") {
     // do not distribute mail.jar due to license
     ant.fileset(dir: 'local-lib', includes: "*.jar",
-        excludes: "slf4j-*,mail.jar,gridgain-*.jar,hazelcast-*.jar,batik*.jar,commons-cli*.jar,jgraphx.jar,smack-*.jar,xml-*.jar,gpars*.jar,jsr*.jar,extra166y*.jar,groovy-all-*.jar")
+        excludes: "slf4j-*,mail.jar,gridgain-*.jar,hazelcast-*.jar,batik*.jar,commons-cli*.jar,jgraphx.jar,xml-*.jar,gpars*.jar,jsr*.jar,extra166y*.jar,groovy-all-*.jar")
     ant.fileset(dir: 'build/libs', includes: "bpipe.jar")
   }
   
   ant.copy(todir: "$STAGE/lib/slf4j") {
-    ant.fileset(dir: 'local-lib', includes: "slf4j-jdk14*.jar")
+    ant.fileset(dir: 'local-lib/slf4j', includes: "slf4j-jdk14*.jar")
   }
   
 
