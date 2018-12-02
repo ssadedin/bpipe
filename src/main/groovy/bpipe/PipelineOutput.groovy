@@ -177,10 +177,21 @@ class PipelineOutput {
             String firstOutput = Utils.first(output)
             String replaceOutput = null
             
+            if(firstOutput == null && overrideOutputs) 
+                throw new PipelineError(
+                    """
+                    A filter, transform or produce was specified, but an output was referenced using 
+                    extension $extraSegments that is not compatible with those outputs.
+                    
+                    The files available for reference are $overrideOutputs
+                    
+                    """.stripIndent())
+            
             // If $output is referenced without extension, we may have to reset the outputs 
             // if the output is based on an alternative input to the default one that was set
             // when the filter() was executed
             if(this.overrideOutputs && this.currentFilter != null && !(firstOutput in overrideOutputs)) {
+                assert firstOutput != null
                 if(Utils.ext(firstOutput) in currentFilter.exts) {
                     replaceOutput = this.overrideOutputs[0]
                 }
