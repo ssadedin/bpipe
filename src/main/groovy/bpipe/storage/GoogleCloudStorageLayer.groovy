@@ -27,6 +27,8 @@ import groovy.transform.ToString
 @ToString(includeNames=true)
 class GoogleCloudStorageLayer extends StorageLayer {
     
+    public static final long serialVersionUID = 0L
+    
     static Logger log = Logger.getLogger('GoogleCloudStorageLayer')
     
     private String sdkHome
