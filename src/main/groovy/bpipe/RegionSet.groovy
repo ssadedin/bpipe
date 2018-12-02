@@ -22,6 +22,12 @@ class RegionSet implements Serializable {
      * Name of this region set
      */
     String name
+    
+    /**
+     * Optional id for this region set - if present, will be used to cache the regions to ensure
+     * reproducible analyses
+     */
+    String id
 
     /**
      * Set of sequences belonging to this RegionSet.
@@ -86,13 +92,14 @@ class RegionSet implements Serializable {
     /**
      * Adds names the given sequence to this region set
      */
+    @CompileStatic
     void addSequence(Sequence s) {
         String name = s.name
-        int count = 0
-        while(this.sequences.containsKey(name)) {
-            name = s.name + "." + (++count)       
-        }
-        this.sequences[name] = s    
+//        int count = 0
+//        while(this.sequences.containsKey(name)) {
+//            name = s.name + "." + (++count)       
+//        }
+        this.sequences[s.toString()] = s    
     }
     
     
@@ -121,25 +128,62 @@ class RegionSet implements Serializable {
         }.flatten() as Set
     }
     
+    /**
+     * Return a region set resolved from a BED file
+     * 
+     * @param options   
+     * @param fileName
+     * @return
+     */
+    @CompileStatic
     static RegionSet bed(Map options=[:], String fileName) {
-        int padding = 0;
-        if(options.padding)
-            padding = options.padding.toInteger()
-
-        RegionSet regionSet = new RegionSet()
-        new File(fileName).eachLine { String line ->
-            List<String> parts = line.tokenize('\t')
-            if(parts.size()<3)
-                throw new PipelineError("BED file should have at least 3 tab separated columns")
-
-
-            int start = Math.max(parts[1].toInteger() - padding, 0)
-            int end = parts[2].toInteger() + padding
-
-            Sequence sequence = new Sequence(name:parts[0], range:(start)..(end))
-            regionSet.addSequence(sequence)
+        (RegionSet)Utils.time("load $fileName") {
+            int padding = 0;
+            if(options.padding)
+                padding = options['padding'].toString().toInteger()
+    
+            RegionSet regionSet = new RegionSet()
+            File regionFile = new File(fileName)
+            regionFile.eachLine { String line ->
+                List<String> parts = line.tokenize('\t')
+                if(parts.size()<3)
+                    throw new PipelineError("BED file should have at least 3 tab separated columns")
+    
+    
+                int start = Math.max(parts[1].toInteger() - padding, 0)
+                int end = parts[2].toInteger() + padding
+    
+                Sequence sequence = new Sequence(name:parts[0], range:new GenomicRange((start)..(end)))
+                regionSet.addSequence(sequence)
+            }
+            
+            // We want the id to change if the source bed file changes size or timestamp
+            regionSet.id = Utils.sha1(fileName +':' + regionFile.lastModified() + ':' + regionFile.length())
+            
+            return regionSet
         }
-        return regionSet
+    }
+    
+    Set<RegionSet> readSavedRegions(Map options, int parts) {
+        List<File> regionFiles = (1..parts).collect { int part ->
+            new File("${RegionValue.REGIONS_DIR}/${id}_${parts}_${part}")
+        }
+        
+        List<File> missingRegionFiles = regionFiles.grep { !it.exists() }
+        if(missingRegionFiles) {
+            log.info "Unable to load previously saved regions because these files are missing: " + missingRegionFiles
+            return null
+        }
+        
+        log.info "Regions for region set $id are already cached: using previously saved regions"
+        return regionFiles.collect { File regionFile ->
+            RegionSet regionSet = new RegionSet()
+            regionFile.readLines().each { line -> 
+                List fields = line.tokenize('\t'); 
+                Sequence sequence = new Sequence(fields[0], new GenomicRange(fields[0].toInteger()..fields[1].toInteger()))
+            }
+            return regionSet
+        } as Set
     }
     
     /**
@@ -154,12 +198,20 @@ class RegionSet implements Serializable {
      * @return        A set of RegionSet objects representing the given
      *                genome split into the requested number of parts
      */
+    @CompileStatic
     Set<RegionSet> group(Map options=[:], int parts) {
         
         boolean allowSplitRegions = options.allowBreaks == null ? true : options.allowBreaks
         
+        if(this.id) {
+            Set<RegionSet> savedRegions = this.readSavedRegions(options,parts)
+            if(savedRegions != null) {
+                return savedRegions
+            }
+        }
+        
         // A sorted set ordered by size and then object to 
-        SortedSet<RegionSet> results = new TreeSet({ a,b -> b.size().compareTo(a.size())?:a.hashCode().compareTo(b.hashCode())} as Comparator)
+        SortedSet<RegionSet> results = new TreeSet({ RegionSet a, RegionSet b -> b.size().compareTo(a.size())?:a.hashCode().compareTo(b.hashCode())} as Comparator)
         
         // We start with a new RegionSet for each sequence
         results.addAll(sequences.collect { new RegionSet(it.value) })
@@ -167,13 +219,16 @@ class RegionSet implements Serializable {
         log.info "Grouping ${results.size()} sequences into $parts groups"
         
         // While the number of parts is too large we should combine smaller ones together
-        log.info "*** Combining regions to decrease to $parts parts"
+        if(results.size()>parts)
+            log.info "*** Combining regions to decrease to $parts parts"
+            
         while(results.size() > parts) {
            combineSmallest(results)
         }
         
         // While number of parts too small, split apart large sequences
-        log.info "*** Splitting regions to increase to $parts parts"
+        if(results.size()<parts)
+            log.info "*** Splitting regions to increase to $parts parts"
         while(results.size() < parts) {
             // Split the largest region set into two
             if(!splitLargest(results, allowSplitRegions))
@@ -352,9 +407,13 @@ class RegionSet implements Serializable {
         this.sequences = this.sequences.grep { Map.Entry<String,Sequence> e -> !notMajorChromosome(e.key) }.collectEntries()
     }
     
+    @CompileStatic
     long size() {
         // Note: we don't use built in sum() because of worry about int overflow
         long result = 0
+        for(Map.Entry<String,Sequence> seq in this.sequences) {
+            result += seq.value.size()
+        }
         this.sequences.each { result += it.value.size() }
         return result
     }
