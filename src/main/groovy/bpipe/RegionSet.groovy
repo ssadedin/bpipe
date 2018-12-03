@@ -6,6 +6,7 @@ import java.util.zip.GZIPInputStream
 import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;
 
+
 @Log
 class RegionSet implements Serializable {
     
@@ -36,7 +37,7 @@ class RegionSet implements Serializable {
      * the chromosome name with a number appended, eg:
      * chrY, chrY.1, chrY.2, etc.
      */
-    Map<String,Sequence> sequences = [:]
+    TreeMap<String,Sequence> sequences = new TreeMap()
     
     RegionSet() {
     }
@@ -211,7 +212,7 @@ class RegionSet implements Serializable {
         }
         
         // A sorted set ordered by size and then object to 
-        SortedSet<RegionSet> results = new TreeSet({ RegionSet a, RegionSet b -> b.size().compareTo(a.size())?:a.hashCode().compareTo(b.hashCode())} as Comparator)
+        SortedSet<RegionSet> results = new TreeSet(new RegionSetComparator())
         
         // We start with a new RegionSet for each sequence
         results.addAll(sequences.collect { new RegionSet(it.value) })
