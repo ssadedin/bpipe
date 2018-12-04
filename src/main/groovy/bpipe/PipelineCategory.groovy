@@ -372,13 +372,12 @@ class PipelineCategory {
     
     static void initChildFromRegionSet(Pipeline child, RegionSet regions) {
         RegionValue regionValue = 
-            new RegionValue(value: regions.sequences.collect { 
-                it.value.toString() 
-            }.flatten().join(" "))
+            new RegionValue(regions.sequences.values())
                                         
         child.variables.region = regionValue
         child.branch.region = regionValue
         child.branch.chr = regions.sequences.keySet().iterator().next()
+        child.branch.name = regionValue.id
         
         log.info "Set region value for $child to $regionValue"
     }
