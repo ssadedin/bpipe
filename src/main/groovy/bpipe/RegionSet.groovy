@@ -423,7 +423,8 @@ class RegionSet implements Serializable {
         "RegionSet[sequences=${sequences.values()}]"
     }
     
+    @CompileStatic
     RegionValue getRegion() {
-        new RegionValue(value:this.sequences.values().collect { Sequence s -> "$s.name:$s.range.from-$s.range.to" }.join(" "))
+        new RegionValue(this.sequences.values())
     }
 }
