@@ -427,7 +427,7 @@ class Runner {
         }
         
         if(opts.L) { 
-            Config.userConfig.region = new RegionValue(value: opts.L)
+            Config.userConfig.region = new RegionValue(opts.L)
         }
 
         initThreads*.join(20000)
@@ -1075,7 +1075,7 @@ class ParamsBinding extends Binding {
             }
             else {
                 if(entry.key == "region") {
-                    setParam(entry.key, new RegionValue(value:entry.value))
+                    setParam(entry.key, new RegionValue(entry.value))
                 }
                 else
                   setParam(entry.key, entry.value)
