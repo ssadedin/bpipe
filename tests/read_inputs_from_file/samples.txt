@@ -1,0 +1,3 @@
+SAMPLE_ID	SEX	FILES
+SAMPLE1		MALE	test1_R1.fastq.gz,test1_R2.fastq.gz
+SAMPLE2		FEMALE	test2_R1.fastq.gz,test2_R2.fastq.gz
