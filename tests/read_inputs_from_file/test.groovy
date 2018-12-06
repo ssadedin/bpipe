@@ -1,7 +1,10 @@
 //
 // Example script to read samples from a file and process them in parallel
 //
-
+// Run me like this:
+//
+// bpipe run test.groovy samples.txt
+//
 samples_file=args[0]
 
 // What are the headers - read the first line
