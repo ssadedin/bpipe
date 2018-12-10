@@ -2892,6 +2892,7 @@ class PipelineContext {
      * 
      * @param directoryName
      */
+    @CompileStatic
     void outputTo(String directoryName) {
         this.outputDirectory = directoryName
         if(this.@output)
