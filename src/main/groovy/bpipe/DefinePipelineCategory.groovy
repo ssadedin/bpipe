@@ -189,6 +189,10 @@ class DefinePipelineCategory {
         }.sum()
     }
 
+    static Object rightShiftUnsigned(Closure l, Closure b) {
+         return plus(l, b) 
+    }
+    
     static Object plus(List l, Closure other) {
 //        println "List + Closure"
         def j = {

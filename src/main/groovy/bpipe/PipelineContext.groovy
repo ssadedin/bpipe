@@ -185,6 +185,12 @@ class PipelineContext {
     private List<Closure> pipelineJoiners
     
     /**
+     * If this stage is the result of merging multiple branches and is designated as a
+     * mergepoint, the merging branches are listed here
+     */
+    List<Branch> inboundBranches
+    
+    /**
      * Manager for commands executed by this context
      */
     CommandManager commandManager = new CommandManager()
@@ -299,8 +305,15 @@ class PipelineContext {
      * 
      * @param pipeline
      */
+   @CompileStatic
    void initialize(Pipeline pipeline, String stageName) {
         this.stageName = stageName
+        
+        if(pipeline.inboundBranches && (this.stageName != "Unknown")) {
+            this.inboundBranches = pipeline.inboundBranches
+            pipeline.inboundBranches = null
+        }
+        
         if(this.@output == null && this.@defaultOutput == null) {
             
             String initialDefaultOutput = stageName
@@ -324,8 +337,8 @@ class PipelineContext {
             this.defaultOutput = new File(initialDefaultOutput).name
         }
         
-        branch.dirChangeListener = {
-            outputTo(it)
+        branch.dirChangeListener = { String dirName ->
+            outputTo(dirName)
         }
     }
    
@@ -541,12 +554,6 @@ class PipelineContext {
 //        @CompileStatic - causes error when compiled with gradle
         private void resolveFromInputs(List<PipelineFile> allResolved) {
               
-           // By default, if multiple inputs were resolved by the input wrapper,
-           // we take the first UNLESS one of the inputs corresponds to a branching
-           // file (a file responsible for splitting the pipeline into multiple parallel
-           // paths). In the case of a branching file we use that in preference because 
-           // otherwise multiple parallel paths will resolve to the same output.
-              
             int defaultValueIndex = computeDefaultInputIndex(allResolved)
     
             PipelineFile resolved = allResolved[defaultValueIndex]
@@ -577,6 +584,13 @@ class PipelineContext {
          */
         // CompileStatic causes internal error here
         private int computeDefaultInputIndex(List<PipelineFile> allResolved) {
+            
+           // By default, if multiple inputs were resolved by the input wrapper,
+           // we take the first UNLESS one of the inputs corresponds to a branching
+           // file (a file responsible for splitting the pipeline into multiple parallel
+           // paths). In the case of a branching file we use that in preference because 
+           // otherwise multiple parallel paths will resolve to the same output.
+              
             int defaultValueIndex = -1;
             if(branchInputs) {
                 defaultValueIndex = allResolved.findIndexOf { PipelineFile inp ->
@@ -624,6 +638,7 @@ class PipelineContext {
                                    this.stageName, 
                                    resolver.baseOutput,
                                    resolver.overrideOutputs,
+                                   inboundBranches,
                                    { o,replaced -> onNewOutputReferenced(pipeline, o, replaced)}) 
        
        po.branchName = branchName
@@ -738,6 +753,7 @@ class PipelineContext {
            return new PipelineOutput([result],
                                      origOutput.stageName, 
                                      origDefaultOutput,
+                                     inboundBranches,
                                      overrideOutputs, { op,replaced -> onNewOutputReferenced(pipeline, op, replaced)}) 
        }
        catch(Exception e) {
@@ -1173,7 +1189,7 @@ class PipelineContext {
             Utils.ext(f.path) // For each such file, return the file extension
         }
         
-        this.currentFileNameTransform = new FilterFileNameTransformer(types: types, exts: currentFilter)
+        this.currentFileNameTransform = new FilterFileNameTransformer(types: types, exts: currentFilter, inboundBranches: inboundBranches)
         
         def files = currentFileNameTransform.transform(boxed, applyName)
         

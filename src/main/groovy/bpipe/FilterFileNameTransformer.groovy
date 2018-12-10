@@ -41,6 +41,9 @@ class FilterFileNameTransformer implements FileNameTransformer {
      */
     List<String> exts = []
     
+    
+    List<Branch> inboundBranches
+    
     /**
      * Whether the name of the current pipeline branch has been incorporated into the 
      * output files of the branch yet.
@@ -50,12 +53,11 @@ class FilterFileNameTransformer implements FileNameTransformer {
     @Override
     public List<PipelineFile> transform(List<PipelineFile> inputs,  boolean applyName) {
         
-        
         log.info("Inputs to transform: " + inputs.join(','))
         
         this.nameApplied = applyName
         
-        def pipeline = Pipeline.currentRuntimePipeline.get()
+        Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
         
         if(!inputs)
             throw new PipelineError("A pipeline stage was specified as a filter, but the stage did not receive any inputs")
@@ -73,15 +75,29 @@ class FilterFileNameTransformer implements FileNameTransformer {
             
             typeCounts[type]++
             String oldExt = (inp =~ '\\.[^\\.]*$')[0]
+            PipelineFile result 
             if(applyName) {
                 // Arguably, we should add the filter type to the name here as well.
                 // However we're already adding the branch name, so the filename is already
                 // unique at this point, and we'd like to keep it short
                 // TODO: perhaps only leave out filter when it's chromosome ? not sure
-                return inp.newName(inp.path.replaceAll('\\.[^\\.]*$','.'+pipeline.name+/*'.'+ type+*/oldExt))
+                result = inp.newName(inp.path.replaceAll('\\.[^\\.]*$','.'+pipeline.name+/*'.'+ type+*/oldExt))
             }
             else
-                return inp.newName(inp.path.replaceAll('(\\.[^\\.]*$)','.'+type+oldExt))
+                result = inp.newName(inp.path.replaceAll('(\\.[^\\.]*$)','.'+type+oldExt))
+                
+            // If the pipeline merged, we need to excise the old branch names
+            if(inboundBranches) {
+                for(Branch branch in inboundBranches) {
+                    log.info "Excise inbound merging branch reference $branch due to merge point"
+                    result = result.newName(result.path.replace('.' + branch.name + '.','.merge.'))
+                }
+            }
+            else {
+                log.info "No inbound branches for filter"
+            }
+  
+            return result
         }
         
         log.info "Filtering using $types produces outputs $files"

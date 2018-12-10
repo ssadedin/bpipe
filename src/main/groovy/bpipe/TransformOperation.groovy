@@ -230,6 +230,7 @@ class TransformOperation {
             log.info "Applying branch name $applyBranchName to pipeline segment because name is yet to be applied"
         }
         
+       
         int count = 0
         def outFiles = exts.collect { String extension ->
             
@@ -271,6 +272,14 @@ class TransformOperation {
             
             if(txed.path.startsWith("."))
                 txed = txed.newName(txed.path.substring(1))
+                
+            // If the pipeline merged, we need to excise the old branch names
+            if(ctx.inboundBranches) {
+                for(Branch branch in ctx.inboundBranches) {
+                    log.info "Excise inbound merging branch reference $branch due to merge point"
+                    txed = txed.newName(txed.path.replace('.' + branch.name + '.','.merge.'))
+                }
+            }
                 
             ++count
             return txed
