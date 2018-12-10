@@ -2698,7 +2698,7 @@ class PipelineContext {
                return inp
            }
            else
-           if((inp instanceof String) && (new File(inp).exists())) {
+           if(((inp instanceof String) || (inp instanceof GString)) && (new File(inp).exists())) {
                return new LocalPipelineFile(inp)
            }
            else {
