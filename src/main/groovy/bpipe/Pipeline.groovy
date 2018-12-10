@@ -194,6 +194,11 @@ public class Pipeline implements ResourceRequestor {
     Branch branch = new Branch(name:"")
     
     /**
+     * If there are unmerged child branches pending for this branch, then they are set here
+     */
+    List<Branch> inboundBranches
+    
+    /**
      * Date / time when this pipeline started running
      * Only populated for main / root level pipeline instance
      */

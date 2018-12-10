@@ -131,6 +131,11 @@ class PipelineCategory {
         return result
     }
     
+    static Object rightShiftUnsigned(Closure l, Closure b) {
+        return plus(l, b, true) 
+    }
+  
+    
     static Object plus(List l, Closure c) {
         def j = {
             return it
@@ -152,12 +157,16 @@ class PipelineCategory {
             return org.codehaus.groovy.runtime.DefaultGroovyMethods.plus(l,other)
     }
 	
+    static Object plus(Closure c, Closure other) {
+        return plus(c,other,false)
+    }
+        
      /**
      * Joins two closures representing pipeline stages together by
      * creating wrapping closure that executes each one in turn.  This is the 
      * basis of Bpipes's + syntax for joining sequential pipeline stages.
      */
-    static Object plus(Closure c, Closure other) {
+    static Object plus(Closure c, Closure other, boolean mergePoint) {
         
         // log.info "Closure["+PipelineCategory.closureNames[c] + "] + Closure[" + PipelineCategory.closureNames[other] + "]"
         
@@ -166,8 +175,8 @@ class PipelineCategory {
         def result  = {  input1 ->
             
             Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
-             
-            def currentStage = new PipelineStage(pipeline.createContext(), c)
+            
+            PipelineStage currentStage = new PipelineStage(pipeline.createContext(), c)
             pipeline.addStage(currentStage)
             currentStage.context.setInput(input1)
             currentStage.run()
@@ -186,9 +195,23 @@ class PipelineCategory {
                 
             log.info "Checking inputs for next stage:  $nextInputs"
             Dependencies.instance.checkFiles(nextInputs, pipeline.aliases)
-                
+            
             currentStage = new PipelineStage(pipeline.createContext(), other)
             currentStage.context.@input = nextInputs
+            
+            if(mergePoint) {
+                int lastStageIndex = pipeline.stages.findLastIndexOf { it instanceof FlattenedPipelineStage }
+                FlattenedPipelineStage lastStage = lastStageIndex>=0 ? pipeline.stages[lastStageIndex] : null
+                if(lastStage) {
+                    log.info "Mergepoint initiated for branches: " + lastStage.branches*.name + " at stage " + currentStage.stageName
+                    pipeline.inboundBranches = lastStage.branches
+                }
+                else {
+                    log.warning "Can't merge branches: there was no previous parallel stage!"
+                    System.err.println "WARNING: A merge point was specified using >>> but no previous parallel stage to merge from was identified. The merge operator will be ignored."
+                }
+            }
+  
             pipeline.addStage(currentStage)
             currentStage.run()
             return currentStage.context.nextInputs?:currentStage.context.@output
@@ -744,7 +767,7 @@ class PipelineCategory {
                 def mergedNextInputs = stages.collect { s ->
                     Utils.box(s?.context?.nextInputs)
                 }.sum() 
-                  
+                
                 log.info "Merged outputs for $stageName(s) are $mergedOutputs"
                 mergedContext.setRawOutput(mergedOutputs)
                 mergedContext.setNextInputs(mergedNextInputs)
@@ -764,7 +787,7 @@ class PipelineCategory {
         PipelineContext mergedContext = 
             new PipelineContext(null, parent.stages, joiners, new Branch(name:'all'))
             
-        def mergedOutputs = finalStages.collect { s ->
+        List mergedOutputs = finalStages.collect { s ->
             
             if(s?.context) {
                 assert s.context.@output.every { it instanceof PipelineFile }
@@ -781,7 +804,7 @@ class PipelineCategory {
         }.sum().collect { it.normalize() }.unique()
 
        
-        def mergedNextInputs = finalStages.collect { s ->
+        List mergedNextInputs = finalStages.collect { s ->
             Utils.box(s?.context?.nextInputs)
         }.sum().collect { it.normalize() }.unique()
         
@@ -797,7 +820,8 @@ class PipelineCategory {
         PipelineStage mergedStage = new FlattenedPipelineStage(
                 mergedContext, 
                 flattenedBody,
-                finalStages
+                finalStages,
+                pipelines*.branch
             )
         log.info "Merged stage name is $mergedStage.stageName"
         parent.addStage(mergedStage)

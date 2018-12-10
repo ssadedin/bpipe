@@ -110,6 +110,11 @@ class PipelineOutput {
     List<String> extraSegments = []
     
     /**
+     * If there are inbound branches to be merged, they are listed here
+     */
+    List<Branch> inboundBranches
+    
+    /**
      * Parent of this output, used when output extensions are chained together
      */
     PipelineOutput parentOutput = null
@@ -129,13 +134,14 @@ class PipelineOutput {
      * @param listener          a closure that will be called whenever a property is requested from this object 
      *                          and provided with the computed property value
      */
-    PipelineOutput(List<String> output, String stageName, String defaultOutput, List<Object> overrideOutputs, Closure listener) {
+    PipelineOutput(List<String> output, String stageName, String defaultOutput, List<Object> overrideOutputs, List<Branch> inboundBranches, Closure listener) {
         assert output instanceof List
         assert output.isEmpty() || output[0] instanceof String
         this.output = output
         this.outputChangeListener = listener
         this.stageName = stageName
         this.defaultOutput = defaultOutput
+        this.inboundBranches = inboundBranches
         this.overrideOutputs = overrideOutputs.collect { 
              String.valueOf(it) 
         }
@@ -297,6 +303,7 @@ class PipelineOutput {
             this.stageName,
             this.defaultOutput,
             this.overrideOutputs,
+            this.inboundBranches,
             this.outputChangeListener)
 
         po.branchName = this.branchName
@@ -392,6 +399,12 @@ class PipelineOutput {
         if(this.outputUsed.startsWith(".") && !this.outputUsed.startsWith("./")) // occurs when no inputs given to script and output extension used
             this.outputUsed = this.outputUsed.substring(1) 
             
+        if(this.inboundBranches) {
+            for(Branch branch in this.inboundBranches) {
+                log.info "Excise inbound merging branch reference $branch due to merge point"
+                this.outputUsed = this.outputUsed.replace('.' + branch.name + '.','.merge.')
+            }
+        }
         return this.outputUsed
     }
     
