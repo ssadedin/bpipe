@@ -23,6 +23,7 @@ pages:
 - ['Language/Glob.md','Language','Glob']
 - ['Language/Grep.md','Language','Grep']
 - ['Language/Load.md','Language','Load']
+- ['Language/MergePoints.md','Language','Merge Point Operator']
 - ['Language/Multi.md','Language','Multi']
 - ['Language/Output.md','Language','Output']
 - ['Language/Prefix.md','Language','Prefix']

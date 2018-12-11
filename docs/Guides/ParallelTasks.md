@@ -12,15 +12,16 @@ In both cases you can save a lot of time by doing the operations in parallel ins
 Suppose you had a very simple "hello world" pipeline as illustrated below:
 ```groovy 
 
-Bpipe.run {
+run {
   hello + world
 }
 ```
 
 Now suppose you wanted to add a second "mars" stage that would execute simultaneously with the "world" pipeline stage.   All you need to do is place all the stages that execute together in square brackets and separate them with commas:
+
 ```groovy 
 
-Bpipe.run {
+run {
   hello + [ world,mars ]
 }
 ```
@@ -97,8 +98,83 @@ of the genomes, declare the genome you are using at the start of your pipeline:
 ```
 genome 'GRCh37'
 ```
+
 For genomes recognized by Bpipe that do not include the 'chr' prefix, Bpipe will use the correct style in 
 when evaluating the `$chr` and `$region` variable.
+
+_Note_: Bpipe will attempt to download the chromosome sizes for genomes it recognises from UCSC.
+
+### Parallelising over Arbitrary Genomic Regions
+
+Bpipe also supports splitting up any arbitrary set of genomic regions to process them in parallel. This can be
+especially useful when you want to parallelize in a more fine grained way than per-chromosome (often necessary because
+ chromosome sizes are quite uneven). There are two ways to split up a set of genomic regions:
+
+  - partition to even sized parts by size of interval (allowing number of parts to be dynamic)
+  - split to a specific number of parts (allowing resulting interval size to be dynamic)
+
+Bpipe supports both of these, through two commands called `partition` and `split`.
+
+**Defining Regions**
+
+If you want to process a whole "genome" you can declare the genome using the `genome` command and then that genome will be 
+available as a set of regions. However if you want to process a subset of the genome (eg. a set of exome capture regions),
+then you can load a custom BED file:
+
+```
+my_regions = bed("/some/path/to/a/bed/file.bed")
+```
+
+**Partitioning**
+
+To partition regions, use the `partition` command, followed by a list of stages to parallelis over:
+
+To process all of hg19 in 1mb blocks:
+```
+hg19.partition(1000000) * [ stage1 + stage2 ]
+```
+
+To process custom regions it is exactly the same:
+
+```
+my_regions.partition(1000000) * [ stage1 + stage2 ]
+```
+
+**Splitting**
+
+To split regions into a specific number of parts, use the split command:
+
+```
+hg19.split(40) * [ stage1 + stage2 ]
+```
+
+Bpipe will try to create 40 even parts, but it will not try too hard. That is, if you are using
+a custom set of regions, it will try to bisect the gaps between the regions and will never break them
+in two unless there is a greater than 2:1 ratio that cannot be reduced. This way, unless you split
+to an extremely fine grained level, you can usually rely on Bpipe to preserve whole exons and target
+regions for targeted capture definitions.
+
+When splitting a whole genome, Bpipe will attempt to download definitions of genes and exons from
+UCSC. It will then avoid bisecting the middle of an exon or gene in the created regions (again, unless
+the required granularity cannot be achieved to within a 2:1 ratio between resulting region sizes).
+
+**Branch Names**
+
+When you split or partition a set of regions, Bpipe assigns a branch name to each parallel path automatically.
+
+ - if the region is a whole chromosome / contig, the branch name is the name of the chromosome / contig
+ - otherwise, Bpipe calculates the sha1 hash of the regions and assigns the first 8 characters as the 
+   branch name
+
+**Accessing Regions**
+
+The actual regions to be processed can be accessed inside pipeline stages using the `$region` variable, or if
+needed as a BED file, using `$region.bed`.
+
+**Merging Results**
+
+See the [merge points operator](../Language/MergePoints) to understand specific support that Bpipe provides for 
+merging the outputs from parallel segments.
 
 ## Executing Multiple Stages Simultaneously on Different Data
 
@@ -107,6 +183,7 @@ want is to have each input file or groups of your input files processed independ
 this *input splitting* and gives you a concise and simple way to achieve it.
 
 Suppose we have 10 input files and we want all 10 files named input_1.txt to input_10.txt to be processed at the same time.  Here is how it looks:
+
 ```groovy 
 
 Bpipe.run {
@@ -134,7 +211,7 @@ Bpipe uses a very simple wildcard pattern syntax to let you indicate how your fi
 The pattern matching used for grouping files is a substring match.  Therefore you only need to supply enough of the input file name to uniquely identify where the grouping character is.  For example, the following pipeline is equivalent to the one above:
 ```groovy 
 
-Bpipe.run {
+run {
    "_%." * [ hello + world ] + nice_to_see_you
 }
 ```
