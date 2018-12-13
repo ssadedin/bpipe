@@ -505,8 +505,8 @@ class Dependencies {
         
         GraphEntry graph = this.getOutputGraph()
         
-        if(files.any { it instanceof String }) {
-            assert false : "One or more files is a string, naughty: " + files.grep { it instanceof String }.join(',')
+        if(files.any { !(it instanceof PipelineFile) }) {
+            assert false : "One or more files is not a PipelineFile! : " + files.grep { !(it instanceof PipelineFile) }.join(',')
         }
         
         List<PipelineFile> filesToCheck = files.collect { PipelineFile f -> f.path in aliases.aliases ? aliases[f] : f }
