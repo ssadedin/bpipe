@@ -764,6 +764,11 @@ public class Pipeline implements ResourceRequestor {
                 writeJobPIDFile()
                 scheduleStatsUpdate()
             }
+            
+            if(!Config.userConfig.getOrDefault('allowGlobalWrites',false)) {
+                Runner.binding.readOnly = true
+            }
+            
             runSegment(resolvedInputFiles, constructedPipeline)
                     
             if(failed) {
