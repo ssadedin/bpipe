@@ -754,8 +754,9 @@ class PipelineContext {
            return new PipelineOutput([result],
                                      origOutput.stageName, 
                                      origDefaultOutput,
+                                     overrideOutputs,
                                      inboundBranches,
-                                     overrideOutputs, { op,replaced -> onNewOutputReferenced(pipeline, op, replaced)}) 
+                                     { op,replaced -> onNewOutputReferenced(pipeline, op, replaced)}) 
        }
        catch(Exception e) {
            e.printStackTrace()
