@@ -1,16 +1,16 @@
 
-answer=true
+answer=[ value: true ]
 
 hello = {
     check {
-        exec "$answer"
+        exec "$answer.value"
     } otherwise {
         println "The check failed"
     }
 }
 
 world = {
-    answer = false
+    answer.value = false
 }
 
 run {
