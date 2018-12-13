@@ -68,7 +68,7 @@ class ParameterizedClosure extends Closure {
     }
     
     public Object doCall(Object arg) {
-        return call([arg]);
+        return call(arg);
     }
 
     @Override
