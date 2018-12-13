@@ -84,7 +84,13 @@ class FilterFileNameTransformer implements FileNameTransformer {
                 result = inp.newName(inp.path.replaceAll('\\.[^\\.]*$','.'+pipeline.name+/*'.'+ type+*/oldExt))
             }
             else
+            // When the user has specified this stage as a merge point AND the filter is designated as 'merge',
+            // then we do NOT add in a redundant 'merge' because it will get added below due to there being inbound
+            // branches. 
+            if(!inboundBranches || (type != 'merge'))
                 result = inp.newName(inp.path.replaceAll('(\\.[^\\.]*$)','.'+type+oldExt))
+            else
+                result = inp // guaranteed to enter the block below and reassign, so we will not actualy end up with the input as the output(!)
                 
             // If the pipeline merged, we need to excise the old branch names
             if(inboundBranches) {
