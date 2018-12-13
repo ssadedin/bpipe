@@ -11,31 +11,31 @@ class RunnerTest {
 
     @Test def void testParseParameter() {
         // integer
-        def entry = ParamsBinding.parseParam('x=100')
+        def entry = BpipeParamsBinding.parseParam('x=100')
         assertEquals 'x', entry.key
         assertEquals 100, entry.value
 
         // long
-        entry = ParamsBinding.parseParam('y=8223372036854775807')
+        entry = BpipeParamsBinding.parseParam('y=8223372036854775807')
         assertEquals 'y', entry.key
         assertEquals 8223372036854775807L, entry.value
 
         // double
-        entry = ParamsBinding.parseParam('w=1.2')
+        entry = BpipeParamsBinding.parseParam('w=1.2')
         assertEquals 'w', entry.key
         assertEquals 1.2D, entry.value, 0
 
         // booleans
-        entry = ParamsBinding.parseParam('t=True')
+        entry = BpipeParamsBinding.parseParam('t=True')
         assertEquals 't', entry.key
         assertEquals true, entry.value
 
-        entry = ParamsBinding.parseParam('f=FALSE')
+        entry = BpipeParamsBinding.parseParam('f=FALSE')
         assertEquals 'f', entry.key
         assertEquals false, entry.value
 
         // other types as string
-        entry = ParamsBinding.parseParam('str=Hello')
+        entry = BpipeParamsBinding.parseParam('str=Hello')
         assertEquals 'str', entry.key
         assertEquals "Hello", entry.value
 
@@ -46,26 +46,26 @@ class RunnerTest {
 
         // parameter with no value specified
         // return 'true' by default
-        def entry = ParamsBinding.parseParam('x')
+        def entry = BpipeParamsBinding.parseParam('x')
         assertEquals 'x', entry.key
         assertEquals true, entry.value
 
-        entry = ParamsBinding.parseParam('y=')
+        entry = BpipeParamsBinding.parseParam('y=')
         assertEquals 'y', entry.key
         assertEquals true, entry.value
     }
 
     @Test
     def void testParameterNoKey( ) {
-        assertNull  ParamsBinding.parseParam('=10')
-        assertNull ParamsBinding.parseParam( '' )
+        assertNull  BpipeParamsBinding.parseParam('=10')
+        assertNull BpipeParamsBinding.parseParam( '' )
 
     }
 
 
-    @Test def void testParamsBinding () {
+    @Test def void testBpipeParamsBinding () {
 
-        ParamsBinding binding = new ParamsBinding()
+        BpipeParamsBinding binding = new BpipeParamsBinding()
         binding.setParam("x", 1)
         assertEquals( 1, binding.getVariable('x') )
         // trying to change the value by the setVariable has not effect
@@ -88,7 +88,7 @@ class RunnerTest {
     @Test def void testAddParamers () {
 
 
-        ParamsBinding binding = new ParamsBinding()
+        BpipeParamsBinding binding = new BpipeParamsBinding()
         binding.addParams( [ 'alpha=1', 'beta=2', 'delta=three'] )
 
         assertEquals( 1, binding.getVariable('alpha') )
@@ -106,7 +106,7 @@ class RunnerTest {
         }
         def opt = cli.parse( ['-p', 'a=1', '-p', 'b=two', 'pipe-name'] )
 
-        ParamsBinding binding = new ParamsBinding()
+        BpipeParamsBinding binding = new BpipeParamsBinding()
         binding.addParams( opt.params )
 
         assertEquals( 1, binding.getVariable('a') )

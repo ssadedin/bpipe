@@ -56,6 +56,12 @@ class BpipeParamsBinding extends Binding {
      * @see #withLocalVariables method
      */
     ThreadLocal<Map<String,Object>> stageLocalVariables = new ThreadLocal()
+    
+    
+    /**
+     * After Bpipe starts running, the global scope is set to read only
+     */
+    boolean readOnly = false
 
     def void setParam( String name, Object value ) {
 
@@ -72,6 +78,26 @@ class BpipeParamsBinding extends Binding {
         // variable name marked as parameter cannot be overridden
         if( name in parameters ) {
             return
+        }
+        
+        if(readOnly && this.variables.containsKey(name)) {
+            
+            String valueDef = value instanceof String ? "\"${value}\"" : value
+            
+            throw new PipelineError(
+                """
+
+                    An attempt was made to assign to global variable $name after your pipeline already 
+                    started running. To ensure thread safety, global variables may only be assigned 
+                    before the pipeline starts. Solutions include:
+
+                     - add 'def', 'var', or 'requires' before this assignment to define a local variable,
+                       eg: def ${name} = $valueDef or: var ${name} : "$valueDef"
+                     - define a branch variable using: branch.${name} = $valueDef
+
+                    You can disable this behavior at your own risk by setting allowGlobalWrites=true in 
+                    your bpipe.config file.
+                """.stripIndent(15))
         }
 
         super.setVariable(name,value)
