@@ -1237,7 +1237,16 @@ public class Pipeline implements ResourceRequestor {
             Pipeline.defaultGenomeChrPrefix = 'chr'
         }
         
-        if(!cachedGenome.exists()) {
+        try {
+            Pipeline.genomes[name] = loadCachedGenome(cachedGenome, options.contig?true:false)
+        }
+        catch(Exception e) {
+            
+            log.info "Not able to load genome from cache file $cachedGenome($e): will attempt to download"
+             
+            if(cachedGenome.exists())
+                cachedGenome.delete()
+                
             String url = "http://hgdownload.soe.ucsc.edu/goldenPath/$ucscName/database/refGene.txt.gz"
             log.info "Downloading ensembl gene database from $url"
             println "MSG: Downloading genome from $url"
@@ -1248,7 +1257,7 @@ public class Pipeline implements ResourceRequestor {
                     new ObjectOutputStream(outStream) << genome
                 }
             }
-            
+                
             // Download chromosome sizes for specified genome
             url = "http://hgdownload.soe.ucsc.edu/goldenPath/$ucscName/database/chromInfo.txt.gz"
             log.info "Downloading chromosome sizes from $url"
@@ -1260,7 +1269,7 @@ public class Pipeline implements ResourceRequestor {
             }
         }
         
-        Pipeline.genomes[name] = loadCachedGenome(cachedGenome, options.contig?true:false)
+       
         
         Pipeline.genomeChromosomeSizes[name] = 
             chromFile.readLines()*.tokenize('\t').collectEntries { [ convertChromosomes ? it[0].replaceAll('^chr','') :  it[0], it[1].toInteger() ]}

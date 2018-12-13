@@ -163,7 +163,6 @@ class Sequence implements Serializable {
     }
     
     @CompileStatic
-    @Memoized
     String toString() {
         "$name:$range.from-$range.to"
     }
