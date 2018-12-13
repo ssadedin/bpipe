@@ -311,6 +311,7 @@ class PipelineContext {
         
         if(pipeline.inboundBranches && (this.stageName != "Unknown")) {
             this.inboundBranches = pipeline.inboundBranches
+            log.info "Stage $stageName is claiming the following inbound branches as a mergepoint: ${inboundBranches*.name}"
             pipeline.inboundBranches = null
         }
         
