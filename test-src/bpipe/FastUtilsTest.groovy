@@ -38,5 +38,6 @@ class FastUtilsTest {
         assert FastUtils.strip('..','.') == ''
         assert FastUtils.strip('...','.') == ''
         assert FastUtils.strip('','.') == ''
+        assert FastUtils.strip('.a','.') == 'a'
     }
 }

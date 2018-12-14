@@ -114,7 +114,7 @@ public class FastUtils {
         while(trimEnd>=0 && value.charAt(trimEnd) == trimChar)
             --trimEnd;
         
-        if(trimEnd<=trimStart)
+        if(trimEnd<trimStart)
             return "";
         
         return value.substring(trimStart,trimEnd+1);
