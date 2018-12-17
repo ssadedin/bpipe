@@ -39,7 +39,7 @@ import java.util.regex.Matcher
 import java.util.regex.Pattern;
 
 import org.codehaus.groovy.runtime.ExceptionUtils;
-
+import org.codehaus.groovy.runtime.GStringImpl
 import bpipe.executor.CommandExecutor
 import bpipe.executor.ProbeCommandExecutor
 import bpipe.storage.LocalFileSystemStorageLayer
@@ -2692,8 +2692,8 @@ class PipelineContext {
                return inp.resolvedValue
            }
            else
-           if((inp instanceof String) && (storage != null)) {
-               return new PipelineFile(inp,storage)
+           if((inp instanceof CharSequence) && (storage != null)) {
+               return new PipelineFile(inp.toString(),storage)
            }
            else
            if(inp instanceof PipelineFile) {
@@ -2704,7 +2704,7 @@ class PipelineContext {
                return new LocalPipelineFile(inp)
            }
            else {
-               assert false : "Forward of type " + inp?.class?.name + " is not supported"
+               assert false : "Forward of type " + inp?.class?.name + " (storage = $storage) is not supported"
            }
        }.flatten()
        
