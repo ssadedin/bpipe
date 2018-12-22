@@ -76,26 +76,30 @@ class FilterFileNameTransformer implements FileNameTransformer {
             typeCounts[type]++
             String oldExt = (inp =~ '\\.[^\\.]*$')[0]
             PipelineFile result 
-            if(applyName) {
+            String inputPath = inp.name
+            boolean branchInName = inputPath.contains('.' + pipeline.name + '.') || inputPath.startsWith(pipeline.name + '.')
+            
+//            println "Branch $pipeline.name is in file name $inputPath? " + branchInName
+            if(applyName && !branchInName) {
                 // Arguably, we should add the filter type to the name here as well.
                 // However we're already adding the branch name, so the filename is already
                 // unique at this point, and we'd like to keep it short
-                // TODO: perhaps only leave out filter when it's chromosome ? not sure
-                result = inp.newName(inp.path.replaceAll('\\.[^\\.]*$','.'+pipeline.name+/*'.'+ type+*/oldExt))
+                result = inp.newName(inputPath.replaceAll('\\.[^\\.]*$','.'+pipeline.name+/*'.'+ type+*/oldExt))
             }
             else
             // When the user has specified this stage as a merge point AND the filter is designated as 'merge',
             // then we do NOT add in a redundant 'merge' because it will get added below due to there being inbound
             // branches. 
             if(!inboundBranches || (type != 'merge'))
-                result = inp.newName(inp.path.replaceAll('(\\.[^\\.]*$)','.'+type+oldExt))
+                result = inp.newName(inputPath.replaceAll('(\\.[^\\.]*$)','.'+type+oldExt))
             else
                 result = inp // guaranteed to enter the block below and reassign, so we will not actualy end up with the input as the output(!)
                 
             // If the pipeline merged, we need to excise the old branch names
             if(inboundBranches) {
                 for(Branch branch in inboundBranches) {
-                    log.info "Excise inbound merging branch reference $branch due to merge point"
+                    log.info "Excise inbound merging branch reference $branch.name due to merge point in parent branch $pipeline.name"
+//                    println "Excise inbound merging branch reference $branch.name due to merge point in parent branch $pipeline.name"
                     result = result.newName(result.path.replace('.' + branch.name + '.','.merge.'))
                 }
             }

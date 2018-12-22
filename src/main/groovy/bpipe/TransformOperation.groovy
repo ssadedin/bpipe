@@ -222,15 +222,6 @@ class TransformOperation {
         
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
         
-        // If the pipeline branched, we need to add a segment to the new files name
-        // to differentiate it from other parallel branches
-        String additionalSegment = ""
-        if(applyBranchName != null) {
-            additionalSegment = '.'+applyBranchName
-            log.info "Applying branch name $applyBranchName to pipeline segment because name is yet to be applied"
-        }
-        
-       
         int count = 0
         def outFiles = exts.collect { String extension ->
             
@@ -248,6 +239,18 @@ class TransformOperation {
                toPattern = extension 
                if(!toPattern.startsWith('.'))
                    toPattern = '.' + toPattern
+            }
+            
+            // If the pipeline branched, we need to add a segment to the new files name
+            // to differentiate it from other parallel branches
+            String additionalSegment = ""
+            if(applyBranchName != null) {
+                String inputPath = inp.name
+                boolean branchInName = inputPath.contains('.' + applyBranchName + '.') || inputPath.startsWith(applyBranchName + '.')
+                if(!branchInName) {
+                    additionalSegment = '.'+applyBranchName
+                    log.info "Applying branch name $applyBranchName to pipeline segment because name is yet to be applied"
+                }
             }
             
             PipelineFile txed = null
