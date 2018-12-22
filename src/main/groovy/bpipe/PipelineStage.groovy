@@ -282,7 +282,7 @@ class PipelineStage {
         
         log.info "Checking files: " + context.rawOutput.collect { String.valueOf(it) + " ( " + it.storage.class.name + ")" }.join(",")
         try {
-             Dependencies.instance.checkFiles(context.rawOutput, pipeline.aliases, "output")
+             Dependencies.instance.checkFiles(context.rawOutput, pipeline.aliases, "output", "in stage ${displayName}")
  
             if(!joiner) {
                  EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", [stage:this])            
