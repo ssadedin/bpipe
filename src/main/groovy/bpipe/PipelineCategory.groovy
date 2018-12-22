@@ -553,7 +553,7 @@ class PipelineCategory {
         return multiplyImplementation
     }
     
-    static Object splitOnMap(def input, Map<String, List> samples, List segments, boolean applyName=false, boolean mergePoint) {
+    static Object splitOnMap(def input, Map<String, List> samples, List segments, boolean applyName=false, boolean mergePoint=false) {
         
         assert samples*.value.every { it instanceof List }
         
