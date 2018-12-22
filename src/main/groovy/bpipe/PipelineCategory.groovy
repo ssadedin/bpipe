@@ -135,7 +135,10 @@ class PipelineCategory {
         return plus(l, b, true) 
     }
   
-    
+    static Object rightShiftUnsigned(Closure l, List b) {
+        return plus(l, b, true) 
+    }
+     
     static Object plus(List l, Closure c) {
         def j = {
             return it
@@ -199,18 +202,8 @@ class PipelineCategory {
             currentStage = new PipelineStage(pipeline.createContext(), other)
             currentStage.context.@input = nextInputs
             
-            if(mergePoint) {
-                int lastStageIndex = pipeline.stages.findLastIndexOf { it instanceof FlattenedPipelineStage }
-                FlattenedPipelineStage lastStage = lastStageIndex>=0 ? pipeline.stages[lastStageIndex] : null
-                if(lastStage) {
-                    log.info "Mergepoint initiated for branches: " + lastStage.branches*.name + " at stage " + currentStage.stageName
-                    pipeline.inboundBranches = lastStage.branches
-                }
-                else {
-                    log.warning "Can't merge branches: there was no previous parallel stage!"
-                    System.err.println "WARNING: A merge point was specified using >>> but no previous parallel stage to merge from was identified. The merge operator will be ignored."
-                }
-            }
+            if(mergePoint) 
+                pipeline.setMergePoint(currentStage)
   
             pipeline.addStage(currentStage)
             currentStage.run()
@@ -225,10 +218,10 @@ class PipelineCategory {
      * all of them to all the stages in the list.
      * This is a special case of multiply below. 
      */
-    static Object plus(Closure other, List segments) {
+    static Object plus(Closure other, List segments, boolean mergePoint=false) {
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
-        Closure mul = splitOnFiles("*", segments, false, false)
-        def plusImplementation =  { input1 ->
+        Closure mul = splitOnFiles("*", segments, false, false,mergePoint)
+        Closure plusImplementation =  { input1 ->
             
             Pipeline runtimePipeline = Pipeline.currentRuntimePipeline.get()
             def currentStage = new PipelineStage(runtimePipeline.createContext(), other)
@@ -516,7 +509,7 @@ class PipelineCategory {
      * @param requireMatch  if true, the pipeline will fail if there are 
      *                      no matches to the pattern
      */
-    static Object splitOnFiles(def pattern, List segments, boolean requireMatch, boolean sortResults=true) {
+    static Object splitOnFiles(def pattern, List segments, boolean requireMatch, boolean sortResults=true, boolean mergePoint=false) {
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
         
         def multiplyImplementation = { input ->
@@ -550,7 +543,7 @@ class PipelineCategory {
                 else
                     throw new PatternInputMissingError("An input pattern was specified '$pattern' but no inputs were given when Bpipe was run.")
                     
-            return splitOnMap(input, samples, segments, pattern instanceof String && pattern.contains("/"))
+            return splitOnMap(input, samples, segments, pattern instanceof String && pattern.contains("/"), mergePoint)
         }
 					
         
@@ -560,7 +553,7 @@ class PipelineCategory {
         return multiplyImplementation
     }
     
-    static Object splitOnMap(def input, Map<String, List> samples, List segments, boolean applyName=false) {
+    static Object splitOnMap(def input, Map<String, List> samples, List segments, boolean applyName=false, boolean mergePoint) {
         
         assert samples*.value.every { it instanceof List }
         
@@ -630,6 +623,10 @@ class PipelineCategory {
                         }
                                 
                         log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : ${dummyPriorContext.@output}"
+                        
+                        if(mergePoint)
+                            child.setMergePoint(currentStage)
+                                    
                         child.addStage(dummyPriorStage)
                         child.branch = new Branch(name:childName)
                         child.nameApplied = !applyName

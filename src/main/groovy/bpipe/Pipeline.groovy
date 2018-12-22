@@ -591,6 +591,26 @@ public class Pipeline implements ResourceRequestor {
     }
     
     /**
+     * Set this branch to name the next output file as a merge of output files from 
+     * the most recent parallel section. This supports implementation of the 
+     * merge point operator (>>>).
+     * 
+     * @param currentStage
+     */
+    void setMergePoint(PipelineStage currentStage) {
+        int lastStageIndex = stages.findLastIndexOf { it instanceof FlattenedPipelineStage }
+        FlattenedPipelineStage lastStage = lastStageIndex>=0 ? stages[lastStageIndex] : null
+        if(lastStage) {
+            log.info "Mergepoint initiated for branches: " + lastStage.branches*.name + " at stage " + currentStage.stageName
+            this.inboundBranches = lastStage.branches
+        }
+        else {
+            log.warning "Can't merge branches: there was no previous parallel stage!"
+            System.err.println "WARNING: A merge point was specified using >>> but no previous parallel stage to merge from was identified. The merge operator will be ignored."
+        }
+    }
+    
+    /**
      * Runs the specified closure in the context of this pipeline 
      * and both decrements and notifies the given counter when finished.
      */
