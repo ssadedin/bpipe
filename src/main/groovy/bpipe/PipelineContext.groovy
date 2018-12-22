@@ -1440,7 +1440,7 @@ class PipelineContext {
             this.uncleanFilePath.text += Utils.box(this.output)?.join("\n") 
             
             PipelineDelegate.setDelegateOn(this, body)
-            log.info("Producing from inputs ${this.@input}")
+            log.info("Producing " + this.@output + " from inputs ${this.@input} (output dir=$outputDirectory)")
             body()
         }
         

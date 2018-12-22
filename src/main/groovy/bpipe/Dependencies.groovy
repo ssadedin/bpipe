@@ -494,7 +494,7 @@ class Dependencies {
      *
      * @param f     a String or collection of Strings representing file names
      */
-    void checkFiles(List<PipelineFile> files, Aliases aliases, type="input") {
+    void checkFiles(List<PipelineFile> files, Aliases aliases, String type="input", String extraDescription="") {
         
         if(files == null) {
             log.info "$type files to check are null, skipping."
@@ -532,7 +532,7 @@ class Dependencies {
             }
             
             if(missing)
-                throw new PipelineError("Expected $type file ${missing[0]} could not be found")
+                throw new PipelineError("Expected $type file ${missing[0]} $extraDescription could not be found")
         }
         finally {
             outputGraphLock.readLock().unlock()
