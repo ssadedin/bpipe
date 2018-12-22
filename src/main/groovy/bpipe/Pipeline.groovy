@@ -538,8 +538,12 @@ public class Pipeline implements ResourceRequestor {
         
         Pipeline pipeline = new Pipeline()
         
-        if(Config.userConfig.region != null) {
-            pipeline.branch.region = Config.userConfig.region
+        if(Config.userConfig.containsKey('region')) {
+            String regionValue = Config.userConfig.region
+            pipeline.branch.region = new RegionValue(regionValue)
+        }
+        else {
+            pipeline.branch.region = new RegionValue("")
         }
         
         // To make life easier when a single argument is passed in,
