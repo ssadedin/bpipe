@@ -31,7 +31,10 @@ class RegionValue implements Serializable {
     }
 
     private initId() {
-        this.id = Utils.sha1(this.value).substring(0,8)
+        if(this.value.isEmpty())
+            this.id = "empty"
+        else
+            this.id = Utils.sha1(this.value).substring(0,8)
     }
     
     @CompileStatic
@@ -57,13 +60,29 @@ class RegionValue implements Serializable {
            if(!REGIONS_DIR.exists()) {
                REGIONS_DIR.mkdirs()
            }
-           
-           def fn = new File(REGIONS_DIR,Utils.sha1(getRegions())+".bed")
-           if(!fn.exists()) {
-               fn.text = getRegions().replaceAll("-","\t").replaceAll(":","\t").split(" ").join("\n") + "\n"
-           }
+           File fn = getBedFile()
            return fn.absolutePath
        } 
+    }
+    
+    String bedFlag(String flag) {
+        if(this.isEmpty()) {
+            return ""
+        }
+       File fn = getBedFile()
+       return "$flag $fn.absolutePath"
+    }
+
+    private File getBedFile() {
+        
+        if(!REGIONS_DIR.exists())
+            REGIONS_DIR.mkdirs()
+            
+        def fn = new File(REGIONS_DIR,Utils.sha1(getRegions())+".bed")
+        if(!fn.exists()) {
+            fn.text = getRegions().replaceAll("-","\t").replaceAll(":","\t").split(" ").join("\n") + "\n"
+        }
+        return fn
     }
     
     String plus(String arg) {
@@ -71,7 +90,7 @@ class RegionValue implements Serializable {
     }
     
     boolean isEmpty() {
-        false
+        this.value.size() == 0
     }
     
     def methodMissing(String name, args) {
