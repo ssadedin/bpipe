@@ -27,6 +27,8 @@ package bpipe
 import java.security.cert.CertPath
 import java.util.regex.Matcher
 import java.util.regex.Pattern
+
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 
 /**
@@ -69,7 +71,7 @@ class TransformOperation {
      * this list is treated as a pattern that is used to match on files
      * upstream in the pipeline tree to find files matching the given pattern.
      */
-    List files
+    List<PipelineFile> files
     
     /**
      * The pipeline context for which this transform operation is occurring.
@@ -161,6 +163,7 @@ class TransformOperation {
             else {
                 if(filesResolved) {
                     this.files.add(filesResolved[0])
+                    String escapedPattern = fromPattern
                     fromPatterns.add(fromPattern)
                     expandedToPatterns.add(toPattern)
                 }
@@ -185,7 +188,7 @@ class TransformOperation {
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
         
         List<PipelineFile> outFiles = 
-            computeOutputFiles(ctx.applyName ? pipeline.name : null, ctx.stageName, fromPatterns, providedToPatterns)
+            computeOutputFiles(ctx.applyName ? pipeline.name : null,fromPatterns, providedToPatterns)
         
         log.info "Transform using $exts produces outputs $outFiles"
         
@@ -206,10 +209,12 @@ class TransformOperation {
             ctx.produceImpl(outFiles, body)
     }
     
+    final static Pattern DOUBLE_DOT_PATTERN = ~/\.\./
+    
     /**
      * Compute a list of expected output file names from this transform's input files (files attribute)
      */
-    List<PipelineFile> computeOutputFiles(String applyBranchName, String stageName, List<String> fromPatterns = ['\\.[^\\.]*$'], List<String> providedToPatterns = null) {
+    List<PipelineFile> computeOutputFiles(final String applyBranchName, List<String> fromPatterns = ['\\.[^\\.]*$'], List<String> providedToPatterns = null) {
         Map extensionCounts = [:]
         for(def e in exts) {
             extensionCounts[e] = 0
@@ -225,8 +230,7 @@ class TransformOperation {
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
         
         int count = 0
-        def outFiles = exts.collect { String extension ->
-            
+        List outFiles = exts.collect { String extension ->
             // In the simple case, only 1 from pattern exists - we always replace the file extension
             // In advanced case we expect 1 from pattern and 1 toPattern per file
             int fromPatternIndex = count%fromPatterns.size()
@@ -244,71 +248,86 @@ class TransformOperation {
                    toPattern = '.' + toPattern
             }
             
-            // If the pipeline branched, we need to add a segment to the new files name
-            // to differentiate it from other parallel branches
-            String additionalSegment = ""
-            if(applyBranchName != null) {
-                String inputPath = inp.name
-                boolean branchInName = inputPath.contains('.' + applyBranchName + '.') || inputPath.startsWith(applyBranchName + '.')
-                if(!branchInName) {
-                    additionalSegment = '.'+applyBranchName
-                    log.info "Applying branch name $applyBranchName to pipeline segment because name is yet to be applied"
-//                    println "Applying branch name $applyBranchName to pipeline segment because name is yet to be applied"
-                }
+            ++count
+            PipelineFile result = computeOutputFile(inp, fromPattern, toPattern, extension, applyBranchName)
+            return result
+        }
+        return outFiles
+    }
+    
+    /**
+     * Compute the result of transforming the given input by replacing the given fromPattern with the given toPattern
+     * 
+     * @param inp
+     * @param fromPattern
+     * @param toPattern
+     * @param extension
+     * @param applyBranchName
+     * @return
+     */
+    @CompileStatic
+    PipelineFile computeOutputFile(PipelineFile inp, String fromPattern, String toPattern, String extension, String applyBranchName) {
+        // If the pipeline branched, we need to add a segment to the new files name
+        // to differentiate it from other parallel branches
+        String additionalSegment = ""
+        if(applyBranchName != null) {
+            String inputPath = inp.name
+            boolean branchInName = inputPath.contains('.' + applyBranchName + '.') || inputPath.startsWith(applyBranchName + '.')
+            if(!branchInName) {
+                additionalSegment = '.'+applyBranchName
+                log.info "Applying branch name $applyBranchName to pipeline segment because name is yet to be applied"
             }
+        }
             
-            PipelineFile txed = null
-            if(inp.name.contains(".")) {
-                String dot = fromPattern.startsWith(".") ?"":"."
-                String replacement = dot+FastUtils.dotJoin(additionalSegment,toPattern)
+        PipelineFile txed = null
+        if(inp.name.contains(".")) {
+            String dot = fromPattern.startsWith(".") ?"":"."
+            String replacement = dot+FastUtils.dotJoin(additionalSegment,toPattern)
                 
-                Pattern pattern = ~fromPattern
-                Matcher matcher = pattern.matcher(inp.path)
-                if(matcher.find()) {
-//                    txed = inp.newName(inp.path.replaceAll(fromPattern,replacement))
-                    if(fromPattern.startsWith('.') && !toPattern.startsWith('.')) {
-//                        println "No leading . in to pattern $toPattern so doing raw replacement with $replacement"
-                        txed = inp.newName(inp.path.substring(0, matcher.start()) + replacement)
-                    }
-                    else {
-                        txed = inp.newName(FastUtils.dotJoin(inp.path.substring(0, matcher.start()), replacement))
-                    }
-//                    println "tx via $fromPattern : $inp => $txed using replacement: $replacement"
+            Pattern pattern = ~fromPattern
+            Matcher matcher = pattern.matcher(inp.path)
+            if(matcher.find()) {
+                if(fromPattern.startsWith('.') && !toPattern.startsWith('.')) {
+                    txed = inp.newName(inp.path.substring(0, matcher.start()) + replacement)
                 }
                 else {
-                    log.info("Pattern $fromPattern did not match input path $inp")
+                    txed = inp.newName(FastUtils.dotJoin(inp.path.substring(0, matcher.start()), replacement))
                 }
             }
             else {
-                txed = inp.newName(FastUtils.dotJoin(inp.path,additionalSegment,extension))
+//                log.info("Pattern $fromPattern did not match input path $inp")
             }
-            
-            // There are still some situations that can result in consecutive periods appearing in
-            // a file name (when the branch name is inserted automatically). So it's a bit of a hack,
-            // but we simply remove them
-            txed = inp.newName(txed.path.replaceAll(/\.\.*/,/\./))
-            
-            // A small hack that is designed to avoid a situation where an output 
-            // receives the same name as an input file
-            if(files.any { it.path == txed.path }) {
-                txed = txed.newName(txed.path.replaceAll('\\.'+extension+'$', '.'+FastUtils.dotJoin(stageName,extension)))
-            }
-            
-            if(txed.path.startsWith("."))
-                txed = txed.newName(txed.path.substring(1))
-                
-            // If the pipeline merged, we need to excise the old branch names
-            if(ctx.inboundBranches) {
-                for(Branch branch in ctx.inboundBranches) {
-                    log.info "Excise inbound merging branch reference $branch due to merge point"
-                    txed = txed.newName(txed.path.replace('.' + branch.name + '.','.merge.'))
-                }
-            }
-                
-            ++count
-            return txed
         }
-        return outFiles
+        else {
+            txed = inp.newName(FastUtils.dotJoin(inp.path,additionalSegment,extension))
+        }
+            
+        // There are still some situations that can result in consecutive periods appearing in
+        // a file name (when the branch name is inserted automatically). So it's a bit of a hack,
+        // but we simply remove them
+        txed = inp.newName(txed.path.replaceAll(DOUBLE_DOT_PATTERN,/\./))
+            
+        // A small hack that is designed to avoid a situation where an output 
+        // receives the same name as an input file
+        if(files.any { PipelineFile f -> f.path == txed.path }) {
+            txed = txed.newName(txed.path.replaceAll('\\.'+extension+'$', '.'+FastUtils.dotJoin(ctx.stageName,extension)))
+        }
+            
+        if(txed.path.startsWith("."))
+            txed = txed.newName(txed.path.substring(1))
+                
+        // If the pipeline merged, we need to excise the old branch names
+        if(ctx.inboundBranches) {
+            for(Branch branch in ctx.inboundBranches) {
+                log.info "Excise inbound merging branch reference $branch.name in $ctx.stageName due to merge point"
+                txed = txed.newName(txed.path.replace('.' + branch.name + '.','.merge.'))
+            }
+        }
+        else {
+            // log.info "No inbound branches in $ctx.stageName"
+        }
+                
+        return txed        
     }
     
     /**
@@ -322,3 +341,4 @@ class TransformOperation {
         return result
     }
 }
+
