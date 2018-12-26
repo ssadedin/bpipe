@@ -25,7 +25,8 @@
 package bpipe
 
 import java.security.cert.CertPath
-
+import java.util.regex.Matcher
+import java.util.regex.Pattern
 import groovy.util.logging.Log;
 
 /**
@@ -183,7 +184,8 @@ class TransformOperation {
         
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
         
-        def outFiles = computeOutputFiles(ctx.applyName ? pipeline.name : null, ctx.stageName, fromPatterns, providedToPatterns)
+        List<PipelineFile> outFiles = 
+            computeOutputFiles(ctx.applyName ? pipeline.name : null, ctx.stageName, fromPatterns, providedToPatterns)
         
         log.info "Transform using $exts produces outputs $outFiles"
         
@@ -235,6 +237,7 @@ class TransformOperation {
             
             extensionCounts[extension]++
             String toPattern = providedToPatterns?providedToPatterns[count]:null
+            String rawToPattern = toPattern
             if(toPattern == null) {
                toPattern = extension 
                if(!toPattern.startsWith('.'))
@@ -250,13 +253,31 @@ class TransformOperation {
                 if(!branchInName) {
                     additionalSegment = '.'+applyBranchName
                     log.info "Applying branch name $applyBranchName to pipeline segment because name is yet to be applied"
+//                    println "Applying branch name $applyBranchName to pipeline segment because name is yet to be applied"
                 }
             }
             
             PipelineFile txed = null
             if(inp.name.contains(".")) {
                 String dot = fromPattern.startsWith(".") ?"":"."
-                txed = inp.newName(inp.path.replaceAll(fromPattern,dot+FastUtils.dotJoin(additionalSegment,toPattern)))
+                String replacement = dot+FastUtils.dotJoin(additionalSegment,toPattern)
+                
+                Pattern pattern = ~fromPattern
+                Matcher matcher = pattern.matcher(inp.path)
+                if(matcher.find()) {
+//                    txed = inp.newName(inp.path.replaceAll(fromPattern,replacement))
+                    if(fromPattern.startsWith('.') && !toPattern.startsWith('.')) {
+//                        println "No leading . in to pattern $toPattern so doing raw replacement with $replacement"
+                        txed = inp.newName(inp.path.substring(0, matcher.start()) + replacement)
+                    }
+                    else {
+                        txed = inp.newName(FastUtils.dotJoin(inp.path.substring(0, matcher.start()), replacement))
+                    }
+//                    println "tx via $fromPattern : $inp => $txed using replacement: $replacement"
+                }
+                else {
+                    log.info("Pattern $fromPattern did not match input path $inp")
+                }
             }
             else {
                 txed = inp.newName(FastUtils.dotJoin(inp.path,additionalSegment,extension))
