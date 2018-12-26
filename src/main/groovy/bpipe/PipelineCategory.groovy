@@ -394,6 +394,7 @@ class PipelineCategory {
         child.branch.region = regionValue
         child.branch.chr = regions.sequences.keySet().iterator().next()
         child.branch.name = regionValue.id
+        child.branch.@name = regionValue.id
         
         log.info "Set region value for $child to $regionValue"
     }
@@ -443,6 +444,7 @@ class PipelineCategory {
         child.branch = new Branch()
         child.variables.chr = chrName
         child.branch.name = chrName
+        child.branch.@name = chrName
         child.branch.chr = chrName
         if(Pipeline.defaultGenome) {
             Map<String,Integer> chromSizes = Pipeline.genomeChromosomeSizes[Pipeline.defaultGenome]
@@ -629,6 +631,7 @@ class PipelineCategory {
                                     
                         child.addStage(dummyPriorStage)
                         child.branch = new Branch(name:childName)
+                        child.branch.@name = childName
                         child.nameApplied = !applyName
                         child.runSegment(files, segmentClosure)
                     }
