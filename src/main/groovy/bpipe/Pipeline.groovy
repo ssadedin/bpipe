@@ -191,7 +191,7 @@ public class Pipeline implements ResourceRequestor {
      * output file names when the pipeline is run as a child pipeline.
      * This is null and not used in the default, root pipeline
      */
-    Branch branch = new Branch(name:"")
+    Branch branch = new Branch()
     
     /**
      * If there are unmerged child branches pending for this branch, then they are set here
