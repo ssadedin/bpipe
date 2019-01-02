@@ -1458,8 +1458,10 @@ class PipelineContext {
                     allResolvedInputs.addAll(Utils.box(this.@input))
                 }
                 
-                if(commandId == "-1")
-                    commandId = CommandId.newId()
+                if(commandId == "-1") {
+                    String existingCommandId = pathToCommandId[o.path]
+                    commandId = existingCommandId ?: CommandId.newId()
+                }
   
                 // It's possible the user used produce() but did not actually reference
                 // the output variable anywhere in the body. In that case, we
@@ -2202,8 +2204,15 @@ class PipelineContext {
           convertToPipelineFiles(command, Utils.box(this.@inputWrapper?.resolvedInputs) + internalInputs).collect { aliases[it] }
 
       log.info "Checking actual resolved inputs $actualResolvedInputs"
-      
-      command.id = CommandId.newId()
+      if(probeMode) {
+          command.id = CommandId.newId()
+      }
+      else {
+          command.id = this.pathToCommandId[checkOutputs[0]?.path]
+          if(!command.id) {
+              command.id = CommandId.newId()
+          }
+      }
       
       trackedOutputs[command.id] = command              
       
