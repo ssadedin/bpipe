@@ -25,6 +25,8 @@
 package bpipe
 
 import java.lang.reflect.Constructor;
+
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 
 /**
@@ -42,6 +44,11 @@ class EventManager {
 	Map<PipelineEvent,PipelineEventListener> listeners = [:]
 
 	ConfigObject cfg
+    
+    @CompileStatic
+    static EventManager getTheInstance() {
+        return EventManager.instance
+    }
 	
 	/**
 	 * Configure default event listeners from file / configuration object

@@ -95,7 +95,7 @@ class PipelineContext {
      *                        an output that matches the specified extension.
      *
      */
-    public PipelineContext(Binding extraBinding, List<PipelineStage> pipelineStages, List<Closure> pipelineJoiners, Branch branch) {
+    public PipelineContext(Binding extraBinding, List<PipelineStage> pipelineStages, Set<Closure> pipelineJoiners, Branch branch) {
         super();
         if(pipelineStages == null)
             throw new IllegalArgumentException("PipelineStages cannot be null")
@@ -182,7 +182,7 @@ class PipelineContext {
      * them from certain functions (eg: they shouldn't be displayed
      * to the user in diagrams, etc.)
      */
-    private List<Closure> pipelineJoiners
+    public Set<Closure> pipelineJoiners
     
     /**
      * If this stage is the result of merging multiple branches and is designated as a
