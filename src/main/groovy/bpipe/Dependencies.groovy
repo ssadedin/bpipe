@@ -43,6 +43,7 @@ import com.hazelcast.impl.base.FactoryAwareNamedProxy
  * 
  * @author ssadedin
  */
+@Log
 class GraphEntry implements Serializable {
     
     public static final long serialVersionUID = 0L
@@ -90,9 +91,12 @@ class GraphEntry implements Serializable {
     */
     
     @CompileStatic
-    GraphEntry findBy(Closure c) {
-        if(this.values != null && values.any { c(it) })
-            return this
+    GraphEntry findBy(Closure<Boolean> c) {
+        if(this.values != null) { 
+            for(OutputMetaData value in this.values)
+                if(c(value) != false)
+                    return this
+        }
             
         for(GraphEntry child in children) {
            def result = child.findBy(c)
@@ -106,12 +110,13 @@ class GraphEntry implements Serializable {
         Utils.time("Index output graph") {
             Map<String, GraphEntry> indexTmp = new HashMap(sizeHint)
             depthFirst { GraphEntry e ->
-                if(e.values) {
+                if(!e.values.is(null) && !e.values.isEmpty()) {
                     for(OutputMetaData p in e.values) {
                         indexTmp[(String)p.canonicalPath] = e
                     }
                 }
             }
+            this.index = indexTmp
         }
     }
     
@@ -129,7 +134,21 @@ class GraphEntry implements Serializable {
         
         return results
     }
-  
+    
+    @CompileStatic
+    void addAsChildInGraph(OutputMetaData out, GraphEntry topRoot) {
+        for(String inp in out.canonicalInputs) {
+//          GraphEntry parentEntry = topRoot.findBy { OutputMetaData o -> o.canonicalPath == inp } 
+            GraphEntry parentEntry = topRoot.entryForCanonicalPath(inp)
+            if(parentEntry) {
+                if(!(this in parentEntry.children))
+                    parentEntry.children << this
+                this.parents << parentEntry
+            }
+            else
+                log.info "Dependency $inp for $out.outputPath is external root input"
+        }
+    }
     
     /**
      * Search the graph for entry with given outputfile
@@ -148,15 +167,26 @@ class GraphEntry implements Serializable {
         return entryForCanonicalPath(outputFilePath)
     } 
     
+    static int cacheMisses = 0
+    
     @CompileStatic
     GraphEntry entryForCanonicalPath(String canonicalPath) {
-        GraphEntry entry = index?.get(canonicalPath)
-        if(entry)
-            return entry
+        
+        if(index?.containsKey(canonicalPath)) {
+            return index[canonicalPath]
+        }
+        
+//        println "MISS: find " + canonicalPath + " in output graph (${cacheMisses++})"
+        
         // In case of non-default output directory, the outputFile itself may be in a directory
-        findBy { OutputMetaData p -> 
+        GraphEntry result = findBy { OutputMetaData p -> 
             canonicalPathFor(p) == canonicalPath  
         }
+        
+        if(index != null)
+            index.put(canonicalPath, result)
+            
+        return result
     }
     
      /**
@@ -221,6 +251,7 @@ class GraphEntry implements Serializable {
         new GraphEntry(values: values.clone(), parents: parents.clone(), children: children.collect { it.clone() })
     }
     
+    @CompileStatic
     void depthFirst(Closure c) {
         
         c(this)
@@ -234,13 +265,16 @@ class GraphEntry implements Serializable {
     GraphEntry filter(String output) {
         GraphEntry outputEntry = this.entryFor(new File(output))
         
-        if(!outputEntry)
+        if(!outputEntry) {
             return null
+        }
         
         GraphEntry result = outputEntry.clone()
         
         GraphEntry root = null
         
+        // Note: need the declaration separate to assignment because the closure is referenced
+        // in its own body(!)
         def trimParent 
         trimParent = { GraphEntry p, GraphEntry c, int index ->
             // Remove all parents that don't contain the child
@@ -384,6 +418,12 @@ class Dependencies {
      * remake function.
      */
     Map<String,Long> overrideTimestamps = [:]
+    
+    
+    @CompileStatic
+    static Dependencies getTheInstance() {
+        return Dependencies.instance
+    }
     
     /**
      * Return true iff all the outputs and downstream outputs for which
@@ -665,6 +705,7 @@ class Dependencies {
         if(outputGraph != null) {
             outputGraphLock.writeLock().lock()
             try {
+//                println "Adding file $p.outputPath to output graph"
                 log.info "Adding file $p.outputPath to output graph"
                 computeOutputGraph([p], outputGraph, outputGraph, [],false)
             }
@@ -927,8 +968,6 @@ class Dependencies {
             outputGroups = rootTree.groupOutputs(outputsWithExternalInputs)
             outputGroups.each { key,outputGroup ->
                 GraphEntry childEntry = new GraphEntry(values: outputGroup)
-                
-                
                 childEntry.values.each { it.maxTimestamp = it.timestamp }
                 createdEntries[key] = childEntry 
                 childEntry.parents << rootTree
@@ -949,19 +988,13 @@ class Dependencies {
                 entries << entry
                 createdEntries[out.outputPath] = entry
                 outputGroups[out.outputPath] = entry.values
+                if(topRoot.index != null && out.canonicalPath) {
+                    topRoot.index[out.canonicalPath] = entry
+                }
                 
                 // find all nodes in the tree which this output depends on 
-                out.canonicalInputs.each { String inp ->
-                    GraphEntry parentEntry = topRoot.findBy { OutputMetaData o -> o.canonicalPath == inp } 
-                    if(parentEntry) {
-                        if(!(entry in parentEntry.children))
-                          parentEntry.children << entry
-                        entry.parents << parentEntry
-                    }
-                    else
-                        log.info "Dependency $inp for $out.outputPath is external root input"
-                }
-               
+                entry.addAsChildInGraph(out, topRoot)
+                
                 List<OutputMetaData> dependenciesOnParents = entry.getParentDependencies(out)
                 out.maxTimestamp = (dependenciesOnParents*.maxTimestamp.flatten() + out.timestamp).max()
                     

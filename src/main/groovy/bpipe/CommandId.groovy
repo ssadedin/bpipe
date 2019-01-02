@@ -24,6 +24,7 @@
  */
 package bpipe
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 
 /**
@@ -36,6 +37,7 @@ import groovy.util.logging.Log;
  * @author simon.sadedin@mcri.edu.au
  */
 @Log
+@CompileStatic
 class CommandId {
     
     private static int lastCommandId = -1 
@@ -68,6 +70,7 @@ class CommandId {
         }
         
         ++lastCommandId
+//        println "save command $lastCommandId"
         commandIdFile.text = String.valueOf(lastCommandId)
     }
 }

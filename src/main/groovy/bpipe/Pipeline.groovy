@@ -34,6 +34,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method
 import java.nio.file.Files;
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger;
 
 import groovy.util.logging.Log;
@@ -159,7 +160,7 @@ public class Pipeline implements ResourceRequestor {
     /**
      * A list of "dummy" stages that are actually used to link other stages together
      */
-    def joiners = []
+    Set<Closure> joiners = Collections.newSetFromMap(new ConcurrentHashMap())
     
     /**
      * A node representing the graph structure of the pipeline underneath this 
@@ -1007,7 +1008,7 @@ public class Pipeline implements ResourceRequestor {
         Pipeline p = new Pipeline()
         p.node = new Node(branchPoint, childName, [type:'pipeline',pipeline:p])
         p.stages = [] + this.stages
-        p.joiners = [] + this.joiners
+        p.joiners =  this.joiners
         p.aliases = this.aliases
         p.parent = this
         p.childIndex = this.childCount
