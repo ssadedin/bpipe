@@ -1421,19 +1421,18 @@ class PipelineContext {
             doExecute = waitForResumableOutputs(boxedOutputs)
         }
         
+        if(boxedOutputs) {
+			List<PipelineFile> globActualFiles = globExistingFiles*.toPipelineFiles().flatten()
+            this.setRawOutput(
+                (fixedOutputs  + globActualFiles).unique { it.path }
+            )
+            this.removeReplacedOutputs()
+        }
+        else {
+            this.setRawOutput(fixedOutputs)
+        }
+        
         if(doExecute) {
-            if(boxedOutputs) {
-				
-				List<PipelineFile> globActualFiles = globExistingFiles*.toPipelineFiles().flatten()
-				
-                this.setRawOutput(
-                    (fixedOutputs  + globActualFiles).unique { it.path }
-                )
-                this.removeReplacedOutputs()
-            }
-            else {
-                this.setRawOutput(fixedOutputs)
-            }
              
             // Store the list of output files so that if we are killed 
             // they can be cleaned up
