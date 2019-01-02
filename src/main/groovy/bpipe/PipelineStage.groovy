@@ -211,6 +211,7 @@ class PipelineStage {
      * they are valid and exist and then they are connected to the next 
      * pipeline stage.
      */
+    @CompileStatic
     def run() {
         
         // Cache the original inputs for reference when searching back up through 
@@ -219,7 +220,7 @@ class PipelineStage {
         
         def pipeline = Pipeline.currentRuntimePipeline.get()
         
-        Dependencies.instance.checkFiles(context.rawInput, pipeline.aliases)
+        Dependencies.theInstance.checkFiles(context.rawInput, pipeline.aliases)
         
         copyContextBindingsToBody()
         
@@ -262,9 +263,9 @@ class PipelineStage {
         catch(Throwable e) {
                 
             if(!joiner) {
-               EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", [stage:this])            
+               EventManager.theInstance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", (Map<String,Object>)[stage:this])            
                if(!succeeded) {
-                   EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")
+                   EventManager.theInstance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")
                }
             }
                 
@@ -280,12 +281,12 @@ class PipelineStage {
             }
         }
         
-        log.info "Checking files: " + context.rawOutput.collect { String.valueOf(it) + " ( " + it.storage.class.name + ")" }.join(",")
+//        log.info "Checking files: " + context.rawOutput.collect { String.valueOf(it) + " ( " + it.storage.class.name + ")" }.join(",")
         try {
-             Dependencies.instance.checkFiles(context.rawOutput, pipeline.aliases, "output", "in stage ${displayName}")
+             Dependencies.theInstance.checkFiles(context.rawOutput, pipeline.aliases, "output", "in stage ${displayName}")
  
             if(!joiner) {
-                 EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", [stage:this])            
+                 EventManager.theInstance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", (Map<String,Object>)[stage:this])            
             }
         } 
         catch (PipelineError e) {
@@ -294,8 +295,8 @@ class PipelineStage {
                 
             if(!joiner) {
                 log.info "Sending failed event due to missing output"
-                EventManager.instance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", [stage:this])             
-                EventManager.instance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")
+                EventManager.theInstance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", (Map<String,Object>)[stage:this])             
+                EventManager.theInstance.signal(PipelineEvent.STAGE_FAILED, "Stage $displayName has Failed")
             }
                     
             throw e 
@@ -315,24 +316,15 @@ class PipelineStage {
      * Execute the body of the pipeline stage
      * @return
      */
-	private runBody() {
+    
+    @CompileStatic
+	private void runBody() {
 		this.running = true
         def stageBranchProp = context.branch.getProperty(stageName)
         if(stageBranchProp != null) {
             log.info "Branch variable $stageName with same name as stage: check for override"
             if(stageBranchProp instanceof Closure) {
-                
-                // Note: if the original closure is actually the same, DON'T override
-                Closure original = body
-                if(body instanceof ParameterizedClosure)  {
-                    original = ((ParameterizedClosure)body).getBody()
-                }
-                
-                if(original.class.name != stageBranchProp.class.name) {
-                    body = context.branch[stageName]
-                    log.info "Overriding body for $stageName due to branch variable of type Closure ${context.branch[stageName].hashCode()} containing stage name (new body = " +
-                             PipelineCategory.closureNames[body] + "," + PipelineCategory.closureNames[context.branch[stageName]] + ")"
-                }
+                overrideBody((Closure)stageBranchProp)
             }
          }
         
@@ -347,26 +339,32 @@ class PipelineStage {
                 PipelineCategory.wrappers[stageName](body, context.@input)
             }
             else {
-                use(PipelineBodyCategory) {
-                    // Closure binding does NOT normally take precedence overy the global script binding
-                    // to enable local variables to override global ones, ask main binding to override
-                    def bindingVariables = body.hasProperty("binding") ? body.binding.variables : [:]
-                    if(body instanceof ParameterizedClosure) {
-                        def extras = body.getExtraVariables()
-                        if(extras instanceof Closure)
-                            extras = extras()
+                // Closure binding does NOT normally take precedence overy the global script binding
+                // to enable local variables to override global ones, ask main binding to override
+                Map bindingVariables = (Map)(body.hasProperty("binding") ? ((Binding)body.getProperty('binding')).variables : [:])
+                if(body instanceof ParameterizedClosure) {
+                    Map resolvedExtras
+                    def extras = ((ParameterizedClosure)body).getExtraVariables()
+                    if(extras instanceof Closure)
+                        resolvedExtras = extras()
+                    else
+                        resolvedExtras = (Map)extras
                             
-                        bindingVariables += extras
-                    }
+                    bindingVariables += resolvedExtras
+                }
                         
-                    List returnedInputs 
-                    Runner.binding.withLocalVariables(bindingVariables) {
-                        returnedInputs = Utils.box(body(context.@input))
-                        runOutstandingChecks()
-                    }
-                    if(joiner || (body in Pipeline.currentRuntimePipeline.get().segmentJoiners)) {
-                        context.nextInputs = returnedInputs
-                    }
+                List returnedInputs 
+                Runner.binding.stageLocalVariables.set(bindingVariables)
+                try {
+                    returnedInputs = runWrappedBody()
+                    runOutstandingChecks()
+                }
+                finally {
+                    Runner.binding.stageLocalVariables.set(null)
+                }
+                
+                if(joiner || (body in Pipeline.currentRuntimePipeline.get().segmentJoiners)) {
+                    context.nextInputs = returnedInputs
                 }
             }
         }
@@ -379,6 +377,28 @@ class PipelineStage {
             Pipeline.currentContext.set(null)
             this.running = false
             this.endDateTimeMs = System.currentTimeMillis()
+        }
+    }
+    
+    List runWrappedBody() {
+        use(PipelineBodyCategory) {
+            return Utils.box(body(context.@input)) as List
+        }
+    }
+    
+    @CompileStatic
+    void overrideBody(Closure stageBranchProp) {
+                
+        // Note: if the original closure is actually the same, DON'T override
+        Closure original = body
+        if(body instanceof ParameterizedClosure)  {
+            original = ((ParameterizedClosure)body).getBody()
+        }
+                
+        if(original.class.name != stageBranchProp.class.name) {
+            body = (Closure) context.branch[stageName]
+            log.info "Overriding body for $stageName due to branch variable of type Closure ${context.branch[stageName].hashCode()} containing stage name (new body = " +
+                     PipelineCategory.closureNames[body] + "," + PipelineCategory.closureNames[context.branch[stageName]] + ")"
         }
     }
     
@@ -548,7 +568,9 @@ class PipelineStage {
         }
     }
     
+    @CompileStatic
     boolean isJoiner() {
+//        println "Checking ${context.pipelineJoiners.size()} pipeline joiners"
         this.body in this.context.pipelineJoiners
     }
     

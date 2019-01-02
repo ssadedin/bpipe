@@ -30,6 +30,7 @@ abstract class StorageLayer implements Serializable {
     
     abstract String mount(CommandExecutor executor)
     
+    @Memoized
     static StorageLayer create(String name) {
         
         assert name != 'null'

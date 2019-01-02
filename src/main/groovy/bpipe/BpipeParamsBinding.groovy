@@ -25,6 +25,7 @@
  */  
 package bpipe
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 
 /**
@@ -198,6 +199,7 @@ class BpipeParamsBinding extends Binding {
         new MapEntry( key, value )
     }
     
+    @CompileStatic
     Object withLocalVariables(Map variables, Closure c) {
         this.stageLocalVariables.set(variables)
         try {

@@ -30,6 +30,7 @@ import groovy.transform.CompileStatic
 import java.io.FileOutputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -61,7 +62,7 @@ class PipelineCategory {
      * called instead of the body, passing the body as a parameter.
      * This is how predeclared Transform and Filters work.
      */
-    static Map wrappers = [:]
+    static Map<String,Closure> wrappers = [:]
     
     static Closure getAt(Closure c, String... params) {
         return c
@@ -781,9 +782,12 @@ class PipelineCategory {
         // Finally add a merged stage that has all the outputs from the last stages
         log.info "There are ${transposed.size()} stages from nested pipelines"
         List<PipelineStage> finalStages = stagesList.collect { List<PipelineStage> stages -> stages.reverse().find { it != null } }
-        log.info "There ${finalStages} parallel paths in final stage"
+        log.info "There are ${finalStages} parallel paths in final stage"
         
-        def joiners = finalStages.context.pipelineJoiners
+        List<Set> joinersList = finalStages.grep { it != null }.collect { it.context.pipelineJoiners }
+        
+        Set joiners = joinersList.sum()
+                                 
         PipelineContext mergedContext = 
             new PipelineContext(null, parent.stages, joiners, new Branch(name:'all'))
             
