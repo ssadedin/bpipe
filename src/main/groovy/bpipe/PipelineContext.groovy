@@ -1760,6 +1760,7 @@ class PipelineContext {
      * @param cmd
      * @param config
      */
+    @CompileStatic
     void exec(String cmd, String config) {
         exec(cmd, true, config)
     }
@@ -1768,6 +1769,7 @@ class PipelineContext {
      * @see #exec(String, boolean, String)
      * @param cmd
      */
+    @CompileStatic
     void exec(String cmd) {
         exec(cmd, true)
     }
@@ -1801,10 +1803,12 @@ class PipelineContext {
      * 
      * @see #async(Closure, String)
      */
+    @CompileStatic
     void exec(String cmd, boolean joinNewLines, String config=null) {
         execImpl(cmd, joinNewLines, config)
     }
     
+    @CompileStatic
     Command execImpl(String cmd, boolean joinNewLines, String config=null) {
         
       log.info "Tracking outputs referenced=[$referencedOutputs] inferred=[$inferredOutputs] for command $cmd" 
