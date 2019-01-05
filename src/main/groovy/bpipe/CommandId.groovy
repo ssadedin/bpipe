@@ -24,6 +24,15 @@
  */
 package bpipe
 
+import java.nio.channels.AsynchronousFileChannel
+import java.nio.channels.CompletionHandler
+
+import static java.nio.file.StandardOpenOption.*
+
+import java.nio.ByteBuffer
+
+import static java.nio.channels.AsynchronousFileChannel.*
+
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 
@@ -47,6 +56,33 @@ class CommandId {
      */
     private final static File commandIdFile = new File(".bpipe/commandid") 
     
+    private static AsynchronousFileChannel fileChannel = openChannel()
+    
+    
+    static AsynchronousFileChannel openChannel() {
+        AsynchronousFileChannel.open(commandIdFile.toPath(), WRITE, CREATE);
+    }
+    
+    static CompletionHandler completionHandler = new CompletionHandler() {
+        @Override
+        public void failed(Throwable exc, Object attachment) {
+            log.warning "Failed to save command id ($exc)"
+            if(fileChannel.isOpen()) {
+                try {
+                    fileChannel.close() 
+                } catch (Exception e) {
+                    System.err.println("WARNING: Failed to re-open command id channel: $e")
+                }
+            }
+            fileChannel = openChannel()
+        }
+
+        @Override
+        public void completed(Object result, Object attachment) {
+//            println "saved command id $attachment"
+        }
+    }
+    
     /**
      * Returns a newly allocated job id that will not be reused in this instance of Bpipe
      * @return
@@ -55,8 +91,9 @@ class CommandId {
         
         if(lastCommandId < 0) {
             if(!commandIdFile.exists()) {
-                commandIdFile << "0"
+                lastCommandId = 0
             }
+            else
 			try {
 	            lastCommandId = Integer.parseInt(commandIdFile.text)
 			}
@@ -70,7 +107,22 @@ class CommandId {
         }
         
         ++lastCommandId
+        
+        
 //        println "save command $lastCommandId"
-        commandIdFile.text = String.valueOf(lastCommandId)
+//        commandIdFile.text = String.valueOf(lastCommandId)
+        
+        final String id = String.valueOf(lastCommandId)
+        
+        writeId(id)
+        
+        return id
+    }
+
+    private static writeId(String id) {
+        final ByteBuffer buffer = ByteBuffer.allocate(32);
+        buffer.put(id.getBytes());
+        buffer.flip();
+        fileChannel.write(buffer,0, buffer, completionHandler)
     }
 }
