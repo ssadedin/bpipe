@@ -723,6 +723,7 @@ class Utils {
    /**
     * Coerce all of the arguments to point to files in the specified directory.
     */
+    @CompileStatic
     static List toDir(List outputs, dir) {
         
        String targetDir = dir
@@ -736,15 +737,17 @@ class Utils {
        def newOutputs = outputs.collect { out ->
            Class type = out.class
            
-           if(out.toString().contains("/") && out.toString().contains("*")) 
+           String outString = out.toString()
+           if(outString.contains("/") && outString.contains("*")) 
                return out
            else
            if(out instanceof PipelineFile) {
-               String newPath = targetDir == "." ? out.name : targetDir + '/' + out.name
-               return out.newName(newPath)
+               PipelineFile pf = (PipelineFile)out
+               String newPath = targetDir == "." ? pf.name : targetDir + '/' + pf.name
+               return pf.newName(newPath)
            }
            else
-           if(out.toString().contains("/") && new File(out).exists())  {
+           if(outString.contains("/") && new File(outString).exists())  {
                return out
            }
            else {
@@ -893,6 +896,7 @@ class Utils {
      * @param startCmd  List of objects (will be converted to strings) as args to command
      * @return Map with exitValue, err and out keys
      */
+    @CompileStatic
     static ExecutedProcess executeCommand(Map options = [:], List<Object> startCmd, Closure builder = null) {
         
         List<String> stringified = startCmd*.toString()
@@ -908,8 +912,8 @@ class Utils {
         Process p = pb.start()
         ExecutedProcess result = new ExecutedProcess()
         Utils.withStreams(p) {
-            Appendable out = options.out ?: new StringBuilder()
-            Appendable err = options.err ?: new StringBuilder()
+            Appendable out = (Appendable)options.out ?: new StringBuilder()
+            Appendable err = (Appendable)options.err ?: new StringBuilder()
             
             // Note: observed issue with hang here on Broad cluster
             // seems to be related to hang inside OS / NFS call. Maybe use forwarder for this?
@@ -1106,7 +1110,8 @@ class Utils {
           .collectEntries() 
     }
 	
-    static String sendURL(Map params, String method, String baseURL, Map headers=[:]) {
+    @CompileStatic
+    static String sendURL(Map<String,Object> params, String method, String baseURL, Map headers=[:]) {
 		String paramString = params.collect {
 			URLEncoder.encode(it.key)+'='+URLEncoder.encode(String.valueOf(it.value))
 		}.join('&')
@@ -1120,6 +1125,7 @@ class Utils {
         connectAndSend(method, null,url, headers)
 	}
 	
+    @CompileStatic
     static String connectAndSend(def contentIn, String url, Map headers=[:]) {
 		connectAndSend('POST', contentIn, url, headers)
 	}
@@ -1175,12 +1181,13 @@ class Utils {
     }
     
 
+    @CompileStatic
     static Object withRetries(Map options=[:], int maxRetries, Closure action) {
        int count = 0
        long sleepTimeMs = 1000
        long backoffBaseTime = 10000
        if(options.backoffBaseTime)
-           backoffBaseTime = options.backoffBaseTime
+           backoffBaseTime = (long)options.backoffBaseTime
            
         while(true) {
             try {
