@@ -383,34 +383,49 @@ class PipelineInput {
         
         PipelineStage currentStage = stages[-1]
         
-        def reverseOutputs = stages.reverse().grep {  PipelineStage stage ->
+        List<PipelineStage> reverseStages = stages.reverse().grep {  PipelineStage stage ->
             // Only consider outputs from threads that are related to us but don't consider our own
             // (yet to be created) outputs
             
             !stage.is(currentStage) && stage.context.threadId in relatedThreads && !inputBelongsToStage(stage)
             
             // !this.is(it.context.@inputWrapper) && ( this.parent == null || !this.parent.is(it.context.@inputWrapper)    )
-        }.collect { PipelineStage stage ->
+        }
+        
+        List reverseOutputs = new ArrayList(reverseStages.size()*2)
+        for(PipelineStage stage in reverseStages) {
+            
+            if(stage.context.nextInputs != null) {
+                log.info "nextInputs are $stage.context.nextInputs" 
+                List nextInputs = Utils.box(stage.context.nextInputs) as List
+                reverseOutputs.add(nextInputs)
+            }
             
             List outputs = Utils.box(stage.context.@output)  as List
-            log.info "Outputs in search from $stage.stageName will be $outputs"
-            if(outputs.isEmpty() && stage.context.nextInputs != null)
-                outputs = Utils.box(stage.context.nextInputs) as List
-            return outputs
+            if(!outputs.isEmpty()) {
+                log.info "Outputs in search from $stage.stageName $outputs"            
+                reverseOutputs.add(outputs)
+            }
         }
         
         // Add a final stage that represents the original inputs (bit of a hack)
         // You can think of it as the initial inputs being the output of some previous stage
         // that we know nothing about
-        reverseOutputs.add(LocalPipelineFile.from(Utils.box(stages[0].context.@input) as List))
+        List previousInputs = LocalPipelineFile.from(Utils.box(stages[0].context.@input) as List)
+        log.info "Supplementing with outputs from previous inputs: " + previousInputs
+        reverseOutputs.add(previousInputs)
             
         // Consider not just the actual inputs to the stage, but also the *original* unmodified inputs
-        if(stages[0].originalInputs)
-  	        reverseOutputs.add(LocalPipelineFile.from(Utils.box(stages[0].originalInputs) as List))
+        if(stages[0].originalInputs) {
+            List originalInputs = LocalPipelineFile.from(Utils.box(stages[0].originalInputs) as List)
+            log.info "Supplementing with original outputs: " + originalInputs
+  	        reverseOutputs.add(originalInputs)
+        }
         
         // Add an initial stage that represents the current input to this stage.  This way
         // if the from() spec is used and matches the actual inputs then it will go with those
         // rather than searching backwards for a previous match
+        log.info "Finally, add my actual input as the first thing to check: " + this.input
         reverseOutputs.add(0,this.@input)
             
         return reverseOutputs
