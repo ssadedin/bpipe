@@ -2716,7 +2716,9 @@ class PipelineContext {
                return new LocalPipelineFile(inp)
            }
            else {
-               assert false : "Forward of type " + inp?.class?.name + " (storage = $storage) is not supported"
+               
+               throw new PipelineError("Cannot forward file $inp: it is not a recognised pipeline input and it cannot be found as a file")
+//               assert false : "Forward of type " + inp?.class?.name + " (storage = $storage) is not supported"
            }
        }.flatten()
        
