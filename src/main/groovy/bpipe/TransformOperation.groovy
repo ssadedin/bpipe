@@ -330,6 +330,12 @@ class TransformOperation {
         return txed        
     }
     
+    def methodMissing(String name, args) {
+        if(name == "to") {
+            this.to(args[0..-2], args[-1])
+        }
+    }
+    
     /**
      * Return true if the extension given is a wildcard type expression that could
      * match multiple files.
