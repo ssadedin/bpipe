@@ -70,7 +70,7 @@ class PipelineDelegate {
                                     ${context.stageName}.using { foo : "bar" }
                         """.stripIndent())
                 }
-                context.localVariables = extras
+                context.localVariables = extras.clone()
             }
         
         }
