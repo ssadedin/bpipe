@@ -24,19 +24,22 @@ do
     if [ ! -e ./run.sh ];
     then
         echo "Skip $t : no run.sh present"
-	elif ./run.sh;
-	then
-		echo
-		echo "SUCCEEDED"
-		echo
-		let 'succ=succ+1'
-	else
-		echo
-		echo "FAILED"
-		echo
-		let 'fail=fail+1'
-    failures="$failures\n$t"
-	fi
+    else 
+        chmod uga+rx ./run.sh;
+        if ./run.sh; 
+        then
+            echo
+            echo "SUCCEEDED"
+            echo
+            let 'succ=succ+1'
+        else
+            echo
+            echo "FAILED"
+            echo
+            let 'fail=fail+1'
+        failures="$failures\n$t"
+        fi
+    fi
 done
 
 echo 
