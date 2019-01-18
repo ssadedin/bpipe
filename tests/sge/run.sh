@@ -8,7 +8,7 @@ rm -rf .bpipe
 
 bpipe run test.groovy > test.out 2>&1 # will fail
 
-[ -e .bpipe/commandtmp/1/cmd.sh ] || err "Did not find command template written to expected folder"
+[ -e .bpipe/commandtmp/0/cmd.sh ] || err "Did not find command template written to expected folder"
 
 true
 
