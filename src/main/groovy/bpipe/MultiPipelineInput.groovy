@@ -103,14 +103,10 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
      * @param flag name of flag, including dashes (eg: "-I" or "--input")
      * @return  string containing each matching input prefixed by the flag and a space
      */
+    @Override
     public String withFlag(String flag) {
        List<PipelineFile> boxed = Utils.box(super.@input).unique { it.path }
-       addResolvedInputs(boxed)
-       if(flag.endsWith("=")) {
-           return boxed.collect { "${flag}${it}" }.join(" ") 
-       }
-       else
-         return boxed.collect { "$flag $it" }.join(" ")
+       return super.formatFlag(flag,boxed)
     }
     
 	@Override
