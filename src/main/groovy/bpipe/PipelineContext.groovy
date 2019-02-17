@@ -929,19 +929,10 @@ class PipelineContext {
        return wrapper
    }
   
-    /**
-    * Check if there is an input, if so, return it.  If not,
-    * throw a helpful error message.
-    * <br>
-    * Note: if you wish to access the 'input' property without performing
-    * this check (eg: to check if it is empty yourself) then you can use
-    * direct property access - eg: ctx.@input
-    * @return
+   /**
+    * Check if there is an input, if so, return it.  
     */
    def getInput() {
-       if(this.@input == null || Utils.isContainer(this.@input) && this.@input.size() == 0) {
-           throw new InputMissingError("Stage '$stageName' expects an input but none are available", this)
-       }
        if(!inputWrapper || inputWrapper instanceof MultiPipelineInput) {
            inputWrapper = new PipelineInput(this.@input, pipelineStages, this.aliases)
            this.allUsedInputWrappers[0] = inputWrapper
@@ -1895,7 +1886,8 @@ class PipelineContext {
             
        }
        finally {
-           trackedOutputs[rCommand.id] = rCommand
+           if(rCommand != null)
+               trackedOutputs[rCommand.id] = rCommand
            this.echoWhenNotFound = oldEchoFlag
        }
     }

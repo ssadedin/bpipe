@@ -61,6 +61,8 @@ class PipelineInput {
      */
     List<PipelineFile> input
     
+    boolean optional = false
+    
     /**
      * The default value is returned when toString() is called.
      * The default default-value is the first input ("input1"),
@@ -124,7 +126,7 @@ class PipelineInput {
             
         Collection boxed = Utils.box(input)
         if(defaultValueIndex>=boxed.size())
-           throw new PipelineError("Expected ${defaultValueIndex+1} or more inputs but fewer provided")
+           throw new InputMissingError("Expected ${defaultValueIndex+1} or more inputs but fewer provided")
             
         PipelineFile resolvedValue = boxed[defaultValueIndex]
         if(!this.resolvedInputs.any { it.path == resolvedValue.path })
@@ -134,11 +136,22 @@ class PipelineInput {
     }
     
     String toString() {
-        PipelineFile resolvedValue = getResolvedValue()
-        PipelineFile resolvedFile =  this.aliases[resolvedValue]
-        return resolvedFile.renderToCommand()
+        try {
+            PipelineFile resolvedValue = getResolvedValue()
+            PipelineFile resolvedFile =  this.aliases[resolvedValue]
+            return resolvedFile.renderToCommand()
+        }
+        catch(InputMissingError missing) {
+            if(!optional) {
+                throw missing
+            }
+            else {
+                return ""
+            }
+        }
     }
     
+    @CompileStatic
     void addResolvedInputs(List<PipelineFile> objs) {
         
         assert objs.every { it instanceof PipelineFile }
@@ -154,6 +167,7 @@ class PipelineInput {
         addFilterExts(objs)
     }
 	
+    @CompileStatic
 	String getPrefix() {
         return PipelineCategory.getPrefix(this.toString());
 	}
@@ -162,6 +176,7 @@ class PipelineInput {
      * Support accessing inputs by index - allows the user to use the form
      *   exec "cp ${input[0]} $output"
      */
+    @CompileStatic
     String getAt(int i) {
         def inputs = this.input
         if(inputs.size() <= i)
@@ -170,47 +185,6 @@ class PipelineInput {
         return inputs[i]
     }
     
-    /**
-     * Search for the most recent input or output of any stage
-     * that has the given file extension
-     */
-    def propertyMissing(String name) {
-		log.info "Searching for missing Property: $name"
-        List<PipelineFile> resolved
-        InputMissingError ime
-        try {
-            
-            if(name =="dir") {
-                log.info "Trying to resolve input as directory ...."
-                resolved = resolveInputAsDirectory()
-                if(!resolved) 
-                    throw new PipelineError("Expected a directory as input, but no current input to this stage was a directory: \n" + Utils.box(input).join("\n"))
-            }
-            else {
-              def exts = this.extensionPrefix?[extensionPrefix+"."+name]:[name]
-              resolved = resolveInputsEndingWith(exts)
-              if(resolved.size() <= defaultValueIndex)
-                  throw new PipelineError("Insufficient inputs: at least ${defaultValueIndex+1} inputs are expected with extension .${name} but only ${resolved.size()} are available")
-            }
-            parentError=null
-        		mapToCommandValue(resolved)
-        }
-        catch(InputMissingError e) {
-            log.info("No input resolved for property $name: returning child PipelineInput for possible double extension resolution")
-            resolved = this.resolvedInputs
-            ime = e
-        }
-        
-        PipelineInput childInp = new PipelineInput(resolved.clone(), stages, aliases)
-        childInp.parent = this
-        childInp.resolvedInputs = resolved.clone()
-        childInp.currentFilter = this.currentFilter
-        childInp.extensionPrefix = this.extensionPrefix ? this.extensionPrefix+"."+name : name
-        childInp.defaultValueIndex = defaultValueIndex
-        childInp.parentError = ime
-        return childInp;
-        
-     }
     
     @CompileStatic
     List<PipelineFile> resolveInputAsDirectory() {
@@ -364,6 +338,50 @@ class PipelineInput {
             return null
     }
     
+    
+    /**
+     * Search for the most recent input or output of any stage
+     * that has the given file extension
+     */
+    @CompileStatic
+    def propertyMissing(String name) {
+		log.info "Searching for missing Property: $name"
+        List<PipelineFile> resolved
+        InputMissingError ime
+        try {
+            
+            if(name =="dir") {
+                log.info "Trying to resolve input as directory ...."
+                resolved = resolveInputAsDirectory()
+                if(!resolved) 
+                    throw new PipelineError("Expected a directory as input, but no current input to this stage was a directory: \n" + Utils.box(input).join("\n"))
+            }
+            else {
+              def exts = this.extensionPrefix?[extensionPrefix+"."+name]:[name]
+              resolved = resolveInputsEndingWith(exts)
+              if(resolved.size() <= defaultValueIndex)
+                  throw new PipelineError("Insufficient inputs: at least ${defaultValueIndex+1} inputs are expected with extension .${name} but only ${resolved.size()} are available")
+            }
+            parentError=null
+        		mapToCommandValue(resolved)
+        }
+        catch(InputMissingError e) {
+            log.info("No input resolved for property $name: returning child PipelineInput for possible double extension resolution")
+            resolved = this.resolvedInputs
+            ime = e
+        }
+        
+        PipelineInput childInp = new PipelineInput((List<PipelineFile>)resolved.clone(), stages, aliases)
+        childInp.parent = this
+        childInp.resolvedInputs = (List<PipelineFile>)resolved.clone()
+        childInp.currentFilter = this.currentFilter
+        childInp.extensionPrefix = this.extensionPrefix ? this.extensionPrefix+"."+name : name
+        childInp.defaultValueIndex = defaultValueIndex
+        childInp.parentError = ime
+        return childInp;
+        
+     }
+    
     /**
      * Compute a list of outputs from previous stages, in reverse order that they occurred
      * in the pipeline, and includes the original inputs as the last stage. This "stack" of inputs
@@ -460,6 +478,48 @@ class PipelineInput {
           }
         }
     }
+    
+    PipelineInput getOptional() {
+        this.optional = true
+        return this
+    }
+    
+    String flag(String flag) {
+        return withFlag(flag)
+    }
+    
+    String withFlag(String flag) {
+        try {
+            PipelineFile resolvedValue = getResolvedValue()
+            PipelineFile resolvedFile =  this.aliases[resolvedValue]
+            return formatFlag(flag, [resolvedFile])
+        } 
+        catch(InputMissingError e) {
+            if(optional)
+                return ""
+            else
+                throw e
+        }
+    }
+    
+   /**
+     * Return the inputs with each one prefixed by the specified flag
+     * <p>
+     * If the flag ends with "=" then no space is included between the flag
+     * and the option. Otherwise, a space is included.
+     * 
+     * @param flag name of flag, including dashes (eg: "-I" or "--input")
+     * @return  string containing each matching input prefixed by the flag and a space
+     */
+    protected String formatFlag(String flag, List<PipelineFile> boxed) {
+       addResolvedInputs(boxed)
+       if(flag.endsWith("=")) {
+           return boxed.collect { "${flag}${it}" }.join(" ") 
+       }
+       else
+         return boxed.collect { "$flag $it" }.join(" ")
+    }
+  
     
     public int size() {
         if(this.@input)
