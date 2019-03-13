@@ -83,7 +83,13 @@ class BpipeParamsBinding extends Binding {
         
         if(readOnly && this.variables.containsKey(name)) {
             
-            String valueDef = value instanceof String ? "\"${value}\"" : value
+            Closure renderValue = { v -> v instanceof String ? "\"${v}\"" : v }
+            String valueDef 
+            if(value instanceof List) {
+                valueDef =  value.collect { renderValue(it) }
+            }
+            else 
+                valueDef = renderValue(value)
             
             throw new PipelineError(
                 """
@@ -93,7 +99,7 @@ class BpipeParamsBinding extends Binding {
                     before the pipeline starts. Solutions include:
 
                      - add 'def', 'var', or 'requires' before this assignment to define a local variable,
-                       eg: def ${name} = $valueDef or: var ${name} : "$valueDef"
+                       eg: def ${name} = $valueDef or: var ${name} : $valueDef
                      - define a branch variable using: branch.${name} = $valueDef
 
                     You can disable this behavior at your own risk by setting allowGlobalWrites=true in 
