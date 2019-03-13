@@ -336,6 +336,8 @@ class CustomCommandExecutor implements PersistentExecutor {
 		int maxSleep = Config.userConfig.maxCommandStatusPollInterval?:3000 
 		int backoffPeriod = Config.userConfig.commandStatusBackoffPeriod?:180000 // 3 minutes default to reach maximum sleep
 		
+		int statusRetries = Config.userConfig.getOrDefault('statusPollRetries',MAX_STATUS_ERROR)
+        
 		// Calculate an exponential backoff factor
 		double factor = Math.log(maxSleep - minSleep) / backoffPeriod
 		
@@ -344,30 +346,26 @@ class CustomCommandExecutor implements PersistentExecutor {
         String lastStatus = "NONE" 
         while(true) {
             
-            log.fine "Polling status of job $commandId with command $cmd with sleep for $currentSleep"
+            log.fine "Polling status of job $commandId with command $cmd with sleep for $currentSleep with $statusRetries"
             
-            StringBuilder out = new StringBuilder()
-            StringBuilder err = new StringBuilder()
-            int exitValue = withLock {
-                Process p = Runtime.runtime.exec(cmd)
-                Utils.withStreams(p) {
-                    p.waitForProcessOutput(out, err)
-                    p.waitFor()
+            String result = Utils.withRetries(statusRetries, message: "polling command $commandId") {
+                StringBuilder out = new StringBuilder()
+                StringBuilder err = new StringBuilder()
+                int exitValue = withLock {
+                    Process p = Runtime.runtime.exec(cmd)
+                    Utils.withStreams(p) {
+                        p.waitForProcessOutput(out, err)
+                        p.waitFor()
+                    }
                 }
-                
-            }
-            if(exitValue > 0)  {
-                String msg = "Attempt to poll status for job $commandId return status $exitValue using command $cmd:\n\n  $out"
-                if(errorCount > MAX_STATUS_ERROR) 
+                if(exitValue > 0)  {
+                    String msg = "Attempt to poll status for job $commandId return status $exitValue using command $cmd:\n\n  $out"
                     throw new PipelineError(msg)
-                log.warning(msg + "(retrying, $errorCount)")
-                errorCount++
-                Thread.sleep(100)
-                continue
+                }
+                return out.toString()
             }
-            
-            String result = out.toString()
-            log.fine "Poll returned output: $result"
+           
+//            log.info "Poll returned output: $result"
             def parts = result.split()
             String status = parts[0]
             
@@ -403,8 +401,11 @@ class CustomCommandExecutor implements PersistentExecutor {
             else
                 errorCount = 0
             
+//            log.fine "Wait $currentSleep before next poll"
+            
             // Job not complete, keep waiting
             Thread.sleep(currentSleep)
+            
 			
 			currentSleep = minSleep + Math.min(maxSleep, Math.exp(factor * (System.currentTimeMillis() - startTimeMillis)))
         }
