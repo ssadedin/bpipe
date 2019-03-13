@@ -24,7 +24,6 @@
 */
 package bpipe;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
@@ -37,7 +36,7 @@ import java.util.List;
  */
 class SummaryErrorException extends PipelineError {
     
-    private HashSet<PipelineError> summarisedErrors = new HashSet();
+    private HashSet<PipelineError> summarisedErrors = new HashSet<PipelineError>();
     
     public SummaryErrorException(List<PipelineError> children) throws Exception {
         super();
