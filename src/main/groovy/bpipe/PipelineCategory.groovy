@@ -649,62 +649,74 @@ class PipelineCategory {
         return runAndWaitFor(currentStage, childPipelines, threads)
     }
     
-    static runAndWaitFor(PipelineStage currentStage, List<Pipeline> pipelines, List<Runnable> threads) {
+    @CompileStatic
+    static List<PipelineFile> runAndWaitFor(PipelineStage currentStage, List<Pipeline> pipelines, List<Runnable> threads) {
             // Start all the threads
         
             Pipeline current = Pipeline.currentRuntimePipeline.get()
             
             pipelines.each { 
-                Concurrency.instance.registerResourceRequestor(it)
+                Concurrency.theInstance.registerResourceRequestor(it)
             }
             
             try {
                 current.isIdle = true
-                Concurrency.instance.execute(threads, current.branchPath.size())
+                Concurrency.theInstance.execute(threads, current.branchPath.size())
             }
             finally {
                 current.isIdle = false
             }
             
+            List<PipelineFile> finalOutputs
             if(pipelines.any { it.failed }) {
-                def messages = summarizeErrors(pipelines)
-                
-                for(Pipeline p in pipelines.grep { it.failed }) {
-                    // current.failExceptions.addAll(p.failExceptions)
-                }
-                current.failReason = messages
-                
-                List<PipelineError> childFailures = pipelines.grep { it.failed }*.failExceptions.flatten()
-                
-                Exception e
-                if(pipelines.every { p -> p.failExceptions.every { it instanceof PipelineTestAbort } }) {
-                   e = new PipelineTestAbort()
-                }
-                else {
-                   e = new SummaryErrorException(childFailures)
-                }
-                e.summary = true
-                throw e
+                throwCombinedParallelError(current, pipelines)
             }
             else
             if(pipelines.isEmpty()) {
-                return null
+                return currentStage.context.@input
             }
             else {
                 if(pipelines.every { it.aborted }) {
                     log.info "Branch will terminate because all of its children aborted successfully"
                     throw new UserTerminateBranchException("All branches [" + pipelines*.branch.unique().join(",") + "] self terminated")
                 }
+                
+                def nextInputs = []
+                Pipeline parent = Pipeline.currentRuntimePipeline.get()
+                log.info "Parent pipeline of concurent sections ${pipelines.collect { it.hashCode() }} is ${parent.hashCode()}"
+                
+                mergeChildStagesToParent(parent, pipelines)
+    
+                return parent.stages[-1].context.@output
             }
-            
-            def nextInputs = []
-            Pipeline parent = Pipeline.currentRuntimePipeline.get()
-            log.info "Parent pipeline of concurent sections ${pipelines.collect { it.hashCode() }} is ${parent.hashCode()}"
-            
-            mergeChildStagesToParent(parent, pipelines)
+    }
 
-            def finalOutputs = parent.stages[-1].context.@output
-            return finalOutputs
+    /**
+     * Combines all the errors from the given pipelines into one summarized error and throws
+     * it as an exception, setting the errors on the parent (current) pipeline object.
+     * 
+     * @param current
+     * @param pipelines
+     */
+    private static void throwCombinedParallelError(Pipeline current, List pipelines) {
+        def messages = summarizeErrors(pipelines)
+
+        for(Pipeline p in pipelines.grep { it.failed }) {
+            // current.failExceptions.addAll(p.failExceptions)
+        }
+        current.failReason = messages
+
+        List<PipelineError> childFailures = pipelines.grep { it.failed }*.failExceptions.flatten()
+
+        Exception e
+        if(pipelines.every { p -> p.failExceptions.every { it instanceof PipelineTestAbort } }) {
+            e = new PipelineTestAbort()
+        }
+        else {
+            e = new SummaryErrorException(childFailures)
+        }
+        e.summary = true
+        throw e
     }
     
     /**
