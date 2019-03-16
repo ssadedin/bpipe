@@ -4,7 +4,7 @@ rm -f test.txt.* *.xml hello.*
 
 # Without an input should get a good message back
 run 
-grep -q "Stage 'hello' expects an input but none are available" test.out || err "Expected error message asking for input"
+grep -q "ERROR: stage hello failed: Unable to locate one or more specified inputs" test.out || err "Expected error message asking for input"
 
 # Now run with multiple inputs
 run test.csv test.txt
