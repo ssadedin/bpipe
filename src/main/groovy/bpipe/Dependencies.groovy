@@ -176,7 +176,7 @@ class GraphEntry implements Serializable {
             return index[canonicalPath]
         }
         
-//        println "MISS: find " + canonicalPath + " in output graph (${cacheMisses++})"
+//        println "MISS: find " + canonicalPath + " in output graph (${cacheMisses++}) index enabled ? " + (index != null)
         
         // In case of non-default output directory, the outputFile itself may be in a directory
         GraphEntry result = findBy { OutputMetaData p -> 
@@ -598,6 +598,7 @@ class Dependencies {
         if(OUTPUT_GRAPH_CACHE_FILE.exists()) {
             Utils.time("Read cached output graph") {
                 outputGraph = OUTPUT_GRAPH_CACHE_FILE.withObjectInputStream { it.readObject() }
+                outputGraph.index(5000)
             }
         }
         else {
