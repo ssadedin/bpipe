@@ -784,6 +784,7 @@ public class Pipeline implements ResourceRequestor {
             this.checkRequiredInputs(rawInputFiles)
             
             List<PipelineFile> resolvedInputFiles = this.resolveInputsToStorage(Utils.box(rawInputFiles))
+            checkForMissingInputs(resolvedInputFiles)
             
             if(!Runner.opts.t) {
                 writeJobPIDFile()
@@ -877,9 +878,33 @@ public class Pipeline implements ResourceRequestor {
     }
     
     /**
+     * If any of the input files could not be resolved to a storage system, throw an error.
+     * 
+     * @param files
+     */
+    @CompileStatic
+    void checkForMissingInputs(List<PipelineFile> files) {
+        List<PipelineFile> missing = files.grep { it instanceof UnknownStoragePipelineFile }
+        if(!missing.isEmpty()) {
+            throw new PipelineError("""
+            One or more provided inputs could not be resolved to an existing file in any configured filesystem:
+
+                ${missing.join('\n                ')}
+            
+            Please check if these files exist, and that you have configured your storage correctly, if these
+            are non-local files.
+            """.stripIndent())
+        }
+    }
+    
+    /**
      * For each raw input path, resolve it to the first configured storage where the
      * path exists. If no configured storage has the value, returnes an UnknownStoragePipelineFile
      * instance for that path.
+     * <p>
+     * <em>Note:</em> files that don't exist are passed back as UnknownStoragePipelineFile instances.
+     * This is because they could exist in the context of a command that executes later on,
+     * if that command has a different storage configured.
      * 
      * @param rawInputs
      * @return  a list of {@link PipelineFile} objects, one for each raw input
