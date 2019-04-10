@@ -220,6 +220,7 @@ class OutputDirectoryWatcher extends Thread {
         }
     }
     
+//    @CompileStatic
     void processEvent(WatchEvent.Kind kind, Path path) {
         Path resolvedPath = this.directory.resolve(path)
         if(!Files.exists(resolvedPath)) {
@@ -269,9 +270,8 @@ class OutputDirectoryWatcher extends Thread {
     @CompileStatic
     void initialize() {
         List<Path> oldPaths = NewFileFilter.scanOutputDirectory(directory.toFile().path, null)
-        
+        log.info "Initialising watcher for $directory with ${oldPaths.size()} paths"
         synchronized(timestamps) {
-            log.info "Initialising watcher for $directory with ${oldPaths.size()} paths"
             for(Path path in oldPaths) {
                 long timestamp = Files.getLastModifiedTime(path).toMillis()
                 String fileName = path.fileName
@@ -283,8 +283,8 @@ class OutputDirectoryWatcher extends Thread {
                     
                 files[fileName] = timestamp
             }
-            this.initTimeMs = System.currentTimeMillis()
         }
+        this.initTimeMs = System.currentTimeMillis()
     }
     
     @CompileStatic
