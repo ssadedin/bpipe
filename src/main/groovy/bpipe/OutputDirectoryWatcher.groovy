@@ -220,7 +220,7 @@ class OutputDirectoryWatcher extends Thread {
         }
     }
     
-//    @CompileStatic
+    @CompileStatic
     void processEvent(WatchEvent.Kind kind, Path path) {
         Path resolvedPath = this.directory.resolve(path)
         if(!Files.exists(resolvedPath)) {
@@ -302,7 +302,7 @@ class OutputDirectoryWatcher extends Thread {
         }
     }
     
-//    @CompileStatic
+    @CompileStatic
     Map<String, Long> modifiedSince(long timeMs) {
         Map<String,Long> results = [:]
         synchronized(this.timestamps) {
@@ -318,6 +318,7 @@ class OutputDirectoryWatcher extends Thread {
         return results
     }
     
+    @CompileStatic
     synchronized public static OutputDirectoryWatcher getDirectoryWatcher(String forDirectory) {
         OutputDirectoryWatcher watcher = watchers[forDirectory]
         if(watcher == null) {
