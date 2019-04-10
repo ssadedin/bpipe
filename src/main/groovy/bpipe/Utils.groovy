@@ -709,6 +709,7 @@ class Utils {
         '"' + value.replaceAll('"','\\"') + '"'        
     }    
     
+    @CompileStatic
     static time(String desc, Closure c) {
         Date startTime = new Date()
         try {

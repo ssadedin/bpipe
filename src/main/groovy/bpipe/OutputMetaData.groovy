@@ -417,4 +417,42 @@ class OutputMetaData implements Serializable {
        omd.read(file) 
        return omd
     }
+    
+    /**
+     * @param inputProps   
+     * @return  true if the input supplied is used to create this output AND
+     *          is newer than this output
+     */
+    @CompileStatic
+    boolean isNewer(OutputMetaData inputProps) {
+        if(!this.inputs.contains(inputProps.outputPath)) // Not an input used to produce this output
+            return false
+
+        log.info "Checking timestamp of $outputFile vs input $inputProps.outputPath"
+        if(inputProps?.maxTimestamp < this.timestamp) { // inputs unambiguously older than output
+            return false
+        }
+
+        if(inputProps?.maxTimestamp > this.timestamp) // inputs unambiguously newer than output
+            return true
+
+        // Problem: many file systems only record timestamps at a very coarse level.
+        // 1 second resolution is common, but even 1 minute is possible. In these cases
+        // commands that run fast enough produce output files that have equal timestamps
+        // To differentiate these cases we check the start and stop times of the
+        // actual commands that produced the file
+        if(!inputProps.stopTimeMs)
+            return true // we don't know when the command that produced the input finished
+        // so have to assume the input could have come after
+
+        if(!this.createTimeMs)
+            return false // don't know when the command that produced this output started,
+        // so have to assume the command that made the input might have
+        // done it after
+
+        // Return true if the command that made the input stopped after the command that
+        // created the output. ie: that means the input is newer, even though it has the
+        // same timestamp
+        return inputProps.stopTimeMs >= this.createTimeMs
+    }
 }
