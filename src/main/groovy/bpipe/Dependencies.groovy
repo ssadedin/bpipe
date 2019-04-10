@@ -757,41 +757,11 @@ class Dependencies {
         return rootTree
     }
     
+    @CompileStatic
     List<OutputMetaData> findNewerInputs(OutputMetaData p, List<OutputMetaData> inputValues) {
-        inputValues.grep { OutputMetaData inputProps ->
-                    
-            if(!p.inputs.contains(inputProps.outputPath)) // Not an input used to produce this output
-                return false
-                        
-            log.info "Checking timestamp of $p.outputFile vs input $inputProps.outputPath"
-            if(inputProps?.maxTimestamp < p.timestamp) { // inputs unambiguously older than output 
-                return false
-            }
-                    
-            if(inputProps?.maxTimestamp > p.timestamp) // inputs unambiguously newer than output
-                return true
-            
-            // Problem: many file systems only record timestamps at a very coarse level. 
-            // 1 second resolution is common, but even 1 minute is possible. In these cases
-            // commands that run fast enough produce output files that have equal timestamps
-            // To differentiate these cases we check the start and stop times of the 
-            // actual commands that produced the file
-            if(!inputProps.stopTimeMs)
-                return true // we don't know when the command that produced the input finished
-                            // so have to assume the input could have come after
-                
-            if(!p.createTimeMs) 
-                return false // don't know when the command that produced this output started,
-                             // so have to assume the command that made the input might have
-                             // done it after
-                
-            // Return true if the command that made the input stopped after the command that 
-            // created the output. ie: that means the input is newer, even though it has the
-            // same timestamp
-            return inputProps.stopTimeMs >= p.createTimeMs
-       } 
+        inputValues.grep { OutputMetaData inputProps -> p.isNewer(inputProps) } 
     }
-    
+   
     /**
      * Read all the OutputMetaData files in the output folder
      * @return
@@ -800,23 +770,34 @@ class Dependencies {
         int concurrency = Config.userConfig.get('outputScanConcurrency',5)
         List result = []
         Utils.time("Output folder scan (concurrency=$concurrency)") {
-            GParsPool.withPool(concurrency) { 
-                List<File> files = 
-                               new File(OutputMetaData.OUTPUT_METADATA_DIR).listFiles()
-                               ?.toList()
-                                .grep { !it.name.startsWith(".") && !it.isDirectory() && !it.name.equals("outputGraph.ser") && !it.name.equals("outputGraph2.ser") } // ignore files starting with ., 
-                                                                   // added as a convenience because I occasionally
-                                                                   // edit files in output folder when debugging and it causes
-                                                                   // Bpipe to fail!
+            
+            List<File> files = 
+               new File(OutputMetaData.OUTPUT_METADATA_DIR)
+                   .listFiles()
+                   .grep { isOutputMetaFile(it)  } 
                                 
-                if(!files)
-                    return []
+            if(files.isEmpty())
+                return files
+                    
+            GParsPool.withPool(concurrency) { 
                 result.addAll(files.collectParallel { 
                     OutputMetaData.fromFile(it)
                 }.grep { it != null }.sort { it.timestamp })
             }
         }
         return result
+    }
+    
+    /**
+     * Return true if a file could be a valid output property file
+     * 
+     * Ignores files starting with ., added as a convenience because I occasionally
+     * edit files in output folder when debugging, and known files in the output folder that
+     * are not meta files.
+     */
+    @CompileStatic
+    boolean isOutputMetaFile(File file) {
+        !file.name.startsWith(".") && !file.isDirectory() && !file.name.equals("outputGraph.ser") && !file.name.equals("outputGraph2.ser")        
     }
 
     /**
