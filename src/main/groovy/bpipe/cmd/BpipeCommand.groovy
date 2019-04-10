@@ -1,5 +1,6 @@
 package bpipe.cmd
 
+import bpipe.Runner
 import bpipe.Utils;
 import bpipe.agent.PipelineInfo
 import groovy.transform.CompileStatic;
@@ -32,6 +33,7 @@ abstract class BpipeCommand {
     
     @CompileStatic
     void run(PrintStream out) {
+        Runner.readUserConfig()
         PrintWriter writer = new PrintWriter(out, true)
         try {
             this.run(writer)
