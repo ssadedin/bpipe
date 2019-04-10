@@ -26,6 +26,8 @@ package bpipe;
 
 public class InputMissingError extends PipelineError {
     
+    private static final long serialVersionUID = 1L;
+
     String inputType;
     
     String description;
