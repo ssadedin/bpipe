@@ -44,6 +44,8 @@ import java.util.logging.Logger;
 import java.util.regex.Pattern
 import org.codehaus.groovy.runtime.StackTraceUtils
 
+import bpipe.storage.StorageLayer
+
 class ExecutedProcess {
     Appendable err
     Appendable out
@@ -84,6 +86,17 @@ class Utils {
             
             return new File(String.valueOf(f)).toPath()
         }.flatten()
+    }
+    
+    @CompileStatic
+    static List<PipelineFile> resolveToDefaultStorage(def inputs) {
+        (List<PipelineFile>)Utils.box(inputs).collect { inp ->
+                if(inp instanceof PipelineFile)
+                    return inp
+                else {
+                    return new PipelineFile(String.valueOf(inp),StorageLayer.getDefaultStorage())
+                }
+        }        
     }
     
     /**
@@ -801,6 +814,12 @@ class Utils {
         }]
     }
     
+    /**
+     * Cache canonical paths for non-canonical paths
+     * 
+     * This is used because querying these paths is extremely slow on some file systems and
+     * especially when there is high concurrency can bottleneck all of Bpipe for minutes.
+     */
     static HashMap<String,File> canonicalFiles = new ConcurrentHashMap<String, File>(1000)
     
     @CompileStatic

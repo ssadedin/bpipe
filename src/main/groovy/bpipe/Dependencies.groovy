@@ -80,7 +80,7 @@ class Dependencies {
      * @return  true iff file is newer than all inputs, but older than all 
      *          non-up-to-date outputs
      */
-    List<PipelineFile> getOutOfDate(List<PipelineFile> originalOutputs, def inputs) {
+    List<PipelineFile> getOutOfDate(List<PipelineFile> originalOutputs, List<PipelineFile> inputs) {
         
         List outputs = originalOutputs.unique(false)
 

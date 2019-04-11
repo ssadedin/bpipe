@@ -628,18 +628,12 @@ public class Pipeline implements ResourceRequestor {
             
             this.threadId = Thread.currentThread().id
             
-            def currentStage = new PipelineStage(rootContext, s)
+            PipelineStage currentStage = new PipelineStage(rootContext, s)
             currentStage.synthetic = true
             log.info "Running segment with inputs $inputs"
             this.addStage(currentStage)
             
-            List<PipelineFile> inputCopy = Utils.box(inputs).collect { inp ->
-                if(inp instanceof PipelineFile)
-                    return inp
-                else {
-                    return new PipelineFile(String.valueOf(inp),StorageLayer.getDefaultStorage())
-                }
-            }
+            List<PipelineFile> inputCopy = Utils.resolveToDefaultStorage(inputs)
             
             currentStage.context.@input = inputCopy
             currentStage.context.branchInputs = inputCopy
@@ -706,58 +700,45 @@ public class Pipeline implements ResourceRequestor {
     static Class builderCategory = PipelineCategory
     
 
-    private Closure execute(def inputFile, Object host, Closure pipeline, boolean launch=true) {
+    /**
+     * Construct the pipeline using the given pipelineBuilder closure, and then 
+     * if the launch flag is true, launch it
+     * 
+     * @param inputFile
+     * @param host
+     * @param pipelineBuilder
+     * @param launch
+     * @return
+     */
+    private Closure execute(def inputFile, Object host, Closure pipelineBuilder, boolean launch=true) {
+        
+        List<String> inputFiles = Utils.box(inputFile)
         
         Pipeline.rootThreadId = Thread.currentThread().id
         this.threadId = Pipeline.rootThreadId
         Pipeline.rootPipeline = this
         
         // We have to manually add all the external variables to the outer pipeline stage
-        this.externalBinding.variables.each { 
-            log.info "Loaded external reference: $it.key"
-            if(pipeline.binding.variables.containsKey(it.key))
-                log.info "External reference $it.key is overridden by local reference"    
-            pipeline.binding.variables.put(it.key,it.value) 
-        }
+        initializeBindingWithExternalVariables(pipelineBuilder)
         
-        // We have to manually add all the external variables to the outer pipeline stage
-        Pipeline.genomes.each { 
-            log.info "Loaded genome reference: $it.key"
-            if(!pipeline.binding.variables.containsKey(it.key))
-                pipeline.binding.variables.put(it.key,it.value) 
-            else
-                log.info "Genome $it.key is overridden by local reference"    
-        }
+        initializeBindingWithGenomes(pipelineBuilder)
         
          // Add all the pipeline variables to the external binding
-        this.externalBinding.variables += pipeline.binding.variables
+        this.externalBinding.variables += pipelineBuilder.binding.variables
         
         def cmdlog = CommandLog.cmdLog
         startDate = new Date()
         if(launch) {
-            initializeRunLogs(inputFile)
+            initializeRunLogs(inputFiles)
         }
         
-        Map pipelineStructure = launch ? diagram(host, pipeline) : null
+        Map pipelineStructure = launch ? diagram(host, pipelineBuilder) : null
         
-        def constructedPipeline
-        use(builderCategory) {
-            
-            // Build the actual pipeline
-            Pipeline.withCurrentUnderConstructionPipeline(this) {
-                constructedPipeline = pipeline()
-                // See bug #60
-                if(constructedPipeline instanceof List) {
-                    currentRuntimePipeline.set(this)
-                    constructedPipeline = PipelineCategory.splitOnFiles("*", constructedPipeline, false)
-                }
-            }   
-            
-            if(launch) {
-                EventManager.instance.signal(PipelineEvent.STARTED, "Pipeline started", [pipeline:pipelineStructure])
-                
-                launchPipeline(constructedPipeline, inputFile, startDate) 
-            }
+        def constructedPipeline = constructPipeline(pipelineBuilder)
+        
+        if(launch) {
+            EventManager.instance.signal(PipelineEvent.STARTED, "Pipeline started", [pipeline:pipelineStructure])
+            launchPipeline(constructedPipeline, inputFiles, startDate)
         }
 
         // Make sure the command log ends with newline
@@ -765,6 +746,42 @@ public class Pipeline implements ResourceRequestor {
         cmdlog << ""
        
         return constructedPipeline
+    }
+
+    
+    private Closure constructPipeline(Closure pipelineBody) {
+        Closure constructedPipeline
+        use(builderCategory) {
+            // Build the actual pipeline
+            Pipeline.withCurrentUnderConstructionPipeline(this) {
+                constructedPipeline = (Closure)pipelineBody.call()
+                // See bug #60
+                if(constructedPipeline instanceof List) {
+                    currentRuntimePipeline.set(this)
+                    constructedPipeline = (Closure)PipelineCategory.splitOnFiles("*", constructedPipeline, false)
+                }
+            }
+        }
+        return constructedPipeline
+    }
+
+    private initializeBindingWithExternalVariables(Closure pipelineBody) {
+        this.externalBinding.variables.each {
+            log.info "Loaded external reference: $it.key"
+            if(pipelineBody.binding.variables.containsKey(it.key))
+                log.info "External reference $it.key is overridden by local reference"
+            pipelineBody.binding.variables.put(it.key,it.value)
+        }
+    }
+
+    private initializeBindingWithGenomes(Closure pipelineBody) {
+        Pipeline.genomes.each {
+            log.info "Loaded genome reference: $it.key"
+            if(!pipelineBody.binding.variables.containsKey(it.key))
+                pipelineBody.binding.variables.put(it.key,it.value)
+            else
+                log.info "Genome $it.key is overridden by local reference"
+        }
     }
     
     /**
@@ -774,7 +791,8 @@ public class Pipeline implements ResourceRequestor {
      * @param constructedPipeline
      * @param inputFile
      */
-    void launchPipeline(def constructedPipeline, def rawInputFiles, Date startDate) {
+    @CompileStatic
+    void launchPipeline(Closure constructedPipeline, List<String> rawInputFiles, Date startDate) {
         
         def cmdlog = CommandLog.cmdLog
         
@@ -783,10 +801,10 @@ public class Pipeline implements ResourceRequestor {
             
             this.checkRequiredInputs(rawInputFiles)
             
-            List<PipelineFile> resolvedInputFiles = this.resolveInputsToStorage(Utils.box(rawInputFiles))
+            List<PipelineFile> resolvedInputFiles = this.resolveInputsToStorage(rawInputFiles)
             checkForMissingInputs(resolvedInputFiles)
             
-            if(!Runner.opts.t) {
+            if(!Runner.opts['t']) {
                 writeJobPIDFile()
                 scheduleStatsUpdate()
             }
@@ -824,57 +842,63 @@ public class Pipeline implements ResourceRequestor {
         }
                 
         finishDate = new Date()
-        if(Runner.opts.t && failed && failExceptions.empty) { 
+        
+        printCompletionMessages(failureMessage, cmdlog, startDate)
+               
+        // See if any checks failed
+        List<Check> allChecks = Check.loadAll()
+        List<Check> failedChecks = allChecks.grep { Check c -> !c.passed && !c.override }
+        if(failedChecks) {
+            println "\nWARNING: ${failedChecks.size()} check(s) failed. Use 'bpipe checks' to see details.\n"
+        }
+        
+        sendFinishedEvent(startDate, allChecks)
+        
+        if(!Runner.opts['t'])
+            saveResultState(failed, allChecks, failedChecks) 
+        
+        if(!failed) {
+            summarizeOutputs(stages)
+        }
+    }
+
+    private printCompletionMessages(String failureMessage, CommandLog cmdlog, Date startDate) {
+        if(Runner.opts.t && failed && failExceptions.empty) {
             println("\n"+" Pipeline Test Succeeded ".center(Config.config.columns,"="))
         }
         else {
             println("\n"+" Pipeline ${failed?'Failed':'Succeeded'} ".center(Config.config.columns,"="))
         }
+
         if(failed) {
             println failureMessage
             println()
             println "Use 'bpipe errors' to see output from failed commands."
             println()
         }
-                
+
         if(rootContext)
-          rootContext.msg "Finished at " + finishDate
-          
+            rootContext.msg "Finished at " + finishDate
+
         about(finishedAt: finishDate)
         cmdlog << "# " + (" Finished at " + finishDate + " Duration = " + TimeCategory.minus(finishDate,startDate) +" ").center(Config.config.columns,"#")
-               
-        /*
-        def w =new StringWriter()
-        this.dump(w)
-        w.flush()
-        println w
-        */
-                
-        // See if any checks failed
-        List<Check> allChecks = Check.loadAll()
-        List<Check> failedChecks = allChecks.grep { !it.passed && !it.override }
-        if(failedChecks) {
-            println "\nWARNING: ${failedChecks.size()} check(s) failed. Use 'bpipe checks' to see details.\n"
-        }
-        
+    }
+
+    /**
+     * Send the event signalling that the pipeline has completed
+     */
+    private void sendFinishedEvent(Date startDate, List allChecks) {
         log.info "Sending FINISHED event"
-                
-        EventManager.instance.signal(PipelineEvent.FINISHED, "Pipeline " + (failed?"Failed":"Succeeded"), 
-            [ 
-                pipeline:this, 
-                checks:allChecks, 
-                result:!failed, 
-                startDate:startDate,
-                finishDate:finishDate,
-                commands: CommandManager.executedCommands
-            ])
-        
-        if(!Runner.opts.t)
-            saveResultState(failed, allChecks, failedChecks) 
-        
-        if(!failed) {
-            summarizeOutputs(stages)
-        }
+
+        EventManager.instance.signal(PipelineEvent.FINISHED, "Pipeline " + (failed?"Failed":"Succeeded"),
+                [
+                    pipeline:this,
+                    checks:allChecks,
+                    result:!failed,
+                    startDate:startDate,
+                    finishDate:finishDate,
+                    commands: CommandManager.executedCommands
+                ])
     }
     
     /**
@@ -990,13 +1014,13 @@ public class Pipeline implements ResourceRequestor {
         log.info "Saved pipeline state in ${System.currentTimeMillis() - nowMs}ms"
     }
     
-    void initializeRunLogs(def inputFile) {
+    void initializeRunLogs(List<String> inputFiles) {
         def cmdlog = CommandLog.cmdLog
         cmdlog.write("")
         String startDateTime = startDate.format("yyyy-MM-dd HH:mm") + " "
         cmdlog << "#"*Config.config.columns 
         cmdlog << "# Starting pipeline at " + (new Date())
-        cmdlog << "# Input files:  $inputFile"
+        cmdlog << "# Input files:  $inputFiles"
         cmdlog << "# Output Log:  " + Config.config.outputLogPath 
             
         OutputLog startLog = new OutputLog("----")
