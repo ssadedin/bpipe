@@ -136,7 +136,7 @@ class Check {
     /**
      * Return true if this check is up-to-date with respect to the given inputs
      */
-    boolean isUpToDate(def inputs) {
+    boolean isUpToDate(List<PipelineFile> inputs) {
        File checkFile = getFile(stage, name, branchHash)
        if(!checkFile.exists()) {
            return false
