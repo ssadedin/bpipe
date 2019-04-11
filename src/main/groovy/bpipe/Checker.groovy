@@ -81,7 +81,7 @@ class Checker {
         
         // If the check is up-to-date then simply read its result from the check file
         def inputs = Utils.box(ctx.@input) + ctx.resolvedInputs
-        if(check.isUpToDate(inputs)) {
+        if(!ctx.executedOutputs.isEmpty() && check.isUpToDate(inputs)) {
             log.info "Check ${check.toString()} was already executed and is up to date with inputs $inputs"
             log.info "Cached result of ${check} was Passed: ${check.passed} Overridden: ${check.override}"
         }
