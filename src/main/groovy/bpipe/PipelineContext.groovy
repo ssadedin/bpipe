@@ -543,9 +543,11 @@ class PipelineContext {
         @CompileStatic
         void resolveOutput() {
             
+            Map<Integer,PipelineInput> allInputs = allUsedInputWrappers
+            
             // If an input property was referenced, compute the default from that instead
-            List<PipelineFile> allResolved = (List<PipelineFile>)allUsedInputWrappers.collect { Object k, PipelineInput v -> 
-                v.resolvedInputs 
+            List<PipelineFile> allResolved = (List<PipelineFile>)allInputs.collect { Map.Entry<Integer,PipelineInput> e -> 
+                ((PipelineInput)e.value).resolvedInputs 
             }.flatten()
             
             if(!allResolved) {

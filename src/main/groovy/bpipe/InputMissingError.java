@@ -45,4 +45,12 @@ public class InputMissingError extends PipelineError {
         this.inputType = inputType;
         this.description = description;
     }
+    
+    public String getInputType() {
+        return inputType;
+    }
+
+    public String getDescription() {
+        return description;
+    }
 }
