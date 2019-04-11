@@ -276,7 +276,7 @@ class NotificationManager {
        for(String fullClazz in [clazz, "bpipe."+clazz.toUpperCase()+"NotificationChannel", "bpipe." + clazz, "bpipe."+upperFirst+"NotificationChannel"]) {
            try {
                log.info "Trying class name $fullClazz for notification channel $clazz"
-               Class [] args = [ ConfigObject.class ] as Class[]
+               Class<ConfigObject> [] args = [ ConfigObject.class ] as Class[]
                Constructor c = Class.forName(fullClazz).getConstructor(args)
                NotificationChannel nc = c.newInstance( [ channelCfg ] as Object[] )
                log.info "Successfully created notification channel using class $fullClazz"
