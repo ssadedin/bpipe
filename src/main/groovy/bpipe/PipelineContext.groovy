@@ -296,6 +296,11 @@ class PipelineContext {
     */
    private OutputLog outputLog
    
+   /**
+    * Populated with output files for which commands were actually executed
+    */
+   public List<PipelineFile> executedOutputs = []
+   
     /**
      * Set the default inputs and outputs for this context according to the current
      * state of the given pipeline, and our stage name.
@@ -2257,6 +2262,8 @@ class PipelineContext {
           command = commandManager.start(stageName, command, config, Utils.box(this.input), 
                                          this.usedResources,
                                          deferred, this.outputLog)
+ 
+          this.executedOutputs.addAll(command.getOutputs())
       }
       catch(PipelineTestAbort exPta) {
           exPta.missingOutputs = outOfDateOutputs
