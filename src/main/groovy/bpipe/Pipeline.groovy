@@ -794,7 +794,7 @@ public class Pipeline implements ResourceRequestor {
     @CompileStatic
     void launchPipeline(Closure constructedPipeline, List<String> rawInputFiles, Date startDate) {
         
-        def cmdlog = CommandLog.cmdLog
+        CommandLog cmdlog = CommandLog.cmdLog
         
         String failureMessage = null
         try {
@@ -820,7 +820,7 @@ public class Pipeline implements ResourceRequestor {
             }
         }
         catch(PatternInputMissingError e) {
-            new File(".bpipe/prompt_input_files." + Config.config.pid).text = ''
+            clearMissingFilePromptText()
         }
         catch(InputMissingError e) {
             failureMessage = """
@@ -861,8 +861,12 @@ public class Pipeline implements ResourceRequestor {
             summarizeOutputs(stages)
         }
     }
+    
+    private void clearMissingFilePromptText() {
+        new File(".bpipe/prompt_input_files." + Config.config.pid).text = ''
+    }
 
-    private printCompletionMessages(String failureMessage, CommandLog cmdlog, Date startDate) {
+    private void printCompletionMessages(String failureMessage, CommandLog cmdlog, Date startDate) {
         if(Runner.opts.t && failed && failExceptions.empty) {
             println("\n"+" Pipeline Test Succeeded ".center(Config.config.columns,"="))
         }
