@@ -750,11 +750,11 @@ public class Pipeline implements ResourceRequestor {
 
     
     private Closure constructPipeline(Closure pipelineBody) {
-        Closure constructedPipeline
+        def constructedPipeline
         use(builderCategory) {
             // Build the actual pipeline
             Pipeline.withCurrentUnderConstructionPipeline(this) {
-                constructedPipeline = (Closure)pipelineBody.call()
+                constructedPipeline = pipelineBody()
                 // See bug #60
                 if(constructedPipeline instanceof List) {
                     currentRuntimePipeline.set(this)
