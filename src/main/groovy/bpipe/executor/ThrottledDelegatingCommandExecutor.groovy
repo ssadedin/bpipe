@@ -112,6 +112,9 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
 
         command.command = command.command.replaceAll(PipelineContext.THREAD_LAZY_VALUE, threadAmount)
         command.command = this.replaceStorageMountPoints(command)
+        if(command.@cfg.beforeRun != null) {
+            command.@cfg.beforeRun(cmd.@cfg)
+        }
         
         command.allocated = true
         command.createTimeMs = System.currentTimeMillis()
