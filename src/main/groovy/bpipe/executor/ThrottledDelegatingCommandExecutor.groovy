@@ -119,7 +119,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         bpipe.Pipeline.currentRuntimePipeline.get().isIdle = false
 
         if(bpipe.Runner.opts.t || bpipe.Config.config.breakTriggered) {
-            String msg = command.branch.name ? "Branch $command.branch.name would execute: $cmd.command" : "Would execute $cmd.command"
+            String msg = command.branch.name ? "Stage $command.name in branch $command.branch.name would execute:\n\n        $cmd.command" : "Would execute $cmd.command"
             this.releaseAll()
             if(commandExecutor instanceof LocalCommandExecutor)
                 throw new bpipe.PipelineTestAbort(msg)
