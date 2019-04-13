@@ -765,7 +765,7 @@ public class Pipeline implements ResourceRequestor {
         return constructedPipeline
     }
 
-    private initializeBindingWithExternalVariables(Closure pipelineBody) {
+    private void initializeBindingWithExternalVariables(Closure pipelineBody) {
         this.externalBinding.variables.each {
             log.info "Loaded external reference: $it.key"
             if(pipelineBody.binding.variables.containsKey(it.key))
@@ -774,7 +774,7 @@ public class Pipeline implements ResourceRequestor {
         }
     }
 
-    private initializeBindingWithGenomes(Closure pipelineBody) {
+    private void initializeBindingWithGenomes(Closure pipelineBody) {
         Pipeline.genomes.each {
             log.info "Loaded genome reference: $it.key"
             if(!pipelineBody.binding.variables.containsKey(it.key))
