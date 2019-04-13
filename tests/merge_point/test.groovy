@@ -1,12 +1,12 @@
 hello = {
     exec """
-        cp $input.txt $output.csv
+        cp -v $input.txt $output.csv
     """
 }
 
 there = {
     exec """
-        cp $input.txt $output.csv
+        cp -v $input.txt $output.csv
     """
 }
 
