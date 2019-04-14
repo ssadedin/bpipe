@@ -1,0 +1,40 @@
+#!/bin/bash
+#vim: ts=4:expandtab:sw=4:
+#----------------------------------------------------------
+#
+# Groovy launcher script
+#
+# A small wrapper to execute groovy scripts which uses the
+# groovy version bundled with the Bpipe jar file. This means,
+# there is no need to bundle a separate groovy to include
+# groovy scripts in your bpipe pipeline.
+#
+# Author:  Simon Sadedin, simon.sadedin@mcri.edu.au
+#----------------------------------------------------------
+
+CP=""
+
+# set -x
+
+export JAVA_OPTS
+
+if which groovy > /dev/null 2>&1 ;
+then
+    groovy "$@"
+else    
+    which groovy
+    arg=$1
+    shift
+    while [ ! -z $arg ]; do
+      echo "ARG: $arg"
+      if [ "$arg" == "-cp" ]; 
+      then
+        CP="$1"
+        shift
+        break
+      fi
+      arg="$1"
+      shift
+    done
+    java -Xmx256m -noverify -classpath "$CP:$EXTRA_GROOVY_CLASSPATH" groovy.ui.GroovyMain "$@"
+fi
