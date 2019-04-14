@@ -325,17 +325,28 @@ class PipelineInput {
                 if(log.isLoggable(Level.INFO))
 	                log.info("Checking outputs ${s}")
                         
-                PipelineFile o = s.find { PipelineFile p -> p?.toString()?.matches(wholeMatch) }
-                if(o)
-                    return s.grep { PipelineFile p -> p?.toString()?.matches(wholeMatch) }
+                List<PipelineFile> o = checkMatch(s, wholeMatch)
+                if(!o.isEmpty())
+                    return o
                         
-                if(!o) {
-	                o = s.find { PipelineFile p -> p?.matches(regexPattern) }
-	                if(o)
-	                    return s.grep { PipelineFile p -> p?.toString()?.matches(regexPattern) }
-                }
+                o = checkMatch(s, regexPattern)
+                if(!o.isEmpty())
+                    return o
             }
             return null
+    }
+    
+    @CompileStatic
+    List<PipelineFile> checkMatch(List<PipelineFile> s, Pattern regex) {
+        s.grep { PipelineFile p ->         
+            if(!p)
+                return false
+            if(p.matches(regex))
+                return true
+                            
+            List<String> aliases = aliases.getMappings(p)
+            return aliases?.any { it.matches(regex) }        
+        }
     }
     
     
