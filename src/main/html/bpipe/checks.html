@@ -26,7 +26,7 @@
                 <tr><th>Check</th><th>Branch</th><th>Status</th><th>Details</th></tr>
                 <%checks.each { check -> %>
                 <tr>
-                    <td><%=check.name ? "$check.stage / $check.Name" : check.stage%></td>
+                    <td><%=check.name ? "$check.stage / $check.name" : check.stage%></td>
                     <td><%=check.branch!="all"?check.branch:""%></td>
                     <td style='color: ${(!check.override && !check.passed) ? "red":"green"}'><%=check.override?"Overridden":(check.passed?"Passed":"Failed")%></td>
                     <td><%=check.message?utils.escape(check.message):""%></td>
