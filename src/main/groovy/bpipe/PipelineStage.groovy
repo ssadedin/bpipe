@@ -244,9 +244,7 @@ class PipelineStage {
             if(!joiner) {
                 log.info("Stage $displayName returned $context.nextInputs as default inputs for next stage")
             }
-                    
-            context.uncleanFilePath.text = ""
-                
+               
             setContextNextInputs()
                
             saveOutputMetaData()

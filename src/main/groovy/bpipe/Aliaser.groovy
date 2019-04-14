@@ -32,8 +32,6 @@ class Aliaser {
     
     PipelineFile input
     
-    PipelineOutput output
-    
     Aliases aliases
     
     Aliaser(Aliases aliases, PipelineFile input) {
@@ -42,9 +40,8 @@ class Aliaser {
     }
     
     @CompileStatic
-    void to(PipelineOutput output) {
+    void to(def output) {
         log.info "Aliasing input " + String.valueOf(input) + " to " + String.valueOf(output)
-        this.output = output
         aliases.add(String.valueOf(output), input)
-    }
+    } 
 }
