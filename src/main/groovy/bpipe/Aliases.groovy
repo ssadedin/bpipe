@@ -16,10 +16,10 @@ class Aliases {
      */
     private Map<String,AliasMapping> aliases = [:]
     
-    private HashSet<String> aliasTargets = new HashSet()
+    private HashMap<String,List<String>> aliasTargets = [:]
     
     synchronized boolean isAliased(String path) {
-        aliases.containsKey(path) || aliasTargets.contains(path)
+        aliases.containsKey(path) || aliasTargets.containsKey(path)
     }
     
     synchronized boolean isAliased(PipelineFile file) {
@@ -30,9 +30,13 @@ class Aliases {
     synchronized add(String fromPath, PipelineFile toFile) {
         assert fromPath != null
         assert toFile != null
-        
-        aliases[fromPath.toString()] = new AliasMapping(from:fromPath, to:toFile)
-        aliasTargets.add(toFile.toString())
+        aliases[fromPath] = new AliasMapping(from:fromPath, to:toFile)
+        aliasTargets.get(toFile.toString(),[]).add(fromPath)
+    }
+    
+    @CompileStatic
+    List<String> getMappings(PipelineFile fromFile) {
+        aliasTargets[fromFile.toString()]
     }
     
     @CompileStatic
