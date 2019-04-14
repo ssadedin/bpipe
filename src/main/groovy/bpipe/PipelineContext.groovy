@@ -1962,12 +1962,19 @@ class PipelineContext {
                SET_JH="""unset JAVA_HOME; """ + SET_JH
         } 
         
-        String groovyExe = Utils.resolveExe("groovy","groovy")
+        String internalGroovy = "$Runner.BPIPE_HOME/bin/groovy_script"
+        String groovyExe = Utils.resolveExe("groovy",internalGroovy)
         String groovyHome = new File(groovyExe).absoluteFile.parentFile.parentFile 
+        
+        String extraGroovyClasspath=""
+        if(groovyExe==internalGroovy) {
+            extraGroovyClasspath = "EXTRA_GROOVY_CLASSPATH=\"$Runner.BPIPE_HOME/libs/bpipe.jar:$Runner.BPIPE_HOME/build/libs/bpipe.jar\""
+        }
         
         String cmd = """
         $SET_JH
         unset GROOVY_HOME
+        export $extraGroovyClasspath
 
         GROOVY_CMD=\$(cat <<XXXX
         $groovyCommand
