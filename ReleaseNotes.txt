@@ -1,3 +1,75 @@
+=========== Changes for Bpipe Version 0.9.9.7 ============
+
+   - support aliasing to string values in addition to outputs 
+    
+   - experimental support for beforeRun hook in command config 
+    
+   - re-execute checks if a commmand in the same stage has executed 
+    
+   - synchronize initialization of dir watcher to fix sporadic 
+     ConcurrentModificationExceptions 
+    
+   - many performance improvements, esp. for large, highly
+     parallel pipelines
+     
+   - support configuration for number of retries for status
+     polling of HPC jobs 
+     
+   - fix empty embedded parallel stage list causing resolution of incorrect
+     downstream input 
+    
+   - add support for 'optional' to make input optional, and 'flag' to add flags 
+     in commands eg: ${input.csv.optional.flag('--csv')}
+     
+   - fix leak of 'var' variables across branches when 'using' applied to 
+     pipeline stage 
+
+   - fix error if 4 or more arguments passed to "to" in transform 
+
+   - fix bpipe complaining spurious outputs not created on retry,
+     but not original run 
+     
+   - fix some bugs where branch names were not being observed 
+     
+   - fix branch name sometimes inserted without separating period for transforms 
+    
+   - avoid redundantly putting branch name into files 
+
+   - improved detail in error / log messages in a few places 
+     
+   - add region.bedFlag(flag) method for convenience when passing 
+     regions to commands 
+    
+   - new operator: merge point operator (>>>) automatically configures a stage
+     to merge outputs from a previous parallel split
+
+   - fix missing branch and '..' in filenames 
+     
+   - change: globally defined variables must now be held constant
+     once pipeline starts 
+     
+   - fix split regions not stable between runs, set region id as branch
+     name 
+     
+   - fix bed.split producing different splits if run
+     repeatedly on same bed 
+     
+   - fix errors output if SLF4J referenced in user loaded libraries
+     
+   - fix npe / improve error message when filter used with mismatching output ext 
+     
+   - fix error in stage body resulting in confusing 'no associated storage'
+     assertion failure 
+
+   - support for 'var' expressions in main pipeline script to define optional
+     variables 
+     
+   - add 'allowForeign' option to 'from' to let it process non-outputs 
+     
+   - lessen the retries and retry interval when file cannot be cleaned
+     up 
+     
+
 =========== Changes for Bpipe Version 0.9.9.5 ============
 
   Features:

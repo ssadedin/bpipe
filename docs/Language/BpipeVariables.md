@@ -14,7 +14,12 @@ Implicit variables are special variables that are made available to your Bpipe p
 - environment variables - variables inherited from your shell environment (note: this feature is not implemented yet - coming soon!).
 - branch - when a pipeline is running parallel branches, the name of the current branch is available in a *$branch* variable.
 
-The input and output variables are how Bpipe automatically connects tasks together to make a pipeline.  The default input to a stage is the output from the previous stage. In general you should always try to use these variables instead of hard coding file names into your commands.   Using these variables ensures that your tasks are reusable and can be joined together to form flexible pipelines.  
+The input and output variables are how Bpipe automatically connects tasks
+together to make a pipeline.  The default input to a stage is the output from
+the previous stage. In general you should always try to use these variables
+instead of hard coding file names into your commands.   Using these variables
+ensures that your tasks are reusable and can be joined together to form
+flexible pipelines.  
 
 ### =Extension Syntax for Input and Output Variables=
 
@@ -22,7 +27,10 @@ Bpipe provides a special syntax for easily referencing inputs and outpus with sp
 
 **Multiple Inputs**
 
-Different tasks have different numbers of inputs and outputs, so what happens when a stage with multiple outputs is joined to a stage with only a single input?  Bpipe's goal is to try and make things work no matter what stages you join together.  To do this:
+Different tasks have different numbers of inputs and outputs, so what happens
+when a stage with multiple outputs is joined to a stage with only a single
+input?  Bpipe's goal is to try and make things work no matter what stages you
+join together.  To do this:
 
 - The variable *input1* is always a single file name that a task can read inputs from.  If there were multiple outputs from the previous stage, the *input1* variable is the first of those outputs.  This output is treated as the "primary" or "default" output.  The variable `$input` also evaluates, by default, to the value of *input1*.
 - If a task wants to accept more than one input then it can reference each input using the variables *input1*, *input2*, etc.
@@ -34,7 +42,49 @@ Different tasks have different numbers of inputs and outputs, so what happens wh
   }
 ```
 
-- When a stage has multiple outputs, the first such output is treated as the "primary" output and appears to the next stage as the "input" variable.  If the following stage only accepts a single input then its input will be the primary output of the previous stage.
+- When a stage has multiple outputs, the first such output is treated as the
+  "primary" output and appears to the next stage as the "input" variable.  If the
+  following stage only accepts a single input then its input will be the primary
+  output of the previous stage.
+
+**Optional Inputs**
+
+Sometimes an input might be provided optionally. In that case, you want to use it if it exists,
+or possibly use some other value if it doesn't.
+
+The default behavior of Bpipe is that if you reference an input and it can't be resolved, this
+generates a pipeline error and aborts the pipeline. However you can flag an input as optional
+by adding `optional` directly after the input reference. For example:
+
+```
+hello = {
+    exec """
+        echo "The file $input.txt.optional is optional"
+    """
+}
+```
+
+The expression `$input.optional` evaluates to blank if the input isn't available. This makes it
+possible to use it with Groovy expressions:
+
+```
+def actualInput = input.txt.optional?:input.csv
+```
+
+However a common scenario is that you want to pass an input with a flag to a command, but only
+if the input was provided. This can be accomplished by adding `.flag` after the `optional` in the 
+input reference:
+
+
+```
+exec """
+   some_command ${input.csv.optional.flag('--foo')}
+"""
+```
+
+This will run `some_command` by itself if no CSV file is in the inputs, but if the CSV file is
+available, it will run `some_command --foo <CSV file>`.
+
 
 ### Explicit Variables
 
