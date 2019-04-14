@@ -12,6 +12,7 @@ cache:
 before_install:
 - sudo apt-get -qq update -y
 - sudo apt-get install r-base -y
+- sudo apt-get install groovy -y
 
 script:
 - ./gradlew dist
