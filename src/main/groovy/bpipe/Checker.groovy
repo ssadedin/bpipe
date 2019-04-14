@@ -79,11 +79,14 @@ class Checker {
         check.pguid = Config.config.pguid
         check.script = Config.config.script
         
-        // If the check is up-to-date then simply read its result from the check file
-        def inputs = Utils.box(ctx.@input) + ctx.resolvedInputs
-        if(!ctx.executedOutputs.isEmpty() && check.isUpToDate(inputs)) {
+        List inputs = Utils.box(ctx.@input) + ctx.resolvedInputs
+        if(!inputs.isEmpty() && check.isUpToDate(inputs)) { // If inputs were referenced, use those to determine if check is up to date
             log.info "Check ${check.toString()} was already executed and is up to date with inputs $inputs"
             log.info "Cached result of ${check} was Passed: ${check.passed} Overridden: ${check.override}"
+        }
+        else
+        if(ctx.executedOutputs.isEmpty() && check.isUpToDate(inputs)) { // No inputs? then we execute the check only IF a command ran
+            log.info "Check ${check.toString()} was already executed and there are no inputs, and the stage did not execute any commands"
         }
         else {
             log.info "Check ${check.toString()} was not already executed or not up to date with inputs $inputs"
