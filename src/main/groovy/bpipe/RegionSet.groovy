@@ -214,8 +214,9 @@ class RegionSet implements Serializable {
         // A sorted set ordered by size and then object to 
         SortedSet<RegionSet> results = new TreeSet(new RegionSetComparator())
         
-        // We start with a new RegionSet for each sequence
-        results.addAll(sequences.collect { new RegionSet(it.value) })
+        for(Map.Entry<String,Sequence> e : sequences) {
+            results.add(new RegionSet(e.value))
+        }
         
         log.info "Grouping ${results.size()} sequences into $parts groups"
         
