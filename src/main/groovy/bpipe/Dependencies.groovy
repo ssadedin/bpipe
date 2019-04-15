@@ -56,7 +56,7 @@ class Dependencies {
     /**
      * List of output files created in *this run*
      */
-    List<String> outputFilesGenerated = []
+    List<PipelineFile> outputFilesGenerated = []
     
     /**
      * List of files whose timestamps are overridden, so that their real
