@@ -12,7 +12,10 @@
 # Author:  Simon Sadedin, simon.sadedin@mcri.edu.au
 #----------------------------------------------------------
 
-CP=""
+if [ ! -z "$EXTRA_GROOVY_CLASSPATH" ];
+then
+    CPFLAG="-cp $EXTRA_GROOVY_CLASSPATH"
+fi
 
 # set -x
 
@@ -20,21 +23,7 @@ export JAVA_OPTS
 
 if which groovy > /dev/null 2>&1 ;
 then
-    groovy "$@"
+    groovy $CPFLAG "$@"
 else    
-    which groovy
-    arg=$1
-    shift
-    while [ ! -z $arg ]; do
-      echo "ARG: $arg"
-      if [ "$arg" == "-cp" ]; 
-      then
-        CP="$1"
-        shift
-        break
-      fi
-      arg="$1"
-      shift
-    done
-    java -Xmx256m -noverify -classpath "$CP:$EXTRA_GROOVY_CLASSPATH" groovy.ui.GroovyMain "$@"
+    java -Xmx256m -noverify $CPFLAG groovy.ui.GroovyMain "$@"
 fi
