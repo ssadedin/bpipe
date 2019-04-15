@@ -12,5 +12,7 @@ bpipe run -p a=10 test.groovy  > test.pass.out 2>&1
 
 grep -q 'Hmmm 10 <= 2' test.pass.out && err "Found print from otherwise clause even though check passed"
 
+true
+
 
 
