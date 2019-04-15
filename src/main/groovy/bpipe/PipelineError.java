@@ -31,7 +31,9 @@ package bpipe;
  * friendly and understandable and not refer to code 
  * artefacts.
  */
-class PipelineError extends RuntimeException {
+public class PipelineError extends RuntimeException {
+
+    private static final long serialVersionUID = 1L;
 
     PipelineContext ctx;
     
