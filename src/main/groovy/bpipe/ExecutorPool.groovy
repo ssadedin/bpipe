@@ -4,6 +4,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.List
 import java.util.Map
+import java.util.logging.Logger
 import java.util.regex.Pattern
 import org.apache.ivy.plugins.report.LogReportOutputter
 
@@ -34,9 +35,10 @@ enum RescheduleResult {
   *  <li>Hosted command - the actual job commands that are doing the work. The
   *      host command executes the hosted commands.
   */
-@Log
 @Mixin(ForwardHost)
 class PooledExecutor implements CommandExecutor {
+    
+    static Logger log = Logger.getLogger('PooledExecutor')
     
     public static final long serialVersionUID = 0L
     
@@ -151,6 +153,7 @@ class PooledExecutor implements CommandExecutor {
         return exitCode
     }
     
+    @CompileStatic
     int waitForExitFile() {
         Path exitCodeFile = storage.toPath(".bpipe/commandtmp/$hostCommandId/${currentCommandId}.pool.exit")
         
