@@ -180,8 +180,10 @@ class Forwarder extends TimerTask {
                             // TODO: for neater output we could trim the output to the 
                             // most recent newline here
                             String content = new String(buffer,0,count)
-                            fileDestinations[p].append(content)
-                            fileDestinations[p].flush()
+                            Appendable dest = fileDestinations[p]
+                            dest.append(content)
+                            if(dest.respondsTo('flush'))
+                                dest.flush()
                             filePositions[p] = filePositions[p] + count
                         }
                     }

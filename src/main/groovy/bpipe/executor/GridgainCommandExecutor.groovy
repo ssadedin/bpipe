@@ -28,6 +28,7 @@ package bpipe.executor
 import groovy.util.logging.Log;
 
 import bpipe.PipelineError
+import bpipe.storage.StorageLayer
 
 /**
  *  Execute a B-pipe task on a GridGrain cluster
@@ -114,5 +115,11 @@ class GridgainCommandExecutor extends AbstractGridBashExecutor {
     @Override
     public String localPath(String storageName) {
         return null;
+    }
+
+
+    @Override
+    public void mountStorage(StorageLayer storage) {
+        // Nooop
     }
 }

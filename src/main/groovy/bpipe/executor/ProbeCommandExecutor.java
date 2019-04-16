@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 
 import bpipe.Command;
+import bpipe.storage.StorageLayer;
 
 /**
  * In certain situations, Bpipe needs to "probe" a command to see what would be the actual
@@ -76,6 +77,11 @@ public class ProbeCommandExecutor implements CommandExecutor {
     @Override
     public String localPath(String storageName) {
         return null;
+    }
+
+    @Override
+    public void mountStorage(StorageLayer storage) {
+        // noop
     }
 
 }

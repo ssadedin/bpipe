@@ -31,6 +31,7 @@ import java.util.regex.Matcher
 import bpipe.Command;
 import bpipe.ForwardHost
 import bpipe.Utils
+import bpipe.storage.StorageLayer
 import bpipe.PipelineError
 import bpipe.CommandStatus
 
@@ -365,5 +366,10 @@ class LsfCommandExecutor implements CommandExecutor {
     public String localPath(String storageName) {
         // TODO Auto-generated method stub
         return null;
+    }
+
+    @Override
+    public void mountStorage(StorageLayer storage) {
+        // no idea how to implement this!
     }
 }

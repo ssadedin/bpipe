@@ -28,6 +28,7 @@ package bpipe.executor
 import groovy.util.logging.Log;
 
 import bpipe.PipelineError
+import bpipe.storage.StorageLayer
 
 /**
  *  Execute B-bipe commands on a Hazelcast distributed grid
@@ -120,9 +121,11 @@ class HazelcastCommandExecutor extends AbstractGridBashExecutor {
     }
     @Override
     public String localPath(String storageName) {
-        // TODO Auto-generated method stub
+        // noop
         return null;
     }
-
-
+    @Override
+    public void mountStorage(StorageLayer storage) {
+        // noop
+    }
 }

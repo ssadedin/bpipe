@@ -38,7 +38,7 @@ class LocalFileSystemStorageLayer extends StorageLayer {
     }
 
     @Override
-    public String mount(CommandExecutor executor) {
+    public String getMountCommand(CommandExecutor executor) {
         // No-op - local storage is assumed to be already mounted
         return "."
     }
