@@ -1,7 +1,9 @@
 package bpipe.executor
 
 import java.util.List
+
 import java.util.Map
+import java.util.concurrent.ConcurrentHashMap
 
 import bpipe.Command
 import bpipe.CommandStatus
@@ -15,6 +17,31 @@ import bpipe.ForwardHost;
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 
+/**
+ * An executor that runs commands using Google Cloud infrastructure
+ * <p>
+ * Problem: who is responsible for mounting the storage?
+ * <p>
+ * In theory, executors and storage are separate. For example, you could mount
+ * S3 storage inside a GCE VM and then run jobs on the data. So in that view of the world,
+ * the executor should not worry about storage and should just assume that Bpipe has sorted
+ * it out.
+ * <p>
+ * However this falls short because in order to *mount* storage, you have to *run a command*
+ * on the target VM! so there is a complicated dance:
+ * 
+ *  <li> executor starts instance
+ *  <li> Bpipe mounts storage
+ *  <li> executor runs command
+ *  <p>
+ *  
+ *  It's even more complicated because the mechanism by which Bpipe sends commands to the VM
+ *  involves writing to shared storage. That is, there has to be a shared directory visible
+ *  to both Bpipe and the VM. So if a command can't be sent until there is storage, but there
+ *  can't be storage without a command, how do we break this deadlock?
+ * 
+ * @author simon.sadedin
+ */
 @Log
 @Mixin(ForwardHost)
 class GoogleCloudCommandExecutor extends CloudExecutor {
@@ -30,6 +57,11 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
      * The command executed by the executor
      */
     String commandId 
+    
+    /**
+     * The zone in which this executor's instance is running
+     */
+    String zone
     
     /**
      * If the command is running, the process representing the SSH command
@@ -74,7 +106,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
             return CommandStatus.WAITING
         else
         if(finished) 
-            return command.exitCode
+            return CommandStatus.COMPLETE
         else
         if(process != null) {
             try {
@@ -97,12 +129,15 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
             //             In that case we expect the command still to be running, as long as the VM is - it runs forever!
             log.info "No local process launched but instance $instanceId found: assume command already running, probing instance"
             String sdkHome = getSDKHome()
-            List<String> statusCommand = ["$sdkHome/bin/gcloud","compute","ssh","--command","ps -p `cat $workingDirectory/.bpipe/gcloud/$commandId`",this.instanceId]*.toString()
+            List<String> zoneFlag = ['--zone', zone]
+            List<String> statusCommand = (["$sdkHome/bin/gcloud","compute","ssh"] + zoneFlag + ["--command","ps -p `cat $workingDirectory/.bpipe/gcloud/$commandId`",this.instanceId])*.toString()
             ExecutedProcess result = Utils.executeCommand(statusCommand)
             if(result.exitValue == 0) {
+                log.info "Probe of $instanceId succeeded: instance is in running state"
                 return CommandStatus.RUNNING
             }
             else {
+                log.info "Probe of $instanceId failed: instance is not in running state"
                 return CommandStatus.COMPLETE
             }
         }
@@ -168,6 +203,12 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
      */
     void acquireInstance(Map config, Command cmd) {
         
+        if(this.instanceId != null) {
+            log.info "GoogleCloud executor already has running instance: bypassing acquire"
+            this.acquiring = false
+            return
+        }
+        
         String sdkHome = getSDKHome()
             
         // Get the instance type
@@ -181,12 +222,15 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         
         List machineTypeFlag = ('machineType' in config) ? ["--machine-type", config.machineType] : []
         
+        this.zone = getRegion(config)
+        List zoneFlag = ['--zone', zone]
+        
         List<String> commandArgs = ["$sdkHome/bin/gcloud", "compute", "instances", 
               "create", this.instanceId,
               "--image", image,
               "--service-account", serviceAccount,
               "--scopes", "https://www.googleapis.com/auth/cloud-platform"
-        ] + machineTypeFlag
+        ] + machineTypeFlag + zoneFlag
         
         // Create the instance
         log.info "Creating google cloud instance from image $image for command $cmd.id"
@@ -197,15 +241,15 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         // It can take a small amount of time before the instance can be ssh'd to - downstream 
         // functions will assume that an instance is available for SSH, so it's best to do
         // that check now
-        Utils.withRetries(5, backoffBaseTime:3000, message:"Test connect to $instanceId") { 
-            canSSH() 
+        Utils.withRetries(8, backoffBaseTime:3000, message:"Test connect to $instanceId") { 
+            canSSH(zoneFlag) 
         }
     }
     
-    boolean canSSH() {
+    boolean canSSH(List zoneFlag) {
         String sdkHome = getSDKHome()
         
-        List<String> sshCommand = ["$sdkHome/bin/gcloud","compute","ssh","--command","true",this.instanceId]*.toString()
+        List<String> sshCommand = ["$sdkHome/bin/gcloud","compute","ssh"] + zoneFlag + ["--command","true",this.instanceId]*.toString()
         
         Utils.executeCommand(sshCommand, throwOnError: true)        
     }
@@ -220,7 +264,8 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         
         List<GoogleCloudStorageLayer> storages = this.makeBuckets(config, region)
         for(GoogleCloudStorageLayer storage in storages) {
-            storage.mount(this)
+//            storage.getMountCommand(this)
+            this.mountStorage(storage)
         }
         
         if(storages.size()>0) {
@@ -238,9 +283,17 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         
         File jobDir = this.getJobDir(command)
         
+        String commandWorkDir = workingDirectory
+        
+        if(command.processedConfig?.containsKey('workingDirectory')) {
+            commandWorkDir = command.processedConfig.workingDirectory
+        }
+        
+        log.info "Working directory for command $command.id is $commandWorkDir"
+        
         File cmdFile = new File(jobDir, "cmd.sh")
         cmdFile.text = """
-            cd $workingDirectory || { echo "Unable to change to expected working directory: $workingDirectory"; exit 1; }
+            cd $commandWorkDir || { echo "Unable to change to expected working directory: $workingDirectory"; exit 1; }
 
             mkdir -p .bpipe/gcloud
 
@@ -249,14 +302,15 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
             $command.command
         """.stripIndent()
         
-        List<String> sshCommand = ["$sdkHome/bin/gcloud","compute","ssh","--command","bash",this.instanceId]*.toString()
+        def zoneFlag = ['--zone', zone]
+        def sshCommand = ["$sdkHome/bin/gcloud","compute","ssh"] + zoneFlag + ["--command","bash",this.instanceId]
         
         log.info "Lanching command using: " + sshCommand.join(' ')
         
         File stdOut = new File(jobDir,"cmd.out")
         File stdErr = new File(jobDir,"cmd.err")
         
-        ProcessBuilder pb = new ProcessBuilder(sshCommand)
+        ProcessBuilder pb = new ProcessBuilder((List<String>)sshCommand*.toString())
         pb.redirectOutput(stdOut)
           .redirectError(stdErr)
           .redirectInput(cmdFile)
@@ -265,7 +319,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         this.process = pb.start()
         this.acquiring = false
         
-        forward(stdOut, outputLog)
+        forward(stdOut, outputLog) 
         forward(stdErr, errorLog)
         
     }
@@ -308,10 +362,16 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         log.info "Storages configured are $storageConfigs"
         
         List<GoogleCloudStorageLayer> storages = storageConfigs.collect { String storageConfig ->
+            if(storageConfig == 'auto') {
+                log.info "Storage set to auto: assume bucket and mount exists already"
+                return
+            }
             log.info "Creating storage $storageConfig"
             GoogleCloudStorageLayer storageLayer = StorageLayer.create(storageConfig)
             storageLayer.makeBucket()
             return storageLayer
+        }.findAll { 
+            it != null  // happens if storageConfig 'auto'
         }
         
         return storages 
@@ -327,6 +387,27 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         return sdkHome
     }
     
+    /**
+     * Scenario:
+     * 
+     *  - start pooled gce
+     *  - it creates .bpipe in *shared* bucket
+     *  - kill gce
+     *    - .bpipe is left behind
+     *  - start new pooled gce
+     *    - it sees old .bpipe
+     *  - now problem: it picks up wrong state!
+     * 
+     * Solution:
+     * 
+     *  - Q: what makes a pooled executor smart enough to use GC storage instead of local?
+     *  - A: it's GCE itself that runs the pool command, so when it executes it naturally does
+     *       that on the VM instance, in the work directory, resulting in the .bpipe files etc
+     *  - Q: how then does the pooled executor write the command file to GC storage?
+     * 
+     * @param command
+     * @return
+     */
     File getJobDir(Command command) {
         String jobDir = ".bpipe/commandtmp/$command.id"
 		File jobDirFile = new File(jobDir)
@@ -347,4 +428,33 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         // /home/<user>/<storage name>
         return "/home/${System.properties['user.name']}/$storageName"
     }
+    
+    transient static ConcurrentHashMap<String, String> mountedStorages = new ConcurrentHashMap()
+
+    @Override
+    public void mountStorage(StorageLayer storage) {
+        
+        String storageKey = "$storage.name:$instanceId"
+        
+        if(mountedStorages.containsKey(storageKey)) {
+            log.info "Storage $storageKey is already mounted in instance $instanceId"
+            return
+        }
+        
+        String mountCommand = storage.getMountCommand(this)
+        
+        log.info "Mount command for $storage is $mountCommand"
+        
+        String sdkHome = getSDKHome()
+        
+        def zoneFlag = ['--zone', zone]
+        List<String> sshCommand = (["$sdkHome/bin/gcloud","compute","ssh"] + zoneFlag + ["--command",mountCommand,this.instanceId])*.toString()        
+        
+        log.info "Executing command to mount storage $storage in GCE executor: $sshCommand"
+        
+        Utils.executeCommand(sshCommand, throwOnError:true)
+        
+        mountedStorages[storageKey] = true
+    }
+
 }

@@ -26,7 +26,7 @@ class UnknownStoragePipelineFile extends PipelineFile {
             }
 
             @Override
-            public String mount(CommandExecutor executor) {
+            public String getMountCommand(CommandExecutor executor) {
                 return "."
             }
         })

@@ -24,7 +24,7 @@ class TestStorageLayer extends StorageLayer {
     }
 
     @Override
-    public String mount(CommandExecutor executor) {
+    public String getMountCommand(CommandExecutor executor) {
         // noop
         return base
     }

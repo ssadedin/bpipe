@@ -163,7 +163,7 @@ class PooledExecutor implements CommandExecutor {
             if(loopIterations % 15 == 0) {
                 String status = this.executor.status()
                 if(status in ENDED_JOB_STATUSES) {
-                    log.severe "Pooled job ${this.hostCommandId} in pool ${poolConfig.name} ended unexpectedly: failing command ${currentCommandId}"
+                    log.severe "Pooled job ${this.hostCommandId} in pool ${poolConfig.name} via storage $storage ended unexpectedly. Current command: ${currentCommandId}"
                     return 1;
                 }
             }
@@ -173,7 +173,7 @@ class PooledExecutor implements CommandExecutor {
         
         int exitCode =  Utils.withRetries(3, message:"Read $exitCodeFile from ${storage.class.name}") {
             String text = new String(Files.readAllBytes(exitCodeFile),"UTF-8")
-            println "Read [$text] from exit code file"
+            log.info "Read [${text.trim()}] from exit code file"
             return text.trim().toInteger()
         }
     }
@@ -371,6 +371,11 @@ class PooledExecutor implements CommandExecutor {
     @Override
     public String localPath(String storageName) {
         return this.executor.localPath(storageName);
+    }
+
+    @Override
+    public void mountStorage(StorageLayer storage) {
+        this.executor.mountStorage(storage)
     }
 }
 

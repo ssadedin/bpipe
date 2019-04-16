@@ -30,6 +30,7 @@ import groovy.util.logging.Log
 import bpipe.Command;
 import bpipe.ForwardHost
 import bpipe.Utils
+import bpipe.storage.StorageLayer
 import bpipe.PipelineError
 import bpipe.CommandStatus
 import bpipe.ExecutedProcess
@@ -347,7 +348,6 @@ class SgeCommandExecutor implements CommandExecutor {
 
     @Override
     List<String> getIgnorableOutputs() {
-        //TODO ??
         return null
     }
 
@@ -358,7 +358,11 @@ class SgeCommandExecutor implements CommandExecutor {
 
     @Override
     public String localPath(String storageName) {
-        // TODO Auto-generated method stub
         return null;
+    }
+
+    @Override
+    public void mountStorage(StorageLayer storage) {
+        // noop for now
     }
 }

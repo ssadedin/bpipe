@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 
 import bpipe.Command;
+import bpipe.storage.StorageLayer;
 
 /**
  * Abstract class that represents a shell command to be executed
@@ -81,6 +82,8 @@ public interface CommandExecutor extends Serializable {
      * Return the path at which the given named storage is mounted within this executor
      */
     String localPath(String storageName);
+    
+    void mountStorage(StorageLayer storage);
     
     String statusMessage(); 
     

@@ -31,7 +31,7 @@ import bpipe.Config;
 import bpipe.OSResourceThrottle;
 import bpipe.PipelineError
 import bpipe.Utils
-
+import bpipe.storage.StorageLayer
 import groovy.util.logging.Log
 
 /**
@@ -490,5 +490,11 @@ class CustomCommandExecutor implements PersistentExecutor {
     @Override
     public String localPath(String storageName) {
         return '';
+    }
+
+    @Override
+    public void mountStorage(StorageLayer storage) {
+        // noop - default assumption is that the storage is mounted already
+        // TODO for futre:
     }
 }
