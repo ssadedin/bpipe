@@ -1941,7 +1941,7 @@ class PipelineContext {
     void groovy(Map opts, String groovyCommand) {
         
         String cp = ""
-        String libs = ""
+        def libs = ""
         if(Config.userConfig.containsKey("libs")) {
             libs = Config.userConfig.libs
             if(libs instanceof List)
@@ -1969,13 +1969,13 @@ class PipelineContext {
         
         String extraGroovyClasspath=""
         if(groovyExe==internalGroovy) {
-            extraGroovyClasspath = "EXTRA_GROOVY_CLASSPATH=\"$libs:$Runner.BPIPE_HOME/libs/bpipe.jar:$Runner.BPIPE_HOME/build/libs/bpipe.jar\""
+            extraGroovyClasspath = "export EXTRA_GROOVY_CLASSPATH=\"$libs:$Runner.BPIPE_HOME/libs/bpipe.jar:$Runner.BPIPE_HOME/build/libs/bpipe.jar\""
         }
         
         String cmd = """
         $SET_JH
         unset GROOVY_HOME
-        export $extraGroovyClasspath
+        $extraGroovyClasspath
 
         GROOVY_CMD=\$(cat <<XXXX
         $groovyCommand
