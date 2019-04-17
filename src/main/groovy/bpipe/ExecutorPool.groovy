@@ -174,7 +174,7 @@ class PooledExecutor implements CommandExecutor {
         }
         Thread.sleep(100)
         
-        int exitCode =  Utils.withRetries(3, message:"Read $exitCodeFile from ${storage.class.name}") {
+        int exitCode =  (int)Utils.withRetries(3, message:"Read $exitCodeFile from ${storage.class.name}") {
             String text = new String(Files.readAllBytes(exitCodeFile),"UTF-8")
             log.info "Read [${text.trim()}] from exit code file"
             return text.trim().toInteger()
