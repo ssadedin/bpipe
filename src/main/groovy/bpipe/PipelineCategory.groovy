@@ -52,8 +52,9 @@ import bpipe.storage.UnknownStoragePipelineFile
  * A category that adds default Bpipe functions to closures
  * to enable basic operators such as the + operator to work.
  */
-@Log
 class PipelineCategory {
+    
+    static Logger log = Logger.getLogger('PipelineCategory')
     
     static Map closureNames = [:]
     
