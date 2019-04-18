@@ -641,8 +641,6 @@ class PipelineCategory {
 
     @CompileStatic
     static List<PipelineFile> runAndWaitFor(PipelineStage currentStage, List<Pipeline> pipelines, List<Runnable> threads) {
-            // Start all the threads
-        
             Pipeline current = Pipeline.currentRuntimePipeline.get()
             
             pipelines.each { 
@@ -681,15 +679,21 @@ class PipelineCategory {
             }
     }
     
-    static String computeSubBranchName(String id, List<Closure> segments, Closure segmentClosure) {
-        String childName = id
+    /**
+     * Compute a unique name for a child branch based on its parent branch and its position
+     * within its siblings with respect to its parent.
+     */
+    @CompileStatic
+    static String computeSubBranchName(String defaultName, List<Closure> segments, Closure segmentClosure) {
+        String childName = defaultName
         int segmentNumber = segments.indexOf(segmentClosure) + 1
         if(segments.size()>1) {
-            if(id == "all")
+            if(defaultName == "all")
                 childName = segmentNumber.toString()
             else
-                childName = id + "." + segmentNumber
+                childName = defaultName + "." + segmentNumber
         }
+        return childName
     }
 
     /**
@@ -744,7 +748,7 @@ class PipelineCategory {
      * 
      *   A -- B -- D -- C -- E -- F
      */
-    static mergeChildStagesToParent(Pipeline parent, List<Pipeline> pipelines) {
+    static List mergeChildStagesToParent(final Pipeline parent, final List<Pipeline> pipelines) {
         // Get the output stages without the joiners
         List<List<PipelineStage>> stagesList = pipelines.collect { c -> c.stages.grep { !it.joiner && !(it in parent.stages) && it.stageName != "Unknown" } }
         

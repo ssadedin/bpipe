@@ -1091,15 +1091,14 @@ public class Pipeline implements ResourceRequestor {
             p.id = this.stages[-1].id + "_" + this.childCount
         else
             p.id = id
-        
-//        branchPoint.appendNode(p.node)
-        ++this.childCount
             
+        ++this.childCount
         return p
     }
     
     @CompileStatic
-    void initBranch(String childName, boolean nameApplied) {
+    void initBranch(final String childName, final boolean nameApplied) {
+        assert !childName.is(null)
         this.branch = new Branch(name:childName)
         this.branch.@name = childName
         this.nameApplied = nameApplied
