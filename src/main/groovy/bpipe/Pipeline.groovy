@@ -1047,6 +1047,26 @@ public class Pipeline implements ResourceRequestor {
     }
     
     /**
+     * Create an artificial stage that supplies inputs to this pipeline as if they were outputs
+     * of a previous set of stages joined to this pipeline's stages.
+     */
+    PipelineStage createDummyStage(List files) {
+        PipelineContext dummyPriorContext = this.createContext()
+        PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
+
+        // Need to set this without redirection to the output folder because otherwise
+        dummyPriorContext.setRawOutput(files)
+        dummyPriorContext.@input = files.collect {
+            it instanceof PipelineFile ? it : new UnknownStoragePipelineFile(it)
+        }
+        
+        long threadId = Thread.currentThread().id
+
+        log.info "Created dummy prior stage for thread ${threadId} with outputs : ${dummyPriorContext.@output}"
+        return dummyPriorStage
+    }
+    
+    /**
      * Create a new pipeline that is initialized with copies of all the same state
      * that this pipeline has.  The new pipeline can execute concurrently with this
      * one without interfering with this one's state.
@@ -1054,9 +1074,10 @@ public class Pipeline implements ResourceRequestor {
      * Note:  the new pipeline is not run by this method; instead you have to
      *        call one of the {@link #run(Closure)} methods on the returned pipeline
      */
+    @CompileStatic
     Pipeline fork(Node branchPoint, String childName, String id = null) {
         
-        assert branchPoint in this.node.children()
+//        assert branchPoint in this.node.children()
         
         Pipeline p = new Pipeline()
         p.node = new Node(branchPoint, childName, [type:'pipeline',pipeline:p])
@@ -1075,6 +1096,13 @@ public class Pipeline implements ResourceRequestor {
         ++this.childCount
             
         return p
+    }
+    
+    @CompileStatic
+    void initBranch(String childName, boolean nameApplied) {
+        this.branch = new Branch(name:childName)
+        this.branch.@name = childName
+        this.nameApplied = nameApplied
     }
     
     private void loadExternalStages() {
