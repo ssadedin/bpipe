@@ -170,6 +170,7 @@ class PipelineCategory {
      * creating wrapping closure that executes each one in turn.  This is the 
      * basis of Bpipes's + syntax for joining sequential pipeline stages.
      */
+    @CompileStatic
     static Object plus(Closure c, Closure other, boolean mergePoint) {
         
         // log.info "Closure["+PipelineCategory.closureNames[c] + "] + Closure[" + PipelineCategory.closureNames[other] + "]"
@@ -186,7 +187,7 @@ class PipelineCategory {
             currentStage.run()
             
             log.info "Checking that outputs ${currentStage.context.@output} exist"
-            Dependencies.instance.checkFiles(currentStage.context.@output, pipeline.aliases)
+            Dependencies.theInstance.checkFiles(currentStage.context.@output, pipeline.aliases)
                     
             // If the stage did not return any outputs then we assume
             // that the inputs to the next stage are the same as the inputs
@@ -198,7 +199,7 @@ class PipelineCategory {
             }
                 
             log.info "Checking inputs for next stage:  $nextInputs"
-            Dependencies.instance.checkFiles(nextInputs, pipeline.aliases)
+            Dependencies.theInstance.checkFiles(nextInputs, pipeline.aliases)
             
             currentStage = new PipelineStage(pipeline.createContext(), other)
             currentStage.context.@input = nextInputs
@@ -219,7 +220,8 @@ class PipelineCategory {
      * all of them to all the stages in the list.
      * This is a special case of multiply below. 
      */
-    static Object plus(Closure other, List segments, boolean mergePoint=false) {
+    @CompileStatic
+    static Closure plus(Closure other, List segments, boolean mergePoint=false) {
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
         Closure mul = splitOnFiles("*", segments, false, false,mergePoint)
         Closure plusImplementation =  { input1 ->
@@ -229,7 +231,7 @@ class PipelineCategory {
             runtimePipeline.addStage(currentStage)
             currentStage.context.setInput(input1)
             currentStage.run()
-            Dependencies.instance.checkFiles(currentStage.context.@output, runtimePipeline.aliases)
+            Dependencies.theInstance.checkFiles(currentStage.context.@output, runtimePipeline.aliases)
                     
             // If the stage did not return any outputs then we assume
             // that the inputs to the next stage are the same as the inputs
@@ -238,7 +240,7 @@ class PipelineCategory {
             if(nextInputs == null)
                 nextInputs = currentStage.context.@input
                 
-            Dependencies.instance.checkFiles(nextInputs, runtimePipeline.aliases)
+            Dependencies.theInstance.checkFiles(nextInputs, runtimePipeline.aliases)
             
             return mul(nextInputs)
         }
@@ -512,14 +514,14 @@ class PipelineCategory {
      * @param requireMatch  if true, the pipeline will fail if there are 
      *                      no matches to the pattern
      */
-    static Object splitOnFiles(def pattern, List segments, boolean requireMatch, boolean sortResults=true, boolean mergePoint=false) {
+    static Closure splitOnFiles(def pattern, List segments, boolean requireMatch, boolean sortResults=true, boolean mergePoint=false) {
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
         
         def multiplyImplementation = { input ->
             
-            assert input.every { it instanceof PipelineFile }
+//            assert input.every { it instanceof PipelineFile }
             
-            log.info "multiply on input $input with pattern $pattern"
+            log.fine "multiply on input $input with pattern $pattern"
             
             // Match the input
             InputSplitter splitter = new InputSplitter(sortResults:sortResults)
