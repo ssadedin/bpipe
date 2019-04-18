@@ -43,6 +43,8 @@ class BranchRunner implements Runnable {
     
     final Closure segmentClosure
     
+    final boolean applyName
+    
     public BranchRunner(Pipeline parent, Pipeline child, List<PipelineFile> files, String childName, Closure segmentClosure, boolean applyName) {
         super();
         this.parent = parent;
@@ -52,7 +54,6 @@ class BranchRunner implements Runnable {
         this.segmentClosure = segmentClosure;
         this.applyName = applyName;
     }
-    final boolean applyName
 
     @Override
     public void run() {
