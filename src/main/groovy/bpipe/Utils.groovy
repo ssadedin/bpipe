@@ -894,7 +894,7 @@ class Utils {
     * @return   String value of stack trace, nicely formatted
     */
     @CompileStatic
-    private static String prettyStackTrace(Throwable t) {
+    static String prettyStackTrace(Throwable t) {
         
         Throwable sanitized = StackTraceUtils.deepSanitize(t)
         StringWriter sw = new StringWriter()

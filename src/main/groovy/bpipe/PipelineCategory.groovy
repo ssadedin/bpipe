@@ -525,30 +525,22 @@ class PipelineCategory {
             
             // Match the input
             InputSplitter splitter = new InputSplitter(sortResults:sortResults)
-            Map samples = splitter.split(pattern, input)
+            Map branches = splitter.split(pattern, input)
             
-            if(samples.isEmpty() && !requireMatch && pattern == "*")        
-                samples["*"] = input
+            if(branches.isEmpty() && !requireMatch && pattern == "*")        
+                branches["*"] = input
                 
-            if(samples.isEmpty()) {
-                def allInputs = Pipeline.currentRuntimePipeline.get().stages*.context.collect { it.@input}
-                for(def inps in allInputs.reverse()) {
-                    log.info "Checking input split match on $inps"
-                    samples = splitter.split(pattern, inps)
-                    if(!samples.isEmpty()) {
-                        log.info "Found input split match for pattern $pattern on $inps"
-                        break
-                    }
-                }
+            if(branches.isEmpty()) {
+                branches = locateMostRecentMatch(pattern, splitter)
             }
             
-            if(samples.isEmpty()) 
+            if(branches.isEmpty()) 
                 if(input)
                     println("Note: a pattern '$pattern' was provided, but did not match any of the files provided as input $input.")
                 else
                     throw new PatternInputMissingError("An input pattern was specified '$pattern' but no inputs were given when Bpipe was run.")
                     
-            return splitOnMap(input, samples, segments, pattern instanceof String && pattern.contains("/"), mergePoint)
+            return splitOnMap(input, branches, segments, pattern instanceof String && pattern.contains("/"), mergePoint)
         }
 					
         
@@ -557,22 +549,37 @@ class PipelineCategory {
         
         return multiplyImplementation
     }
+
+    /**
+     * Search in reverse through the current pipeline input stack to find the most recent
+     * stage that had an input matching the given split pattern. For that stage, return
+     * all the inputs matching the pattern.
+     */
+    private static Map locateMostRecentMatch(final Object pattern, final InputSplitter splitter) {
+        List allInputs = Pipeline.currentRuntimePipeline.get().stages*.context.collect { it.@input}
+        for(def inps in allInputs.reverse()) {
+            log.info "Checking input split match on $inps"
+            final Map branches = splitter.split(pattern, inps)
+            if(!branches.isEmpty()) {
+                log.info "Found input split match for pattern $pattern on $inps"
+                return branches
+            }
+        }
+        return []
+    }
     
-    static Object splitOnMap(def input, Map<String, List> samples, List segments, boolean applyName=false, boolean mergePoint=false) {
+    @CompileStatic
+    static Object splitOnMap(def input, Map<String, List> samples, List segmentObjs /* Closure or List of Closures */, boolean applyName=false, boolean mergePoint=false) {
         
         assert samples*.value.every { it instanceof List }
         
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
-        segments = segments.collect { 
-            if(it instanceof List) {
-                return multiply("*",it)
-            }
-            else 
-                return it
-        }
         
-        PipelineStage currentStage = new PipelineStage(pipeline.createContext(), {})
-        Pipeline parent = Pipeline.currentRuntimePipeline.get()
+        // Convert any segments that have been passed as lists to compiled closure form
+        List<Closure> segments = convertSegmentLists(segmentObjs)
+        
+        final PipelineStage currentStage = new PipelineStage(pipeline.createContext(), {})
+        final Pipeline parent = Pipeline.currentRuntimePipeline.get()
         parent.addStage(currentStage)
         currentStage.context.setInput(input)
         
@@ -585,8 +592,8 @@ class PipelineCategory {
         List<Pipeline> childPipelines = []
         List<Runnable> threads = []
 		Node branchPoint = parent.addBranchPoint("split")
-        for(Closure s in segments) {
-            log.info "Processing segment ${s.hashCode()}"
+        for(Closure segmentClosure in segments) {
+            log.info "Processing segment ${segmentClosure.hashCode()}"
             
             // See note in multiply(Set objs, List segments) for details on the purpose of forkId
             String forkId = null
@@ -594,63 +601,44 @@ class PipelineCategory {
                     
                 log.info "Creating pipeline to run parallel segment $id with files $files. Branch filter = ${Config.config.branchFilter}"
                    
-				if(!Config.config.branchFilter.isEmpty() && !Config.config.branchFilter.contains(id)) {
-					System.out.println "Skipping branch $id because not in branch filter ${Config.config.branchFilter}"
-					return
-				}
+				if(isBranchFiltered(id))
+                    return
  
-                Closure segmentClosure = s
-                String childName = id
-                int segmentNumber = segments.indexOf(segmentClosure) + 1
-                if(segments.size()>1) {
-                    if(id == "all")
-                        childName = segmentNumber.toString()
-                    else
-                        childName = id + "." + segmentNumber
-                }
-                
-                Pipeline child = parent.fork(branchPoint,childName, forkId)
+                String childName = computeSubBranchName(id, segments, segmentClosure)
+                Pipeline child = parent.fork(branchPoint, childName, forkId)
                 forkId = child.id
                 currentStage.children << child
-                threads << {
-                    try {
-                        // First we make a "dummy" stage that contains the inputs
-                        // to the next stage as outputs.  This allows later logic
-                        // to find these "inputs" correctly when it expects to see
-                        // all "inputs" reflected as some output of an earlier stage
-                        PipelineContext dummyPriorContext = pipeline.createContext()
-                        PipelineStage dummyPriorStage = new PipelineStage(dummyPriorContext,{})
-                                
-                        // Need to set this without redirection to the output folder because otherwise
-                        dummyPriorContext.setRawOutput(files)
-                        dummyPriorContext.@input = files.collect { 
-                            it instanceof PipelineFile ? it : new UnknownStoragePipelineFile(it)
-                        }
-                                
-                        log.info "Adding dummy prior stage for thread ${Thread.currentThread().id} with outputs : ${dummyPriorContext.@output}"
-                        
-                        if(mergePoint)
-                            child.setMergePoint(currentStage)
-                                    
-                        child.addStage(dummyPriorStage)
-                        child.branch = new Branch(name:childName)
-                        child.branch.@name = childName
-                        child.nameApplied = !applyName
-                        child.runSegment(files, segmentClosure)
-                    }
-                    catch(Exception e) {
-                        log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
-                        println(Utils.prettyStackTrace(e))
-                        child.failExceptions << e
-                        child.failed = true
-                    }
-                } as Runnable
+                if(mergePoint)
+                    child.setMergePoint(currentStage)
+                threads << new BranchRunner(parent, child, files, childName, segmentClosure, applyName)
                 childPipelines << child
             }
         }
         return runAndWaitFor(currentStage, childPipelines, threads)
     }
-    
+
+    private static List convertSegmentLists(List segmentObjs) {
+        List<Closure> segments = segmentObjs.collect {
+            if(it instanceof List) {
+                return multiply("*",it)
+            }
+            else
+                return it
+        }
+        return segments
+    }
+
+    /*
+     * Check if branches of the given id are filtered out from running
+     */
+    private static boolean isBranchFiltered(String id) {
+        if(!Config.config.branchFilter.isEmpty() && !Config.config.branchFilter.contains(id)) {
+            System.out.println "Skipping branch $id because not in branch filter ${Config.config.branchFilter}"
+            return true
+        }
+        return false
+    }
+
     @CompileStatic
     static List<PipelineFile> runAndWaitFor(PipelineStage currentStage, List<Pipeline> pipelines, List<Runnable> threads) {
             // Start all the threads
@@ -691,6 +679,17 @@ class PipelineCategory {
     
                 return parent.stages[-1].context.@output
             }
+    }
+    
+    static String computeSubBranchName(String id, List<Closure> segments, Closure segmentClosure) {
+        String childName = id
+        int segmentNumber = segments.indexOf(segmentClosure) + 1
+        if(segments.size()>1) {
+            if(id == "all")
+                childName = segmentNumber.toString()
+            else
+                childName = id + "." + segmentNumber
+        }
     }
 
     /**
@@ -873,18 +872,6 @@ class PipelineCategory {
             
                        """.stripIndent() + msg 
                   }.join("\n")
-        
-        /*
-        pipelines.collect { 
-                    if(it.failReason && it.failReason!="Unknown") 
-                        return it.failReason
-                    else
-                    if(it.failExceptions)
-                        return it.failExceptions*.message.join('\n')
-                    else
-                    return null
-        }.grep { it }.flatten().unique().join('\n') 
-        */
     }
     
     static void addStages(Binding binding) {
