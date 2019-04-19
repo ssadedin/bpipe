@@ -65,6 +65,10 @@ dependencies {
     compile group: 'com.google.cloud', name: 'google-cloud-nio', version: '0.62.0-alpha'
 
     compile ('com.hazelcast:hazelcast-all:2.1.2') { transitive = false }
+    
+    compile group: 'com.amazonaws', name: 'aws-java-sdk-ec2', version: '1.11.535'
+    compile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.535'
+    
     testCompile group: 'junit', name: 'junit', version: '4.8.2'
 
 }
