@@ -1223,7 +1223,7 @@ class Utils {
                 log.info "Try $count of $maxRetries ..."
             Thread.sleep(sleepTimeMs)
             ++count
-            sleepTimeMs = Math.min(backoffBaseTime,sleepTimeMs*2)
+            sleepTimeMs = Math.max(backoffBaseTime,sleepTimeMs*2)
         }
     } 
     
