@@ -49,16 +49,6 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
     public static final long serialVersionUID = 0L
     
     /**
-     * The google cloud instance that this executor started to service its command
-     */
-    String instanceId
-    
-    /**
-     * The command executed by the executor
-     */
-    String commandId 
-    
-    /**
      * The zone in which this executor's instance is running
      */
     String zone
@@ -70,34 +60,14 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
     transient Process process
     
     /**
-     * The command executed, but only if it was started already
-     */
-    transient Command command
-    
-    /**
      * Set to true after the command is observed to be finished
      */
     transient boolean finished = false
-    
-    boolean acquiring = false
     
     /**
      * The directory that the executor will execute in within the hosted VM instance
      */
     String workingDirectory = 'work'
-    
-    @Override
-    public void start(Map cfg, Command cmd, Appendable outputLog, Appendable errorLog) {
-        
-        // Acquire my instance
-        acquiring = true
-        this.acquireInstance(cfg, cmd)
-       
-        this.mountStorage(cfg)
-        
-        // Execute the command via SSH
-        this.launchSSH(cmd, outputLog, errorLog)
-    }
     
     @Override
     public String status() {
@@ -146,21 +116,6 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
     }
 
     @Override
-    @CompileStatic
-    public int waitFor() {
-        
-        while(true) {
-            CommandStatus status = this.status()
-            if(status == CommandStatus.COMPLETE) 
-                // note anomaly: we could come in here after command is lost and process is detached
-                // this happens for pooled executor
-                return command?.exitCode?:0;
-                
-            Thread.sleep(5000)
-        }
-    }
-
-    @Override
     public void stop() {
         assert this.process != null
         this.process.destroy()
@@ -201,24 +156,15 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
      * @param config
      * @param cmd
      */
-    void acquireInstance(Map config, Command cmd) {
-        
-        if(this.instanceId != null) {
-            log.info "GoogleCloud executor already has running instance: bypassing acquire"
-            this.acquiring = false
-            return
-        }
+    void acquireInstance(Map config, String image, String id) {
         
         String sdkHome = getSDKHome()
             
-        // Get the instance type
-        String image = config.get('image')
-        
         String serviceAccount = config.get('serviceAccount',null)
         if(serviceAccount == null)
             throw new Exception("The Google Cloud executor requires that a service account be attached. Please see documentation for how to setup and create the service account.")
         
-        this.instanceId = "bpipe-" + cmd.id
+        this.instanceId = "bpipe-" + id
         
         List machineTypeFlag = ('machineType' in config) ? ["--machine-type", config.machineType] : []
         
@@ -233,26 +179,24 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         ] + machineTypeFlag + zoneFlag
         
         // Create the instance
-        log.info "Creating google cloud instance from image $image for command $cmd.id"
+        log.info "Creating google cloud instance from image $image for command $id"
         ExecutedProcess result = Utils.executeCommand(commandArgs)
         if(result.exitValue != 0) 
-            throw new PipelineError("Failed to acquire google cloud instance based (image=$image) for command $cmd.id: \n\n" + result.out + "\n\n" + result.err)
+            throw new PipelineError("Failed to acquire google cloud instance based (image=$image) for command $id: \n\n" + result.out + "\n\n" + result.err)
             
-        // It can take a small amount of time before the instance can be ssh'd to - downstream 
-        // functions will assume that an instance is available for SSH, so it's best to do
-        // that check now
-        Utils.withRetries(8, backoffBaseTime:3000, message:"Test connect to $instanceId") { 
-            canSSH(zoneFlag) 
-        }
     }
-    
-    boolean canSSH(List zoneFlag) {
+
+    ExecutedProcess ssh(String cmd, Closure builder) {
+        
+        List zoneFlag = ['--zone', zone]
+        
         String sdkHome = getSDKHome()
         
-        List<String> sshCommand = ["$sdkHome/bin/gcloud","compute","ssh"] + zoneFlag + ["--command","true",this.instanceId]*.toString()
+        List<String> sshCommand = ["$sdkHome/bin/gcloud","compute","ssh"] + zoneFlag + ["--command",cmd,this.instanceId]*.toString()
         
-        Utils.executeCommand(sshCommand, throwOnError: true)        
+        return Utils.executeCommand([throwOnError: true], sshCommand, builder)        
     }
+    
     
     void mountStorage(Map config) {
         
@@ -264,7 +208,6 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         
         List<GoogleCloudStorageLayer> storages = this.makeBuckets(config, region)
         for(GoogleCloudStorageLayer storage in storages) {
-//            storage.getMountCommand(this)
             this.mountStorage(storage)
         }
         
@@ -273,7 +216,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         }
     }
     
-    void launchSSH(Command command, Appendable outputLog, Appendable errorLog) {
+    void startCommand(Command command, Appendable outputLog, Appendable errorLog) {
         
         assert this.instanceId != null
         
@@ -281,7 +224,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         
         String sdkHome = getSDKHome()
         
-        File jobDir = this.getJobDir(command)
+        File jobDir = this.getJobDir(command.id)
         
         String commandWorkDir = workingDirectory
         
@@ -387,38 +330,9 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         return sdkHome
     }
     
-    /**
-     * Scenario:
-     * 
-     *  - start pooled gce
-     *  - it creates .bpipe in *shared* bucket
-     *  - kill gce
-     *    - .bpipe is left behind
-     *  - start new pooled gce
-     *    - it sees old .bpipe
-     *  - now problem: it picks up wrong state!
-     * 
-     * Solution:
-     * 
-     *  - Q: what makes a pooled executor smart enough to use GC storage instead of local?
-     *  - A: it's GCE itself that runs the pool command, so when it executes it naturally does
-     *       that on the VM instance, in the work directory, resulting in the .bpipe files etc
-     *  - Q: how then does the pooled executor write the command file to GC storage?
-     * 
-     * @param command
-     * @return
-     */
-    File getJobDir(Command command) {
-        String jobDir = ".bpipe/commandtmp/$command.id"
-		File jobDirFile = new File(jobDir)
-        if(!jobDirFile.exists())
-		    jobDirFile.mkdirs() 
-        return jobDirFile
-    }
-
     @Override
     public void reconnect(Appendable outputLog, Appendable errorLog) {
-        this.launchSSH(outputLog, errorLog)
+        this.startCommand(outputLog, errorLog)
     }
 
     @CompileStatic
