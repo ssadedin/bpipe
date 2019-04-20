@@ -24,13 +24,15 @@ import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 
 import groovy.transform.CompileStatic
-import groovy.util.logging.Log
+import java.util.logging.Logger
 
-@Log
+
 @Mixin(ForwardHost)
 class AWSEC2CommandExecutor extends CloudExecutor {
     
     public static final long serialVersionUID = 0L
+
+    static final Logger log = Logger.getLogger('AWSEC2CommandExecutor')
     
     /**
      * Path to pem file containing the key pair to use for SSH access to instances
