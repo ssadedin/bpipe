@@ -265,7 +265,6 @@ class PipelineCategory {
             
             log.info "multiply on input $input on set " + objs
             
-            
             def currentStage = new PipelineStage(Pipeline.currentRuntimePipeline.get().createContext(), {})
             Pipeline.currentRuntimePipeline.get().addStage(currentStage)
             currentStage.context.setInput(input)
@@ -566,7 +565,7 @@ class PipelineCategory {
                 return branches
             }
         }
-        return []
+        return [:]
     }
     
     @CompileStatic

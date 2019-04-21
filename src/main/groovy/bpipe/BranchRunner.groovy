@@ -65,6 +65,7 @@ class BranchRunner implements Runnable {
             PipelineStage dummyPriorStage = parent.createDummyStage(files)
             child.addStage(dummyPriorStage)
             child.initBranch(childName, !applyName)
+            child.branch.setParent(parent.branch)
             child.runSegment(files, segmentClosure)
         }
         catch(Exception e) {
