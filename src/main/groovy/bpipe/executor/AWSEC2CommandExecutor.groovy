@@ -235,7 +235,8 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         ec2 = AmazonEC2ClientBuilder
             .standard()
             .withCredentials(new AWSStaticCredentialsProvider(credentials))
-            .withRegion(Regions.AP_SOUTHEAST_2)
+//            .withRegion(Regions.AP_SOUTHEAST_2)
+            .withRegion(Regions.fromName(config.region))
             .build();        
         
           
@@ -243,6 +244,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
                 .standard()
                 .withCredentials(new AWSStaticCredentialsProvider(credentials))
                 .withRegion(Regions.AP_SOUTHEAST_2)
+                .withRegion(Regions.fromName(config.region))
                 .build();
         
     }
@@ -253,9 +255,15 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         
         createClient(config)
         
+        InstanceType instanceType = InstanceType.T1Micro
+        if(config.containsKey('instanceType')) {
+            instanceType = InstanceType.fromValue((String)config.instanceType)
+        }
+        
         RunInstancesRequest runInstancesRequest = new RunInstancesRequest();
         runInstancesRequest.withImageId(image)
-                .withInstanceType(InstanceType.T1Micro)
+//                .withInstanceType(InstanceType.T1Micro)
+                .withInstanceType(instanceType)
                 .withMinCount(1)
                 .withMaxCount(1)
                 .withKeyName("vcgs-default-access")
