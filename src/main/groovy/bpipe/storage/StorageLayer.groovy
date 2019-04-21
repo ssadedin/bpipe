@@ -1,5 +1,6 @@
 package bpipe.storage
 
+import java.nio.file.Files
 import java.nio.file.Path
 
 import bpipe.Config
@@ -65,7 +66,9 @@ abstract class StorageLayer implements Serializable {
      */
     String name
     
-    abstract boolean exists(String path)
+    public boolean exists(String path) {
+        return Files.exists(toPath(path))
+    }
     
     abstract Path toPath(String path)
     

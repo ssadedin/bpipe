@@ -68,6 +68,7 @@ dependencies {
     
     compile group: 'com.amazonaws', name: 'aws-java-sdk-ec2', version: '1.11.535'
     compile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.535'
+    compile group: 'com.upplication', name: 's3fs', version: '2.2.2'
     
     testCompile group: 'junit', name: 'junit', version: '4.8.2'
 

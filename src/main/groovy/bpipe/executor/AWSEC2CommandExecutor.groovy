@@ -1,9 +1,34 @@
+/*
+ * Copyright (c) 2019 MCRI, authors
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
+ * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package bpipe.executor
 
 import bpipe.Command
 import bpipe.CommandStatus
 import bpipe.ExecutedProcess
 import bpipe.ForwardHost
+import bpipe.PipelineError
 import bpipe.Utils
 import bpipe.storage.StorageLayer
 
@@ -20,13 +45,17 @@ import com.amazonaws.services.ec2.model.InstanceType
 import com.amazonaws.services.ec2.model.Reservation
 import com.amazonaws.services.ec2.model.RunInstancesRequest
 import com.amazonaws.services.ec2.model.RunInstancesResult
+import com.amazonaws.services.ec2.model.TerminateInstancesRequest
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 
 import groovy.transform.CompileStatic
+import groovy.transform.ToString
+
 import java.util.logging.Logger
 
 
+@ToString(includes=['instanceId','region'], includeNames=true)
 @Mixin(ForwardHost)
 class AWSEC2CommandExecutor extends CloudExecutor {
     
@@ -59,17 +88,17 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     /**
      * Not used yet: the working directory to run commands in on the remote instance
      */
-    String workingDirectory = '.'
+    String workingDirectory = 'work'
     
     protected transient AmazonEC2 ec2
     
     protected transient AmazonS3 s3client
 
+    transient Process logsProcess
+    
     public AWSEC2CommandExecutor() {
         super()
     }
-    
-    Process logsProcess
     
     @Override
     public void reconnect(Appendable outputLog, Appendable errorLog) {
@@ -93,8 +122,6 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         forward(stdErr, errorLog)
     }
     
-    Integer exitCode = null
-    
     @Override
     public String status() {
         
@@ -111,13 +138,16 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         if(processId != null) {
             log.info "Checking exit code for ${commandId}"
             try {
-                ExecutedProcess probe = ssh("if [ -e ${exitFile} ]; then cat ${exitFile}; else echo running; fi")
-                if(probe.out.toString() == "running") {
+                ExecutedProcess probe = ssh("cd $workingDirectory; if [ -e ${exitFile} ]; then cat ${exitFile}; else echo running; fi")
+                String probeOutput = probe.out.toString().trim()
+                log.info "Probe output from command $commandId: [$probeOutput]"
+                if(probeOutput == "running") {
                     return CommandStatus.RUNNING
                 }
                 else
-                if(probe.out.toString().isInteger()) {
-                    this.exitCode = probe.out.toString().toInteger() 
+                if(probeOutput.isInteger()) {
+                    this.exitCode = probeOutput.toInteger() 
+                    log.info "Probe of $this returned exit code $exitCode"
                     this.finished = true
                     cleanup()
                     return CommandStatus.COMPLETE
@@ -125,7 +155,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             }
             catch(Exception e) {
                 this.finished = true
-                log.info "Command ${commandId} is finished"
+                log.info "Error in probe: treating command ${commandId} as finished due to $e"
                 cleanup()
                 return CommandStatus.COMPLETE
             }
@@ -150,12 +180,15 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             logsProcess.destroy()
             logsProcess = null
         }
+        
+        log.info "Terminating instance $instanceId for executor $this"
+        
+        ec2.terminateInstances(new TerminateInstancesRequest([instanceId]))
     }
     
     @Override
     public String localPath(String storageName) {
-        // TODO Auto-generated method stub
-        return null;
+        return '.';
     }
     
     @Override
@@ -348,6 +381,19 @@ class AWSEC2CommandExecutor extends CloudExecutor {
 
     @Override
     public void mountStorage(Map config) {
+        def storageConfig = config.get('storage',null)
+        if(storageConfig.is(null))
+            throw new PipelineError("Please configure the storage attribute with a single value to use AWS")
+            
+        StorageLayer storage = StorageLayer.create(storageConfig)
+        
+        log.info "Created storage to run jobs in AWS: $storage"
+        
+        String mountCommand = storage.getMountCommand(this)
+        
+        log.info "Executing mount command for storage $storage: $mountCommand"
+        
+        this.ssh(mountCommand)
     }
 
 }
