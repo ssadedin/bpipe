@@ -673,7 +673,7 @@ class ExecutorPool {
         
         // Clean up old executors - anything not in active state
         List<PooledExecutor> nonRunningExecutors = executors.collect { !(it.key in ACTIVE_STATUSES) ? it.value : [] }.sum()
-        if(nonRunningExecutors.size()>0) {
+        if(nonRunningExecutors?.size()>0) {
             log.info "Deleting files for ${nonRunningExecutors.size()} expired executors"
             nonRunningExecutors*.deletePoolFiles()
         }
