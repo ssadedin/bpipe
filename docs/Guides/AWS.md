@@ -21,6 +21,7 @@ securityGroup='<security group to use>'
 image= 'ami-02b30ce5afc4b9c26' // ami to use
 user = 'centos' // unix username to ssh as
 region = 'ap-southeast-2' // region to create instances in
+instanceType = 't2.small' // type of instance to use
 
 storage='S3'
 
