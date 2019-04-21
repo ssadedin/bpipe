@@ -80,10 +80,10 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         else
         if(process != null) {
             try {
-                log.info "Checking exit code for ${command?.id}"
-                command.exitCode = this.process.exitValue()
+                log.info "Checking exit code for ${commandId}"
+                this.exitCode = this.process.exitValue()
                 this.finished = true
-                log.info "Command ${command?.id} is finished"
+                log.info "Command ${commandId} is finished"
                 return CommandStatus.COMPLETE
             }
             catch(IllegalThreadStateException exStillRunning) {
@@ -186,7 +186,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
             
     }
 
-    ExecutedProcess ssh(String cmd, Closure builder) {
+    ExecutedProcess ssh(String cmd, Closure builder=null) {
         
         List zoneFlag = ['--zone', zone]
         

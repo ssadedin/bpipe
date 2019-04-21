@@ -342,6 +342,10 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
             commandExecutor.mountStorage(storage)
             String mountedPath = commandExecutor.localPath(storageName) // assumption that storage mounts under its own name, not really true
             log.info "Storage $storageName mounted to path $mountedPath in executor $commandExecutor"
+            
+            // Strip leading slashes as we need to reference this relative to the local path of the mount returned by the executor
+            path = path.replaceAll('^/*','')
+            
             String newPath = mountedPath ? "$mountedPath/$path" : path
             matches.appendReplacement(newCommand, newPath)
         }
