@@ -73,6 +73,10 @@ class Stop extends BpipeCommand {
         if(isRunning(pid)) {
             out.println "Stopping Bpipe process $pid"
             
+            new File(".bpipe/stopped").mkdirs()
+            File stopFlagFile = new File(".bpipe/stopped/$pid")
+            stopFlagFile.text = 0
+            
             // Try to kill the bpipe process (ourselves!)
             String output = ("kill $pid").execute().text
             if(output)
@@ -81,7 +85,7 @@ class Stop extends BpipeCommand {
         
         // Give it a tiny window to happen
         Thread.sleep(100)
-            out.println "Sending stop signal to commands"
+        out.println "Sending stop signal to commands"
                 
         int count = new CommandManager().stopAll()
         out.println "Stopped $count commands"

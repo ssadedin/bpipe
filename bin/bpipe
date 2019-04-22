@@ -204,13 +204,17 @@ function handle_sigint() {
         then
             echo
             echo "Terminating process $BPIPE_PID ..."
+            mkdir -p .bpipe/stopped
+            touch .bpipe/stopped/$BPIPE_PID
             
             kill -TERM ${BPIPE_PID} > /dev/null 2>&1
+            
 
             # Don't carry on until Bpipe actually finishes
             wait $BPIPE_PID > /dev/null 2>&1
             echo 
             echo "Running stop command ..."
+            echo
             java -Xmx${MAX_JAVA_MEM} -classpath "$CP" -Dbpipe.home="$JVM_BPIPE_HOME" -Dbpipe.mode=stopcommands bpipe.Runner9
             echo
             cleanup
