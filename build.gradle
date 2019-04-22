@@ -1,6 +1,7 @@
 apply plugin: 'eclipse'
 apply plugin: 'groovy'
 
+
 project.ext {
     VERSION="0.9.9.7"
     STAGE="build/stage/bpipe-$VERSION"
@@ -19,6 +20,12 @@ sourceSets {
         }
     }
 }
+
+configurations {
+    compile
+    cloudJar
+}
+
 
 repositories {
     flatDir(dirs: file('local-lib'))
@@ -51,6 +58,8 @@ dependencies {
     compile 'org.apache.xmlgraphics:batik-svggen:1.7@jar'
     compile 'org.apache.xmlgraphics:batik-awt-util:1.7@jar'
     compile group: 'org.fusesource.jansi', name: 'jansi', version: '1.16'
+
+
     compile group: 'org.apache.activemq', name: 'activemq-client', version: '5.14.5'
 
     compile group: 'org.glassfish.jersey.core', name: 'jersey-client', version: '2.25.1'
@@ -62,16 +71,19 @@ dependencies {
     compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.0'
 
     compile group: 'org.json', name: 'json', version: '20180813'
-    compile group: 'com.google.cloud', name: 'google-cloud-nio', version: '0.62.0-alpha'
 
     compile ('com.hazelcast:hazelcast-all:2.1.2') { transitive = false }
     
-    compile group: 'com.amazonaws', name: 'aws-java-sdk-ec2', version: '1.11.535'
-    compile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.535'
-    compile group: 'com.upplication', name: 's3fs', version: '2.2.2'
-    
+    cloudJar group: 'com.google.cloud', name: 'google-cloud-nio', version: '0.62.0-alpha'
+    cloudJar group: 'com.amazonaws', name: 'aws-java-sdk-ec2', version: '1.11.535'
+    cloudJar group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.535'
+    cloudJar group: 'com.upplication', name: 's3fs', version: '2.2.2'
+        
     testCompile group: 'junit', name: 'junit', version: '4.8.2'
+}
 
+compileGroovy {
+    classpath = (configurations.compile + configurations.cloudJar)
 }
 
 // Check for presence of GridGain library - if not available, exclude the
@@ -89,12 +101,20 @@ if(!new File("local-lib").listFiles().find { it.name =~ /gridgain.*.jar/ }) {
 }
 
 jar {
+
+    def cloudJars = configurations.cloudJar*.name
+    def coreJars = configurations.compile*.name
+    def cloudOnly = cloudJars - coreJars
+    
+    // println "The cloud exclusive jars are: " + cloudOnly.join(',') + "\n"
+
     from configurations.compile.grep {
+        !(it.name in cloudOnly) &&
         !(it.name in ["mail.jar"]) && 
         !it.name.startsWith("gridgain") &&
         !it.name.startsWith("hazelcast") &&
         !it.name.startsWith("xalan-") &&
-        !it.name.startsWith("xml-apis")
+        !it.name.startsWith("xml-apis") &&
         !it.name.startsWith("slf4j-jdk14")
     }.collect {
         it.isDirectory() ? it : zipTree(it)
@@ -107,50 +127,72 @@ jar {
     }
 }
 
-task stage(dependsOn: jar) << {
-  ant.mkdir(dir: STAGE)
-  ant.mkdir(dir: "$STAGE/bin")
-  ant.mkdir(dir: "$STAGE/lib")
-  ant.mkdir(dir: "$STAGE/lib/slf4j")
-  ant.copy(todir: "$STAGE/bin") {
-    ant.fileset(dir: 'bin', includes: "**")
-  }
-  new File(STAGE+'/bin/bpipe').text =
-          new File("bin/bpipe").text.replaceAll("VERSION=0.0.0","VERSION=$VERSION").replaceAll("BUILDDATE=0","BUILDDATE="+String.valueOf(System.currentTimeMillis()))
+task cloudjar(type:Jar) {
 
-  ant.copy(todir: "$STAGE/lib") {
-    // do not distribute mail.jar due to license
-    ant.fileset(dir: 'local-lib', includes: "*.jar",
-        excludes: "slf4j-*,mail.jar,gridgain-*.jar,hazelcast-*.jar,batik*.jar,commons-cli*.jar,jgraphx.jar,xml-*.jar,gpars*.jar,jsr*.jar,extra166y*.jar,groovy-all-*.jar")
-    ant.fileset(dir: 'build/libs', includes: "bpipe.jar")
-  }
+  archiveName='bpipe-cloud.jar'
   
-  ant.copy(todir: "$STAGE/lib/slf4j") {
-    ant.fileset(dir: 'local-lib/slf4j', includes: "slf4j-jdk14*.jar")
-  }
-  
-
-  ["templates","html"].each { type ->
-      ant.mkdir(dir: "$STAGE/$type")
-      ant.copy(todir: "$STAGE/$type") {
-        ant.fileset(dir: "src/main/$type/bpipe", includes: "**")
+    def cloudJars = configurations.cloudJar*.name
+    def coreJars = configurations.compile*.name
+    def cloudOnly = cloudJars - coreJars
+    
+    from { 
+      configurations.cloudJar.grep { 
+          it.name in cloudOnly
+      }.collect {
+        it.isDirectory() ? it : zipTree(it)
       }
-  }
+    }
+}
 
-  ant.copy(todir: "$STAGE") {
-    ant.fileset(dir: 'src/main/config', includes: "bpipe.config")
+task stage(dependsOn: [jar,cloudjar]) {
+  doLast {
+  
+      ant.mkdir(dir: STAGE)
+      ant.mkdir(dir: "$STAGE/bin")
+      ant.mkdir(dir: "$STAGE/lib")
+      ant.mkdir(dir: "$STAGE/lib/slf4j")
+      ant.copy(todir: "$STAGE/bin") {
+        ant.fileset(dir: 'bin', includes: "**")
+      }
+      new File(STAGE+'/bin/bpipe').text =
+              new File("bin/bpipe").text.replaceAll("VERSION=0.0.0","VERSION=$VERSION").replaceAll("BUILDDATE=0","BUILDDATE="+String.valueOf(System.currentTimeMillis()))
+    
+      ant.copy(todir: "$STAGE/lib") {
+        // do not distribute mail.jar due to license
+        ant.fileset(dir: 'local-lib', includes: "*.jar",
+            excludes: "slf4j-*,mail.jar,gridgain-*.jar,hazelcast-*.jar,batik*.jar,commons-cli*.jar,jgraphx.jar,xml-*.jar,gpars*.jar,jsr*.jar,extra166y*.jar,groovy-all-*.jar,google-*.jar")
+        ant.fileset(dir: 'build/libs', includes: "bpipe.jar,bpipe-cloud.jar")
+      }
+      
+      ant.copy(todir: "$STAGE/lib/slf4j") {
+        ant.fileset(dir: 'local-lib/slf4j', includes: "slf4j-jdk14*.jar")
+      }
+      
+    
+      ["templates","html"].each { type ->
+          ant.mkdir(dir: "$STAGE/$type")
+          ant.copy(todir: "$STAGE/$type") {
+            ant.fileset(dir: "src/main/$type/bpipe", includes: "**")
+          }
+      }
+    
+      ant.copy(todir: "$STAGE") {
+        ant.fileset(dir: 'src/main/config', includes: "bpipe.config")
+      }
   }
 }
 
-task dist(dependsOn: stage) << {
-  ant.tar(destfile: "build/bpipe-${VERSION}.tar") {
-    ant.fileset(dir: "build/stage", includes: "bpipe-${VERSION}/lib/**", excludes:"**/*.swp")
-    ant.fileset(dir: "build/stage", includes: "bpipe-${VERSION}/bpipe.config", excludes:"**/*.swp")
-    ant.fileset(dir: "build/stage", includes: "bpipe-${VERSION}/html/**", excludes:"**/*.swp")
-    ant.fileset(dir: "build/stage", includes: "bpipe-${VERSION}/templates/**", excludes:"**/*.swp")
-    ant.tarfileset(dir: "build/stage", filemode:"755", includes: "bpipe-${VERSION}/bin/**", excludes:"**/*.swp")
+task dist(dependsOn: stage)  {
+  doLast {
+      ant.tar(destfile: "build/bpipe-${VERSION}.tar") {
+        ant.fileset(dir: "build/stage", includes: "bpipe-${VERSION}/lib/**", excludes:"**/*.swp")
+        ant.fileset(dir: "build/stage", includes: "bpipe-${VERSION}/bpipe.config", excludes:"**/*.swp")
+        ant.fileset(dir: "build/stage", includes: "bpipe-${VERSION}/html/**", excludes:"**/*.swp")
+        ant.fileset(dir: "build/stage", includes: "bpipe-${VERSION}/templates/**", excludes:"**/*.swp")
+        ant.tarfileset(dir: "build/stage", filemode:"755", includes: "bpipe-${VERSION}/bin/**", excludes:"**/*.swp")
+      }
+      ant.gzip(destfile:"build/bpipe-${VERSION}.tar.gz", src: "build/bpipe-${VERSION}.tar")
   }
-  ant.gzip(destfile:"build/bpipe-${VERSION}.tar.gz", src: "build/bpipe-${VERSION}.tar")
 }
 
 task wrapper(type: Wrapper) {
