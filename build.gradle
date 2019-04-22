@@ -121,7 +121,7 @@ jar {
     }
     
     exclude { details ->
-        details.relativePath.pathString.startsWith('javax/xml') ||
+        // details.relativePath.pathString.startsWith('javax/xml') ||
         details.relativePath.pathString.startsWith('org/xml') // ||
 //        details.relativePath.pathString.startsWith('org/slf4j')
     }
