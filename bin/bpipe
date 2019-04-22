@@ -60,7 +60,7 @@ launch_in_foreground() {
               -Dbpipe.home="$JVM_BPIPE_HOME" \
               -Dbpipe.mode=$LAUNCH_MODE \
               org.codehaus.groovy.tools.GroovyStarter \
-              --classpath "$CP" \
+              --classpath "$CP:$BPIPE_JAR" \
               --main bpipe.Runner $*
     exit
 }
