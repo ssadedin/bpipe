@@ -427,7 +427,7 @@ class Runner {
         }
         
         if(opts.L) { 
-            Config.userConfig.region = new RegionValue(opts.L)
+            Config.region = new RegionValue(opts.L)
         }
 
         initThreads*.join(20000)

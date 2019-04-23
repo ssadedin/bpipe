@@ -451,14 +451,14 @@ public class Pipeline implements ResourceRequestor {
         
         // If a region was specified on the command line or in config, 
         // check for overlap
-        if(Config.userConfig.region) {
-            if(result.any { it.name == Config.userConfig.region.value }) {
-                log.info "Overriding pipeline regions with region specified on command line: ${Config.userConfig.region}"
+        if(Config.region) {
+            if(result.any { it.name == Config.region.value }) {
+                log.info "Overriding pipeline regions with region specified on command line: ${Config.region}"
                 result.clear()
-                result.add(new Chr(Config.userConfig.region.value, cfg))
+                result.add(new Chr(Config.region.value, cfg))
             }
             else {
-                println "WARNING: region specified on command line or configuration (${Config.userConfig.region})  does not overlap regions specified in pipeline: $objs"
+                println "WARNING: region specified on command line or configuration (${Config.region})  does not overlap regions specified in pipeline: $objs"
                 println "WARNING: region will be ignored for this portion of the pipeline"
             }
         }
@@ -539,8 +539,8 @@ public class Pipeline implements ResourceRequestor {
         
         Pipeline pipeline = new Pipeline()
         
-        if(Config.userConfig.containsKey('region')) {
-            String regionValue = Config.userConfig.region
+        if(Config.region != null) {
+            String regionValue = Config.region
             pipeline.branch.region = new RegionValue(regionValue)
         }
         else {
@@ -1377,6 +1377,7 @@ public class Pipeline implements ResourceRequestor {
                     Files.copy(stream,outStream)
                 }
             }
+            Pipeline.genomes[name] = loadCachedGenome(cachedGenome, options.contig?true:false)
         }
         
        

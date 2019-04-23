@@ -74,6 +74,11 @@ class Config {
 		// to a particular branches 
 		branchFilter: []
     ]
+    
+    /**
+     * Global region that may have been set for the pipeline (possibly using -L flag on command line)
+     */
+    static RegionValue region = null
         
     /**
      * Configured plugins
