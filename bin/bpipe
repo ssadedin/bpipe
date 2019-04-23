@@ -745,7 +745,7 @@ then
 else
     # (tail -f $LOGFILE | sed -l "$TAIL_PATTERN") &
     
-    (java -Xmx64m -classpath "$CP"  -Dbpipe.home="$JVM_BPIPE_HOME" bpipe.Tail -f $BPIPE_PID ) &
+    (java -Xmx64m -classpath "$CP:$BPIPE_JAR"  -Dbpipe.home="$JVM_BPIPE_HOME" bpipe.Tail9 -f $BPIPE_PID ) &
     
     TAIL_PID="$!"
     
