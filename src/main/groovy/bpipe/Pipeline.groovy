@@ -939,10 +939,15 @@ public class Pipeline implements ResourceRequestor {
      */
     @CompileStatic
     List<PipelineFile> resolveInputsToStorage(List<String> rawInputs) {
-        List<String> storageNames = (Config.listValue('storage') + ['local'])
+//        List<String> storageNames = (Config.listValue('storage') + ['local'])
+        List<String> storageNames = (((Map<String,Object>)Config.userConfig.getOrDefault('filesystems',[:]))*.key + ['local'])
         List storages = storageNames.collect { String storageType -> StorageLayer.create(storageType) }
         return rawInputs.collect { filePath ->
-            StorageLayer layerWithFile = storages.find { it.exists(filePath) }
+            StorageLayer layerWithFile = storages.find {  s ->
+                boolean result =  s.exists(filePath) 
+                log.info "Check $filePath in storage $s: $result"
+                return result
+            }
             if(layerWithFile) {
                 log.info "Input $filePath resolved to storage type $layerWithFile"
                 return new PipelineFile(filePath,layerWithFile)
