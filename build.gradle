@@ -1,6 +1,10 @@
+
+plugins {
+  id 'com.github.johnrengelman.shadow' version '4.0.2'
+}
+
 apply plugin: 'eclipse'
 apply plugin: 'groovy'
-
 
 project.ext {
     VERSION="0.9.9.7"
@@ -117,6 +121,7 @@ jar {
         !it.name.startsWith("xml-apis") &&
         !it.name.startsWith("slf4j-jdk14")
     }.collect {
+        // println "main: " + it.name
         it.isDirectory() ? it : zipTree(it)
     }
     
@@ -127,21 +132,17 @@ jar {
     }
 }
 
-task cloudjar(type:Jar) {
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-  archiveName='bpipe-cloud.jar'
-  
-    def cloudJars = configurations.cloudJar*.name
-    def coreJars = configurations.compile*.name
-    def cloudOnly = cloudJars - coreJars
+task cloudjar(type:ShadowJar) {
+
+    archiveName='bpipe-cloud.jar'
     
-    from { 
-      configurations.cloudJar.grep { 
-          it.name in cloudOnly
-      }.collect {
-        it.isDirectory() ? it : zipTree(it)
-      }
-    }
+    classifier='all'
+    
+    configurations = [project.configurations.cloudJar]
+    
+    mergeServiceFiles()
 }
 
 task stage(dependsOn: [jar,cloudjar]) {
