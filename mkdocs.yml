@@ -83,4 +83,5 @@ pages:
 - ['Releases/0.9.9.4.md','Releases','0.9.9.4']
 - ['Releases/0.9.9.5.md','Releases','0.9.9.5']
 - ['Releases/0.9.9.6.md','Releases','0.9.9.6']
+- ['Releases/0.9.9.7.md','Releases','0.9.9.7']
 #markdown_extensions: [gfm]
