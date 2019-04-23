@@ -43,11 +43,6 @@ class GoogleCloudStorageLayer extends StorageLayer {
     String path
 
     @Override
-    public boolean exists(String path) {
-        return Files.exists(toPath(path))
-    }
-
-    @Override
     public Path toPath(String path) {
         return Paths.get(URI.create("gs://$bucket/$path"));
     }
@@ -97,6 +92,9 @@ class GoogleCloudStorageLayer extends StorageLayer {
 //        log.info "Bucket $bucket has been successfully mounted using command: $mountCommand"
 //        
 //        return "/home/${System.properties['user.name']}/$path"
+        
+        
+          String path = getPath()
         
           String mountCommand = "mkdir -p $path; mountpoint -q main || { gcsfuse --implicit-dirs --stat-cache-ttl 60s --type-cache-ttl 60s $bucket $path ; }"
           return mountCommand

@@ -124,8 +124,10 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
     @Override
     public void cleanup() {
         
+        List zoneFlag = zone ?  ['--zone', zone] : []
+        
         String sdkHome = getSDKHome()
-        List<String> deleteCommand = ["$sdkHome/bin/gcloud","compute","instances","delete","--quiet",instanceId]
+        List<String> deleteCommand = ["$sdkHome/bin/gcloud","compute","instances","delete"] + zoneFlag + ["--quiet",instanceId]
         log.info "Executing delete command: " + deleteCommand.join(' ')
         ExecutedProcess result = Utils.executeCommand(deleteCommand)
         if(result.exitValue != 0) {
@@ -188,7 +190,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
 
     ExecutedProcess ssh(String cmd, Closure builder=null) {
         
-        List zoneFlag = ['--zone', zone]
+        List zoneFlag = zone ? ['--zone', zone] : []
         
         String sdkHome = getSDKHome()
         
@@ -348,6 +350,11 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
     @Override
     public void mountStorage(StorageLayer storage) {
         
+        if(instanceId == null) {
+            log.info "Skipping mount of storage as instance is not created yet. Storage will be auto-mounted at instance creation time"
+            return
+        }
+            
         String storageKey = "$storage.name:$instanceId"
         
         if(mountedStorages.containsKey(storageKey)) {
@@ -361,7 +368,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         
         String sdkHome = getSDKHome()
         
-        def zoneFlag = ['--zone', zone]
+        def zoneFlag = zone ? ['--zone', zone] : []
         List<String> sshCommand = (["$sdkHome/bin/gcloud","compute","ssh"] + zoneFlag + ["--command",mountCommand,this.instanceId])*.toString()        
         
         log.info "Executing command to mount storage $storage in GCE executor: $sshCommand"
