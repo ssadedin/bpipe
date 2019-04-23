@@ -641,7 +641,7 @@ LAUNCH_CMD='
              -Dbpipe.version='$VERSION' \
              -Dbpipe.builddate='$BUILDDATE' \
                  org.codehaus.groovy.tools.GroovyStarter \
-                    --classpath "'"$BPIPE_JAR:$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*"'" \
+                    --classpath "'"$BPIPE_JAR:$BPIPE_HOME/build/libs/bpipe-cloud.jar:$BPIPE_HOME/lib/bpipe-cloud.jar:$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*"'" \
                     --main bpipe.Runner9 '$TESTMODE' '$BPIPE_ARGS' > .bpipe/logs/$$.log 2>&1
 '
 
