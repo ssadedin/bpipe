@@ -76,6 +76,8 @@ pages:
 - ['Guides/PreallocatedJobs.md','Guides','Pre-allocating Resources for Jobs']
 - ['Guides/Gitlab.md','Guides','Integration with Gitlab']
 - ['Guides/JMS.md','Guides','Integration with JMS / Queuing Systems']
+- ['Guides/AWS.md','Guides','Using Bpipe with Amazon Web Services (AWS/EC2)']
+- ['Guides/GoogleCloud.md','Guides','Using Bpipe with Google Cloud (GCS)']
 - ['Examples/PairedEndAlignment.md','Examples','Paired End Alignment']
 - ['Examples/RNASeqCorset.md','Examples','RNA Seq Corset']
 - ['Examples/WGSVariantCalling.md','Examples','WGS Variant Calling']
