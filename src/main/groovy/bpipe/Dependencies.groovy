@@ -35,6 +35,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import bpipe.storage.LocalPipelineFile
+
 /**
  * Manages dependency tracking functions in Bpipe.
  * 
@@ -214,12 +216,24 @@ class Dependencies {
                 missing = filesToCheck.grep(checkInput)
             }
             
-            if(missing)
-                throw new PipelineError("Expected $type file ${missing[0]} $extraDescription could not be found")
+            if(missing) {
+                throwMissingError(missing, type, extraDescription)
+            }
         }
         finally {
             outputGraphLock.readLock().unlock()
         }
+    }
+
+    private void throwMissingError(List missing, String type, String extraDescription) {
+        PipelineFile firstMissing = missing[0]
+
+        String storageDescription = ""
+        if(!(firstMissing instanceof LocalPipelineFile)) {
+            storageDescription = " (storage type " + firstMissing.storage + ")"
+        }
+
+        throw new PipelineError("Expected $type file ${firstMissing} ${storageDescription} $extraDescription could not be found")
     }
 
     private List checkParallel(List filesToCheck, List missing, Closure checkInput) {
