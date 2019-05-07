@@ -569,9 +569,9 @@ class PipelineCategory {
     }
     
     @CompileStatic
-    static Object splitOnMap(def input, Map<String, List> samples, List segmentObjs /* Closure or List of Closures */, boolean applyName=false, boolean mergePoint=false) {
+    static Object splitOnMap(def input, Map<String, List> branchMap, List segmentObjs /* Closure or List of Closures */, boolean applyName=false, boolean mergePoint=false) {
         
-        assert samples*.value.every { it instanceof List }
+        assert branchMap*.value.every { it instanceof List }
         
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
         
@@ -597,7 +597,7 @@ class PipelineCategory {
             
             // See note in multiply(Set objs, List segments) for details on the purpose of forkId
             String forkId = null
-            samples.each { id, files ->
+            branchMap.each { id, files ->
                     
                 log.info "Creating pipeline to run parallel segment $id with files $files. Branch filter = ${Config.config.branchFilter}"
                    
