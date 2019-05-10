@@ -8,6 +8,7 @@ apply plugin: 'groovy'
 
 project.ext {
     VERSION="0.9.9.7"
+    GROOVY_VERSION="2.5.6"
     STAGE="build/stage/bpipe-$VERSION"
 }
 
@@ -41,7 +42,13 @@ repositories {
 }
 
 dependencies {
-    compile group: 'org.codehaus.groovy', name: 'groovy-all', version: '2.4.8'
+    compile group: 'org.codehaus.groovy', name: 'groovy', version: "$GROOVY_VERSION"
+    compile group: 'org.codehaus.groovy', name: 'groovy-xml', version: "$GROOVY_VERSION"
+    compile group: 'org.codehaus.groovy', name: 'groovy-ant', version: "$GROOVY_VERSION"
+    compile group: 'org.codehaus.groovy', name: 'groovy-json', version: "$GROOVY_VERSION"
+    compile group: 'org.codehaus.groovy', name: 'groovy-sql', version: "$GROOVY_VERSION"
+    compile group: 'org.codehaus.groovy', name: 'groovy-templates', version: "$GROOVY_VERSION"
+
     compile 'org.codehaus.gpars:gpars:1.2.1'
 
     // ivy allows Grape to be used inside Bpipe pipelines
