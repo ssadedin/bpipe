@@ -48,6 +48,7 @@ dependencies {
     compile group: 'org.codehaus.groovy', name: 'groovy-json', version: "$GROOVY_VERSION"
     compile group: 'org.codehaus.groovy', name: 'groovy-sql', version: "$GROOVY_VERSION"
     compile group: 'org.codehaus.groovy', name: 'groovy-templates', version: "$GROOVY_VERSION"
+    compile group: 'org.codehaus.groovy', name: 'groovy-dateutil', version: "$GROOVY_VERSION"
 
     compile 'org.codehaus.gpars:gpars:1.2.1'
 
