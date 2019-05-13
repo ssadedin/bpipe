@@ -55,7 +55,7 @@ import groovy.transform.ToString
 import java.util.logging.Logger
 
 
-@ToString(includes=['instanceId','region'], includeNames=true)
+@ToString(includeNames=true)
 @Mixin(ForwardHost)
 class AWSEC2CommandExecutor extends CloudExecutor {
     

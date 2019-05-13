@@ -55,6 +55,8 @@ class LocalCommandExecutor implements CommandExecutor {
     
     transient Command command
     
+    private transient Object lock = new Object()
+    
     /**
      * The exit code returned by the process, only
      * available after the process has exited and
@@ -167,8 +169,8 @@ class LocalCommandExecutor implements CommandExecutor {
 
           command.stopTimeMs = System.currentTimeMillis()
           
-          synchronized(this) {
-              this.notifyAll()
+          synchronized(lock) {
+              lock.notifyAll()
           }
       }
       
@@ -249,8 +251,8 @@ class LocalCommandExecutor implements CommandExecutor {
             if(status() == CommandStatus.COMPLETE.name()) {
                 return exitValue
             }
-             synchronized(this) {
-                 this.wait(500)
+             synchronized(lock) {
+                 lock.wait(500)
              }
         }
     }
