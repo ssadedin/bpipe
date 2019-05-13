@@ -42,20 +42,14 @@ repositories {
 }
 
 dependencies {
-    compile group: 'org.codehaus.groovy', name: 'groovy', version: "$GROOVY_VERSION"
-    compile group: 'org.codehaus.groovy', name: 'groovy-xml', version: "$GROOVY_VERSION"
-    compile group: 'org.codehaus.groovy', name: 'groovy-ant', version: "$GROOVY_VERSION"
-    compile group: 'org.codehaus.groovy', name: 'groovy-json', version: "$GROOVY_VERSION"
-    compile group: 'org.codehaus.groovy', name: 'groovy-sql', version: "$GROOVY_VERSION"
-    compile group: 'org.codehaus.groovy', name: 'groovy-templates', version: "$GROOVY_VERSION"
-    compile group: 'org.codehaus.groovy', name: 'groovy-dateutil', version: "$GROOVY_VERSION"
+
+    compile files(fileTree(dir:'local-lib', includes:['*.jar']))
 
     compile 'org.codehaus.gpars:gpars:1.2.1'
 
     // ivy allows Grape to be used inside Bpipe pipelines
     compile group: 'org.apache.ivy', name: 'ivy', version: '2.4.0'
 
-    compile files(fileTree(dir:'local-lib', includes:['*.jar']))
 
     // In case GridGain ever revive their Maven repo ...
     // compile ('org.gridgain:gridgain:4.0.2c') { transitive = false }

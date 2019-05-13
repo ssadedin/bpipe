@@ -382,9 +382,9 @@ class PipelineInput {
             ime = e
         }
         
-        PipelineInput childInp = new PipelineInput((List<PipelineFile>)resolved.clone(), stages, aliases)
+        PipelineInput childInp = new PipelineInput((List<PipelineFile>)resolved.collect{it} , stages, aliases)
         childInp.parent = this
-        childInp.resolvedInputs = (List<PipelineFile>)resolved.clone()
+        childInp.resolvedInputs = (List<PipelineFile>)resolved.collect { it }
         childInp.currentFilter = this.currentFilter
         childInp.extensionPrefix = this.extensionPrefix ? this.extensionPrefix+"."+name : name
         childInp.defaultValueIndex = defaultValueIndex
