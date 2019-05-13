@@ -25,27 +25,21 @@
 
 package bpipe
 
-import groovy.transform.CompileStatic
-import groovy.transform.Memoized
-import groovy.util.logging.Log;
-import groovy.xml.MarkupBuilder
+import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.PathMatcher
-import java.nio.file.Files
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Logger
 import java.util.regex.Matcher
 import java.util.regex.Pattern;
 
-import org.codehaus.groovy.runtime.ExceptionUtils;
-import org.codehaus.groovy.runtime.GStringImpl
-import bpipe.executor.CommandExecutor
 import bpipe.executor.ProbeCommandExecutor
 import bpipe.storage.LocalFileSystemStorageLayer
 import bpipe.storage.LocalPipelineFile
 import bpipe.storage.StorageLayer
 import bpipe.storage.UnknownStoragePipelineFile
+import groovy.transform.CompileStatic
+import groovy.transform.Memoized
 
 /**
 * This context defines implicit functions and variables that are
