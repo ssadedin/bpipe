@@ -986,7 +986,7 @@ public class Pipeline implements ResourceRequestor {
         new File(".bpipe/results").mkdirs()
         
         // Compute the total runtime of all tools
-        final List<Command> commandList
+        List<Command> commandList
         synchronized(CommandManager.executedCommands) {
           commandList = CommandManager.executedCommands.collect { it } // clone not supported natively
         }
@@ -1026,7 +1026,9 @@ public class Pipeline implements ResourceRequestor {
     void initializeRunLogs(List<String> inputFiles) {
         def cmdlog = CommandLog.cmdLog
         cmdlog.write("")
-        String startDateTime = startDate.format("yyyy-MM-dd HH:mm") + " "
+        Calendar cal = Calendar.instance
+        cal.time = startDate
+        String startDateTime = cal.format("yyyy-MM-dd HH:mm") + " "
         cmdlog << "#"*Config.config.columns 
         cmdlog << "# Starting pipeline at " + (new Date())
         cmdlog << "# Input files:  $inputFiles"
