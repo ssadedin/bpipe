@@ -867,7 +867,7 @@ public class Pipeline implements ResourceRequestor {
     }
 
     private void printCompletionMessages(String failureMessage, CommandLog cmdlog, Date startDate) {
-        if(Runner.opts.t && failed && failExceptions.empty) {
+        if(Runner.testMode && failed && failExceptions.empty) {
             println("\n"+" Pipeline Test Succeeded ".center(Config.config.columns,"="))
         }
         else {

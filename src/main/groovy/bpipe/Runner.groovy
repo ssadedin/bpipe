@@ -70,7 +70,7 @@ class Runner {
     static List<Command> runningCommands = null
 	
     final static String DEFAULT_HELP = """
-        bpipe [run|test|debug|execute] [options] <pipeline> <in1> <in2>...
+        bpipe [run|test|debug|touch|execute] [options] <pipeline> <in1> <in2>...
               retry [job id] [test]
               remake <file1> <file2>...
               resume
@@ -116,6 +116,10 @@ class Runner {
 
     public static OptionAccessor opts = runCli.parse([])
     
+    public static boolean touchMode = false
+    
+    public static boolean testMode = false
+    
     public static void main(String [] args) {
         
         if(!BPIPE_HOME || BPIPE_HOME.isEmpty()) {
@@ -146,9 +150,16 @@ class Runner {
         System.addShutdownHook(Runner.&shutdown)
         
         String mode = System.getProperty("bpipe.mode")
+        
+        
         if(mode == "agent")  {
            runAgent(args)
            return 
+        }
+        
+        if(mode == "touch") {
+           touchMode = true
+           testMode = true
         }
 
         def parentLog = initializeLogging(pid)
@@ -429,6 +440,9 @@ class Runner {
         if(opts.L) { 
             Config.region = new RegionValue(opts.L)
         }
+        
+        if(opts.t)
+            testMode = true
 
         initThreads*.join(20000)
         

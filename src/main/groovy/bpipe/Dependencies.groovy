@@ -82,18 +82,15 @@ class Dependencies {
      * @return  true iff file is newer than all inputs, but older than all 
      *          non-up-to-date outputs
      */
-    List<PipelineFile> getOutOfDate(List<PipelineFile> originalOutputs, List<PipelineFile> inputs) {
+    List<Path> getOutOfDate(List<PipelineFile> originalOutputs, List<PipelineFile> inputs) {
         
-        List outputs = originalOutputs.unique(false)
+        List<PipelineFile> outputs = originalOutputs.unique(false)
 
         assert inputs.every { it instanceof PipelineFile }
         
         inputs = Utils.box(inputs)
 
-        if(outputs.contains("align/NA12879.bam")) 
-            println "debug output"
-        
-        List outOfDateOutputs = []
+        List<Path> outOfDateOutputs = []
         
         // If there are no outputs then by definition, they are all up to date
         if(!outputs)
@@ -110,7 +107,7 @@ class Dependencies {
                 // If the timestamps are the same then we consider the timestamp overridden
                 ts == cf.lastModified()
             }
-            outOfDateOutputs.addAll(forcedOutOfDate)
+            outOfDateOutputs.addAll(forcedOutOfDate*.toPath())
         }
         
         // If the outputs are created from nothing (no inputs)
@@ -143,8 +140,8 @@ class Dependencies {
         def outDated 
         outputGraphLock.readLock().lock()
         try {
-            outDated = older.collect { it.normalize().toString() }.grep { String out ->
-                 def p = graph.propertiesFor(out); 
+            outDated = older.collect { it.normalize() }.grep { Path out ->
+                 def p = graph.propertiesFor(out.toString()); 
                  if(!p || !p.cleaned)  {
                      if(!p)
                          log.info "Output properties file is not available for $out: assume NOT cleaned up"
