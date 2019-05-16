@@ -98,7 +98,7 @@ class Runner {
     
     static CliBuilder diagramCli = new CliBuilder(usage: "bpipe diagram [-e] [-f <format>] <pipeline> <input1> <input2> ...\n", posix: true)
     
-    static CliBuilder registerCli = new CliBuilder(usage: "bpipe diagram [-e] [-f <format>] <pipeline> <input1> <input2> ...\n", posix: true)
+    static CliBuilder registerCli = new CliBuilder(usage: "bpipe register [-e] [-f <format>] <pipeline> <input1> <input2> ...\n", posix: true)
     
     /**
      * Introduced to (attempt to) deal with obscure out-of-memory situations. On rare
