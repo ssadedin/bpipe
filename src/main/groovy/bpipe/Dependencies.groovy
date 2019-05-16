@@ -113,7 +113,7 @@ class Dependencies {
         // If the outputs are created from nothing (no inputs)
         // then they are up to date as long as they exist
         if(!inputs)  {
-            outOfDateOutputs.addAll(outputs.collect { it instanceof PipelineFile ? it : new File(it) }.grep { !it.exists() })
+            outOfDateOutputs.addAll(outputs.collect { it instanceof PipelineFile ? it : new LocalPipelineFile(it) }.grep { !it.exists() }*.toPath())
             return outOfDateOutputs
         }
             
