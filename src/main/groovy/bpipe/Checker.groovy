@@ -158,7 +158,7 @@ class Checker {
         
         check.executed = new Date()
             
-        File checkFile = check.getFile(check.stage, check.name, check.branch)
+        File checkFile = check.getFile(check.stage, check.name, check.branchHash)
         log.info "Executing check: $check with status in file: $checkFile"
 		
         List oldOutputs = ctx.@output
