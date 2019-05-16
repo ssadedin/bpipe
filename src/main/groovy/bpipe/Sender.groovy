@@ -224,17 +224,8 @@ class Sender {
            return
        }
        
-       if(Runner.opts.t) {
-           log.info "Would send $content to $cfgName, but we are in test mode"
-           if(onSend != null) {
-             onSend(details)
-           } 
-           
-           StringWriter sw = new StringWriter()
-           
-           Utils.table(['Property','Value'], [extraDetails*.key, extraDetails*.value].transpose(), out: sw)
-           
-           throw new PipelineTestAbort("Would send message to channel '$cfgName' using details:\n\n" + sw.toString())
+       if(Runner.testMode) {
+           throwTestAbort(cfgName, extraDetails)
        }
        else
            log.info "Sending $content to $cfgName"
@@ -283,6 +274,19 @@ class Sender {
        if(onSend != null) {
            onSend(details)
        }
+    }
+
+    private throwTestAbort(String cfgName, Map extraDetails) {
+        log.info "Would send $content to $cfgName, but we are in test mode"
+        if(onSend != null) {
+            onSend(details)
+        }
+
+        StringWriter sw = new StringWriter()
+
+        Utils.table(['Property','Value'], [extraDetails*.key, extraDetails*.value].transpose(), out: sw)
+
+        throw new PipelineTestAbort("Would send message to channel '$cfgName' using details:\n\n" + sw.toString())
     }
     
     void sendToURL(Map details) {

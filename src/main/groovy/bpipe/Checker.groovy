@@ -132,7 +132,7 @@ class Checker {
                 check.getEventDetails(pipelineStage)
             ) 
             
-            if(!Runner.opts.t && !ctx.probeMode) {
+            if(!Runner.testMode && !ctx.probeMode) {
                 check.save()
             }
         }

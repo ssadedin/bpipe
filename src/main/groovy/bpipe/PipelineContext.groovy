@@ -972,7 +972,7 @@ class PipelineContext {
        if(!input)
            throw new PipelineError("Attempt to grep on input but no input available")
            
-       if(Runner.opts.t)
+       if(Runner.testMode)
            throw new PipelineTestAbort("Would execute filterLines on input $input")
        
        PipelineFile usedInput = Utils.first(input)    
@@ -1003,11 +1003,11 @@ class PipelineContext {
        if(!input)
            throw new PipelineError("Attempt to grep on input but no input available")
            
-       if(Runner.opts.t)
+       if(Runner.testMode)
            throw new PipelineTestAbort("Would execute filterRows on input $input")
            
        String fileName = Utils.first(this.getOutput())
-       if(Runner.opts.t)
+       if(Runner.testMode)
            throw new PipelineTestAbort("Would write to output file $fileName")
         
        def outStream = new FileOutputStream(fileName)
@@ -1118,7 +1118,7 @@ class PipelineContext {
        
        PipelineFile fileName = new LocalPipelineFile(Utils.first(getOutput()).toString())
        if(!outFile) {
-         if(Runner.opts.t)
+         if(Runner.testMode)
              throw new PipelineTestAbort("Would write to output file $fileName")
           
          outFile = probeMode ? null : new FileOutputStream(fileName.toString())
@@ -1386,9 +1386,13 @@ class PipelineContext {
             }
             else {
                 List<PipelineFile> unaliasedInputs = allInputs.collect { aliases[it] }
-                List<String> outOfDateOutputs = Dependencies.instance.getOutOfDate(outputsToCheck + globExistingFiles, unaliasedInputs)
+                List<PipelineFile> outOfDateOutputs = Dependencies.instance.getOutOfDate(outputsToCheck + globExistingFiles, unaliasedInputs)
                 if(outOfDateOutputs) {
                     log.info "Not up to date because input inferred by probe of body newer than outputs"
+                    if(Runner.touchMode) {
+                        doExecute = false
+                        Utils.touchPaths(outOfDateOutputs)
+                    }
                 }
                 else
                 if(!Config.config.enableCommandTracking || !checkForModifiedCommands()) {
@@ -2112,7 +2116,7 @@ class PipelineContext {
           List<CommandThread> threads = execCmds.collect { new CommandThread(toWaitFor:it, pipeline:Pipeline.currentRuntimePipeline.get()) }
           threads*.start()
           
-         if(!Runner.opts.t && !probeMode) {
+         if(!Runner.testMode && !probeMode) {
               // Wait for them to have resources allocated
               long waitTimeMs = 0
               while(execCmds.any { !it.resourcesSatisfied }) {
@@ -2235,6 +2239,12 @@ class PipelineContext {
               command.outputs = checkOutputs.unique() // TODO: unique { it.path } ?
               return createUpToDateExecutor(command, checkOutputs)
           }
+          else
+          if(Runner.touchMode) {
+            Utils.touchPaths(outOfDateOutputs)
+            if(outOfDateOutputs.every { Files.exists(it) })
+                return createUpToDateExecutor(command, checkOutputs)
+          }              
       }
       
       // Reset the inferred outputs - once they are used the user should have to refer to them
@@ -2248,7 +2258,7 @@ class PipelineContext {
       } 
       
       // Check the command for versions of tools it uses
-      if(!Runner.opts.t) { // Don't execute tool probes if the user is just testing the pipeline
+      if(!Runner.testMode) { // Don't execute tool probes if the user is just testing the pipeline
         def toolsDiscovered = ToolDatabase.instance.probe(cmd)
           
         // Add the tools to our documentation

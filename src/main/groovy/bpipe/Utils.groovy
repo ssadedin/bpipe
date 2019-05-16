@@ -34,8 +34,10 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime
 import java.security.DigestInputStream
 import java.security.MessageDigest
+import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.logging.ConsoleHandler;
 import java.util.logging.FileHandler
@@ -220,7 +222,7 @@ class Utils {
                     trashDir.mkdirs()
                     
                 File dest = new File(trashDir, f.name)
-                if(!Runner.opts.t) {
+                if(!Runner.testMode) {
                     int count = 1;
                     while(dest.exists()) {
                         dest = new File(trashDir, f.name + ".$count")
@@ -1130,7 +1132,7 @@ class Utils {
           .collectEntries() 
     }
 	
-    @CompileStatic
+//    @CompileStatic
     static String sendURL(Map<String,Object> params, String method, String baseURL, Map headers=[:]) {
 		String paramString = params.collect {
 			URLEncoder.encode(it.key)+'='+URLEncoder.encode(String.valueOf(it.value))
@@ -1244,5 +1246,15 @@ class Utils {
     @CompileStatic
     static String cleanPath(Object value) {
        return String.valueOf(value).replaceAll('^./','') 
+    }
+    
+    @CompileStatic
+    public static void touchPaths(List<Path> outOfDateOutputs) {
+        final FileTime now = FileTime.from(Instant.now())
+        outOfDateOutputs.each { Path p ->
+            if(Files.exists(p))
+                Files.setLastModifiedTime(p, now)
+            println("MSG: Touching file: $p")
+        }
     }
 }
