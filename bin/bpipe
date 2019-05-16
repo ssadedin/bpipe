@@ -567,6 +567,11 @@ then
     shift 1
     COMMAND="run"
     MODEFLAG="-Dbpipe.mode=remake" 
+elif [ "$COMMAND" == "touch" ];
+then
+    shift 1
+    COMMAND="run"
+    MODEFLAG="-Dbpipe.mode=touch" 
 elif [ "$COMMAND" == "resume" ];
 then
     shift 1
