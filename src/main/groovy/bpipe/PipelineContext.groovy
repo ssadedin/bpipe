@@ -750,7 +750,7 @@ class PipelineContext {
            
            Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
            
-           def overrideOutputs = (origOutput.overrideOutputs && origOutput.overrideOutputs.size() >= index ? [ origOutput.overrideOutputs[index] ] : [] )
+           def overrideOutputs = (origOutput.overrideOutputs && origOutput.overrideOutputs.size() > index ? [ origOutput.overrideOutputs[index] ] : [] )
            
            return new PipelineOutput([result],
                                      origOutput.stageName, 
@@ -906,6 +906,7 @@ class PipelineContext {
     * @param i
     * @return
     */
+   @CompileStatic
    PipelineInput getInputByIndex(int i) {
        
        
@@ -913,8 +914,8 @@ class PipelineContext {
        wrapper.currentFilter = currentFilter
        wrapper.defaultValueIndex = i
        
-       def boxed = Utils.box(input)
-       if(boxed.size()<i) {
+       List<PipelineFile> boxed = Collections.unmodifiableList(this.input)
+       if(boxed.size()<=i) {
            wrapper.parentError = new InputMissingError("Stage '$stageName' expected $i or more inputs but fewer provided", this)
        }
        else {
@@ -2225,7 +2226,7 @@ class PipelineContext {
       
       trackedOutputs[command.id] = command              
       
-      List<String> outOfDateOutputs = null
+      List<Path> outOfDateOutputs = null
       if(probeMode) {
           log.info "Skip check dependencies due to probe mode"
       }

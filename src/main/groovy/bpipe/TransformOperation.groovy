@@ -122,6 +122,8 @@ class TransformOperation {
         // (so if one pattern matches 2 inputs, it appears twice).
         List expandedToPatterns = []
         
+        checkForDuplicateMappings(exts, toPatterns)
+        
         // If there are not enough exts to match all the patterns
         // they map to, we repeat the last one to fill up the missing ones
         if(exts.size() < toPatterns.size()) {
@@ -215,6 +217,7 @@ class TransformOperation {
      * Compute a list of expected output file names from this transform's input files (files attribute)
      */
     List<PipelineFile> computeOutputFiles(final String applyBranchName, List<String> fromPatterns = ['\\.[^\\.]*$'], List<String> providedToPatterns = null) {
+        
         Map extensionCounts = [:]
         for(def e in exts) {
             extensionCounts[e] = 0
@@ -253,6 +256,24 @@ class TransformOperation {
             return result
         }
         return outFiles
+    }
+    
+    void checkForDuplicateMappings(final List<String> froms, final List<String> tos) {
+        
+        Map counts = [froms,tos].transpose().countBy { List mapping -> mapping[0] + ' -> ' + mapping[1] } 
+        List duplicates = counts.grep { it.value > 1 }*.key
+        if(duplicates) {
+            throw new PipelineError("""
+
+           Stage $ctx.stageName specifies a transform with duplicate entries. Transforms should
+           contain unique to / from pairs for mapping input file types to output file types.
+                
+           The following mappings were duplicated:\n\n${duplicates.collect { '                ' + it}.join('\n')}
+
+           Note: to map multiple files of the same type, you can use a wildcard, eg: transform('*.txt').
+           
+           """.stripIndent())
+        }
     }
     
     /**
