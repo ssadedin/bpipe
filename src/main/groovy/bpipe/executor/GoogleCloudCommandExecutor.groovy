@@ -279,7 +279,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         else {
             log.info "Probing region using gcloud command"
             region = Utils.executeCommand([
-                "$sdkHome/bin/gcloud","config","get-value","compute/region"
+                "$sdkHome/bin/gcloud","config","get-value","compute/zone"
             ], throwOnError:true).out?.toString()?.trim()
         }
             
