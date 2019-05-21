@@ -269,10 +269,10 @@ class PooledExecutor implements CommandExecutor {
         
         this.outputLog = outputLog
         
-        String storageName = this.command.getProcessedConfig().getOrDefault('storage', 'local')
+        List<String> storageNames = Config.listValue(this.command.getProcessedConfig().getOrDefault('storage', 'local'))
         
+        String storageName = storageNames[0]
         log.info "Capturing output via storage layer type $storageName"
-        
         StorageLayer storage = StorageLayer.create(storageName)
         
         this.forward(storage.toPath(".bpipe/commandtmp/$command.id/pool.out"), outputLog)

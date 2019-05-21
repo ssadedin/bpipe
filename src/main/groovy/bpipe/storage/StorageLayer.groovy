@@ -4,6 +4,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 import bpipe.Config
+import bpipe.PipelineFile
 import bpipe.executor.CommandExecutor
 import groovy.transform.CompileStatic
 import groovy.transform.Memoized
@@ -118,4 +119,46 @@ abstract class StorageLayer implements Serializable {
         }
         return defaultStorage
     }
+    
+    /**
+     * For each raw input path, resolve it to the first configured storage where the
+     * path exists. If no configured storage has the value, returnes an UnknownStoragePipelineFile
+     * instance for that path.
+     * <p>
+     * <em>Note:</em> files that don't exist are passed back as UnknownStoragePipelineFile instances.
+     * This is because they could exist in the context of a command that executes later on,
+     * if that command has a different storage configured.
+     * 
+     * @param rawInputs
+     * @return  a list of {@link PipelineFile} objects, one for each raw input
+     */
+    @CompileStatic
+    static List<PipelineFile> resolve(List rawInputs) {
+        
+        if(rawInputs.every { it instanceof PipelineFile }) 
+            return rawInputs
+        
+        List<String> storageNames = (((Map<String,Object>)Config.userConfig.getOrDefault('filesystems',[:]))*.key + ['local'])
+        List storages = storageNames.collect { String storageType -> StorageLayer.create(storageType) }
+        return rawInputs.collect { filePathOrString ->
+            if(filePathOrString instanceof PipelineFile)
+                return (PipelineFile)filePathOrString
+                
+            String filePath = (String)filePathOrString
+                
+            StorageLayer layerWithFile = storages.find {  s ->
+                boolean result =  s.exists(filePath) 
+                log.info "Check $filePath in storage $s: $result"
+                return result
+            }
+            if(layerWithFile) {
+                log.info "Input $filePath resolved to storage type $layerWithFile"
+                return new PipelineFile(filePath,layerWithFile)
+            }
+            else
+                return new UnknownStoragePipelineFile(filePath)
+        }
+    }
+
+    
 }

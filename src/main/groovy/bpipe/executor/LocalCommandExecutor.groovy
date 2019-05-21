@@ -325,10 +325,11 @@ class LocalCommandExecutor implements CommandExecutor {
             return mountedStorage[storageName]
         
         StorageLayer storage = StorageLayer.create(storageName)
+        
+        // TODO: execute the command!
         storage.getMountCommand(this)
+        
         mountedStorage[storageName] 
-        
-        
     }
 
     @Override

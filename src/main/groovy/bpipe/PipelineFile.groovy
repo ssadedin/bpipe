@@ -67,6 +67,10 @@ class PipelineFile implements Serializable {
         new PipelineFile(toPath().normalize().toString(), storage)
     }
     
+    PipelineFile div(String subDir) {
+        new PipelineFile(this.path + '/' + subDir, storage)
+    }
+    
     boolean isDirectory() {
         Files.isDirectory(toPath())
     }
