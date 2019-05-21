@@ -61,7 +61,7 @@ class RegionValue implements Serializable {
                REGIONS_DIR.mkdirs()
            }
            File fn = getBedFile()
-           return fn.absolutePath
+           return "{region:$fn.path}"
        } 
     }
     
@@ -70,11 +70,12 @@ class RegionValue implements Serializable {
             return ""
         }
        File fn = getBedFile()
-       return "$flag $fn.absolutePath"
+       return "$flag {region:$fn.path}"
     }
-
+    
     private File getBedFile() {
         
+        // Here this needs to use the storage from the executor to connect this to a Path
         if(!REGIONS_DIR.exists())
             REGIONS_DIR.mkdirs()
             

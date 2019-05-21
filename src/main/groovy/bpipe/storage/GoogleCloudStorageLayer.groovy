@@ -96,7 +96,7 @@ class GoogleCloudStorageLayer extends StorageLayer {
         
           String path = getPath()
         
-          String mountCommand = "mkdir -p $path; mountpoint -q main || { gcsfuse --implicit-dirs --stat-cache-ttl 60s --type-cache-ttl 60s $bucket $path ; }"
+          String mountCommand = "mkdir -p $path; mountpoint -q $name || { gcsfuse --implicit-dirs --stat-cache-ttl 60s --type-cache-ttl 60s $bucket $path ; }"
           return mountCommand
     }
     

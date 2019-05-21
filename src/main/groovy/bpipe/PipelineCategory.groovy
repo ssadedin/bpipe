@@ -46,6 +46,7 @@ import java.util.regex.Pattern;
 import org.codehaus.groovy.runtime.StackTraceUtils;
 
 import bpipe.storage.LocalPipelineFile
+import bpipe.storage.StorageLayer
 import bpipe.storage.UnknownStoragePipelineFile
 
 /**
@@ -573,6 +574,10 @@ class PipelineCategory {
         
         assert branchMap*.value.every { it instanceof List }
         
+        Map<String,List<PipelineFile>> resolvedBranchMap =  (Map<String,List<PipelineFile>>)branchMap.collectEntries { String id, List files ->
+            [id, StorageLayer.resolve(files) ]
+        }
+        
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
         
         // Convert any segments that have been passed as lists to compiled closure form
@@ -597,7 +602,7 @@ class PipelineCategory {
             
             // See note in multiply(Set objs, List segments) for details on the purpose of forkId
             String forkId = null
-            branchMap.each { id, files ->
+            resolvedBranchMap.each { id, files ->
                     
                 log.info "Creating pipeline to run parallel segment $id with files $files. Branch filter = ${Config.config.branchFilter}"
                    

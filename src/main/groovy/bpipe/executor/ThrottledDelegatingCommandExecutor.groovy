@@ -2,16 +2,20 @@ package bpipe.executor
 
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
-
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 import bpipe.Command;
 import bpipe.Concurrency;
+import bpipe.Config
+import bpipe.Pipeline
 import bpipe.PipelineContext;
 import bpipe.ResourceUnit;
 import bpipe.storage.StorageLayer
 import bpipe.RescheduleResult
 import bpipe.PipelineError
+import bpipe.RegionValue
 
 /**
  * Wraps another CommandExecutor and adds concurrency control to it
@@ -91,44 +95,22 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         }
     }
     
+    /**
+     * Resolve final variables and invoke the the wrapped / delegated start 
+     */
     void doStart(Map cfg, Command cmd) {
         
-        ResourceUnit threadResource = resources.find { it.key == "threads" }
-
-        if(isUnlimited(cfg,threadResource))
-            threadResource.amount = ResourceUnit.UNLIMITED
-
         addMemoryResources(cfg, cmd)
             
-        resources.each { Concurrency.instance.acquire(it) }
+        String threadAmount = resolveAndConfigureThreadResources(cfg)
 
-        int threadCount = threadResource?threadResource.amount:1
-        String threadAmount = String.valueOf(threadCount)
+        prepareCommand(cmd, threadAmount)
 
-        // Problem: some executors use non-integer values here, if we overwrite with an integer value then
-        // we break them (Sge)
-        if(cfg.procs == null || cfg.procs.toString().isInteger() || (cfg.procs instanceof IntRange))
-            cfg.procs = threadCount
+        Pipeline pipeline = bpipe.Pipeline.currentRuntimePipeline.get()
+        pipeline.isIdle = false
 
-        command.command = command.command.replaceAll(PipelineContext.THREAD_LAZY_VALUE, threadAmount)
-        command.command = this.replaceStorageMountPoints(command)
-        if(command.@cfg.beforeRun != null) {
-            command.@cfg.beforeRun(cmd.@cfg)
-        }
-        
-        command.allocated = true
-        command.createTimeMs = System.currentTimeMillis()
-
-        bpipe.Pipeline.currentRuntimePipeline.get().isIdle = false
-
-        if(bpipe.Runner.opts.t || bpipe.Config.config.breakTriggered) {
-            String msg = command.branch.name ? "Stage $command.name in branch $command.branch.name would execute:\n\n        $cmd.command" : "Would execute $cmd.command"
-            this.releaseAll()
-            if(commandExecutor instanceof LocalCommandExecutor)
-                throw new bpipe.PipelineTestAbort(msg)
-            else {
-                throw new bpipe.PipelineTestAbort("$msg\n\n                using $commandExecutor with config $cfg")
-            }
+        if(bpipe.Runner.testMode || bpipe.Config.config.breakTriggered) {
+            triggerBreak(cmd, cfg)
         }
         
         synchronized(jobLaunchLock) {
@@ -139,6 +121,66 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         }
         
         this.command.save()
+    }
+
+    @CompileStatic
+    private String resolveAndConfigureThreadResources(Map cfg) {
+        ResourceUnit threadResource = resources.find { it.key == "threads" }
+
+        if(isUnlimited(cfg,threadResource))
+            threadResource.amount = ResourceUnit.UNLIMITED
+
+        resources.each { Concurrency.theInstance.acquire(it) }
+
+        int threadCount = threadResource?threadResource.amount:1
+        String threadAmount = String.valueOf(threadCount)
+
+        // Problem: some executors use non-integer values here, if we overwrite with an integer value then
+        // we break them (Sge)
+        if((cfg.procs == null) || cfg.procs.toString().isInteger() || (cfg.procs instanceof IntRange))
+            cfg.procs = threadCount
+        return threadAmount
+    }
+
+    /**
+     * Throw an exception indicating the pipeline is aborting due to user initiated break
+     */
+    private void triggerBreak(Command cmd, Map cfg) {
+        String msg = command.branch.name ? "Stage $command.name in branch $command.branch.name would execute:\n\n        $cmd.command" : "Would execute $cmd.command"
+        this.releaseAll()
+        if(commandExecutor instanceof LocalCommandExecutor)
+            throw new bpipe.PipelineTestAbort(msg)
+        else {
+            throw new bpipe.PipelineTestAbort("$msg\n\n                using $commandExecutor with config $cfg")
+        }
+    }
+
+    /**
+     * Substitute the lazy variables in teh command and initialise the 
+     * execution statistics.
+     */
+    @CompileStatic
+    private void prepareCommand(Command cmd, String threadAmount) {
+        
+        Pipeline pipeline = bpipe.Pipeline.currentRuntimePipeline.get()
+        
+//        if(cfg.containsKey('storage') && pipeline.branch.hasProperty('region')) {
+//            RegionValue region = (RegionValue) pipeline.branch.getProperty('region')
+//            StorageLayer storage = StorageLayer.create(Config.listValue((String)cfg.storage)[0])
+//            region.storage = storage
+//        }
+        
+//        TODO: match on something like {bpipe:?:/some/path} and replace with the resolved storage value
+//        command.command = command.command.replaceAll(PipelineContext.REGION_LAZY_VALUE, threadAmount)
+        
+        command.command = command.command.replaceAll(PipelineContext.THREAD_LAZY_VALUE, threadAmount)
+        command.command = this.replaceStorageMountPoints(command)
+        if(command.@cfg.beforeRun != null) {
+            ((Closure)command.@cfg.beforeRun)(cmd.@cfg)
+        }
+
+        command.allocated = true
+        command.createTimeMs = System.currentTimeMillis()
     }
     
     @CompileStatic
@@ -324,11 +366,18 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         this.commandExecutor.cleanup()
     }
     
-    final static Pattern mountPointPattern = ~/\{bpipe:([a-zA-Z0-9]{1,}):(.*?)\}/
+    final static Pattern MOUNT_POINT_PATTERN = ~/\{bpipe:([a-zA-Z0-9]{1,}):(.*?)\}/
+    
+    final static Pattern REGION_PATTERN = ~/\{region:(.*?)\}/
     
     @CompileStatic
     protected String replaceStorageMountPoints(Command command) {
-        Matcher matches = mountPointPattern.matcher(command.command)
+        
+        StringBuffer regionCommand = transferBEDsAndReplaceRegionReferences(command.command)
+        
+        log.info "After replacing regions, command is: $regionCommand"
+        
+        Matcher matches = MOUNT_POINT_PATTERN.matcher(regionCommand)
         StringBuffer newCommand = new StringBuffer(command.command.size())
         log.info "Checking for mount paths in $command.command"
         while(matches.find()) {
@@ -351,7 +400,43 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         }
         matches.appendTail(newCommand)
         
+        
         log.info "Replacing storage mount points in $command.command => $newCommand"
         return newCommand
+    }
+
+    /**
+     *  Searches for unresolved region file references in the command and replaces
+     *  them with appropriate paths for the storage system the command is using.
+     *  
+     *  If the storage system is non-local, transfers the BED file so that the 
+     *  remote system will have access to it, and transforms the path to the
+     *  correct path on the other system.
+     * 
+     * @param command
+     * @return  command with region references removed / replaced
+     */
+    @CompileStatic
+    private StringBuffer transferBEDsAndReplaceRegionReferences(final String command) {
+        String defaultStorageName = Config.listValue(cfg, 'storage')[0]
+        StorageLayer defaultStorage = StorageLayer.create(defaultStorageName)
+
+        // First replace the regions, as these will turn into storage mounts?
+        StringBuffer regionCommand = new StringBuffer()
+        Matcher regionMatches = REGION_PATTERN.matcher(command)
+        while(regionMatches.find()) {
+            String localPath = regionMatches.group(1)
+            String mountPoint = commandExecutor.localPath(defaultStorageName)
+            String remotePath = mountPoint ? (mountPoint + '/' + localPath) :  localPath
+            regionMatches.appendReplacement(regionCommand, remotePath)
+            if(defaultStorageName && defaultStorageName != 'local') {
+                Path toPath = defaultStorage.toPath(localPath)
+                log.info "Copying region from $localPath -> $toPath"
+                if(!Files.exists(toPath))
+                    Files.copy(new File(localPath).toPath(), toPath)
+            }
+        }
+        regionMatches.appendTail(regionCommand)
+        return regionCommand
     }
 }

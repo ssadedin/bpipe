@@ -2,11 +2,13 @@ package bpipe.storage
 
 import java.nio.file.Path
 
+import bpipe.PipelineError
 import bpipe.PipelineFile
 import bpipe.executor.CommandExecutor
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
-
+ 
+@CompileStatic
 @Log
 class UnknownStoragePipelineFile extends PipelineFile {
 
@@ -36,6 +38,6 @@ class UnknownStoragePipelineFile extends PipelineFile {
 
     @Override
     public String renderToCommand() {
-        assert false
+		throw new PipelineError("The file " + path + " could not be found or associated to a configured storage entry")
     }
 }
