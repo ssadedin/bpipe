@@ -83,7 +83,8 @@ class NotificationManager {
             try {
                 channel = createChannel(channelCfg) 
             } catch (Exception e) {
-                System.err.println("ERROR: Unable to create connection to notification channel $name (error: ${StackTraceUtils.sanitizeRootCause(e)}) - see bpipe log for full stack trace.")  
+                String msg ="ERROR: Unable to create connection to notification channel $name (error: ${StackTraceUtils.sanitizeRootCause(e)}) - see bpipe log for full stack trace."
+                System.err.println(msg)  
                 return
             } 
             
@@ -190,8 +191,8 @@ class NotificationManager {
             templateFile = ReportGenerator.resolveTemplateFile(templateName)
             if(!templateFile.exists()) {
                 def msg = "WARNING: unable to send notification: template $templateName mapped to file $templateFile.absolutePath, but this file does not exist!"
-                log.error msg
-                println msg
+                log.severe(msg)
+                handleError(cfg, msg)
                 return
             }
         }
@@ -242,9 +243,19 @@ class NotificationManager {
 		catch(Throwable t) {
 			log.warning("Failed to send notification via channel "+ channel + " with using template file $templateFile?.absolutePath,configuration " + cfg + ": " + t)
             log.log(Level.SEVERE, "Failed to send notification to channel $channel using template $templateFile, coniguration $cfg", t)
-			System.err.println "MSG: unable to send notification to channel $channel due to $t"
+            String msg =  "MSG: unable to send notification to channel $channel due to $t"
+            handleError(cfg, msg)
 		}
 	}
+
+    private void handleError(ConfigObject config, String msg) {
+        if(config.getOrDefault('terminateOnError',false)) {
+            throw new PipelineError(msg)
+        }
+        else {
+            System.err.println(msg)
+        }
+    }
 	
     /**
      * Attempt to create a notification channel based on the given name / config.

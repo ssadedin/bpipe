@@ -190,5 +190,21 @@ Notifications sent explicitly using the [send](Language/Send) command will still
 be sent. This just disables events from Bpipe itself.
 
 
+## Error handling
+
+Unlike other parts of Bpipe, notifications are by default considered to be non-essential.
+This however, is not always the case, especially for communications that trigger 
+essential downstream actions (for example, ActiveMQ notifications). You can configure 
+failure to send a notification to be treated as an error by setting the `terminateOnError`
+flag:
+
+```
+  gmail {
+      ...
+      terminateOnError=true
+  }
+```
+
+
 
 
