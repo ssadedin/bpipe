@@ -48,10 +48,9 @@ class Stop extends BpipeCommand {
     
     public Stop(List<String> args) {
         super("stop", args);
-    }
+    } 
 
     @Override
-    @CompileStatic
     public void run(Writer out) {
         Config.config["mode"] = "stopcommands"
         
