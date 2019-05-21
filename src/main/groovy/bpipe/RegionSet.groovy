@@ -37,7 +37,7 @@ class RegionSet implements Serializable {
      * the chromosome name with a number appended, eg:
      * chrY, chrY.1, chrY.2, etc.
      */
-    TreeMap<String,Sequence> sequences = new TreeMap()
+    Map<String,Sequence> sequences = new TreeMap()
     
     RegionSet() {
     }
@@ -392,21 +392,25 @@ class RegionSet implements Serializable {
      *  <li>Ends with "random"
      *  <li>Ends with "_hap[number]"
      */
-    // @CompileStatic <= causes strange error at runtime in chr_region test
+    @CompileStatic // <= causes strange error at runtime in chr_region test
     void removeMinorContigs() {
-        
-        Closure notMajorChromosome = { String chr ->
-            chr.startsWith('NC_') ||
+        this.sequences = this.sequences.grep { Map.Entry<String,Sequence> e -> !isMinorContig(e.key) }.collectEntries()
+    }
+    
+    @CompileStatic
+    boolean isMinorContig(final String chr) {
+        return chr.startsWith('NC_') ||
             chr.startsWith('GL') ||
             chr.startsWith('Un_') ||
             chr.startsWith('chrUn_') ||
             chr.startsWith('M') ||
             chr.startsWith('chrM') ||
             chr.endsWith('_random') || 
+            chr.endsWith('_alt') ||
+            chr.endsWith('_fix') ||
+            chr.endsWith('EBV') ||
+            chr.startsWith('HLA-') ||
             chr.matches(ALTERNATE_HAPLOTYPE_PATTERN)
-        }
-        
-        this.sequences = this.sequences.grep { Map.Entry<String,Sequence> e -> !notMajorChromosome(e.key) }.collectEntries()
     }
     
     @CompileStatic
