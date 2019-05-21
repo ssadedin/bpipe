@@ -84,7 +84,7 @@ class OutputLogIterator implements Iterator<OutputLogEntry> {
                 return true
         }
 
-        currentEntries.each { tag, ole ->
+        currentEntries.each { String tag, OutputLogEntry ole ->
             completeEntries << ole
         }
         
