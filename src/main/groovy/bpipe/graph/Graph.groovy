@@ -240,7 +240,7 @@ class Graph extends JFrame {
         try {
           svgGenerator.stream(root, out, useCSS, false);
         }
-        catch (SVGGraphics2DIOException e) {
+        catch (Exception e) {
            e.printStackTrace();
         }
 	}
