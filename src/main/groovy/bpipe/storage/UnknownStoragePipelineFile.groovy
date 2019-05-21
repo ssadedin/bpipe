@@ -7,31 +7,31 @@ import bpipe.PipelineFile
 import bpipe.executor.CommandExecutor
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
- 
-@CompileStatic
+
+class UnknownFileStorageLayer extends StorageLayer {
+		UnknownFileStorageLayer() {
+			this.name = "uknown"
+		}
+            
+        public boolean exists(String path) {
+            true
+        }
+            
+        public Path toPath(String path) {
+            new File(path).toPath()
+        }
+
+        @Override
+        public String getMountCommand(CommandExecutor executor) {
+            return "."
+        }
+}
+
 @Log
-class UnknownStoragePipelineFile extends PipelineFile {
-
+class UnknownStoragePipelineFile extends PipelineFile {  
+	
     UnknownStoragePipelineFile(String thePath) {
-        super(thePath, new StorageLayer() {
-            
-            {
-                name='unknown'
-            }
-            
-            public boolean exists(String path) {
-                true
-            }
-            
-            public Path toPath(String path) {
-                new File(path).toPath()
-            }
-
-            @Override
-            public String getMountCommand(CommandExecutor executor) {
-                return "."
-            }
-        })
+        super(thePath, new UnknownFileStorageLayer())
         
         log.info "Created new unknown storage pipeline file: $thePath"
     }
