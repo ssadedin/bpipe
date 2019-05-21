@@ -902,7 +902,7 @@ class Utils {
         StringWriter sw = new StringWriter()
         sanitized.printStackTrace(new PrintWriter(sw))
         String stackTrace = sw.toString()
-        Pipeline.scriptNames.each { fileName, internalName -> 
+        Pipeline.scriptNames.each { String fileName, String internalName ->  
             stackTrace = stackTrace.replaceAll(internalName, fileName.replaceAll(GROOVY_EXT,'')) 
         }
         return stackTrace

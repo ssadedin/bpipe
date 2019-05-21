@@ -113,7 +113,7 @@ public class Pipeline implements ResourceRequestor {
      * as each script is loaded by code that is prepended to each script file
      * by Bpipe on the first line.
      */
-    static Map<String,String> scriptNames = Collections.synchronizedMap([:])
+    public static Map<String,String> scriptNames = Collections.synchronizedMap([:])
     
     /**
      * Index of pipeline stage nodes, keyed of the closure that implements the stage
