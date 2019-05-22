@@ -43,6 +43,17 @@ repositories {
 
 dependencies {
 
+    println "*" * 100
+    println "* " + "Building for Groovy $GROOVY_VERSION".center(96) + "* "
+    println "*" * 100
+
+    if(GROOVY_VERSION.startsWith('2.4')) {
+        compile group: 'org.codehaus.groovy', name: 'groovy-all', version: '2.4.8'
+    }
+    else {
+        compile files(fileTree(dir:'groovy-lib', includes:['*.jar']))
+    }
+
     compile files(fileTree(dir:'local-lib', includes:['*.jar']))
 
     compile 'org.codehaus.gpars:gpars:1.2.1'
