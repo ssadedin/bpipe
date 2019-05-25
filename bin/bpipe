@@ -635,9 +635,6 @@ tmsg " Launching Java"
 # to pass through to Bpipe
 set -f
 
-echo "BPIPE_JAR=$BPIPE_JAR"
-echo "CLASSPATH=$CP:$BPIPE_JAR"
-
 LAUNCH_CMD='
    printf $$ > .bpipe.'$LAUNCHER_PID'.run.pid &
    exec java -Xmx'${MAX_JAVA_MEM}' \
