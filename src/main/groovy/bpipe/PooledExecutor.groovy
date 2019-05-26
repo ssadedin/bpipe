@@ -260,13 +260,20 @@ class PooledExecutor implements CommandExecutor {
         return true
     }
     
-    void execute(Command command, OutputLog log) {
+    /**
+     * Initialises this executor with the given command
+     * 
+     * @param command
+     * @param log
+     */
+    void prepareToExecute(final Command command, final OutputLog outputLog) {
+        
+        log.info "Pooled executor $hostCommandId initialised to execute command $command.id to output log " + log.hashCode()
+        
         this.currentCommandId = command.id
-        this.outputLog.wrapped = log
+        this.outputLog.wrapped = outputLog
         command.executor = this
         
-        // Note: this will trigger an event to the waiting command executor that
-        // will make it write out the file and execute the command
         this.command.command = command.command
     }
     
