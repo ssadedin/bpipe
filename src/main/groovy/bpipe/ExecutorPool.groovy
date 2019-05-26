@@ -421,7 +421,7 @@ class ExecutorPool {
                 bpipeUtilsShellCode: new File("${Runner.BPIPE_HOME}/bin/bpipe-utils.sh").text
             ])
             
-        OutputLog outputLog = new ForwardingOutputLog()
+        ForwardingOutputLog outputLog = new ForwardingOutputLog()
             
         // Sometimes this can be the first code that runs and needs this
         new File(".bpipe/commands").mkdirs()

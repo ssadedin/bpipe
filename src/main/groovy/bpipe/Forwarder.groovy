@@ -92,8 +92,8 @@ class Forwarder extends TimerTask {
             filePositions[path] = Files.exists(path) ? Files.size(path) : 0L
         }
     }    
-    
-    void cancel(File file) {
+	
+    void cancelFile(File file) {
         synchronized(files) {
             files.remove(file)
             fileDestinations.remove(file)
@@ -154,7 +154,7 @@ class Forwarder extends TimerTask {
         
         boolean modified = false
         
-        List<File> scanFiles
+        List<Path> scanFiles
         synchronized(files) {
             try {
                 scanFiles = files.clone().grep { Files.exists(it) }

@@ -148,10 +148,9 @@ class OutputLog implements Appendable {
  * 
  * @author Simon Sadedin
  */
-class ForwardingOutputLog extends OutputLog {
+class ForwardingOutputLog {
     
     ForwardingOutputLog() {
-        super('PooledExecutor')
     }
     
     @Delegate
