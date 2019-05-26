@@ -125,7 +125,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
 
     @CompileStatic
     private String resolveAndConfigureThreadResources(Map cfg) {
-        ResourceUnit threadResource = resources.find { it.key == "threads" }
+        ResourceUnit threadResource = resources.find { ResourceUnit ru -> ru.key == "threads" }
 
         if(isUnlimited(cfg,threadResource))
             threadResource.amount = ResourceUnit.UNLIMITED
