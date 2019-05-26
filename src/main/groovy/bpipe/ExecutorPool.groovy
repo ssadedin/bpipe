@@ -248,7 +248,7 @@ class ExecutorPool {
             
             // Ideally would move this inside the block below, but it prevents
             // initial messages from the stage from getting forwarded
-            pe.execute(compatibleCommand, delegator.outputLog)
+            pe.prepareToExecute(compatibleCommand, delegator.outputLog)
             
             RescheduleResult result = delegator.reschedule(pe)
             if(result == RescheduleResult.SUCCEEDED) {
@@ -519,7 +519,7 @@ class ExecutorPool {
         availableExecutors.remove(pe)
         activeExecutors.add(pe)
         
-        pe.execute(command, outputLog)
+        pe.prepareToExecute(command, outputLog)
         
         return true
     }
