@@ -13,9 +13,9 @@ class GenomicRange implements Serializable {
     
     private static final long serialVersionUID = 1L;
     
-    int from
+    public int from
     
-    int to
+    public int to
    
     /**
      * Convert a non-Genomic range into a GenomicRange
