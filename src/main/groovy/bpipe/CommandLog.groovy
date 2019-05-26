@@ -41,7 +41,7 @@ class CommandLog {
     
     static FileWriter writer = new FileWriter("commandlog.txt", true)
     
-    static CommandLog cmdLog = new CommandLog()
+    public static CommandLog cmdLog = new CommandLog()
     
     /**
      * Write a line to the command log.
