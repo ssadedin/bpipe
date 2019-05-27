@@ -304,7 +304,7 @@ class Sender {
            sentFile = new File(sentFolder, cfgName + "." + ctx.stageName + "." + Utils.sha1(sha1Subject))
            log.info "Using new style sent file $sentFile"
        }
-        
+       return sentFile
     }
 
     private throwTestAbort(String cfgName, Map extraDetails) {
