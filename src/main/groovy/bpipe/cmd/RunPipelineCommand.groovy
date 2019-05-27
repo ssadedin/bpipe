@@ -72,6 +72,7 @@ class RunPipelineCommand extends BpipeCommand {
      * examining each level for possible incrementing templates, where such a template
      * is specified with <code>{inc}</code> in the body of a path.
      */
+    @CompileStatic
     void createRunDirectory(File dirFile) {
         
         synchronized(RUN_DIRECTORY_COMPUTE_LOCK) { 
@@ -79,8 +80,10 @@ class RunPipelineCommand extends BpipeCommand {
             List<String> dirParts = dirFile.path.tokenize('/')
             String parentPath = '/'
             String resultPath = dirParts.collect { String part ->
-                computeRunDirectoryPart(parentPath, part)
-                parentPath = parentPath + '/' + part
+                String newPart = computeRunDirectoryPart(new File(parentPath), part)
+                parentPath = parentPath + '/' + newPart
+                new File(parentPath).mkdirs()
+                return newPart
             }.join('/')
             
             File resultFile = new File(resultPath)
