@@ -132,7 +132,9 @@ class Sender {
         
         this.content = {
           Map binding = details.withDefault { ctx.myDelegate.propertyMissing(it) }
-          new ReportGenerator(reportBinding:binding).generateFromTemplate(Pipeline.currentRuntimePipeline.get(), reportName, reportDir.absolutePath, outFile.name) 
+          new ReportGenerator(reportBinding:binding).generateFromTemplate(
+              Pipeline.currentRuntimePipeline.get(), reportName, reportDir.absolutePath, outFile.name
+          ) 
           contentType = outFile.name.endsWith("html") ? "text/html" : "text/plain"
           extractSubjectFromHTML()
           if(reportName.endsWith(".groovy"))
@@ -212,12 +214,27 @@ class Sender {
         
         log.info "Sending $content to $cfgName!"
         
+       Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
        File sentFolder = new File(".bpipe/sent/")
        sentFolder.mkdirs()
        
-       File sentFile = new File(sentFolder, cfgName + "." + ctx.stageName + "." + Utils.sha1(this.details.subject + content))
+       File legacySentFile = new File(sentFolder, cfgName + "." + ctx.stageName + "." + Utils.sha1(this.details.subject + content))
+       File sentFile
+       if(legacySentFile.exists()) {
+           log.info "Found legacy sent file for $ctx.stageName/$details.subject: not re-sending" 
+           sentFile = legacySentFile
+       }
+       else {
+           String sha1Subject = pipeline.branchPath.join('/') + this.details.subject + content
+           if(details.file) {
+               sha1Subject = sha1Subject + ':'+details.file.toString()
+           }
+           sentFile = new File(sentFolder, cfgName + "." + ctx.stageName + "." + Utils.sha1(sha1Subject))
+           log.info "Using new style sent file $sentFile"
+       }
+       
        if(sentFile.exists() && !Dependencies.instance.getOutOfDate([new LocalPipelineFile(sentFile.absolutePath)], ctx.@input)) {
-           log.info "Sent file $sentFile.absolutePath already exists - skipping send of this message"
+           log.info "Sent file $sentFile.absolutePath in branch ${pipeline.branchPath.join('/')} already exists - skipping send of this message"
            if(onSend != null) {
              onSend(details)
            } 
