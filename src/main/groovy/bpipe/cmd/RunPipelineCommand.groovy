@@ -46,7 +46,7 @@ class RunPipelineCommand extends BpipeCommand {
         
         File dirFile = new File(dir).absoluteFile
         
-        createRunDirectory(dirFile)
+        dirFile = createRunDirectory(dirFile)
         
         if(!dirFile.exists())
             throw new IllegalArgumentException("Unable to create directory requested for pipeline run $dir.")
@@ -73,7 +73,7 @@ class RunPipelineCommand extends BpipeCommand {
      * is specified with <code>{inc}</code> in the body of a path.
      */
     @CompileStatic
-    void createRunDirectory(File dirFile) {
+    File createRunDirectory(File dirFile) {
         
         synchronized(RUN_DIRECTORY_COMPUTE_LOCK) { 
                 
@@ -94,6 +94,7 @@ class RunPipelineCommand extends BpipeCommand {
             log.info "Creating directory path ${resultFile} to run command" 
             
             resultFile.mkdirs()
+            return resultFile
         }
     }
     
