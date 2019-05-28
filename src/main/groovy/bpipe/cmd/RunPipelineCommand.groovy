@@ -48,6 +48,8 @@ class RunPipelineCommand extends BpipeCommand {
         
         dirFile = createRunDirectory(dirFile)
         
+        log.info "Updated run directory is $dirFile"
+        
         if(!dirFile.exists())
             throw new IllegalArgumentException("Unable to create directory requested for pipeline run $dir.")
         
@@ -79,7 +81,7 @@ class RunPipelineCommand extends BpipeCommand {
                 
             List<String> dirParts = dirFile.path.tokenize('/')
             String parentPath = '/'
-            String resultPath = dirParts.collect { String part ->
+            String resultPath = '/' + dirParts.collect { String part ->
                 String newPart = computeRunDirectoryPart(new File(parentPath), part)
                 parentPath = parentPath + '/' + newPart
                 new File(parentPath).mkdirs()
@@ -87,13 +89,10 @@ class RunPipelineCommand extends BpipeCommand {
             }.join('/')
             
             File resultFile = new File(resultPath)
-            
-            if(resultFile.exists())
-                return
-                
-            log.info "Creating directory path ${resultFile} to run command" 
-            
-            resultFile.mkdirs()
+            if(!resultFile.exists()) {
+                log.info "Creating directory path ${resultFile} to run command" 
+                resultFile.mkdirs()
+            }
             return resultFile
         }
     }
