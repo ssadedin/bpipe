@@ -116,7 +116,7 @@ class PipelineFile implements Serializable {
                     
         if(!p) {
             log.info "There are no properties for $path and file is missing"
-            return true
+            return this.flushMetadataAndCheckIfMissing()
         }
                 
         if(p.cleaned) {
@@ -125,7 +125,21 @@ class PipelineFile implements Serializable {
         }
         else {
             log.info "File $path [$type] does not exist, has a properties file indicating it is not cleaned up"
+            return this.flushMetadataAndCheckIfMissing()
+        }
+    }
+    
+    boolean flushMetadataAndCheckIfMissing() {
+        log.info "File does not appear to exist: listing directory to flush file system: " + this
+        Path p = this.toPath()
+        Path parent = p.parent.toAbsolutePath()
+        try { Files.list(parent) } catch(Exception e) { log.warning("Failed to list files of parent directory of " + this + " ($parent)"); }
+        if(!this.exists()) {
+            log.info("File " + this + " revealed by listing directory to flush metadata") 
             return true
+        }
+        else {
+            return false
         }
     }
    
