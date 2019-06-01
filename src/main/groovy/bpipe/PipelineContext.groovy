@@ -632,6 +632,7 @@ class PipelineContext {
        resolver.setDefaultIfNull()
        
        resolver.out = toOutputFolder(resolver.out)
+       resolver.baseOutput = toOutputFolder(resolver.baseOutput)[0]
        
        Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
        String branchName = applyName  ? pipeline.unappliedBranchNames.join(".") : null

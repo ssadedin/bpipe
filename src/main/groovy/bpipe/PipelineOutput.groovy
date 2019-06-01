@@ -260,7 +260,7 @@ class PipelineOutput {
             }
         }
         else {
-            parentDir = new File(".")
+            parentDir = new File(Config.config.defaultOutputDirectory)
             if(baseOutput) {
                 if(this.outputChangeListener && (baseOutput != defaultOutput))
                     this.outputChangeListener(baseOutput,null)
