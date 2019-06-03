@@ -73,16 +73,19 @@ class OutputDirectoryWatcher extends Thread {
     
     OutputDirectoryWatcher(String directory) {
         this.directory = new File(directory).toPath()
-        this.watcher = FileSystems.getDefault().newWatchService();
+        if(!Config.userConfig.getOrDefault('usePollerFileWatcher', false)) {
+            this.watcher = FileSystems.getDefault().newWatchService();
+        }
     } 
     
     OutputDirectoryWatcher(Path directory) {
         this.directory = directory
         if(!Files.exists(directory))
-            
             directory.toFile().mkdirs()
             
-        this.watcher = FileSystems.getDefault().newWatchService();
+        if(!Config.userConfig.getOrDefault('usePollerFileWatcher', false)) {
+            this.watcher = FileSystems.getDefault().newWatchService();
+        }
     }
     
     @Override
