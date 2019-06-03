@@ -103,6 +103,7 @@ class OutputDirectoryWatcher extends Thread {
     
     Object manualPollerWaitLock = new Object()
     
+    @CompileStatic
     void runUsingManuallPoller() {
         
         this.initialize()
@@ -146,6 +147,7 @@ class OutputDirectoryWatcher extends Thread {
         }
     }
     
+    @CompileStatic
     void runUsingNativeWatcher() {
         
         this.setupWatcher()
