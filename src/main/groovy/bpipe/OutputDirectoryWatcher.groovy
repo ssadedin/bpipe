@@ -108,7 +108,7 @@ class OutputDirectoryWatcher extends Thread {
         
         this.initialize()
         
-        long manualPollerSleepTime = Config.userConfig.get("manualPollerSleepTime",30000)
+        long manualPollerSleepTime = (long)Config.userConfig.get("manualPollerSleepTime",30000)
         
         Map<String,Long> oldPaths = NewFileFilter.scanOutputDirectory(directory.toFile().path, null).collectEntries { Path p ->
             [p.fileName.toString(), Files.getLastModifiedTime(p).toMillis()]
