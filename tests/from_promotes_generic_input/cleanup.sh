@@ -1,0 +1,1 @@
+rm *.xml something.txt

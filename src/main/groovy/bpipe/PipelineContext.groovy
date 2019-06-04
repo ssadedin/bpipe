@@ -2522,7 +2522,7 @@ class PipelineContext {
            // Count of how many of this kind of extension have been consumed
            int count = 0
            for(s in reverseOutputs) {
-               def outputsFound = s.grep { matcher(it) }
+               List outputsFound = s.grep { matcher(it) }
                
                log.info "Matched : $outputsFound"
                
@@ -2654,6 +2654,7 @@ class PipelineContext {
            this.@inputWrapper = null 
        }
        
+       this.@inputWrapper = null
        if(body != null) {
          def result = body()
          resetInputs()
