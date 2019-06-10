@@ -384,6 +384,7 @@ class PipelineInput {
         
         PipelineInput childInp = new PipelineInput((List<PipelineFile>)resolved.collect{it} , stages, aliases)
         childInp.parent = this
+        childInp.@input = this.@input
         childInp.resolvedInputs = (List<PipelineFile>)resolved.collect { it }
         childInp.currentFilter = this.currentFilter
         childInp.extensionPrefix = this.extensionPrefix ? this.extensionPrefix+"."+name : name
