@@ -384,7 +384,6 @@ class PipelineInput {
         
         PipelineInput childInp = new PipelineInput((List<PipelineFile>)resolved.collect{it} , stages, aliases)
         childInp.parent = this
-        childInp.@input = this.@input
         childInp.resolvedInputs = (List<PipelineFile>)resolved.collect { it }
         childInp.currentFilter = this.currentFilter
         childInp.extensionPrefix = this.extensionPrefix ? this.extensionPrefix+"."+name : name
@@ -452,11 +451,23 @@ class PipelineInput {
   	        reverseOutputs.add(originalInputs)
         }
         
-        // Add an initial stage that represents the current input to this stage.  This way
-        // if the from() spec is used and matches the actual inputs then it will go with those
-        // rather than searching backwards for a previous match
-        log.info "Finally, add my actual input as the first thing to check: " + this.input
-        reverseOutputs.add(0,this.@input)
+        List inputInputs = []
+        PipelineInput root = this
+        while(root.parent != null) {
+            inputInputs << root.input
+            root = root.parent
+        }
+        inputInputs << root.input
+        
+        // Add an initial stage that prioritises the inputs provided to or resolved
+        // by this PipelineInput already. This way if the from() spec is used and matches 
+        // then it will go with those rather than searching backwards for a previous match
+        for(List inps in inputInputs.reverse()) {
+           if(inps) {
+               log.info "Add input from PipelineInput resolution chain: " + inps
+               reverseOutputs.add(0,inps) 
+           }
+        }
             
         return reverseOutputs
     }
