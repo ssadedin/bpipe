@@ -34,6 +34,9 @@ When provided as a list, *from* will accumulate multiple files with different
 extensions.  When multiple files match a single extension they are used
 sequentially each time that extension appears in the list given. 
 
+**Note**: using `from` in a nested way (within an existing `from` clause) is not supported and
+may result in undefined behavior.
+
 ### Examples
 
 **Use most recent CSV file to produce an XML file**
