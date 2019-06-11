@@ -2649,6 +2649,8 @@ class PipelineContext {
       return new PipelineFile(pathValue, defaultStorage)
    }
    
+   boolean forceResolve = false
+   
    /**
     * Executes the given closure with the inputs replaced with the specified
     * inputs, and then restores them afterwards. If the closure passed is null,
@@ -2669,10 +2671,12 @@ class PipelineContext {
            allResolvedInputs.addAll(this.getInput().resolvedInputs)
            this.@input  = oldInputs
            this.@inputWrapper = null 
+           this.forceResolve = false
        }
        
        this.@inputWrapper = null
        if(body != null) {
+         this.forceResolve = true
          def result = body()
          resetInputs()
          return result
