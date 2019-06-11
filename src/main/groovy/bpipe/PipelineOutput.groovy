@@ -77,7 +77,7 @@ class PipelineOutput {
      * Used when a choice between two possible output references is possible,
      * to use the one best associated with actual resolved input
      */
-    List<String> resolvedInputs = []
+    List<PipelineFile> resolvedInputs = []
     
     /**
      * If a filter is executing, a list of the file extensions that were available
