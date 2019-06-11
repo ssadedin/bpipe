@@ -549,7 +549,7 @@ class PipelineContext {
                 // after all variables have been resolved). This is only necessary after a `from` is 
                 // applied because it resets the inputs into a state where previous resolution may have been
                 // lost
-                if(forceResolve) {
+                if(PipelineContext.this.forceResolve) {
                     try {
                         resolvedInputs.toString()
                     }
