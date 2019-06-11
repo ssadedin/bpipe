@@ -547,7 +547,12 @@ class PipelineContext {
                 // Because an output is being referenced, we need to force the input to resolve
                 // (it may not have resolved because Groovy does not invoke toString() upon reference, only
                 // after all variables have been resolved).
-                resolvedInputs.toString()
+                try {
+                    resolvedInputs.toString()
+                }
+                catch(Exception exIgnore) {
+                    // Ignore
+                }
                 
                 return ((PipelineInput)e.value).resolvedInputs 
             }.flatten()
