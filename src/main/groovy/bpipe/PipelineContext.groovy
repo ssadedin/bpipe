@@ -541,7 +541,15 @@ class PipelineContext {
             
             // If an input property was referenced, compute the default from that instead
             List<PipelineFile> allResolved = (List<PipelineFile>)allInputs.collect { Map.Entry<Integer,PipelineInput> e -> 
-                ((PipelineInput)e.value).resolvedInputs 
+                
+                PipelineInput resolvedInputs = e.value
+                
+                // Because an output is being referenced, we need to force the input to resolve
+                // (it may not have resolved because Groovy does not invoke toString() upon reference, only
+                // after all variables have been resolved).
+                resolvedInputs.toString()
+                
+                return ((PipelineInput)e.value).resolvedInputs 
             }.flatten()
             
             if(!allResolved) {
