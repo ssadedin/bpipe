@@ -22,6 +22,16 @@ agent {
 }
 ```
 
+Once you have set up the configuration, you can start the agent in the local directory like
+so:
+
+```
+bpipe agent -v -n 1
+```
+
+The above arguments turn on verbose mode (`-v`) and limit the number of messages to process at once to 
+1 (`-n 1`).
+
 The agent expects messages to arrive in a specific format containing instructions to define
 the bpipe command to execute. The format is a JSON payload with the following elements:
 
