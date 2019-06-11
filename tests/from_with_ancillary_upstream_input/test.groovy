@@ -14,11 +14,11 @@ world = {
 
     def correctBam = 'test.bar.there.bam'
 
-    from(correctBam) produce('bar.xml') {
-        exec """
-            echo "branch $branch.name: create $output.xml from $input.hello.vcf + $input.there.bam correct=$correctBam => $output.xml"
+    println "The correct BAM is $correctBam"
 
-            cat $input.hello.vcf $input.there.bam > $output.xml
+    from(correctBam) {
+        exec """
+            cp -v $input.there.bam  $output.xml
         """
     }
 }

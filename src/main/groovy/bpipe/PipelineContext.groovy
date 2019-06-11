@@ -541,7 +541,24 @@ class PipelineContext {
             
             // If an input property was referenced, compute the default from that instead
             List<PipelineFile> allResolved = (List<PipelineFile>)allInputs.collect { Map.Entry<Integer,PipelineInput> e -> 
-                ((PipelineInput)e.value).resolvedInputs 
+                
+                PipelineInput resolvedInputs = e.value
+                
+                // Because an output is being referenced, we need to force the input to resolve
+                // (it may not have resolved because Groovy does not invoke toString() upon reference, only
+                // after all variables have been resolved). This is only necessary after a `from` is 
+                // applied because it resets the inputs into a state where previous resolution may have been
+                // lost
+                if(forceResolve) {
+                    try {
+                        resolvedInputs.toString()
+                    }
+                    catch(Exception exIgnore) {
+                        // Ignore
+                    }
+                }
+                
+                return ((PipelineInput)e.value).resolvedInputs 
             }.flatten()
             
             if(!allResolved) {
@@ -2632,6 +2649,8 @@ class PipelineContext {
       return new PipelineFile(pathValue, defaultStorage)
    }
    
+   boolean forceResolve = false
+   
    /**
     * Executes the given closure with the inputs replaced with the specified
     * inputs, and then restores them afterwards. If the closure passed is null,
@@ -2652,10 +2671,12 @@ class PipelineContext {
            allResolvedInputs.addAll(this.getInput().resolvedInputs)
            this.@input  = oldInputs
            this.@inputWrapper = null 
+           this.forceResolve = false
        }
        
        this.@inputWrapper = null
        if(body != null) {
+         this.forceResolve = true
          def result = body()
          resetInputs()
          return result
