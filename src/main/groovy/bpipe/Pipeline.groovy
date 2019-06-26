@@ -1690,6 +1690,10 @@ public class Pipeline implements ResourceRequestor {
         File f = new File(fileName)
         if(!f.parentFile)
             f = new File(new File("."),fileName).canonicalFile
+            
+        if(!f.exists()) {
+            new PipelineFile(f.path, StorageLayer.defaultStorage).flushMetadataAndCheckIfMissing(1000)
+        }
         return f
     }
     
