@@ -7,6 +7,7 @@ import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import groovy.util.logging.Log
 
+import javax.jms.BytesMessage
 import javax.jms.Connection
 import javax.jms.Destination
 import javax.jms.Message
@@ -103,47 +104,74 @@ class JMSAgent extends Agent {
         if(message == null) // timed out
             return
         
-        if(!(message instanceof TextMessage))
+        String text
+        if(message instanceof TextMessage)
+            text = message.text
+        else
+        if(message instanceof BytesMessage) {
+            BytesMessage bm = (BytesMessage)message
+            byte [] body = new byte[bm.bodyLength]
+            bm.readBytes(body)
+            text = new String(body, 'UTF-8')
+        }
+        else
             throw new Exception('Unexpected message type received: ' + message.class.name)
             
-        TextMessage tm = (TextMessage)message
-        log.info "Received command: " + tm.text
+        log.info "Received command: " + text
         
-        if(tm.text == "stop") {
+        if(text == "stop") {
             this.stopRequested = true
             return
         }
         
-        if(tm.text == "ping") {
-            this.respondToPing(tm)
+        if(text == "ping") {
+            this.respondToPing(message)
             return
         }            
         
-        Map commandAttributes = new JsonSlurper().parseText(tm.text)
+        Map commandAttributes = new JsonSlurper().parseText(text)
         
         if(config.containsKey('transform')) {
             commandAttributes = config.transform(commandAttributes)
         }
         
         log.info "Processing command: " + commandAttributes
-        this.processCommand(commandAttributes)
+        AgentCommandRunner runner = this.processCommand(commandAttributes)
+        
+        if(message.getJMSReplyTo() || message.getStringProperty('reply-to')) {
+            log.info "ReplyTo set on message: will send message when complete"
+            runner.completionListener = { result ->
+                log.info "Sending reply for command $commandAttributes.id"
+                sendReply(message, JsonOutput.prettyPrint(JsonOutput.toJson(
+                    [
+                        command: commandAttributes,
+                        result: result
+                    ]
+                )))
+            }
+        }
         
         if(this.singleShot)
             stopRequested=true
     }
     
-    void respondToPing(TextMessage tm) {
-        
-         Destination dest = tm.getJMSReplyTo()
-         if(dest == null)
-             dest = session.createQueue(tm.getStringProperty('reply-to'))
-            
-        log.info "Received ping: responding to $dest"
+    void respondToPing(Message tm) {
+        log.info "Received ping: responding to ${tm.getJMSReplyTo()}"
         String responseJSON = formatPingResponse()
+        sendReply(tm, responseJSON)
+    }
+
+    private void sendReply(Message tm, String responseJSON) {
+        Destination dest = tm.getJMSReplyTo()
+        if(dest == null)
+            dest = session.createQueue(tm.getStringProperty('reply-to'))
+
         TextMessage response = session.createTextMessage(responseJSON)
         MessageProducer producer = session.createProducer(dest)
         if(tm.JMSCorrelationID)
             response.JMSCorrelationID = tm.JMSCorrelationID
+            
+        log.info "Sending reply to $dest"
         producer.send(response)
     }
     

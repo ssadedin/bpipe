@@ -127,7 +127,7 @@ abstract class Agent extends TimerTask {
         
     }
     
-    void processCommand(Map commandAttributes) {
+    AgentCommandRunner processCommand(Map commandAttributes) {
         try {
             ++this.executed
             BpipeCommand command = createCommandFromAttributes(commandAttributes)
@@ -135,6 +135,7 @@ abstract class Agent extends TimerTask {
             AgentCommandRunner runner = new AgentCommandRunner(createConnection(), commandAttributes.id, command)
             runner.concurrency = this.concurrency
             new Thread(runner).start()
+            return runner
         }
         catch(Exception e) {
             // report the error upstream if we can
@@ -142,6 +143,7 @@ abstract class Agent extends TimerTask {
             runner.concurrency = this.concurrency
             ++this.errors
             new Thread(runner).start() 
+            return null
         }
     }
     

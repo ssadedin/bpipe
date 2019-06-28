@@ -34,6 +34,8 @@ import java.util.regex.Pattern
 @Log
 class RunPipelineCommand extends BpipeCommand {
     
+    ExecutedProcess result
+    
     public RunPipelineCommand(List<String> args) {
         super("run", args);
     }
@@ -57,7 +59,7 @@ class RunPipelineCommand extends BpipeCommand {
         
         List<String> cmd = [ bpipe.Runner.BPIPE_HOME + "/bin/bpipe", "run" ] 
         cmd.addAll(args)
-        ExecutedProcess result = Utils.executeCommand(cmd, out:out, err: out) {
+        result = Utils.executeCommand(cmd, out:out, err: out) {
             directory(dirFile)
         }
     }
