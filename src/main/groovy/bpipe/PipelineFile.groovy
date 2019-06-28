@@ -129,23 +129,23 @@ class PipelineFile implements Serializable {
         }
     }
     
-    boolean flushMetadataAndCheckIfMissing(long timeout=0) {
+    boolean flushMetadataAndCheckIfMissing(long timeout=0L) {
         log.info "File does not appear to exist: listing directory to flush file system: " + this
         Path p = this.toPath()
         Path parent = p.toAbsolutePath().parent
         try { Files.list(parent) } catch(Exception e) { log.warning("Failed to list files of parent directory of " + this + " ($parent)"); }
         if(this.exists()) {
             log.info("File " + this + " revealed by listing directory to flush metadata") 
-            return true
+            return false
         }
         else {
             while(timeout>0) {
                 Thread.sleep(200)
-                if(this.flushMetadataAndCheckIfMissing(0))
-                    return true
+                if(!this.flushMetadataAndCheckIfMissing(0))
+                    return false
                 timeout -= 200
             }
-            return false
+            return true
         }
     }
    
