@@ -1,6 +1,8 @@
 package bpipe.agent
 
 import bpipe.PipelineError
+import bpipe.cmd.BpipeCommand
+import bpipe.cmd.RunPipelineCommand
 import bpipe.worx.JMSWorxConnection
 import bpipe.worx.WorxConnection
 import groovy.json.JsonOutput
@@ -142,12 +144,17 @@ class JMSAgent extends Agent {
             log.info "ReplyTo set on message: will send message when complete"
             runner.completionListener = { result ->
                 log.info "Sending reply for command $commandAttributes.id"
-                sendReply(message, JsonOutput.prettyPrint(JsonOutput.toJson(
-                    [
+                
+                BpipeCommand command = runner.command
+                Map resultDetails = [
                         command: commandAttributes,
                         result: result
-                    ]
-                )))
+                ]
+                
+                if(command instanceof RunPipelineCommand) {
+                    resultDetails.directory = command.runDirectory?.canonicalPath
+                }
+                sendReply(message, JsonOutput.prettyPrint(JsonOutput.toJson(resultDetails )))
             }
         }
         

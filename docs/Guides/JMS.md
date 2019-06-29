@@ -106,5 +106,43 @@ is received, it will respond by sending a message to the queue specified in the 
 This message will have a JSON body containing information about the agent, and receiving it can be used to confirm
 that the agent is alive and processing messages.
 
+## Handling Pipeline Completion 
+
+It can be useful to coordinate downstream actions when the pipeline completes running. For this purpose, Bpipe will observe the `reply-to` or `JMSReplyTo`
+property of messages. When a pipeline initiated by the agent completes, if 
+one of these properties is set, Bpipe will send a message to the corresponding
+queue as a reply. In such a message, if a correlation id is set, then the message
+will have the same correlation id.
+
+This capability is designed to interoperate with frameworks such as 
+[Apache Camel](https://camel.apache.org/) which can route messages through
+predefined workflows using this system. For example, a Camel route could be
+defined using the Groovy DSL to run a pipeline in response to a message
+and then process the results:
+
+```groovy
+from('activemq:analyse_file')
+.transform { e, c ->
+	groovy.json.JsonOutput.toJson(
+		"command" : "run",
+		"arguments": [
+			"pipeline/batch.groovy",
+            e.in.body // the file to analyse
+		] + 
+		"directory": "/some/path/on/your/system"
+	)
+}
+.inOut()
+    .to('activemq:run_bpipe?requestTimeout=720000') // 2 hour timeout
+.inOnly()
+    .process { e ->
+        println "The results from the pipeline were: $e.body.in"
+    }
+```
+
+Note that the `inOut` automatically handles the correlation id and reply-to headers and waits for the reply. The bpipe agent, in this case, would be configured to 
+listen on the `run_bpipe` queue.
+
+
 
 

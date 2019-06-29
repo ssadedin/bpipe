@@ -36,6 +36,8 @@ class RunPipelineCommand extends BpipeCommand {
     
     ExecutedProcess result
     
+    File runDirectory 
+    
     public RunPipelineCommand(List<String> args) {
         super("run", args);
     }
@@ -55,13 +57,16 @@ class RunPipelineCommand extends BpipeCommand {
         if(!dirFile.exists())
             throw new IllegalArgumentException("Unable to create directory requested for pipeline run $dir.")
         
-        log.info "Running with arguments: " + args;
+        log.info "Running with arguments: " + args + " in directory " + dirFile;
+        
+        this.runDirectory = dirFile
         
         List<String> cmd = [ bpipe.Runner.BPIPE_HOME + "/bin/bpipe", "run" ] 
         cmd.addAll(args)
         result = Utils.executeCommand(cmd, out:out, err: out) {
             directory(dirFile)
         }
+        
     }
 
     /**
