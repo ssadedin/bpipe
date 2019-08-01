@@ -1,6 +1,6 @@
 
 hello = {
-    exec "Echo param foobar=$foobar"
+    exec "echo param foobar=$foobar"
 }
 
 run { hello }
