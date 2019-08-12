@@ -216,11 +216,17 @@ class Sender {
         
        final File sentFile = determineSentFile(cfgName)
        if(sentFile.exists() && !Dependencies.instance.getOutOfDate([new LocalPipelineFile(sentFile.absolutePath)], ctx.@input)) {
-           log.info "Sent file $sentFile.absolutePath already exists - skipping send of this message"
-           if(onSend != null) {
-             onSend(details)
-           } 
-           return
+           
+           if(extraDetails.file && !Utils.fileExists(extraDetails.file)) {
+               log.info "Sent file $sentFile.absolutePath already exists but destination is missing file: will send again"
+           }
+           else {
+               log.info "Sent file $sentFile.absolutePath already exists - skipping send of this message"
+               if(onSend != null) {
+                 onSend(details)
+               } 
+               return
+           }
        }
        
        if(Runner.testMode) {
@@ -316,8 +322,16 @@ class Sender {
         StringWriter sw = new StringWriter()
 
         Utils.table(['Property','Value'], [extraDetails*.key, extraDetails*.value].transpose(), out: sw)
+        
+        String msg = "Would send message to channel '$cfgName' using details:\n\n" + sw.toString()
+        if(content instanceof String) {
+            if(this.contentType == "application/json") {
+                content = JsonOutput.prettyPrint(content)
+            }
+            msg = msg + "\n\nContent:\n"+ content.readLines().take(30).join('\n')
+        }
 
-        throw new PipelineTestAbort("Would send message to channel '$cfgName' using details:\n\n" + sw.toString())
+        throw new PipelineTestAbort(msg)
     }
     
     void sendToURL(Map details) {
