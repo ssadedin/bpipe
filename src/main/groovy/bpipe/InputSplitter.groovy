@@ -123,8 +123,8 @@ class InputSplitter {
     List<PipelineFile> sortNumericThenLexically(Pattern regex, List<Integer> skipGroups, List<PipelineFile> v) {
 		return v.sort { PipelineFile f1, PipelineFile f2 ->
             
-            String i1 = f1.name
-            String i2 = f2.name
+            String i1 = f1.path
+            String i2 = f2.path
             
             // Match 
 			Matcher m1 = regex.matcher(i1)
