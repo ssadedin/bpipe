@@ -215,7 +215,8 @@ class CommandManager {
                         println "Command $cmd.id is persistent command: ignoring"
                     }
                     else {
-                        exec.stop() 
+                        safeStopExecutor(exec)
+                        
                         if(cmd)
                             stoppedCommands << cmd
                         println "Successfully stopped command $cmd.id ($exec)"
@@ -251,6 +252,22 @@ class CommandManager {
         }
         
         return count
+    }
+
+    private void safeStopExecutor(CommandExecutor exec) {
+        Exception error
+        try {
+            exec.stop()
+        }
+        catch(Exception e) {
+            error = e
+        }
+        finally {
+            exec.cleanup()
+        }
+        
+        if(error)
+            throw error
     }
     
     public void cleanup(Command cmd) {
