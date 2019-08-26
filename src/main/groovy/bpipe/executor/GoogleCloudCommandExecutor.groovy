@@ -171,6 +171,8 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         
         List machineTypeFlag = ('machineType' in config) ? ["--machine-type", config.machineType] : []
         
+        List premptibleFlag = ('preemptible' in config) && (config.preemptible == true) ? ['--preemptible'] : []
+        
         this.zone = getRegion(config)
         List zoneFlag = ['--zone', zone]
         
@@ -179,7 +181,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
               "--image", image,
               "--service-account", serviceAccount,
               "--scopes", "https://www.googleapis.com/auth/cloud-platform"
-        ] + machineTypeFlag + zoneFlag
+        ] + machineTypeFlag + zoneFlag + premptibleFlag
         
         // Create the instance
         log.info "Creating google cloud instance from image $image for command $id"
