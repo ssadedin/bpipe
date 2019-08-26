@@ -87,6 +87,11 @@ abstract class StorageLayer implements Serializable {
             (ConfigObject)bpipe.Config.userConfig['filesystems']
                         .get(name, null)
         
+        // We inherit the region value (but not others) from the main config
+        if(('region' in bpipe.Config.userConfig) && !storageConfig.containsKey('region')) {
+            storageConfig.region = bpipe.Config.userConfig.region
+        }
+                        
         if(storageConfig == null)
             throw new bpipe.PipelineError(
                 "The value ${name} (${name?.class?.name})was supplied as storage, but could not be found in your configuration.\n\n" + 
@@ -99,6 +104,7 @@ abstract class StorageLayer implements Serializable {
         storageType = storageType[0].toUpperCase() + storageType[1..-1]
         String className = "bpipe.storage." + storageType + "StorageLayer"
         
+        log.info "Configuring storage $name (storage $storageType)"
         StorageLayer result = (StorageLayer)Class.forName(className).newInstance()
         result.name = name 
         

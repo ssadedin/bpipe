@@ -276,8 +276,8 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         String sdkHome = getSDKHome()
         String region
         if(config.containsKey('region')) {
-            log.info "Using region from configuration"
             region = config.region
+            log.info "Using region $region from configuration"
         }
         else {
             log.info "Probing region using gcloud command"
