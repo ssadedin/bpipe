@@ -166,7 +166,8 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         if(serviceAccount == null)
             throw new Exception("The Google Cloud executor requires that a service account be attached. Please see documentation for how to setup and create the service account.")
         
-        this.instanceId = "bpipe-" + id
+        String pathSha1 = Utils.sha1(bpipe.Runner.HOSTNAME + ':' + System.properties['user.dir'])[0..7]
+        this.instanceId = "bpipe-${pathSha1}-$id"
         
         List machineTypeFlag = ('machineType' in config) ? ["--machine-type", config.machineType] : []
         
