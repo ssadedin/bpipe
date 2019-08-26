@@ -234,14 +234,14 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         String commandWorkDir = workingDirectory
         
         if(command.processedConfig?.containsKey('workingDirectory')) {
-            commandWorkDir = command.processedConfig.workingDirectory
+            commandWorkDir = workingDirectory + '/' + command.processedConfig.workingDirectory
         }
         
         log.info "Working directory for command $command.id is $commandWorkDir"
         
         File cmdFile = new File(jobDir, "cmd.sh")
         cmdFile.text = """
-            cd $commandWorkDir || { echo "Unable to change to expected working directory: $workingDirectory"; exit 1; }
+            cd $commandWorkDir || { echo "Unable to change to expected working directory: $commandWorkDir"; exit 1; }
 
             mkdir -p .bpipe/gcloud
 
