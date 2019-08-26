@@ -529,7 +529,7 @@ public class Pipeline implements ResourceRequestor {
      */
     static def run(def inputFile, Object host, Closure pipelineBuilder) {
         
-        if(Config.config.mode in ["run","retry","resume","remake"]) { 
+        if(Config.config.mode in ["run","retry","resume","remake"] && !Runner.testMode) { 
             ExecutorPool.startPools(ExecutorFactory.instance, Config.userConfig, false, true) 
         }  
         
