@@ -167,7 +167,7 @@ class PipelineContext {
      */
     List<Checker> checkers = []
    
-    private List<PipelineStage> pipelineStages
+    List<PipelineStage> pipelineStages
    
     /**
      * Pipeline joiners are closures that are introduced by Bpipe for 
