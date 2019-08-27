@@ -952,7 +952,7 @@ class PipelineContext {
    /**
     * Check if there is an input, if so, return it.  
     */
-   def getInput() {
+   PipelineInput getInput() {
        if(!inputWrapper || inputWrapper instanceof MultiPipelineInput) {
            inputWrapper = new PipelineInput(this.@input, pipelineStages, this.aliases)
            this.allUsedInputWrappers[0] = inputWrapper
@@ -3215,6 +3215,11 @@ class PipelineContext {
     @Memoized
     StorageLayer getDefaultStorage() {
         StorageLayer.getDefaultStorage()
+    }
+    
+    
+    void setRawInput(List<PipelineFile> rawInput) {
+        this.@input = rawInput
     }
 }
 

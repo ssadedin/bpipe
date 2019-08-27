@@ -1,7 +1,25 @@
 package bpipe
 
 import org.junit.Before;
+import org.junit.BeforeClass
 import org.junit.Test;
+
+import bpipe.storage.LocalPipelineFile
+import groovy.transform.CompileStatic
+
+class TestPipelineContext extends PipelineContext {
+
+    public TestPipelineContext(Binding extraBinding, List<PipelineStage> pipelineStages,
+    Set<Closure> pipelineJoiners, Branch branch) {
+        super(extraBinding, pipelineStages, pipelineJoiners, branch);
+    }
+
+    @Override
+    public Object produceImpl(Object rawOut, Closure body, boolean explicit) {
+        return null
+    }
+
+}
 
 class TransformOperationTest {
     
@@ -11,21 +29,32 @@ class TransformOperationTest {
     
     PipelineStage stage = new PipelineStage(null)
     
-    PipelineContext ctx = new PipelineContext(null, [stage],[], branch)
+    PipelineContext ctx = new PipelineContext(null, [stage],Collections.emptySet(), branch)  
     
     Pipeline pipeline = new Pipeline()
+    
+    @BeforeClass
+    static void setConfig() {
+        Config.userConfig = new ConfigObject()
+        Config.userConfig.storage = 'local'
+        System.setProperty('bpipe.home', new File('.').absolutePath)
+    }
     
     @Before
     void setup() {
         Pipeline.currentRuntimePipeline.set(pipeline)
+
+        ctx.trackedOutputs = [ 1:  new Command(command: 'test command', cfg: [storage:'local'])]
         stage.context = ctx
         ctx.aliases = new Aliases()
     }
     
-    def txop(List inputs, List exts) {
-        ctx.@input = inputs
+    @CompileStatic
+    def txop(List<String> inputs, List exts) {
+        ctx.@input = (List<PipelineFile>)inputs.collect { new LocalPipelineFile(it) }
         op = new TransformOperation(ctx, exts, null) 
-        return op.computeOutputFiles(null, "stage")        
+        
+        return op.computeOutputFiles(null).collect { it.name }
     }
     
     @Test
@@ -64,36 +93,60 @@ class TransformOperationTest {
     @Test
     void testNumberedInputs() {
         
-        def inputs = ["test1.txt","test2.txt","test.xml"]
+        def inputs = ["test1.txt","test2.txt","test.xml"].collect { new LocalPipelineFile(it) }
         
         ctx.@input = inputs
         op = new TransformOperation(ctx, ["*.txt",".xml"], null)         
         
         op.to(".zip",".tsv") {
+            ctx.trackedOutputs[1] = new Command(cfg:[:])
             def i1 = input1.txt
             def i2 = input2.txt
             println "input1 = $i1"
             println "input2 = $i2"
-            assert i1 == "test1.txt"
-            assert i2 == "test2.txt"
+            assert i1.toString() == "test1.txt"
+            assert i2.toString() == "test2.txt"
         }
     }
     
     @Test
     void testOneToOneMultiInputs() {
         
-        def inputs = ["test1.txt","test2.txt"]
+        def inputs = ["test1.txt","test2.txt"].collect { new LocalPipelineFile(it) }
         
-        ctx.@input = inputs
+        ctx.setRawInput(inputs)
         op = new TransformOperation(ctx, [".txt"], null)         
         
         op.to(".tsv") {
+            
+            ctx.trackedOutputs[1] = new Command(cfg:[:])
+            
             def i1 = input1.txt
             println "input1 = $i1"
-            assert i1 == "test1.txt"
+            assert i1.toString() == "test1.txt"
             
             def o1 = output1.tsv
             println "o1 = $o1"
+        }
+    }
+        
+        
+      @Test
+      void 'regular expression substitutions should be replaced'() {
+        
+        def inputs = ["foo.txt", "test_R1.txt"].collect { new LocalPipelineFile(it) }
+        
+        ctx.@input = inputs
+        op = new TransformOperation(ctx, ["(.*)_R1.txt"], null)         
+        
+        op.to("\$1.xml") {
+            ctx.trackedOutputs[1] = new Command(cfg:[:])
+            def i1 = input1.txt
+            assert i1.toString() == "test_R1.txt"
+            
+            def o1 = output.xml
+            
+            assert o1.toString() == "test.xml"
         }
     } 
 }

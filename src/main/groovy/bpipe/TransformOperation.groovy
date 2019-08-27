@@ -82,7 +82,7 @@ class TransformOperation {
         this.ctx = ctx
         this.exts = exts
         this.body = c
-        this.files = Utils.box(ctx.@input)
+        this.files = Utils.box(ctx.getRawInput())
     }
     
     void to(String toPattern, Closure c) {
@@ -102,6 +102,7 @@ class TransformOperation {
      * both a "from" pattern and a "to" pattern are provided, and execute the 
      * transform.
      */
+    @CompileStatic
     void to(List<String> toPatterns, Closure c) {
         
         this.body = c
@@ -127,7 +128,7 @@ class TransformOperation {
         // If there are not enough exts to match all the patterns
         // they map to, we repeat the last one to fill up the missing ones
         if(exts.size() < toPatterns.size()) {
-            exts = exts.clone()
+            exts = new ArrayList<String>(exts)
             while(exts.size() < toPatterns.size()) {
               exts.add( exts[-1] )
             }
@@ -136,14 +137,14 @@ class TransformOperation {
         // Similarly, if there are not enough to patterns, fill them up from
         // the first to pattern
         if(toPatterns.size() < exts.size()) {
-            toPatterns = toPatterns.clone()
+            toPatterns = new ArrayList<String>(toPatterns)
             while(toPatterns.size() < exts.size())
                 toPatterns.add(toPatterns[-1])
         }
         
         // In the advanced case, the "file extensions" are not file extensions, but
         // regular expressions for matching files to transform from
-        for(def toFromPair in [toPatterns,exts].transpose()) {
+        for(List<String> toFromPair in (List<List<String>>)[toPatterns,exts].transpose()) {
             
             String toPattern = toFromPair[0]
             String fromPattern = toFromPair[1]
@@ -153,7 +154,7 @@ class TransformOperation {
                 pattern += '$'
                 
             PipelineInput input = new PipelineInput(originalFiles, this.ctx.pipelineStages, this.ctx.aliases)
-            List<String> filesResolved = input.resolveInputsEndingWithPatterns([fromPattern + '$'], [fromPattern])
+            List<PipelineFile> filesResolved = input.resolveInputsEndingWithPatterns([fromPattern + '$'], [fromPattern])
             if(isGlobPattern(fromPattern)) {
                 
                 this.files.addAll(filesResolved)
@@ -302,24 +303,9 @@ class TransformOperation {
             
         PipelineFile txed = null
         if(inp.name.contains(".")) {
-            String dot = fromPattern.startsWith(".") ?"":"."
-            String replacement = dot+FastUtils.dotJoin(additionalSegment,toPattern)
-                
-            Pattern pattern = ~fromPattern
-            Matcher matcher = pattern.matcher(inp.path)
-            if(matcher.find()) {
-                if(fromPattern.startsWith('.') && !toPattern.startsWith('.')) {
-                    txed = inp.newName(inp.path.substring(0, matcher.start()) + replacement)
-                }
-                else {
-                    txed = inp.newName(FastUtils.dotJoin(inp.path.substring(0, matcher.start()), replacement))
-                }
-            }
-            else {
-//                log.info("Pattern $fromPattern did not match input path $inp")
-            }
+            txed = transformUsingRegex(fromPattern, inp, additionalSegment, toPattern)
         }
-        else {
+        else { // simple extension - transform('xml') ...
             txed = inp.newName(FastUtils.dotJoin(inp.path,additionalSegment,extension))
         }
             
@@ -349,6 +335,32 @@ class TransformOperation {
         }
                 
         return txed        
+    }
+
+    @CompileStatic
+    private PipelineFile transformUsingRegex(String fromPattern, PipelineFile inp, String additionalSegment, String toPattern) {
+        String dot = fromPattern.startsWith(".") ?"":"."
+
+        Pattern pattern = ~fromPattern
+        Matcher matcher = pattern.matcher(inp.path)
+        if(!matcher.find()) 
+            assert false : "Pattern $fromPattern did not match input path $inp, but this should not be possible!"
+        
+        String replacement = dot+FastUtils.dotJoin(additionalSegment,toPattern)
+        if(replacement.contains('$')) {
+            log.info "Detected regex match in transform target: $replacement"
+            for(int i=0; i<10; ++i) {
+                if(replacement.contains('$'+i))
+                    replacement = replacement.replace('$1', matcher.group(i))
+            }
+        }
+
+        if(fromPattern.startsWith('.') && !toPattern.startsWith('.')) {
+            return inp.newName(inp.path.substring(0, matcher.start()) + replacement)
+        }
+        else {
+            return inp.newName(FastUtils.dotJoin(inp.path.substring(0, matcher.start()), replacement))
+        }
     }
     
     def methodMissing(String name, args) {

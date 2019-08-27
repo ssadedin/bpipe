@@ -116,7 +116,7 @@ class PipelineInput {
         this.aliases = aliases
         
         if(!input.every { it instanceof PipelineFile })
-            throw new Exception("bad input")
+            throw new Exception("bad input: not all inputs are of type PipelineFile!")
     }
     
     @CompileStatic
@@ -440,7 +440,7 @@ class PipelineInput {
         // Add a final stage that represents the original inputs (bit of a hack)
         // You can think of it as the initial inputs being the output of some previous stage
         // that we know nothing about
-        List previousInputs = LocalPipelineFile.from(Utils.box(stages[0].context.@input) as List)
+        List previousInputs = LocalPipelineFile.from(Utils.box(stages[0].context.rawInput) as List)
         log.info "Supplementing with outputs from previous inputs: " + previousInputs
         reverseOutputs.add(previousInputs)
             
