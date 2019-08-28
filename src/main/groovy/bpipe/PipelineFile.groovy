@@ -114,9 +114,10 @@ class PipelineFile implements Serializable {
         if(this.exists())
             return false // not missing
                     
+        long fileSystemSyncTimeMs = Config.userConfig.getOrDefault('fileSystemSyncTimeMs', 500)
         if(!p) {
             log.info "There are no properties for $path and file is missing"
-            return this.flushMetadataAndCheckIfMissing()
+            return this.flushMetadataAndCheckIfMissing(fileSystemSyncTimeMs)
         }
                 
         if(p.cleaned) {
@@ -125,7 +126,7 @@ class PipelineFile implements Serializable {
         }
         else {
             log.info "File $path [$type] does not exist, has a properties file indicating it is not cleaned up"
-            return this.flushMetadataAndCheckIfMissing()
+            return this.flushMetadataAndCheckIfMissing(fileSystemSyncTimeMs)
         }
     }
     
@@ -140,10 +141,10 @@ class PipelineFile implements Serializable {
         }
         else {
             while(timeout>0) {
-                Thread.sleep(200)
+                Thread.sleep(400)
                 if(!this.flushMetadataAndCheckIfMissing(0))
                     return false
-                timeout -= 200
+                timeout -= 400
             }
             return true
         }
