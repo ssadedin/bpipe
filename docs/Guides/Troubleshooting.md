@@ -83,7 +83,14 @@ This can save you some time in working out why your job is not running.
 
 ### Bpipe keeps insisting an output I'm not even trying to create should exist
 
-There can be a few different reasons for this, but a really common one is that you are making some reference to the `$output` variable that is misleading Bpipe into thinking you're going to produce the output. One of the fundamental mechanisms by which Bpipe works is that it uses your references to the `$output` and `$input` variables to infer what files are going into and out of your commands. For this reason you should try not to reference them other than in the context of a command that will produce them. Consider the following script:
+There can be a few different reasons for this, but a really common one is that
+you are making some reference to the `$output` variable that is misleading
+Bpipe into thinking you're going to produce the output. One of the fundamental
+mechanisms by which Bpipe works is that it uses your references to the
+`$output` and `$input` variables to infer what files are going into and out of
+your commands. For this reason you should try not to reference them other than
+in the context of a command that will produce them. Consider the following
+script:
 
 ```groovy 
 
@@ -130,14 +137,23 @@ One noteworthy feature above is that rather than operating on the input file nam
 
 ### I have a command that doesn't output to a file - how can I make it not run every time?
 
-Bpipe is very file driven; it's dependency mechanisms are all based on input files and output files and comparing them. Sometimes you will have a task that does something without creating a file. For example, sending an email, or uploading data to a remote database, etc. In these cases, since there's no output file, Bpipe by default doesn't think the command executed at all and re-runs it every time in your pipeline. The simple workaround for this is to create an output file yourself:
+Bpipe is very file driven; it's dependency mechanisms are all based on input
+files and output files and comparing them. Sometimes you will have a task that
+does something without creating a file. For example, sending an email, or
+uploading data to a remote database, etc. In these cases, since there's no
+output file, Bpipe by default doesn't think the command executed at all and
+re-runs it every time in your pipeline. The simple workaround for this is to
+create an output file yourself:
+
 ```groovy 
 
     copy_results = {
       exec """
-        scp $input.bam myserver:/home/myaccount/results && date > $output.scp.txt
+        scp $input.bam myserver:/home/myaccount/results && date | tee $output.scp.txt
       """
     }
 ```
 
 Here we use the date command to create a "dummy" file that Bpipe now considers to be an output. Notice that we use '&&' so that the file only gets created if the scp succeeds. It doesn't matter what you put in there, as long as you create some kind of file and reference it using $output, Bpipe's dependency management will work.
+
+As a side note - it is often very helpful and more robust to create an output file in this situation so that you have a trace of what happened when the command executed.
