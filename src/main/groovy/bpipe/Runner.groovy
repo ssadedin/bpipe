@@ -35,6 +35,7 @@ import org.apache.commons.cli.Option
 import org.codehaus.groovy.runtime.StackTraceUtils;
 
 import bpipe.agent.AgentRunner
+import bpipe.cmd.ArchiveCommand
 import bpipe.cmd.PreallocateCommand
 import bpipe.cmd.Stop;
 import bpipe.worx.WorxEventListener;
@@ -183,6 +184,12 @@ class Runner {
             exit(0) 
         }
         else
+        if(mode == "archive")  {
+            log.info("Mode is archive")
+            new ArchiveCommand(args as List).run(System.out)
+            exit(0) 
+        }
+        else
         if(mode == "register")  {
             log.info("Mode is register")
             cli = registerCli
@@ -276,6 +283,7 @@ class Runner {
             cli.with {
                  h longOpt:'help', 'usage information'
                  d longOpt:'dir', 'output directory', args:1
+                 a longOpt: 'autoarchive', 'clean up all internal files after run into given archive', args:1
                  t longOpt:'test', 'test mode'
                  f longOpt: 'filename', 'output file name of report', args:1
                  r longOpt:'report', 'generate an HTML report / documentation for pipeline'
@@ -484,6 +492,10 @@ class Runner {
             reportExceptionToUser(e)
             EventManager.instance.signal(PipelineEvent.SHUTDOWN, "Shutting down process $pid")
 	        exit(1)
+        }
+        
+        if(opts.a) {
+            new ArchiveCommand(["-d", opts.a]).run(System.out)
         }
    }
     

@@ -38,6 +38,10 @@ abstract class BpipeCommand {
         try {
             this.run(writer)
         }
+        catch(IllegalArgumentException exArg) {
+            System.err.println("One or more arguments was incorrect: please check the options and try again")
+            cli.usage()
+        }
         finally {
             writer.flush()
         }
@@ -81,6 +85,18 @@ abstract class BpipeCommand {
             log.info "Executed command with output: " + output
         }
     }
+    
+    OptionAccessor parse(String usage, @DelegatesTo(CliBuilder) Closure builder) {
+        cli = new CliBuilder(usage:usage)
+        builder.delegate = cli
+        builder()
+        opts = cli.parse(args) 
+        if(!opts) {
+            System.exit(1)
+        }
+        return opts
+    }
+    
     
     @CompileStatic
     OptionAccessor parse() {
