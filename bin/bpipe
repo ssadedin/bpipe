@@ -536,13 +536,20 @@ then
       echo
       echo "Use 'bpipe stop' to stop an existing pipeline if you want to run another one."
       echo
-      read -p "Are you sure you want to continue? (y/n): "
+      if [ "$BPIPE_QUIET" == "true" ];
+      then
+          echo "Quiet mode enabled: auto-aborting this pipeline"
+          REPLY=n
+      else
+          read -p "Are you sure you want to continue? (y/n): "
+      fi
+
       if [ "$REPLY" != y ];
       then
         echo
         echo "Aborting ..."
         echo
-        exit 
+        exit 1
       fi
     fi
     shift 1

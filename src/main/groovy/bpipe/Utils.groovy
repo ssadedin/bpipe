@@ -919,7 +919,7 @@ class Utils {
      * @return Map with exitValue, err and out keys
      */
     @CompileStatic
-    static ExecutedProcess executeCommand(Map options = [:], List<Object> startCmd, Closure builder = null) {
+    static ExecutedProcess executeCommand(Map options = [:], List<Object> startCmd, @DelegatesTo(ProcessBuilder) Closure builder = null) {
         
         List<String> stringified = startCmd*.toString()
         

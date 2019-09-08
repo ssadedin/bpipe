@@ -65,6 +65,7 @@ class RunPipelineCommand extends BpipeCommand {
         cmd.addAll(args)
         result = Utils.executeCommand(cmd, out:out, err: out) {
             directory(dirFile)
+            environment().put('BPIPE_QUIET','true')
         }
         
     }

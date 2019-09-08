@@ -157,3 +157,24 @@ create an output file yourself:
 Here we use the date command to create a "dummy" file that Bpipe now considers to be an output. Notice that we use '&&' so that the file only gets created if the scp succeeds. It doesn't matter what you put in there, as long as you create some kind of file and reference it using $output, Bpipe's dependency management will work.
 
 As a side note - it is often very helpful and more robust to create an output file in this situation so that you have a trace of what happened when the command executed.
+
+
+### Sometimes Bpipe Asks me Questions at Startup - How Do I Avoid That?
+
+Bpipe will stop and query you in a few different situations. This however causes
+problems when you want to run in an automated fashion such as a scripting environment.
+
+To make Bpipe never ask questions do the following two things:
+
+- Set the BPIPE_QUIET environment variable to true - this stops Bpipe warning about 
+    possible problems and makes it abort with error for those problems:
+
+```
+    export BPIPE_QUIET=true
+```
+- Add `-y` to the `bpipe run` command. This will answer yes to any optional prompts that 
+are not signs of failure.
+
+
+
+
