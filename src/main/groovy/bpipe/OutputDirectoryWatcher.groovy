@@ -278,7 +278,7 @@ class OutputDirectoryWatcher extends Thread {
         log.info "Initialising watcher for $directory with ${oldPaths.size()} paths"
         synchronized(timestamps) {
             for(Path path in oldPaths) {
-                long timestamp = Files.getLastModifiedTime(path).toMillis()
+                long timestamp = Files.exists(path) ? Files.getLastModifiedTime(path).toMillis() : 0L
                 String fileName = path.fileName
                 List<String> tsPaths = this.timestamps[timestamp] 
                 if(!tsPaths)
