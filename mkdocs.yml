@@ -26,6 +26,7 @@ pages:
 - ['Language/MergePoints.md','Language','Merge Point Operator']
 - ['Language/Multi.md','Language','Multi']
 - ['Language/Output.md','Language','Output']
+- ['Language/Options.md','Language','Options']
 - ['Language/Prefix.md','Language','Prefix']
 - ['Language/Produce.md','Language','Produce']
 - ['Language/R.md','Language','R']

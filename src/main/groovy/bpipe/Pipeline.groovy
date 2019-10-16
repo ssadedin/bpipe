@@ -994,21 +994,27 @@ public class Pipeline implements ResourceRequestor {
     void initializeRunLogs(List<String> inputFiles) {
         def cmdlog = CommandLog.cmdLog
         cmdlog.write("")
-        Calendar cal = Calendar.instance
-        cal.time = startDate
-        String startDateTime = cal.format("yyyy-MM-dd HH:mm") + " "
+
         cmdlog << "#"*Config.config.columns 
         cmdlog << "# Starting pipeline at " + (new Date())
         cmdlog << "# Input files:  $inputFiles"
         cmdlog << "# Output Log:  " + Config.config.outputLogPath 
             
+        printStartMessage(startDate)
+            
+        about(startedAt: startDate)
+    }
+
+    private static printStartMessage(Date startDate) {
+        Calendar cal = Calendar.instance
+        cal.time = startDate
+        String startDateTime = cal.format("yyyy-MM-dd HH:mm") + " "
+
         OutputLog startLog = new OutputLog("----")
         startLog.bufferLine("="*Config.config.columns)
         startLog.bufferLine("|" + " Starting Pipeline at $startDateTime".center(Config.config.columns-2) + "|")
         startLog.bufferLine("="*Config.config.columns)
         startLog.flush()
-            
-        about(startedAt: startDate)
     }
     
     PipelineContext createContext() {
@@ -1768,5 +1774,32 @@ public class Pipeline implements ResourceRequestor {
                 Runner.binding.variables[e.key] = e.value
             }
         }
+    }
+    
+    static void options(Closure c) {
+        
+        String scriptName = new File(Config.config.script).name
+        
+        PrintStream oldErr = System.out
+        ByteArrayOutputStream b = new ByteArrayOutputStream()
+        System.out = new PrintStream(b)
+
+        CliBuilder cli = new CliBuilder(
+            usage:'bpipe run <bpipe options> ' + scriptName + ' <pipeline options> <input files>\n',
+            width: Config.config.columns)
+        cli.with(c)
+        
+        OptionAccessor opts = cli.parse(Runner.binding.variables.args)
+        System.out = oldErr
+        if(!opts) {
+            printStartMessage(new Date())
+            System.err.println "\nERROR: One or more pipeline options were invalid or missing.\n"
+            System.err.println(b.toString())
+            Runner.normalShutdown = true
+            System.exit(1)
+        }
+        
+        Runner.binding.variables.args = opts.arguments() as List
+        Runner.binding.variables.opts = opts
     }
 }
