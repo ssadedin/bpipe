@@ -692,15 +692,23 @@ class Runner {
             exit(1)
         }
         
+        
+        String scriptText = pipelineFile.text
+        if(scriptText.startsWith('#!')) {
+            println "Stripping shebang"
+           scriptText = scriptText.substring(scriptText.indexOf('\n')+1) 
+        }
+
+        
         // Note that it is important to keep this on a single line because 
         // we want any errors in parsing the script to report the correct line number
         // matching what the user sees in their script
         String pipelineSrc = Pipeline.PIPELINE_IMPORTS + 
                     "bpipe.Pipeline.scriptNames['$pipelineFile.name']=this.class.name;" +
                     preamble + 
-                    pipelineFile.text
+                    scriptText
                      
-        if(pipelineFile.text.indexOf("return null") >= 0) {
+        if(scriptText.indexOf("return null") >= 0) {
             println """
                        ================================================================================================================
                        | WARNING: since 0.9.4 using 'return null' in pipeline stages is incorrect. Please use 'forward input' instead.|
