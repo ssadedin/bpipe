@@ -192,6 +192,11 @@ class Utils {
     }
     
     @CompileStatic
+    static boolean fileExists(PipelineInput i) {
+        fileExists(new File(i.toString()))
+    }
+    
+    @CompileStatic
     static boolean fileExists(File f) {
         
        if(f.exists())
