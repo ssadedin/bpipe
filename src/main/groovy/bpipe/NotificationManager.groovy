@@ -72,8 +72,8 @@ class NotificationManager {
         
         // Add a default FileNotificationChannel if one does not already exist
         if(!cfg.notifications.containsKey('file')) {
-            cfg.notifications.file = new ConfigObject()
             cfg.notifications.file.events="SEND"
+            cfg.notifications.file.customTarget=false
         }
             
         cfg.notifications.each { String name, ConfigObject channelCfg -> 

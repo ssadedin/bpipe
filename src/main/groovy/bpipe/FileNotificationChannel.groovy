@@ -31,7 +31,7 @@ class FileNotificationChannel implements NotificationChannel {
             
         File targetFile = new File(dir, "${count}_${event.name()}.txt")
         if(event == PipelineEvent.SEND) {
-            if(model.containsKey("send.file") && model["send.file"] != null)
+            if(model.containsKey("send.file") && model["send.file"] != null && this.cfg.get('customTarget',true))
                 targetFile = new File(model["send.file"])
                 
             if(model["send.content"] instanceof String)
