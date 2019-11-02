@@ -192,8 +192,15 @@ class Sender {
         
         // Find the config object
         String cfgName = details.channel
+        ConfigObject channelCfg
         if(cfgName == null && details.containsKey("file")) {
             cfgName = "file"
+            channelCfg = new ConfigObject()
+            channelCfg.with {
+                type = "file"
+                name = "file.send"
+                channel = new FileNotificationChannel(new ConfigObject())
+            }
         }
         
         if(cfgName?.startsWith('$'))
@@ -256,17 +263,21 @@ class Sender {
            }
        }
         
-       if(details.containsKey('url')) {
-           sendToURL(details)
-       }
-       else {
-           NotificationManager.instance.sendNotification(cfgName, PipelineEvent.SEND, this.details.subject, props) 
-       }
-       
        // The file can actually be a PipelineOutput or similar which leads to 
        // bizarre errors when serializing to JSON because the whole PipelineContext
        // gets captured in there
        props['send.file'] = String.valueOf(props['send.file'])
+       
+       if(details.containsKey('url')) {
+           sendToURL(details)
+       }
+       else
+       if(channelCfg != null) {
+           NotificationManager.instance.sendNotification(channelCfg, PipelineEvent.SEND, this.details.subject, props) 
+       }
+       else {
+           NotificationManager.instance.sendNotification(cfgName, PipelineEvent.SEND, this.details.subject, props) 
+       }
        
        EventManager.instance.signal(PipelineEvent.SEND, this.details.subject, props)
        

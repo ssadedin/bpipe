@@ -1,1 +1,1 @@
-rm -f *.xml *.csv output.html *.tsv
+rm -rf *.xml *.csv output.html *.tsv .bpipe/sent
