@@ -134,6 +134,8 @@ class Config {
 		
         ConfigSlurper slurper = new ConfigSlurper()
         
+        slurper.setBinding(Runner.binding.getVariables().collectEntries {it})
+        
 		File builtInConfigFile = new File(System.getProperty("bpipe.home") +"/bpipe.config")
 		
 		// Allows running in-situ in project source distro root dir to work

@@ -324,6 +324,15 @@ class Runner {
 
         log.info "=================== GUID=${Config.config.pguid} PID=$pid (${Config.config.pid}) =============="
         
+        // add all user specified parameters to the binding
+        if( opt.params ) {  // <-- note: ending with the 's' character the 'param' option, will force to return it as list of string
+            log.info "Adding CLI parameters: ${opt.params}"
+            binding.addParams( opt.params )
+        }
+        else {
+            log.info "No CLI parameters specified"
+        }
+        
         // read the configuration file, if available
         readUserConfig()
         
@@ -435,16 +444,7 @@ class Runner {
             }
         }
 
-        // add all user specified parameters to the binding
-        if( opts.params ) {  // <-- note: ending with the 's' character the 'param' option, will force to return it as list of string
-            log.info "Adding CLI parameters: ${opts.params}"
-               
-            binding.addParams( opts.params )
-        }
-        else {
-            log.info "No CLI parameters specified"
-        }
-        
+       
         if(opts.L) { 
             Config.region = new RegionValue(opts.L)
         }
