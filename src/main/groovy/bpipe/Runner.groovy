@@ -440,7 +440,8 @@ class Runner {
         
         if('parameters' in Config.userConfig) {
             Config.userConfig.parameters.collect { k,v ->
-                binding.setParam(k,v)
+                if(!binding.parameters.contains(k))
+                    binding.setParam(k,v)
             }
         }
 
