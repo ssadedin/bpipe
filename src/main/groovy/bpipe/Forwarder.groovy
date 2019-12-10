@@ -113,7 +113,15 @@ class Forwarder extends TimerTask {
             long now = startTimeMs
             
             // This is done to synchronized distributed file systems with sync issues
-            this.files.collect { it.toAbsolutePath().parent }.unique { it.normalize() }.collect { Files.newDirectoryStream(it).toList() }
+            this.files.collect { it.toAbsolutePath().parent }.unique { it.normalize() }.collect { dir -> 
+                DirectoryStream dirStream = Files.newDirectoryStream(dir)
+                try {
+                    dirStream.toList() 
+                }
+                finally {
+                    dirStream.close()
+                }
+            }
             
             while(now - startTimeMs < MAX_WAIT_MISSING_FILE) {
                 if(this.files.every { Files.exists(it) })
