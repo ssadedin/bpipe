@@ -78,11 +78,12 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
     @Override
     public int waitFor() {
         
-        if(bpipe.Config.userConfig.getOrDefault('useLegacyTorqueJobPolling',false)) {
+        if(bpipe.Config.userConfig.containsKey('useLegacyTorqueJobPolling') && bpipe.Config.userConfig.useLegacyTorqueJobPolling) {
+            log.info "Using legacy torque status polling"
             return super.waitFor()
         }
         
-        int exitCode = TorqueStatusMonitor.getInstance().waitFor(commandId)
+        int exitCode = TorqueStatusMonitor.getInstance().waitFor(command, commandId)
         log.info "Exit code $exitCode returned for $commandId from TorqueStatusMonitor"
         
         if(this.command)

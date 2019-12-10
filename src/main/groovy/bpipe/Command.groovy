@@ -188,8 +188,9 @@ class Command implements Serializable {
         try {
             CommandStatus statusEnum = CommandStatus.valueOf(statusValue)
             if(statusEnum != this.status) {
+                
                 if((statusEnum == CommandStatus.RUNNING) ||
-                   ((this.status == CommandStatus.WAITING) && (statusEnum==CommandStatus.COMPLETE))) {
+                   ((this.status == CommandStatus.WAITING || this.status == CommandStatus.QUEUEING) && (statusEnum==CommandStatus.COMPLETE))) {
                     this.startTimeMs = System.currentTimeMillis()
                 }
             }

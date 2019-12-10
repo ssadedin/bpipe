@@ -25,7 +25,7 @@
 package bpipe.executor
 
 import java.util.regex.Matcher
-
+import bpipe.Command
 import bpipe.CommandStatus
 import bpipe.Config
 import bpipe.ExecutedProcess
@@ -63,17 +63,29 @@ class TorqueStatusMonitor extends TimerTask {
     TorqueStatusMonitor() {
         log.info "Starting torque status monitor ..."
         
-        long pollIntervalMs = Config.userConfig.getOrDefault('torqueStatusMonitorPollInterval', 3000)
-        
+        long pollIntervalMs = 3000
+        if(Config.userConfig.containsKey('torqueStatusMonitorPollInterval')) {
+            pollIntervalMs = Config.userConfig.torqueStatusMonitorPollInterval
+        }
+
         bpipe.Poller.getInstance().timer.schedule(this, 1000, pollIntervalMs)
     }
     
-    int waitFor(String jobId) {
+    int waitFor(Command command, String jobId) {
         TorqueJobState state = new TorqueJobState(jobId: jobId, state: CommandStatus.UNKNOWN)
         while(true) {
+            
+            CommandStatus lastState = state.state
             synchronized(jobs) {
                 jobs[jobId] = state
                 jobs.wait()
+                
+                if(state.state != lastState) {
+                    command.status = state.state.toString()
+                    command.save()
+                    lastState = state.state
+                }
+               
                 if(state.state == CommandStatus.COMPLETE) {
                     jobs.remove(jobId)
                     return state.exitCode
