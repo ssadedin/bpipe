@@ -72,11 +72,13 @@ class ForwardHost {
      */
     @CompileStatic
     void stopForwarding() {
-        this.forwarders*.cancel()
+        log.info "Cancelling and flushing outputs for forwarders: $forwarders"
         
-        log.info "Flushing outputs for forwarders: $forwarders"
+        this.forwarders*.cancel()
         
         // Now run them all one last time to flush any last contents
         this.forwarders*.flush()
+        
+        this.forwarders*.stopForwarding()
     }
 }

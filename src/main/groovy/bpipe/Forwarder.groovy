@@ -27,6 +27,7 @@ package bpipe
 import java.nio.file.*
 import java.util.logging.Level;
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 
 /**
@@ -92,18 +93,28 @@ class Forwarder extends TimerTask {
             filePositions[path] = Files.exists(path) ? Files.size(path) : 0L
         }
     }    
+    
+    void stopForwarding() {
+        synchronized(files) {
+            this.files.clear()
+            this.fileDestinations.clear()
+            this.filePositions.clear()
+        }
+    }
 	
     void cancelFile(File file) {
         synchronized(files) {
-            files.remove(file)
-            fileDestinations.remove(file)
-            filePositions.remove(file)
+            Path p = file.toPath()
+            files.removeIf { Files.isSameFile(p, it) }
+            fileDestinations.removeAll {  Files.isSameFile(p, it.key) }
+            boolean removed = filePositions.removeAll {  Files.isSameFile(p, it.key) }
         }
     }
     
     /**
      * Attempt to wait until all the expected files exist, then run forwarding
      */
+    @CompileStatic
     public void flush() {
         synchronized(files) {
             // This small wait is to allow a small window for flushable changes to appear in the files
@@ -158,14 +169,14 @@ class Forwarder extends TimerTask {
      * 
      * @return  true if any new content observed, false otherwise
      */
+    @CompileStatic
     boolean scanFiles() {
         
         boolean modified = false
         
-        List<Path> scanFiles
         synchronized(files) {
             try {
-                scanFiles = files.clone().grep { Files.exists(it) }
+                Collection<Path> scanFiles = files.grep { Files.exists((Path)it) }
                 byte [] buffer = new byte[8096]
                 if(log.isLoggable(Level.FINE)) 
                     log.fine "Scanning ${scanFiles.size()} / ${files.size()} files "
@@ -173,26 +184,7 @@ class Forwarder extends TimerTask {
                 for(Path p in scanFiles) {
                     try {
                         p.withInputStream { InputStream ifs ->
-                            long skip = filePositions[p]
-                            ifs.skip(skip)
-                            int count = ifs.read(buffer)
-                            if(count < 0) {
-                                //log.info "No chars to read from ${f.absolutePath} (size=${f.length()})"
-                                return
-                            }
-                            
-                            modified = true
-                            
-                            log.info "Read " + count + " chars from $p starting with " + Utils.truncnl(new String(buffer, 0, Math.min(count,30)),25)
-                            
-                            // TODO: for neater output we could trim the output to the 
-                            // most recent newline here
-                            String content = new String(buffer,0,count)
-                            Appendable dest = fileDestinations[p]
-                            dest.append(content)
-                            if(dest.respondsTo('flush'))
-                                dest.flush()
-                            filePositions[p] = filePositions[p] + count
+                            modified = updateFileContent(p, ifs, buffer, modified)
                         }
                     }
                     catch(Exception e) {
@@ -206,6 +198,38 @@ class Forwarder extends TimerTask {
                 e.printStackTrace()
             }
         }
+        return modified
+    }
+
+    @CompileStatic
+    private boolean updateFileContent(Path p, InputStream ifs, byte[] buffer, boolean modified) {
+        long skip = filePositions[p]
+        ifs.skip(skip)
+        int count = ifs.read(buffer)
+        if(count < 0) {
+            //log.info "No chars to read from ${f.absolutePath} (size=${f.length()})"
+            return false
+        }
+
+        modified = true
+
+        log.info "Read " + count + " chars from $p starting with " + Utils.truncnl(new String(buffer, 0, Math.min(count,30)),25)
+
+        // TODO: for neater output we could trim the output to the
+        // most recent newline here
+        String content = new String(buffer,0,count)
+        Appendable dest = fileDestinations[p]
+        dest.append(content)
+        if(dest instanceof Flushable) {
+            ((Flushable)dest).flush()
+        }
+        else
+        if(dest instanceof OutputLog) {
+            ((OutputLog)dest).flush()
+        }
+            
+        filePositions[p] = filePositions[p] + count
+
         return modified
     }
 }

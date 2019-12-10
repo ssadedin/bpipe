@@ -26,6 +26,7 @@ package bpipe.executor
 
 import groovy.util.logging.Log
 import bpipe.Command;
+import bpipe.CommandStatus
 import bpipe.ExecutedProcess
 import bpipe.ForwardHost;
 import bpipe.Utils
@@ -72,6 +73,24 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
         log.info "Forwarding file " + this.jobDir+"/${command.id}.out"
         forward(this.jobDir+"/${command.id}.out", outputLog)
         forward(this.jobDir+"/${command.id}.err", errorLog)
+    }
+    
+    @Override
+    public int waitFor() {
+        
+        if(bpipe.Config.userConfig.getOrDefault('useLegacyTorqueJobPolling',false)) {
+            return super.waitFor()
+        }
+        
+        int exitCode = TorqueStatusMonitor.getInstance().waitFor(commandId)
+        log.info "Exit code $exitCode returned for $commandId from TorqueStatusMonitor"
+        
+        if(this.command)
+            this.command.status = CommandStatus.COMPLETE
+        
+        this.cleanup()
+        
+        return exitCode
     }
 
     /**

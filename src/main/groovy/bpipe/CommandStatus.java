@@ -10,5 +10,6 @@ public enum CommandStatus {
     WAITING,
     RUNNING, 
     COMPLETE, 
+    EXITING, 
     UNKNOWN
 }
