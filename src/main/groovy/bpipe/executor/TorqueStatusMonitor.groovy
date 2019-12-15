@@ -137,21 +137,24 @@ class TorqueStatusMonitor extends TimerTask {
     
     void updateStatus(String line) {
         if(line.startsWith("<Data>")) {
-            def xml = new XmlSlurper().parseText(line)
-            String jobId = xml.Job.Job_Id.text()
+            try {
+                def xml = new XmlSlurper().parseText(line)
+                String jobId = xml.Job.Job_Id.text()
 
-            log.info "Updating status for jobId ${jobId} based on $line"
-            TorqueJobState jobState = jobs[jobId]
-            
-            String state = xml.Job.job_state.text()
-            
-            CommandStatus newState = STATES.get(state,CommandStatus.UNKNOWN)
-            if(newState != jobState.state) {
-                log.info "Job $jobId transitioned state from $jobState.state to $newState"
+                log.info "Updating status for jobId ${jobId} based on $line"
+                TorqueJobState jobState = jobs[jobId]
+
+                String state = xml.Job.job_state.text()
+
+                CommandStatus newState = STATES.get(state,CommandStatus.UNKNOWN)
+                if(newState != jobState.state) {
+                    log.info "Job $jobId transitioned state from $jobState.state to $newState"
+                }
+                jobState.state = newState
+            } 
+            catch (Exception e) {
+                log.severe("Failed to parse output XML-like output from qsub: " + line)
             }
-
-            jobState.state = newState
-           
         }
     }
     
