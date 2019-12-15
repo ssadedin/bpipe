@@ -98,7 +98,12 @@ class TorqueStatusMonitor extends TimerTask {
     @Override
     public void run() {
         synchronized(jobs) {
-            pollJobs()
+            try {
+                pollJobs()
+            }
+            catch(Exception e) {
+                log.warning("Error occurred in processing torque output: $e")
+            }
         }
     }
     
