@@ -94,6 +94,8 @@ class ArchiveCommand extends BpipeCommand {
             
             System.addShutdownHook { 
                 new File('.bpipe').deleteDir()
+                new File('.bpipe/logs').deleteOnExit()
+                new File('.bpipe').deleteOnExit()
             }
         }
     }
