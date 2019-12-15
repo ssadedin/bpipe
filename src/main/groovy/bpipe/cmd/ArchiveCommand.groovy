@@ -92,7 +92,7 @@ class ArchiveCommand extends BpipeCommand {
                     dirs << f.parentFile
             }
             
-            if(opts.d) {
+            System.addShutdownHook { 
                 new File('.bpipe').deleteDir()
             }
         }
