@@ -156,9 +156,16 @@ class TorqueStatusMonitor extends TimerTask {
                     log.info "Job $jobId transitioned state from $jobState.state to $newState"
                 }
                 jobState.state = newState
+                
+                if(xml.Job.exit_status) {
+                    String statusText = xml.Job.exit_status.text()
+                    if(statusText && statusText.isInteger()) {
+                        jobState.exitCode = statusText.toInteger()
+                    }
+                }
             } 
             catch (Exception e) {
-                log.severe("Failed to parse output XML-like output from qsub: " + line)
+                log.severe("Failed to parse output XML-like output from qsub: " + line + ":" + e.toString())
             }
         }
     }
