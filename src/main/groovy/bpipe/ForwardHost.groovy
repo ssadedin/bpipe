@@ -31,6 +31,7 @@ import java.io.OutputStream;
 import java.nio.file.Path
 import java.util.List;
 import java.util.Timer;
+import java.util.concurrent.TimeUnit
 
 /**
  * A mixin that can be added to any class to add functions for it to forward 
@@ -52,7 +53,7 @@ class ForwardHost {
         Forwarder f = new Forwarder(file, stream)
         log.info "Forwarding path $file using forwarder $f"
         
-        Poller.instance.timer.schedule(f, 0, 2000)
+        Poller.instance.executor.scheduleAtFixedRate(f, 0, 2000, TimeUnit.MILLISECONDS)
     
         this.forwarders << f 
     }
@@ -62,7 +63,7 @@ class ForwardHost {
         Forwarder f = new Forwarder(new File(fileName), stream)
         log.info "Forwarding file $fileName using forwarder $f"
         
-        Poller.instance.timer.schedule(f, 0, 2000)
+        Poller.instance.executor.scheduleAtFixedRate(f, 0, 2000, TimeUnit.MILLISECONDS)
     
         this.forwarders << f
     }

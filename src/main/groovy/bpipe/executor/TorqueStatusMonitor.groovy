@@ -24,6 +24,7 @@
  */
 package bpipe.executor
 
+import java.util.concurrent.TimeUnit
 import java.util.regex.Matcher
 import bpipe.Command
 import bpipe.CommandStatus
@@ -68,7 +69,7 @@ class TorqueStatusMonitor extends TimerTask {
             pollIntervalMs = Config.userConfig.torqueStatusMonitorPollInterval
         }
 
-        bpipe.Poller.getInstance().timer.schedule(this, 1000, pollIntervalMs)
+        bpipe.Poller.getInstance().executor.scheduleAtFixedRate(this, 1000, pollIntervalMs, TimeUnit.MILLISECONDS)
     }
     
     int waitFor(Command command, String jobId) {

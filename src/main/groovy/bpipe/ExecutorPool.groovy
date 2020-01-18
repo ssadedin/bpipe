@@ -28,6 +28,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.List
 import java.util.Map
+import java.util.concurrent.TimeUnit
 import java.util.logging.Logger
 import java.util.regex.Pattern
 import org.apache.ivy.plugins.report.LogReportOutputter
@@ -141,8 +142,11 @@ class ExecutorPool {
             
         }
         
-        Poller.instance.timer.schedule(
-            this.&replaceUnusableExecutors,CHECK_EXECUTORS_INTERVAL_SECONDS*1000, CHECK_EXECUTORS_INTERVAL_SECONDS*1000) 
+        Poller.instance.executor.scheduleAtFixedRate(
+            this.&replaceUnusableExecutors,
+            CHECK_EXECUTORS_INTERVAL_SECONDS, 
+            CHECK_EXECUTORS_INTERVAL_SECONDS,
+            TimeUnit.SECONDS) 
     }
     
     /**
@@ -431,12 +435,12 @@ class ExecutorPool {
             
         cmd.createTimeMs = System.currentTimeMillis()
             
-        Poller.instance.timer.schedule({
+        Poller.instance.executor.scheduleAtFixedRate({
             if(!heartBeatFile.exists()) {
                 heartBeatFile.absoluteFile.parentFile.mkdirs()
                 heartBeatFile.text = String.valueOf(System.currentTimeMillis())
             }
-        }, 0, HEARTBEAT_INTERVAL_SECONDS*1000)
+        }, 0, HEARTBEAT_INTERVAL_SECONDS*1000, TimeUnit.MILLISECONDS)
         
         pe.captureOutput(outputLog)
         pe.stopFile = stopFile

@@ -1,5 +1,7 @@
 package bpipe
 
+import java.util.concurrent.*
+
 /**
  * A single shared timer used for scheduling periodic jobs
  * 
@@ -7,7 +9,7 @@ package bpipe
  */
 @Singleton
 class Poller {
-    
-    Timer timer = new  Timer(true)
+
+    ScheduledExecutorService executor = Executors.newScheduledThreadPool(Config.config.getOrDefault('schedulerThreads', 2))
 
 }

@@ -35,6 +35,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method
 import java.nio.file.Files;
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger;
 
 import groovy.util.logging.Log;
@@ -935,14 +936,15 @@ public class Pipeline implements ResourceRequestor {
     
     private scheduleStatsUpdate() {
         long intervalMs = Config.userConfig.get('stats_update_interval', STATS_POLLER_INTERVAL)
-        Poller.instance.timer.schedule({
+        
+        Poller.instance.executor.scheduleAtFixedRate({
             try {
                 saveResultState(failed, [], [])
             }
             catch(Throwable t) {
                 log.severe "Failed to save result state!"
             }
-        }, intervalMs, intervalMs)
+        }, intervalMs, intervalMs, TimeUnit.MILLISECONDS)
     }
     
     static String DATE_FORMAT="yyyy-MM-dd HH:mm:ss"
