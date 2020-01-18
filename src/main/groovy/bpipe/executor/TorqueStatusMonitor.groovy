@@ -195,6 +195,8 @@ class TorqueStatusMonitor extends TimerTask {
                 throw new Exception("Error parsing torque output: unexpected output format: $line")
 
             String jobId = m.toMatchResult().group(1)
+            log.info "Job $jobId set to error state due to transition to unknown job id state: $line"
+ 
             TorqueJobState jobState = jobs[jobId]
             jobState.state = CommandStatus.COMPLETE
             jobState.exitCode = -1 // error
