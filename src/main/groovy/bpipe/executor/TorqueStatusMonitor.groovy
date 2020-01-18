@@ -111,7 +111,10 @@ class TorqueStatusMonitor extends TimerTask {
     @CompileStatic
     void pollJobs() {
 
-        def jobIds = this.jobs*.key
+        def jobIds
+        synchronized(jobs) {
+            jobIds = this.jobs*.key
+        }
         
         if(jobIds.isEmpty())
             return
