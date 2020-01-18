@@ -128,6 +128,22 @@ class TorqueStatusMonitor extends TimerTask {
         List<String> output = result.out.toString().readLines()
         List<String> error = result.err.toString().readLines()
         
+        updateStatuses(output, error)
+    }
+
+    @CompileStatic
+    private updateStatuses(List<String> output, List<String> error) {
+        
+        output = (List<String>)output.inject([]) { List<String> acc, String value ->
+            if(!value.startsWith('<Data>') && value.endsWith('</Data>')) {
+                acc[-1] = (String)acc[-1] + value
+            }
+            else {
+                acc.add(value)
+            }
+            return acc
+        }
+        
         for(line in output) {
             updateStatus(line)
         }
