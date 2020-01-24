@@ -751,6 +751,8 @@ class Runner {
         String parentPid = Config.config.parentPid
         
         ExecutorPool.shutdownAll()
+        
+        Poller.instance.executor.shutdown()
             
         // The normalShutdown flag is set to false by default, and only set to true
         // when Bpipe executes through one of the normal / expected paths. In this 
