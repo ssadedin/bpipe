@@ -472,6 +472,7 @@ class Runner {
             script.run()
             normalShutdown=true
             ExecutorPool.shutdownAll()
+            Poller.instance.executor.shutdown()
             EventManager.instance.signal(PipelineEvent.SHUTDOWN, "Shutting down process $pid")
             NotificationManager.instance.shutdown()
         }
