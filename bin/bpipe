@@ -140,6 +140,7 @@ function clean_job_files() {
     fi
 
     rm -f .bpipe/prompt_input_files.*
+    rm -f ${execcommand}
 }
 
 #----------------------------------------------------------
@@ -661,7 +662,10 @@ $SHOWDEBUG && {
     echo "LAUNCH_CMD: $LAUNCH_CMD"
 }
 
-nohup bash -c "$LAUNCH_CMD" \
+execcommand=$(mktemp)
+echo "$LAUNCH_CMD" > $execcommand
+
+nohup bash $execcommand \
     > /dev/null 2>&1 &
 
 # Re-enable wildcard expansion: don't want it turned off in case it's 
