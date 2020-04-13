@@ -421,6 +421,7 @@ get_classpath
 
 
 : ${SHOWDEBUG:=false}
+: ${LAUNCH_IN_FOREGROUND:=false}
 
 if [ "$COMMAND" == "history" ];
 then
@@ -593,6 +594,11 @@ then
 elif [ "$COMMAND" == "debug" ];
 then
     shift 1
+    LAUNCH_IN_FOREGROUND=true 
+    COMMAND="run"
+elif [ "$COMMAND" == "debugx" ];
+then
+    shift 1
     BPIPEDEBUG="-Xdebug -Xrunjdwp:transport=dt_socket,address=8010,server=y,suspend=y"
     SHOWDEBUG=true
     COMMAND="run"
@@ -643,9 +649,17 @@ tmsg " Launching Java"
 # to pass through to Bpipe
 set -f
 
+if $LAUNCH_IN_FOREGROUND ;
+then
+    LOG_CAPTURE="2>&1 | tee .bpipe/logs/\$\$.log"
+else
+    LOG_CAPTURE='> .bpipe/logs/$$.log 2>&1'
+fi
+
 LAUNCH_CMD='
    printf $$ > .bpipe.'$LAUNCHER_PID'.run.pid &
    exec java -Xmx'${MAX_JAVA_MEM}' \
+             -Djava.awt.headless=true \
              -noverify \
              -classpath "'"$CP:$BPIPE_JAR"'" '$BPIPEDEBUG' '$MODEFLAG' \
              -Dbpipe.pid='$LAUNCHER_PID' \
@@ -654,15 +668,28 @@ LAUNCH_CMD='
              -Dbpipe.builddate='$BUILDDATE' \
                  org.codehaus.groovy.tools.GroovyStarter \
                     --classpath "'"$BPIPE_JAR:$BPIPE_HOME/build/libs/bpipe-cloud.jar:$BPIPE_HOME/lib/bpipe-cloud.jar:$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*"'" \
-                    --main bpipe.Runner9 '$TESTMODE' '$BPIPE_ARGS' > .bpipe/logs/$$.log 2>&1
+                    --main bpipe.Runner9 '$TESTMODE' '$BPIPE_ARGS' '$LOG_CAPTURE' 
 '
 
 $SHOWDEBUG && {
     echo "LAUNCH_CMD: $LAUNCH_CMD"
 }
 
-nohup bash -c "$LAUNCH_CMD" \
-    > /dev/null 2>&1 &
+if $LAUNCH_IN_FOREGROUND ;
+then
+    echo "Launching in foreground due to debug flag set"
+    
+    (sleep 1;  BPIPE_PID=`cat .bpipe.$LAUNCHER_PID.run.pid`; create_pid_file $BPIPE_PID ) &
+
+    bash -c "$LAUNCH_CMD" 
+
+    echo "Done"
+
+    exit
+else
+    nohup bash -c "$LAUNCH_CMD" \
+        > /dev/null 2>&1 &
+fi
 
 # Re-enable wildcard expansion: don't want it turned off in case it's 
 # needed somewhere else in this script

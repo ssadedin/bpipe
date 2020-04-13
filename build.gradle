@@ -87,6 +87,8 @@ dependencies {
     compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.0'
 
     compile group: 'org.json', name: 'json', version: '20180813'
+    
+    compile group: 'jline', name: 'jline', version: '2.14.6'
 
     compile ('com.hazelcast:hazelcast-all:2.1.2') { transitive = false }
     

@@ -33,6 +33,9 @@ import java.util.logging.Logger
 import java.util.regex.Matcher
 import java.util.regex.Pattern;
 
+import org.codehaus.groovy.tools.shell.Groovysh
+import org.codehaus.groovy.tools.shell.IO
+
 import bpipe.executor.ProbeCommandExecutor
 import bpipe.storage.LocalFileSystemStorageLayer
 import bpipe.storage.LocalPipelineFile
@@ -2971,7 +2974,7 @@ class PipelineContext {
             return myDelegate.methodMissing(name,args)
         else {
             try {
-              msg ="An unknown function '$name' was invoked (arguments = ${args.grep {!it.class.name.startsWith('script') }}).\n\nPlease check your script to ensure this function is correct."
+              String msg ="An unknown function '$name' was invoked (arguments = ${args.grep {!it.class.name.startsWith('script') }}).\n\nPlease check your script to ensure this function is correct."
               log.severe(msg + ":\n" + Thread.currentThread().stackTrace*.toString().collect { '\t'+it}.join('\n'))
               throw new PipelineError(msg)
             }
@@ -3203,13 +3206,20 @@ class PipelineContext {
     }
     
     void debug() {
-//        groovy.ui.Console console = new groovy.ui.Console();
-        console.setVariable("pipeline", bpipe.Pipeline.currentRuntimePipeline.get());
-        console.setVariable("context", this)
-        console.run()
-        while(console.frame.visible) {
-            Thread.sleep(1000);
-        }
+        
+        if(this.probeMode)
+            return
+        
+        Binding binding = new Binding()
+        binding.setVariable("ctx", this)
+        localVariables.each { k,v -> binding.setVariable(k,v) }
+        binding.setVariable('dg', myDelegate)
+
+        def sh = new Groovysh(binding, new IO())
+        
+//        GroovyShell gsh = sh.interpreter.sh
+//        
+        sh.run((String)null)
     }
     
     @Memoized
