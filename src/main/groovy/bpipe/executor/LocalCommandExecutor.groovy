@@ -257,12 +257,30 @@ class LocalCommandExecutor implements CommandExecutor {
         }
     }
     
+    /**
+     * Attempts to read PID for the launched command, taking into account it may
+     * be in dynamic state (not started, starting, started, finished)
+     */
     void readPID() {
-        if(pid == -1L && id != null) {
-            File pidFile = new File("${CommandManager.DEFAULT_COMMAND_DIR}/${id}.pid")
-            log.info "Checking for pid file $pidFile for local command $id"
-            if(pidFile.exists()) {
-                pid = pidFile.text.trim().toInteger()
+        
+        //  If we already know the PID, don't read it again
+        if(pid != -1L) 
+            return
+            
+        // If we do not have an id, don't attempt to read PID
+        if(id != null)
+            return
+            
+        File pidFile = new File("${CommandManager.DEFAULT_COMMAND_DIR}/${id}.pid")
+        log.info "Checking for pid file $pidFile for local command $id"
+        if(pidFile.exists()) {
+
+            String pidText = pidFile.text
+            if(pidText.trim().isEmpty()) {
+                log.info "PID file for command $id is empty; presume race condition on read - wait for contents"
+            }
+            else {
+                pid = pidText.trim().toInteger()
                 log.info "Read pid=$pid for local command $id"
             }
         }
