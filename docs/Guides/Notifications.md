@@ -164,6 +164,31 @@ name your template ending with ".html", Bpipe will change the content type to
 "text/html" so that an HTML email is sent instead. At this stage you cannot
 embed images, although you can reference remote images.
 
+## Capturing Notifications as Files
+
+You can store notifications as files by configuring a `file` type notification
+handler. Example:
+
+```
+notifications {
+    my_file_channel {
+        type='file'
+    }
+}
+```
+
+In your pipeline, this would be referred to by name within a pipeline stage:
+
+```
+hello = {
+    send report('test.html') to my_file_channel
+}
+```
+
+This can be a useful way to capture notifications during testing and development,
+as you do not need connectivity to actual services (Email, XMPP, ActiveMQ etc), and
+you can then script your tests to check for the expected content in the notifications.
+
 ## Sending Arbitrary Notifications
 
 You may wish to send out notifications explicitly as part of your pipeline,
