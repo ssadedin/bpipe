@@ -1110,7 +1110,7 @@ class Utils {
                 long startMs = System.currentTimeMillis()
                 while(true) {
                     def result = action()
-                    if(result != null)
+                    if(result != null && result != false)
                         return [ timeout: { return okAction(result) }]
                     Thread.sleep(100)
                     

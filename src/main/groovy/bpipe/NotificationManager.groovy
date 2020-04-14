@@ -66,7 +66,7 @@ class NotificationManager {
      */
     void configure(ConfigObject obj) {
         
-        log.info "Configuring notifications"
+        log.info "Configuring notifications based on : " + obj.notifications
         
         this.cfg = obj
         
@@ -78,6 +78,9 @@ class NotificationManager {
             
         cfg.notifications.each { String name, ConfigObject channelCfg -> 
             channelCfg.type = channelCfg.type?:name
+            
+            if(!channelCfg.containsKey('name'))
+                channelCfg.name = name
 			
             NotificationChannel channel
             try {
