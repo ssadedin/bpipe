@@ -31,11 +31,13 @@ class FileNotificationChannel implements NotificationChannel {
             
         File targetFile = new File(dir, "${count}_${event.name()}.txt")
         if(event == PipelineEvent.SEND) {
-            if(model.containsKey("send.file") && model["send.file"] != null && this.cfg.get('customTarget',true))
+            if(model.containsKey("send.file") && model["send.file"] != null && this.cfg.get('customTarget',true)) 
                 targetFile = new File(model["send.file"])
                 
-            if(model["send.content"] instanceof String)
+            if(model["send.content"] instanceof String) {
                 targetFile.text = model["send.content"]
+                log.info "Saved content to ${targetFile}"
+            }
             else
             if(model["send.content"] instanceof File)
                 targetFile << model["send.content"].bytes
@@ -45,6 +47,7 @@ class FileNotificationChannel implements NotificationChannel {
                 dir.mkdirs() 
             targetFile.text = template.make(model).toString()
         }
+        ++count
     }
 
     @Override
