@@ -8,6 +8,11 @@
 killtree() {
     local ppid=$1
     
+    if [ "$ppid" == "-1" ];
+    then
+        return
+    fi
+    
     # Sadly Mac OS/X does not seem to support --ppid option in default version
     # of ps
     if uname | grep -q Darwin;

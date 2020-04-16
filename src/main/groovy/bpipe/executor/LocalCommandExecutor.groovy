@@ -308,6 +308,11 @@ class LocalCommandExecutor implements CommandExecutor {
         // its own PID (note PID is only read lazily above as part of status call)
         readPID()
         
+        if(pid < 0) {
+            log.info "Not stopping job because PID is unknown ($pid)"
+            return
+        }
+        
         log.info "Shutting down local job $id with pid $pid"
         
         List killCmd = ["bash","-c","source ${bpipe.Runner.BPIPE_HOME}/bin/bpipe-utils.sh; killtree $pid"]
