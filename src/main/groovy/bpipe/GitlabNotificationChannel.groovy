@@ -88,7 +88,7 @@ class GitlabNotificationChannel implements NotificationChannel {
 	    if('label' in issueDetails)
 			params.labels=issueDetails.label
         
-		Utils.sendURL(params,'POST', "$baseURL/projects/$project.id/issues", ["PRIVATE-TOKEN": cfg.token])
+		Utils.sendURL(null, 'POST', "$baseURL/projects/$project.id/issues", ["PRIVATE-TOKEN": cfg.token], params)
 	}
     
     boolean updateExistingIssue(Map issueDetails) {

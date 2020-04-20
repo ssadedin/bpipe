@@ -1141,20 +1141,31 @@ class Utils {
           .collect {(it.value instanceof PipelineStage) ? ["stage",it.value.toProperties()] : it}
           .collectEntries() 
     }
-	
-//    @CompileStatic
-    static String sendURL(Map<String,Object> params, String method, String baseURL, Map headers=[:]) {
-		String paramString = params.collect {
+    
+    @CompileStatic
+    static String sendURL(Map<String,Object> params, String method, String baseURL, Map headers=[:], Map postParams=null) {
+		String paramString = params?.collect {
 			URLEncoder.encode(it.key)+'='+URLEncoder.encode(String.valueOf(it.value))
-		}.join('&')
+		}?.join('&')
 		
 		String url
+        if(!params) {
+            url = baseURL
+        }
+        else
 		if(baseURL.contains("?"))
 			url = baseURL + '&' + paramString
 		else
 			url = baseURL + '?' + paramString
-			
-        connectAndSend(method, null,url, headers)
+
+        String postParamString = null
+        if(postParams) {
+            postParamString = postParams.collect {
+                URLEncoder.encode(String.valueOf(it.key))+'='+URLEncoder.encode(String.valueOf(it.value))
+            }.join('&')
+        }			
+
+        connectAndSend(method, postParamString, url, headers)
 	}
 	
     @CompileStatic
