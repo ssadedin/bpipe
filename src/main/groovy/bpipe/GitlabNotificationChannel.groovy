@@ -67,6 +67,11 @@ class GitlabNotificationChannel implements NotificationChannel {
 		
         if(this.updateExistingIssue(issueDetails))
             return
+            
+        if(issueDetails.title instanceof Map) {
+            log.info "Could not identify issue matching $issueDetails.title: issue will not be updated"
+            return
+        }
 		
 		Map params = [
 			title: issueDetails.title,
