@@ -26,6 +26,7 @@
 package bpipe
 
 import java.util.Map
+import java.util.regex.Pattern
 
 import org.gitlab4j.api.GitLabApi
 import org.gitlab4j.api.IssuesApi
@@ -87,27 +88,50 @@ class GitlabNotificationChannel implements NotificationChannel {
 			
 	    if('label' in issueDetails)
 			params.labels=issueDetails.label
-        
+       
 		Utils.sendURL(null, 'POST', "$baseURL/projects/$project.id/issues", ["PRIVATE-TOKEN": cfg.token], params)
 	}
     
     boolean updateExistingIssue(Map issueDetails) {
         
         IssuesApi issuesApi = gitlab.issuesApi
-		
+        
+        Map<String,String> params = [
+            scope: 'all',
+            state: 'opened',
+        ]
+        
+        String titleMatch = null
+        if(issueDetails.title instanceof Map) {
+            params.search = issueDetails.title.search
+            titleMatch = issueDetails.title.match
+        }
+        else {
+            params.search = issueDetails.title
+        }
+        
 		// Search the project issues for one matching the given title
 		Integer issueId = null
 		try {
-			String searchResultJSON = Utils.sendURL('GET', "$baseURL/projects/$project.id/issues", ["PRIVATE-TOKEN": cfg.token],
-				scope: 'all',
-				state: 'opened',
-				search: issueDetails.title)
+            
+			String searchResultJSON = 
+                Utils.sendURL(params, 'GET', "$baseURL/projects/$project.id/issues", ["PRIVATE-TOKEN": cfg.token])
 			
 			List<Map> searchResult = new JsonSlurper().parseText(searchResultJSON)
+           
+            if(titleMatch) {
+                log.info "Prior to filtering found ${searchResult.size()} issues"
+                Pattern pattern = ~titleMatch
+                searchResult = searchResult.grep { Map issueJSON ->
+                    issueJSON.title =~ pattern 
+                }
+            }
+
+            log.info "Final search result contains ${searchResult.size()} issues"
 			if(searchResult.isEmpty()) {
                 return false
 			}
-            
+             
             issueId = searchResult[0].iid
             log.info "Found issue $issueId corresonding to title $issueDetails.title in project $project.id"
             
