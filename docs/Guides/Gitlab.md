@@ -2,7 +2,7 @@
 
 # Gitlab Integration
 
-Bpipe supports simple integration with Gitlab, which enables you to create 
+Bpipe supports integration with Gitlab, which enables you to create 
 issues and add notes to them as part of your Bpipe pipeline.
 
 ## Configuration
@@ -61,3 +61,37 @@ as follows:
 
 If you run this once, it will create the issue. If you run it again before closing
 the issue, it will add a note to the issue instead.
+
+**NOTE**: the issue will be identified by substring search of the title attribte. Any issue
+containing the title in either the description or the title will match. To apply stricter 
+matching, use the Advanced Search Syntax.
+
+## Advanced Search Syntax
+
+More flexiblity can be obtained in identifying the issue to match by supplying a Groovy Map as the 
+title. The map should have two attributes:
+
+- search : text to search for in either the issue title or body
+- match  : a regular expression that must be found within the *title* of the issue found
+
+If no issue is identified using the advanced syntax then no issue will be created at all.
+
+
+## Gitlab Actions
+
+You can cause various actions to occur such as adding and removing labels, assigning issues
+to people or setting a due date by embedding [Quick Actions](https://docs.gitlab.com/ee/user/project/quick_actions.html) 
+in the body of the description.
+
+For example, to mark an issue as due in 2 days:
+
+```
+The analysis for sample $sample has finished.
+
+Please follow up to do the QC checks.
+
+/due in 2 days
+```
+
+
+
