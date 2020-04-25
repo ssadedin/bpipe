@@ -360,4 +360,9 @@ class LocalCommandExecutor implements CommandExecutor {
     public void mountStorage(StorageLayer storage) {
         // noop - for now!
     }
+    
+    @Override
+    String toString() {
+        "LocalCommandExecutor(job=$id, pid=$pid, started=$startedAt, exitValue=$exitValue)"
+    }
 }
