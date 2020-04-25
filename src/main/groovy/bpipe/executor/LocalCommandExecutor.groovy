@@ -136,7 +136,8 @@ class LocalCommandExecutor implements CommandExecutor {
             CMD_PID_FILE : "${CommandManager.DEFAULT_COMMAND_DIR}/${command.id}.pid",
             CMD_OUT_FILENAME : CMD_OUT_FILENAME,
             CMD_ERR_FILENAME : CMD_ERR_FILENAME,
-            CMD_EXIT_FILENAME : CMD_EXIT_FILENAME
+            CMD_EXIT_FILENAME : CMD_EXIT_FILENAME,
+            SETSID : Utils.isLinux() ? "setsid" : ""
           ]
 
           File wrapperScript = 

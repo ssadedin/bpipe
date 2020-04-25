@@ -12,7 +12,7 @@ module load ${config.modules}
 
 echo \$\$ > ${CMD_PID_FILE}
 
-cat ${CMD_FILENAME} | bash -e 
+cat ${CMD_FILENAME} | $SETSID bash -e 
 
 
 result=\$?
