@@ -269,7 +269,7 @@ class LocalCommandExecutor implements CommandExecutor {
             return
             
         // If we do not have an id, don't attempt to read PID
-        if(id != null)
+        if(id == null)
             return
             
         File pidFile = new File("${CommandManager.DEFAULT_COMMAND_DIR}/${id}.pid")
