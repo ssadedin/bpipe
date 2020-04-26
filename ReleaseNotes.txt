@@ -1,3 +1,59 @@
+=========== Changes for Bpipe Version 0.9.9.9 ============
+
+   - Fix not completely robust reading of exit code for
+     local commands (sometimes command succeeds when shouldn't)
+
+   - Fix local commands not
+     terminating on explicit stop 
+     
+   - Add setsid by default to local jobs on linux - 
+     prevents some cases where jobs abort when precessing 
+     ctrl-c after starting bpipe
+     
+   - Ability to filter gitlab issues identified
+     by title search for updating
+     
+   - Fix new gitlab issues with
+     large content failing to send 
+     
+   - Fix possible runaway killing of processes when
+     local preallocated jobs are explicitly stopped with
+     bpipe stop
+     
+   - Fix file notifications not always incrementing and 
+     therefore overwriting previous notification
+     
+   - Fix notification manager not respecting timeout to allow for
+     setup of channels 
+     
+   - Feature: support for 'debug' command that launches
+     groovy shell. Add debug() to pipeline stage to launch
+     interactive shell.
+     
+   - Fix possible error due to race condition
+     reading read PID with local command executor 
+     
+   - Revamp monitoring of command status for PBS/Torque 
+     based pipelines, by pooling calls to qstat between
+     commands.
+
+   - Feature: archive command to clean up .bpipe directory into
+     restorable zip file
+
+   - Fix file handle leak on some file systems with large scale
+     highly parallelised, long running pipelines
+     
+   - Support referencing params set on command line in
+     bpipe.config 
+     
+   - Fix the default file notification channel overwriting files from
+     other send channels 
+     
+   - Fix possible error if input is referenced in details of send 
+     
+   - Feature: use shebang form to have bpipe pipelines become
+     run executable scripts 
+    
 =========== Changes for Bpipe Version 0.9.9.8 ============
 
 
