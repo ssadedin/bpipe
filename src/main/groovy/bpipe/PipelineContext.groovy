@@ -219,7 +219,7 @@ class PipelineContext {
     * A list of internally set inputs/outputs that are not visible to the user
     * (see use in Checker)
     */
-   List<String> internalOutputs = []
+   List<PipelineFile> internalOutputs = []
    
    List<String> internalInputs = []
    
@@ -2239,7 +2239,13 @@ class PipelineContext {
           command.id = CommandId.newId()
       }
       else {
-          command.id = this.pathToCommandId[checkOutputs[0]?.path]
+          
+          String existingId = this.pathToCommandId[checkOutputs[0]?.path]
+          
+          if(existingId && checkOutputs.every { !pathToCommandId[it]?.path == existingId }) {
+              command.id = existingId
+          }
+
           if(!command.id) {
               command.id = CommandId.newId()
           }
