@@ -25,6 +25,7 @@
  */
 package bpipe.executor
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 
 import java.beans.PropertyChangeEvent
@@ -203,34 +204,61 @@ class LocalCommandExecutor implements CommandExecutor {
         readPID()
        
         if(!this.process && this.pid != -1L) {
-            try {
-                String info = "ps -o ppid,ruser -p ${this.pid}".execute().text
-                def lines = info.split("\n")*.trim()
-                if(lines.size()>1)  {
-                    info = lines[1].split(" ")[1]; 
-                    if(info == System.properties["user.name"]) {
-                        return CommandStatus.RUNNING.name()
-                    }
-                }
-                
-                // Not found? look at exit code if we can
-                Integer storedExitCode = readStoredExitCode()
-                if(storedExitCode != null) {
-                    exitValue = storedExitCode
-                    return CommandStatus.COMPLETE
-                }
-            }
-            catch(Exception e) {
-                log.info "Exception occurred while probing status of command $id: $e"
-            }
-            
-            return CommandStatus.UNKNOWN
+            return getStatusOfSavedProcess()
         }
         else
-        if(exitValue != null)
+        if(this.process != null) {
+            if(this.process.isAlive()) {
+                return CommandStatus.RUNNING
+            }
+            else {
+                if(this.pid != -1L)
+                    this.exitValue = readStoredExitCode()
+                
+                log.info "Command " + this.toString() + " returning complete status after reading exit code $exitValue"
+                return CommandStatus.COMPLETE
+            }
+        }
+        else
+        if(exitValue != null) {
             return CommandStatus.COMPLETE
+        }
         else
             return CommandStatus.RUNNING
+    }
+
+    /**
+     * Read the status of the process where we do not have the live process
+     * avaialble to query its status
+     * 
+     * @return
+     */
+    @CompileStatic
+    private CommandStatus getStatusOfSavedProcess() {
+        try {
+
+            String info = "ps -o ppid,ruser -p ${this.pid}".execute().text
+
+            def lines = info.split("\n")*.trim()
+            if(lines.size()>1)  {
+                info = lines[1].split(" ")[1];
+                if(info == System.properties["user.name"]) {
+                    return CommandStatus.RUNNING.name()
+                }
+            }
+
+            // Not found? look at exit code if we can
+            Integer storedExitCode = readStoredExitCode()
+            if(storedExitCode != null) {
+                exitValue = storedExitCode
+                return CommandStatus.COMPLETE
+            }
+        }
+        catch(Exception e) {
+            log.info "Exception occurred while probing status of command $id: $e"
+        }
+
+        return CommandStatus.UNKNOWN
     }
     
     /**
@@ -240,8 +268,9 @@ class LocalCommandExecutor implements CommandExecutor {
      */
     int waitFor() {
         
-        if(!this.process && this.pid != -1L) {
+        if(this.pid != -1L) {
             Integer exitCode =  readStoredExitCode()
+            log.info "Read stored exit code for $pid: $exitCode"
             if(exitCode != null) {
                 this.exitValue = exitCode
                 return exitValue
@@ -250,7 +279,14 @@ class LocalCommandExecutor implements CommandExecutor {
         
         while(true) {
             if(status() == CommandStatus.COMPLETE.name()) {
-                return exitValue
+                
+                if(this.exitValue == null) {
+                    Integer exitCode =  readStoredExitCode()
+                    if(exitCode != null)
+                        exitValue = exitCode
+                }
+                
+                return exitValue == null ? -1L : exitValue
             }
              synchronized(lock) {
                  lock.wait(500)
@@ -287,6 +323,7 @@ class LocalCommandExecutor implements CommandExecutor {
         }
     }
     
+    @CompileStatic
     Integer readStoredExitCode() {
         File exitFile = new File(".bpipe/commandtmp/$id/$CMD_EXIT_FILENAME")
         if(exitFile.exists()) {
