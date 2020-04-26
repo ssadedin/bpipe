@@ -268,7 +268,8 @@ class OutputDirectoryWatcher extends Thread {
                         
             // Update filename index
             files[fileName] = timestamp
-            log.info "Path $path was updated / created"        
+
+            // log.info "Path $path was updated / created"        
         }
     }
     
