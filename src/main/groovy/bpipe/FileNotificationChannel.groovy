@@ -1,5 +1,6 @@
 package bpipe
 
+import groovy.json.JsonOutput
 import groovy.text.Template
 import groovy.util.logging.Log;
 
@@ -34,18 +35,25 @@ class FileNotificationChannel implements NotificationChannel {
             if(model.containsKey("send.file") && model["send.file"] != null && this.cfg.get('customTarget',true)) 
                 targetFile = new File(model["send.file"])
                 
+            if(model["send.contentType"] == "application/json") {
+                targetFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(model["send.content"]))
+            }
+            else
             if(model["send.content"] instanceof String) {
                 targetFile.text = model["send.content"]
-                log.info "Saved content to ${targetFile}"
             }
             else
             if(model["send.content"] instanceof File)
                 targetFile << model["send.content"].bytes
+
+            log.info "Saved content to ${targetFile}"
         }
         else {
             if(!dir.exists())
                 dir.mkdirs() 
+
             targetFile.text = template.make(model).toString()
+            log.info "Saved content to ${targetFile}"
         }
         ++count
     }
