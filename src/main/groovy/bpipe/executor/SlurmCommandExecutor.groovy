@@ -59,6 +59,9 @@ class SlurmCommandExecutor extends TorqueCommandExecutor implements CommandExecu
      */
     SlurmCommandExecutor() {
         super(new File(System.getProperty("bpipe.home") + "/bin/bpipe-slurm.sh"))
+        
+        // The pooled status polling only works for PBS Torque
+        this.useLegacyJobPolling = false
     }
     
     @Override

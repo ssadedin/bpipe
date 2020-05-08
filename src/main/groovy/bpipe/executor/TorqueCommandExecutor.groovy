@@ -47,6 +47,12 @@ import bpipe.Utils
 class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExecutor {
 
     public static final long serialVersionUID = 0L
+    
+    /**
+     * If set to true, exec the status shell script for every status poll, otherwise use pooled job polling
+     * with direct calls to <code>qstat -x</code>
+     */
+    boolean useLegacyJobPolling = bpipe.Config.userConfig.containsKey('useLegacyTorqueJobPolling') && bpipe.Config.userConfig.useLegacyTorqueJobPolling
 
     /**
      * Constructor
@@ -78,7 +84,7 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
     @Override
     public int waitFor() {
         
-        if(bpipe.Config.userConfig.containsKey('useLegacyTorqueJobPolling') && bpipe.Config.userConfig.useLegacyTorqueJobPolling) {
+        if(useLegacyJobPolling) {
             log.info "Using legacy torque status polling"
             return super.waitFor()
         }
