@@ -2247,7 +2247,7 @@ class PipelineContext {
       associateCommandId(command, checkOutputs)
      
       List<Path> outOfDateOutputs = resolveOutOfDateOutputs(actualResolvedInputs, checkOutputs)
-      if(!outOfDateOutputs) {
+      if(!probeMode && checkOutputs && !outOfDateOutputs) {
           command.outputs = checkOutputs.unique(false) // TODO: unique { it.path } ?
           return createUpToDateExecutor(command, checkOutputs)
       }
