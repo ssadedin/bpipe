@@ -190,7 +190,7 @@ class DirtyFileManager {
     }
     
     List<File> getUncleanManifests() {
-        (List<File>)CommandManager.UNCLEAN_FILE_DIR.listFiles()?:[]
+        (CommandManager.UNCLEAN_FILE_DIR.listFiles()?:[]) as List<File>
     }
     
     List<String> getUncleanFilePaths() {
