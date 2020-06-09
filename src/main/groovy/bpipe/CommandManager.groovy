@@ -55,7 +55,7 @@ class CommandManager {
     /**
      * File where half processed files will be listed on shutdown
      */
-    public static File UNCLEAN_FILE_PATH = new File(".bpipe/inprogress")
+    public static File UNCLEAN_FILE_DIR = new File(".bpipe/inprogress")
     
     /**
      * The location under which running command information will be stored
@@ -110,6 +110,9 @@ class CommandManager {
         
         if(command.id == null)
             command.id = CommandId.newId()
+        else
+            log.info "Starting command with existing id: $command.id"
+                
         
         // Record this as the time the command is "created" (which is
         // really relevant to queuing systems - we wish to be able to see

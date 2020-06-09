@@ -789,51 +789,10 @@ class Runner {
             new File(".bpipe/logs/${parentPid}.erase.log").text=""
         }
             
-        cleanupDirtyFiles()
+        DirtyFileManager.instance.cleanupDirtyFiles()
     }
     
-    /**
-     * Check for any files that were marked dirty but could not be actively cleaned up 
-     * during the pipeline run. We will make one more attempt to clean them up here,
-     * and if that is not possible, print a verbose error for the user.
-     * 
-     * @return
-     */
-    static cleanupDirtyFiles() {
-        File dirtyFile = new File(".bpipe/dirty.txt")
-        List<String> dirtyFiles = []
-        if(dirtyFile.exists()) {
-            dirtyFiles = dirtyFile.readLines() 
-        }        
-        
-        List<String> failedFiles = []
-        dirtyFiles.each { String file ->
-            println "Attempting cleanup of file: $file"
-            List failed 
-            for(int i=0; i<3; ++i) {
-                failed = Utils.cleanup(file)  
-                if(!failed)
-                    break
-                println "Cleanup of $file failed: retry $i"
-                Thread.sleep(500)
-            }
-            
-            if(failed) {
-                failedFiles.addAll(failed)
-            }
-        }
-        
-        if(failedFiles) {
-            println " Warning: Cleanup Failures Occurred ".center(Config.config.columns,"=")
-            failedFiles.each { file ->
-                println(("| " + file).padRight(Config.config.columns-1)+"|")
-            }
-            println "=" * Config.config.columns
-        }
-        dirtyFile.renameTo(new File(".bpipe/dirty.last.txt"))
-    }
-    
-    
+   
     /**
      * Execute the 'cleanup' command
      * @param args

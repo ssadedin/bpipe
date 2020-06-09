@@ -68,7 +68,15 @@ class Stop extends BpipeCommand {
             out.println "No bpipe pipeline found running in this directory."
             return
         }
+       
+        out.println "Sending stop signal to commands"
+                
+        int count = new CommandManager().stopAll()
+        out.println "Stopped $count commands"
         
+        // Give it a tiny window to happen
+        Thread.sleep(100)
+
         if(isRunning(pid)) {
             out.println "Stopping Bpipe process $pid"
             
@@ -81,13 +89,6 @@ class Stop extends BpipeCommand {
             if(output)
                 out.println "Output from kill: $output"
         }
-        
-        // Give it a tiny window to happen
-        Thread.sleep(100)
-        out.println "Sending stop signal to commands"
-                
-        int count = new CommandManager().stopAll()
-        out.println "Stopped $count commands"
     }
     
     void stopPooledCommands() {

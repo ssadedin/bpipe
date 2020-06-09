@@ -22,10 +22,10 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
  * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-
 package bpipe
-
+ 
 import java.nio.file.Files
+
 import java.nio.file.Path
 import java.nio.file.PathMatcher
 import java.util.concurrent.locks.Lock;
@@ -35,14 +35,14 @@ import java.util.regex.Pattern;
 
 import org.codehaus.groovy.tools.shell.Groovysh
 import org.codehaus.groovy.tools.shell.IO
+import groovy.transform.CompileStatic
+import groovy.transform.Memoized
 
 import bpipe.executor.ProbeCommandExecutor
 import bpipe.storage.LocalFileSystemStorageLayer
 import bpipe.storage.LocalPipelineFile
 import bpipe.storage.StorageLayer
 import bpipe.storage.UnknownStoragePipelineFile
-import groovy.transform.CompileStatic
-import groovy.transform.Memoized
 
 /**
 * This context defines implicit functions and variables that are
@@ -59,12 +59,7 @@ class PipelineContext {
     
    
     static Logger log = Logger.getLogger(PipelineContext.name)
-    
-    /**
-     * File where half processed files will be listed on shutdown
-     */
-    public static File UNCLEAN_FILE_PATH = new File(".bpipe/inprogress")
-    
+   
     /**
      * This value is returned when a $thread variable is evaluated in a GString
      * (eg. a command from the user).  The reason for this is that Groovy eagerly
@@ -100,7 +95,9 @@ class PipelineContext {
         this.pipelineStages = pipelineStages
         this.extraBinding = extraBinding
         this.pipelineJoiners = pipelineJoiners
-        this.initUncleanFilePath()
+
+        this.uncleanFilePath = DirtyFileManager.instance.initUncleanFilePath()
+
         this.threadId = Thread.currentThread().getId()
         this.branch = branch
         def pipeline = Pipeline.currentRuntimePipeline.get()
@@ -1452,73 +1449,18 @@ class PipelineContext {
         
         if(doExecute) {
              
-            // Store the list of output files so that if we are killed 
-            // they can be cleaned up
-            this.uncleanFilePath.text += Utils.box(this.output)?.join("\n") 
+            DirtyFileManager.instance.add(this.output)
             
             PipelineDelegate.setDelegateOn(this, body)
             log.info("Producing " + this.@output + " from inputs ${this.@input} (output dir=$outputDirectory)")
             body()
         }
         
-        if(this.@output) {
-            log.info "Adding outputs " + this.@output + " as a result of produce"
-           
-            String commandId = "-1"
-            this.@output.each { PipelineFile o ->
-                
-                // If no inputs were resolved, we assume generically that all the inputs
-                // to the stage were used. This is necessary to deal with
-                // filterLines which doesn't trigger inferred inputs because
-                // it does not execute at all
-                if(!allResolvedInputs && !this.inputWrapper?.resolvedInputs) {
-                    
-                    allResolvedInputs.addAll(Utils.box(this.@input))
-                }
-                
-                if(commandId == "-1") {
-                    String existingCommandId = pathToCommandId[o.path]
-                    commandId = existingCommandId ?: CommandId.newId()
-                }
-  
-                // It's possible the user used produce() but did not actually reference
-                // the output variable anywhere in the body. In that case, we
-                // don't know which command used the output variable so we add an "anonymous" 
-                // output
-                trackOutputIfNotAlreadyTracked(o, "<produce>", commandId)
-            }
-        }
-        
-        if(globOutputs) {
-            List<Path> normalizedInputs = Utils.box(this.@input).collect { PipelineFile pf -> pf.toPath().normalize().toAbsolutePath() }
-            for(pattern in globOutputs) {
-                
-                FileGlobber glob = new FileGlobber(storage:associatedStorage)
-                def result = glob.glob(pattern)
-                
-                // We are not interested in any outputs that were actually inputs
-                // But why are only direct inputs and not prior inputs from upstream stages considered?
-//                def result = Utils.glob(pattern).grep {  !normalizedInputs.contains( new File(it).absolutePath) }
-                
-                log.info "Found outputs for glob $pattern: [$result]"
-                
-                String commandId = associatedCommand?.id?:"-1"
-                
-                result.each { String output ->
-                    
-                    if(commandId == "-1")
-                        commandId = CommandId.newId();
-                        
-                    pathToCommandId[output] = commandId
-                    trackOutputIfNotAlreadyTracked(output, "<produce>", commandId) 
-                }
-                
-                if(Utils.box(this.@output))
-                    this.setRawOutput(this.@output + result)
-                else
-                    this.setRawOutput(result)
-            }
-        }
+        log.info "Adding outputs " + this.@output + " as a result of produce"
+       
+        associateOutputsToProduce()
+
+        associateGlobsToCommandAndAssignOutputs(associatedStorage, globOutputs, associatedCommand)
         
         this.currentFileNameTransform = null
 
@@ -1526,6 +1468,72 @@ class PipelineContext {
         this.inputResets = []
         
         return out
+    }
+
+    /**
+     * For each of the globs, identify matched files and assign them as outputs, and associate to the command
+     */
+    private associateGlobsToCommandAndAssignOutputs(StorageLayer associatedStorage, List globOutputs, Command associatedCommand) {
+        
+        if(!globOutputs)
+            return
+        
+        FileGlobber glob = new FileGlobber(storage:associatedStorage)
+        List<Path> normalizedInputs = Utils.box(this.@input).collect { PipelineFile pf -> pf.toPath().normalize().toAbsolutePath() }
+        for(pattern in globOutputs) {
+
+            def result = glob.glob(pattern)
+
+            // We are not interested in any outputs that were actually inputs
+            // But why are only direct inputs and not prior inputs from upstream stages considered?
+            //                def result = Utils.glob(pattern).grep {  !normalizedInputs.contains( new File(it).absolutePath) }
+
+            log.info "Found outputs for glob $pattern: [$result]"
+
+            String commandId = associatedCommand?.id?:CommandId.newId()
+
+            result.each { String output ->
+                pathToCommandId[output] = commandId
+                trackOutputIfNotAlreadyTracked(output, "<produce>", commandId)
+            }
+
+            if(Utils.box(this.@output))
+                this.setRawOutput(this.@output + result)
+            else
+                this.setRawOutput(result)
+        }
+    }
+    
+    /**
+     * Take all of the existing resolved outputs and associate them generically
+     * to a produce block in the tracked outputs
+     */
+    private void associateOutputsToProduce() {
+        String commandId = "-1"
+        this.@output?.each { PipelineFile o ->
+            
+            // If no inputs were resolved, we assume generically that all the inputs
+            // to the stage were used. This is necessary to deal with
+            // filterLines which doesn't trigger inferred inputs because
+            // it does not execute at all
+            if(!allResolvedInputs && !this.inputWrapper?.resolvedInputs) {
+                
+                allResolvedInputs.addAll(Utils.box(this.@input))
+            }
+            
+            // TODO: This logic looks very dubious - why not use the correct command id for 
+            // output subsequent to first unresolved, if they can be resolved?
+            if(commandId == "-1") {
+                String existingCommandId = pathToCommandId[o.path]
+                commandId = existingCommandId ?: CommandId.newId()
+            }
+
+            // It's possible the user used produce() but did not actually reference
+            // the output variable anywhere in the body. In that case, we
+            // don't know which command used the output variable so we add an "anonymous" 
+            // output
+            trackOutputIfNotAlreadyTracked(o, "<produce>", commandId)
+        }
     }
 
     /**
@@ -2235,44 +2243,13 @@ class PipelineContext {
           convertToPipelineFiles(command, Utils.box(this.@inputWrapper?.resolvedInputs) + internalInputs).collect { aliases[it] }
 
       log.info "Checking actual resolved inputs $actualResolvedInputs"
-      if(probeMode) {
-          command.id = CommandId.newId()
-      }
-      else {
-          
-          String existingId = this.pathToCommandId[checkOutputs[0]?.path]
-          
-          if(existingId && checkOutputs.every { !pathToCommandId[it]?.path == existingId }) {
-              command.id = existingId
-          }
 
-          if(!command.id) {
-              command.id = CommandId.newId()
-          }
-      }
-      
-      trackedOutputs[command.id] = command              
-      
-      List<Path> outOfDateOutputs = null
-      if(probeMode) {
-          log.info "Skip check dependencies due to probe mode"
-      }
-      else
-      if(!checkOutputs) {
-          log.info "Skip check dependencies due to no outputs to check"
-      }
-      else {
-          outOfDateOutputs = Dependencies.instance.getOutOfDate(checkOutputs,actualResolvedInputs)
-          if(!outOfDateOutputs) {
-              command.outputs = checkOutputs.unique() // TODO: unique { it.path } ?
-              return createUpToDateExecutor(command, checkOutputs)
-          }
-          else
-          if(Runner.touchMode) {
-            Utils.touchPaths(outOfDateOutputs)
-            if(outOfDateOutputs.every { Files.exists(it) })
-                return createUpToDateExecutor(command, checkOutputs)
-          }              
+      associateCommandId(command, checkOutputs)
+     
+      List<Path> outOfDateOutputs = resolveOutOfDateOutputs(actualResolvedInputs, checkOutputs)
+      if(!outOfDateOutputs) {
+          command.outputs = checkOutputs.unique(false) // TODO: unique { it.path } ?
+          return createUpToDateExecutor(command, checkOutputs)
       }
       
       // Reset the inferred outputs - once they are used the user should have to refer to them
@@ -2293,13 +2270,14 @@ class PipelineContext {
         if(toolsDiscovered)
             this.doc(["tools" : toolsDiscovered])
       }
-
+      
       command.branch = this.branch
       command.outputs = checkOutputs.unique() // TODO: unique { it.path } ?
       
       assert command.outputs.every { it instanceof PipelineFile }
       
       command.stageId = this.pipelineStages[-1].id
+      
       try {
           command = commandManager.start(stageName, command, config, Utils.box(this.input), 
                                          this.usedResources,
@@ -2319,10 +2297,60 @@ class PipelineContext {
       }
           
       // log.info "Command $command.id started with resources " + this.usedResources
-          
-      List outputFilter = command.executor.ignorableOutputs
-
       return command
+    }
+
+    /**
+     * Search for an output that is out of date with respect to the given inputs
+     * 
+     * @param command
+     * @param actualResolvedInputs
+     * @param checkOutputs
+     * 
+     * @return  a list of out-of-date outputs or null if none were out of date
+     */
+    private List resolveOutOfDateOutputs(List actualResolvedInputs, List checkOutputs) {
+        List<Path> outOfDateOutputs = null
+        if(probeMode) {
+            log.info "Skip check dependencies due to probe mode"
+        }
+        else
+        if(!checkOutputs) {
+            log.info "Skip check dependencies due to no outputs to check"
+        }
+        else {
+            outOfDateOutputs = Dependencies.instance.getOutOfDate(checkOutputs,actualResolvedInputs)
+            if(outOfDateOutputs && Runner.touchMode) {
+                Utils.touchPaths(outOfDateOutputs)
+                if(outOfDateOutputs.every { Files.exists(it) })
+                    return null
+            }
+        }
+        return outOfDateOutputs
+    }
+
+    /**
+     * Check if there is already an id for this command, and if so, associate it,
+     * otherwise assign a new id, and associate it to the command
+     */
+    private void associateCommandId(Command command, List checkOutputs) {
+        if(probeMode) {
+            command.id = CommandId.newId()
+        }
+        else {
+
+            String existingId = this.pathToCommandId[checkOutputs[0]?.path]
+
+            if(existingId && checkOutputs.every { !pathToCommandId[it]?.path == existingId }) {
+                command.id = existingId
+            }
+
+            if(!command.id) {
+                command.id = CommandId.newId()
+            }
+        }
+        
+        trackedOutputs[command.id] = command              
     }
 
     
@@ -2787,20 +2815,6 @@ class PipelineContext {
        return this.pipelineStages[-1]
    }
    
-    /**
-     * First delete and then initialize with blank contents the list of 
-     * unclean files
-     */
-    void initUncleanFilePath() {
-        if(!UNCLEAN_FILE_PATH.exists()) 
-            UNCLEAN_FILE_PATH.mkdirs()
-            
-        this.uncleanFilePath = new File(UNCLEAN_FILE_PATH, String.valueOf(Thread.currentThread().id))   
-        if(uncleanFilePath.exists())
-            this.uncleanFilePath.delete()
-        this.uncleanFilePath.text = ""
-    }
-    
     /**
      * Cache of related contexts so that we do not compute them too often
      */

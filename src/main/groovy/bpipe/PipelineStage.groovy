@@ -248,6 +248,8 @@ class PipelineStage {
             setContextNextInputs()
                
             saveOutputMetaData()
+            
+            DirtyFileManager.theInstance.clear()
         }
         catch(UserTerminateBranchException e) {
             throw e
@@ -501,48 +503,13 @@ class PipelineStage {
         // Before cleaning up, make sure we resolve the final outputs
         this.context.resolveOutputs()
         
-        // Out of caution we don't remove output files if they existed before this stage ran.
-        // Otherwise we might destroy existing data
-        if(this.context.rawOutput != null) {
+        if(this.context.rawOutput.is(null))
+            return
             
-            OutputDirectoryWatcher odw 
-            if(context.outputDirectory != null) {
-                odw = OutputDirectoryWatcher.getDirectoryWatcher(context.outputDirectory)
-                odw.sync()
-            }
-             
-            def newOutputFiles = Utils.box(this.context.rawOutput).collect { it.toString() }.unique()
-            newOutputFiles.removeAll { fn ->
-                boolean keep = odw?.isPreexisting(fn)
-                if(keep)
-                    log.info "Keeping $fn because determined as pre-existing"
-                return keep;
-            }
-            log.info("Cleaning up: $newOutputFiles")
-            List<String> failed = Utils.cleanup(newOutputFiles)
-            if(failed) {
-                markDirty(failed)
-            }
-        }
+        DirtyFileManager.instance.cleanup(context.outputDirectory, context.rawOutput)
     }
     
-    /**
-     * Record the given file as dirty - ie: should be cleaned up
-     * @param file
-     * @return
-     */
-    synchronized static markDirty(List<String> files) {
-        files.collect { new File(it).canonicalFile }.each { File file ->
-            File dirtyFile = new File(".bpipe/dirty.txt")
-            List<String> dirtyFiles = []
-            if(dirtyFile.exists()) {
-                dirtyFiles = dirtyFile.readLines() 
-            }
-            dirtyFiles.add(file.absolutePath)
-            dirtyFile.text = dirtyFiles.join("\n")
-        }
-    }
-    
+   
     /**
      * The context provided to a stage can have a set of additional variables 
      * defined in its binding. This method copies them into the binding of the
