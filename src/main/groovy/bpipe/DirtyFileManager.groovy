@@ -154,15 +154,11 @@ class DirtyFileManager {
         if(DIRT_FILE.exists()) {
             dirtyFiles = DIRT_FILE.readLines() 
         }        
-        
-        List<String> uncleanFiles = 
-            (List<String>)(CommandManager.UNCLEAN_FILE_DIR.listFiles()?:[]).collect {
-                ((File)it).readLines()*.trim().grep { it }
-            }
-            .sum()
-        
+        List<File> uncleanFileManifests = getUncleanManifests()
+        List<String> uncleanFilePaths = getUncleanFilePaths()
+       
         List<String> failedFiles = []
-        (dirtyFiles + uncleanFiles).each { String file ->
+        (dirtyFiles + uncleanFilePaths).each { String file ->
             List failed 
             for(int i=0; i<3; ++i) {
                 failed = Utils.cleanup(file)  
@@ -185,7 +181,23 @@ class DirtyFileManager {
             }
             println "=" * cols
         }
-        DIRT_FILE.renameTo(new File(".bpipe/dirty.last.txt"))
+        else {
+            uncleanFileManifests.each { File f ->
+                f.delete()
+            }
+            DIRT_FILE.renameTo(new File(".bpipe/dirty.last.txt"))
+        }
+    }
+    
+    List<File> getUncleanManifests() {
+        (List<File>)CommandManager.UNCLEAN_FILE_DIR.listFiles()?:[]
+    }
+    
+    List<String> getUncleanFilePaths() {
+        (getUncleanManifests().collect {
+                ((File)it).readLines()*.trim().grep { it }
+        }
+        .sum()?:[]) as List<String>
     }
     
     @CompileStatic

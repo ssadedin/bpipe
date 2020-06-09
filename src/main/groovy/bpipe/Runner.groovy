@@ -455,6 +455,7 @@ class Runner {
 
         initThreads*.join(20000)
         
+       
         // create the pipeline script instance and set the binding obj
         log.info "Parsing script ... "
         
@@ -467,6 +468,8 @@ class Runner {
 
         // RUN it
         try {
+            checkDirtyFiles()
+
             log.info "Run ... "
             normalShutdown = false
             script.run()
@@ -792,6 +795,17 @@ class Runner {
         DirtyFileManager.instance.cleanupDirtyFiles()
     }
     
+    static void checkDirtyFiles() {
+        def dirtyFiles = DirtyFileManager.getTheInstance().getUncleanFilePaths()
+        if(dirtyFiles) {
+            println "=" * Config.config.columns
+            println ""
+            println "WARNING: dirty files may be present from a previous run. Please check these paths:"
+            println ""
+            println dirtyFiles.collect { '\t' + it + '\n' }.join('')
+            throw new PipelineError("Dirty files were found. Please inspect and remove contents of " + CommandManager.UNCLEAN_FILE_DIR + " after being sure the files are OK")
+        }
+    }
    
     /**
      * Execute the 'cleanup' command
