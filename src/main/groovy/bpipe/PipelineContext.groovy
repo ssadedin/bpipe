@@ -314,32 +314,41 @@ class PipelineContext {
             pipeline.inboundBranches = null
         }
         
-        if(this.@output == null && this.@defaultOutput == null) {
-            
-            String initialDefaultOutput = stageName
-            if(this.@input) {
-                // If we are running in a sub-pipeline that has a name, make sure we
-                // reflect that in the output file name.  The name should only be applied to files
-                // produced form the first stage in the sub-pipeline
-                if(pipeline.name && !pipeline.nameApplied) {
-                    initialDefaultOutput = String.valueOf(Utils.first(this.@input)) + "." + pipeline.name + "."+stageName
-                    // Note we don't set pipeline.nameApplied = true here
-                    // if it is really applied then that is flagged in PipelineContext
-                    // Setting the applied flag here will stop it from being applied
-                    // in the transform / filter constructs 
-                }
-                else {
-                    initialDefaultOutput = String.valueOf(Utils.first(this.@input)) + "." + stageName
-                }
-            }
-            
-            // Ensure there is no directory attached to the default output
-            this.defaultOutput = new File(initialDefaultOutput).name
+        if(isOutputSet()) {
+            initializeDefaultOutput(stageName, pipeline)
         }
         
         branch.dirChangeListener = { String dirName ->
             outputTo(dirName)
         }
+    }
+    
+    @CompileStatic
+    boolean isOutputSet() {
+       this.@output == null && this.@defaultOutput == null 
+    }
+
+    @CompileStatic
+    private void initializeDefaultOutput(String stageName, Pipeline pipeline) {
+        String initialDefaultOutput = stageName
+        if(this.@input) {
+            // If we are running in a sub-pipeline that has a name, make sure we
+            // reflect that in the output file name.  The name should only be applied to files
+            // produced form the first stage in the sub-pipeline
+            if(pipeline.name && !pipeline.nameApplied) {
+                initialDefaultOutput = String.valueOf(Utils.first(this.@input)) + "." + pipeline.name + "."+stageName
+                // Note we don't set pipeline.nameApplied = true here
+                // if it is really applied then that is flagged in PipelineContext
+                // Setting the applied flag here will stop it from being applied
+                // in the transform / filter constructs
+            }
+            else {
+                initialDefaultOutput = String.valueOf(Utils.first(this.@input)) + "." + stageName
+            }
+        }
+
+        // Ensure there is no directory attached to the default output
+        this.defaultOutput = new File(initialDefaultOutput).name
     }
    
    String getDefaultOutput() {
