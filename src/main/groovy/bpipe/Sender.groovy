@@ -242,13 +242,6 @@ class Sender {
        else
            log.info "Sending $content to $cfgName"
            
-       if(content instanceof String)
-           sentFile.text = content
-       else
-       if(sentFile instanceof File) {
-           sentFile << content.bytes
-       }
-       
        Map props = [
             "stage" : ctx.currentStage,
             "send.content": content,
@@ -257,7 +250,9 @@ class Sender {
             "send.file" : this.details.file
         ]
         
-       if('properties' in details) {
+       FileNotificationChannel.modelContentToFile(props, sentFile)
+
+        if('properties' in details) {
            details.properties.each { k,v ->
                props[k] = v
            }
