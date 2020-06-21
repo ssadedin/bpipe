@@ -56,8 +56,11 @@ class AgentCommandRunner implements Runnable {
     @Override
     public void run() {
         
-        concurrency?.acquire()
-        log.info "Gained concurrency permit to run command $worxCommandId"
+        if(concurrency != null) {
+            concurrency.acquire()
+            log.info "Gained concurrency permit (${concurrency.availablePermits()} remaining) to run command $worxCommandId"
+        }
+
         int exitCode = 0
         try {
             executeAndRespond(worxCommandId) {
@@ -87,8 +90,11 @@ class AgentCommandRunner implements Runnable {
         }
         finally {
             bpipe.Utils.closeQuietly(worx.close())
-            log.info "Releasing concurrency permit from command $worxCommandId"
-            concurrency?.release()
+            
+            if(concurrency != null) {
+                concurrency.release()
+                log.info "Released concurrency permit from command $worxCommandId (${concurrency.availablePermits()} now available)"
+            }
             
             if(this.completionListener != null) {
                 log.info "Completion listener set: sending completion notification"
