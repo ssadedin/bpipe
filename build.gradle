@@ -53,7 +53,8 @@ dependencies {
         
         // Override with json from 2.5.6 because we want new features from the json
         // module to allow json customisation
-        compile group: 'org.codehaus.groovy', name: 'groovy-json', version: '2.5.6'
+        compile files(fileTree(dir:'groovy-lib', includes:['groovy-json-2.5.6.jar']))
+//        compile group: 'org.codehaus.groovy', name: 'groovy-json', version: '2.5.6'
     }
     else {
         compile files(fileTree(dir:'groovy-lib', includes:['*.jar']))
