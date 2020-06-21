@@ -211,11 +211,12 @@ class Forwarder extends TimerTask {
 
         modified = true
 
-        log.info "Read " + count + " chars from $p starting with " + Utils.truncnl(new String(buffer, 0, Math.min(count,30)),25)
-
         // TODO: for neater output we could trim the output to the
         // most recent newline here
         String content = new String(buffer,0,count)
+        
+        log.info "Read " + count + " chars from $p starting with " + Utils.truncnl(content.take(30),25)
+        
         Appendable dest = fileDestinations[p]
         dest.append(content)
         if(dest instanceof Flushable) {
