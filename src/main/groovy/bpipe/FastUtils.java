@@ -25,8 +25,6 @@
 
 package bpipe;
 
-import groovy.transform.CompileStatic;
-
 import java.util.regex.Pattern;
 
 /**
