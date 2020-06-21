@@ -47,7 +47,13 @@ dependencies {
     println "*" * 100
 
     if(GROOVY_VERSION.startsWith('2.4')) {
+        
+        // Grab the groovy-all jar which contains everything
         compile group: 'org.codehaus.groovy', name: 'groovy-all', version: '2.4.8'
+        
+        // Override with json from 2.5.6 because we want new features from the json
+        // module to allow json customisation
+        compile group: 'org.codehaus.groovy', name: 'groovy-json', version: '2.5.6'
     }
     else {
         compile files(fileTree(dir:'groovy-lib', includes:['*.jar']))
