@@ -1,5 +1,6 @@
 package bpipe
 
+import groovy.json.JsonGenerator
 import groovy.json.JsonOutput
 import groovy.text.Template
 import groovy.util.logging.Log;
@@ -35,16 +36,7 @@ class FileNotificationChannel implements NotificationChannel {
             if(model.containsKey("send.file") && model["send.file"] != null && this.cfg.get('customTarget',true)) 
                 targetFile = new File(model["send.file"])
                 
-            if(model["send.contentType"] == "application/json") {
-                targetFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(model["send.content"]))
-            }
-            else
-            if(model["send.content"] instanceof String) {
-                targetFile.text = model["send.content"]
-            }
-            else
-            if(model["send.content"] instanceof File)
-                targetFile << model["send.content"].bytes
+            modelContentToFile(model, targetFile)
 
             log.info "Saved content to ${targetFile}"
         }
@@ -56,6 +48,41 @@ class FileNotificationChannel implements NotificationChannel {
             log.info "Saved content to ${targetFile}"
         }
         ++count
+    }
+
+    static void modelContentToFile(final Map model, final File targetFile) {
+        if(model["send.contentType"] == "application/json") {
+
+            JsonGenerator jsonGenerator = safeJsonGenerator()
+
+            Object content = model["send.content"]
+            String json = jsonGenerator.toJson(content)
+
+            targetFile.text = JsonOutput.prettyPrint(json) + '\n'
+        }
+        else
+        if(model["send.content"] instanceof String) {
+            targetFile.text = model["send.content"]
+        }
+        else
+        if(model["send.content"] instanceof File)
+            targetFile << model["send.content"].bytes
+    }
+
+    static JsonGenerator safeJsonGenerator() {
+        JsonGenerator jsonGenerator =
+                new JsonGenerator.Options()
+                .addConverter(PipelineFile) { PipelineFile f ->
+                    f.absolutePath
+                }
+                .addConverter(PipelineInput) { PipelineInput i ->
+                    i.toString()
+                }
+                .addConverter(PipelineOutput) { PipelineOutput i ->
+                    i.toString()
+                }
+                .build()
+        return jsonGenerator
     }
 
     @Override
