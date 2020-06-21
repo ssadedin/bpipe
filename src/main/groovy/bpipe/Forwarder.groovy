@@ -188,14 +188,12 @@ class Forwarder extends TimerTask {
                         }
                     }
                     catch(Exception e) {
-                        log.warning "Unable to read file $p"
-                        e.printStackTrace()
+                        log.log Level.WARNING, "Unable to read file $p", e
                     }
                 }
             }
             catch(Exception e) {
-                log.severe("Failure in output forwarding")
-                e.printStackTrace()
+                log.log(Level.WARNING, "Failure in output forwarding", e)
             }
         }
         return modified
