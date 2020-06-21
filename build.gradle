@@ -79,10 +79,11 @@ dependencies {
     compile group: 'org.apache.activemq', name: 'activemq-client', version: '5.14.5'
 
     compile group: 'org.glassfish.jersey.core', name: 'jersey-client', version: '2.25.1'
+    compile group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.25.1'
 
     compile group: 'com.fasterxml.jackson.jaxrs', name: 'jackson-jaxrs-json-provider', version: '2.9.1'
     compile group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.0' // needed for gitlab4j
-    compile(group: 'org.gitlab4j', name: 'gitlab4j-api', version: '4.7.17') { transitive = false } // note 4.8 not compatible with jdk1.7
+    compile(group: 'org.gitlab4j', name: 'gitlab4j-api', version: '4.14.30') { transitive = false } 
 
     compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.0'
 
@@ -142,6 +143,7 @@ jar {
     exclude { details ->
         // details.relativePath.pathString.startsWith('javax/xml') ||
         details.relativePath.pathString.startsWith('org/xml') // ||
+//        details.relativePath.pathString.startsWith('jersey') // ||
 //        details.relativePath.pathString.startsWith('org/slf4j')
     }
 }

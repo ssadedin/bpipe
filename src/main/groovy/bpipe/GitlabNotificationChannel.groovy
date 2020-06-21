@@ -34,8 +34,18 @@ import org.gitlab4j.api.NotesApi
 
 import groovy.json.JsonSlurper
 import groovy.text.Template
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import org.gitlab4j.api.models.*
+
+class GitlabFileReference {
+    FileUpload upload
+    String path
+    
+    String replaceIn(String content) {
+        content.replaceAll(/\[(.*)\]\($path\)/, '[$1](' + upload.url + ')')
+    }
+}
 
 @Log
 class GitlabNotificationChannel implements NotificationChannel {
@@ -64,7 +74,22 @@ class GitlabNotificationChannel implements NotificationChannel {
 	public void notify(PipelineEvent event, String subject, Template template, Map<String, Object> model) {
         
         Map issueDetails = model['send.content']
-		
+       
+       	if(!('description' in issueDetails) && template) {
+			issueDetails.description = template.make(issueDetails + model).toString()
+        }
+
+        List<GitlabFileReference> fileReferences = []
+        if('send.file' in model) {
+            fileReferences <<  uploadFile(model['send.file'])
+        }
+        
+        if(issueDetails.description) {
+            fileReferences.each { ref ->
+                issueDetails.description = ref.replaceIn(issueDetails.description)
+            }
+        }
+ 	
         if(this.updateExistingIssue(issueDetails))
             return
             
@@ -75,11 +100,8 @@ class GitlabNotificationChannel implements NotificationChannel {
 		
 		Map params = [
 			title: issueDetails.title,
+            description: issueDetails.description
 		]
-		
-		if('description' in issueDetails)
-			params.description = issueDetails.description
-		
 			
 		if('assignee' in issueDetails)  {
 			User u = gitlab.userApi.findUsers(issueDetails.assignee)[0]
@@ -148,6 +170,19 @@ class GitlabNotificationChannel implements NotificationChannel {
 			log.info "No issue found corresonding to title $issueDetails.title in project $project.id: treating as new issue"
             return false
 		}
+    }
+    
+    @CompileStatic
+    GitlabFileReference uploadFile(def fileLikeObj) {
+        File actualFile = new File(fileLikeObj.toString()).absoluteFile
+        
+        log.info "Uploading $actualFile to project $project.id at $baseURL"
+        
+        def result = gitlab.projectApi.uploadFile(project.id, actualFile)
+        
+        log.info "File upload suceeded with path: " + result.url
+
+        return new GitlabFileReference(path: fileLikeObj.toString(), upload: result)
     }
 
 	@Override
