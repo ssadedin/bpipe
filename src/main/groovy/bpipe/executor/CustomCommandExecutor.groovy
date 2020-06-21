@@ -475,7 +475,7 @@ class CustomCommandExecutor implements PersistentExecutor {
     }
     
     String statusMessage() {
-        "$runningCommand, running since $startedAt ($config), Job ID = #${commandId}"
+        "$runningCommand, running since $startedAt ($config), Queue ID = #${commandId}, Job ID = ${command?.id}"
     }
 
     /**
