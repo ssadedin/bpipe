@@ -183,7 +183,7 @@ class Forwarder extends TimerTask {
                     
                 for(Path p in scanFiles) {
                     try {
-                        p.withInputStream { InputStream ifs ->
+                        Files.newInputStream(p).withStream { InputStream ifs ->
                             modified = updateFileContent(p, ifs, buffer, modified)
                         }
                     }
