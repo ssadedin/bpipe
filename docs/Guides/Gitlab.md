@@ -76,6 +76,42 @@ title. The map should have two attributes:
 
 If no issue is identified using the advanced syntax then no issue will be created at all.
 
+## Attaching Files and Embedding Images
+
+Gitlab support also includes ability to attach files from your pipeline outputs. To enable 
+a file to be attached, it first has to be uploaded. To trigger the upload, add it as part of the
+configuration for the `send` using the extended send syntax:
+
+```
+    send issue(                                                                         
+    ... details ...
+    ) to channel: 'gitlab', file: input.txt
+```
+
+This will cause the file to be uploaded and an upload URL will be created. Uploaded files then become available for
+reference in the description of the issue, simply by embeddedin them using the usual markdown syntax for files:
+
+```
+    send issue(                                                                         
+        description: "This file contains the results: [results file]($input.txt)"
+    ) to channel: 'gitlab', file: input.txt
+```
+
+Note that the `input.txt` referenced in the description has to be the same one that you
+reference in the channel configuration.
+
+_Note_: at this time only one file can be attached.
+
+Embedding images is the same as attaching files. You simply prefix the file reference
+in your description with a `!` to cause it to be rendered in the issue instead of treated
+as an attachment. For example:
+
+```
+    send issue(                                                                         
+        title: 'Results of Experiment',
+        description: "This figure shows my results:\n ![Figure 1]($input.png)"
+    ) to channel: 'gitlab', file: input.png
+```
 
 ## Gitlab Actions
 
