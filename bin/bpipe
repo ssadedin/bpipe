@@ -159,6 +159,11 @@ cleanup() {
     then
       for ip in .bpipe/inprogress/* ;
       do
+          if [ ! -e $ip ];
+          then
+              continue
+          fi
+
           if [ `wc -l $ip | awk '{ print $1}'` -ne 0 ];
           then
               echo "Cleaning up files from context $ip"
