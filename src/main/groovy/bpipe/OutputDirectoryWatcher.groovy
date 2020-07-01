@@ -72,10 +72,7 @@ class OutputDirectoryWatcher extends Thread {
     private static Map<String,OutputDirectoryWatcher> watchers = [:]
     
     OutputDirectoryWatcher(String directory) {
-        this.directory = new File(directory).toPath()
-        if(!Config.userConfig.getOrDefault('usePollerFileWatcher', false)) {
-            this.watcher = FileSystems.getDefault().newWatchService();
-        }
+        this(new File(directory).toPath())
     } 
     
     OutputDirectoryWatcher(Path directory) {
@@ -200,6 +197,7 @@ class OutputDirectoryWatcher extends Thread {
     }
 
     private boolean setupWatcher(boolean mkdir=true) {
+        
         try {
             if(!Files.exists(this.directory) && mkdir)
                 this.directory.toFile().mkdirs()
@@ -227,6 +225,7 @@ class OutputDirectoryWatcher extends Thread {
     
     @CompileStatic
     void processEvent(WatchEvent.Kind kind, Path path) {
+        
         Path resolvedPath = this.directory.resolve(path)
         if(!Files.exists(resolvedPath)) {
             log.warning "Watcher notified about path $resolvedPath which doesn't exist: ignoring" 
@@ -310,10 +309,14 @@ class OutputDirectoryWatcher extends Thread {
     
     @CompileStatic
     Map<String, Long> modifiedSince(long timeMs) {
+        
+        long thresholdTimeMs = (long)(timeMs/1000L)* 1000L
+
         Map<String,Long> results = [:]
+
         synchronized(this.timestamps) {
             Map.Entry<Long,List<String>> entry
-            long entryTimeMs = timeMs
+            long entryTimeMs = Math.max(0,thresholdTimeMs-1)
             while(entry = this.timestamps.higherEntry(((Long)entryTimeMs))) {
                 for(String path in entry.value) {
                     results[path] = entry.key
@@ -346,6 +349,7 @@ class OutputDirectoryWatcher extends Thread {
      * This is achieved by actually creating a file and waiting for the notification
      * of that file to be received.
      */
+    @CompileStatic
     void sync() {
         
         // create tmp file

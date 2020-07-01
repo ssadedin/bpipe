@@ -432,9 +432,12 @@ class PipelineStage {
      */
     void saveOutputMetaData() {
         OutputDirectoryWatcher watcher = OutputDirectoryWatcher.getDirectoryWatcher(context.outputDirectory)
+        
+        watcher.sync()
                 
         // Save the output meta data
         Map<String,Long> modifiedFiles = watcher.modifiedSince(startDateTimeMs)
+        
         if(modifiedFiles.size()<20) {
             log.info "Files modified since $startDateTimeMs in $stageName are $modifiedFiles"
         }
