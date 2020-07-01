@@ -2605,7 +2605,7 @@ class PipelineContext {
        return resolvedInputs.flatten().unique().grep { it }
     }
 
-    private resolveInputsForExtension(String ext, Map counts, List reverseOutputs, List siblingBranchOutputs, boolean crossBranch, boolean allowForeign) {
+    private List resolveInputsForExtension(String ext, Map counts, List reverseOutputs, List siblingBranchOutputs, boolean crossBranch, boolean allowForeign) {
         List result = resolveInputsFromUpstreamBranches(ext, counts, reverseOutputs)
         if(result) {
             log.info "Resolved: $result for $ext"
@@ -2626,10 +2626,10 @@ class PipelineContext {
 
         // Finally, resolve inputs using the default storage layer where they exist
         // in the file system, are not known outputs, AND are older than the start time of the pipeline
-        result = resolveAsPreExistingFile(ext, crossBranch, allowForeign)
-        if(result) {
+        PipelineFile preExistingFile = resolveAsPreExistingFile(ext, crossBranch, allowForeign)
+        if(preExistingFile) {
             counts[ext]++
-            return result
+            return [preExistingFile]
         }
     }
 
