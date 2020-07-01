@@ -249,6 +249,11 @@ public class Pipeline implements ResourceRequestor {
     boolean aborted = false
     
     /**
+     * Set to true for child pipelines when they are terminated
+     */
+    boolean finished = false
+    
+    /**
      * If a pipeline failed with an exception, it sets the exception(s) here
      */
     List<Throwable> failExceptions = []
@@ -1049,6 +1054,8 @@ public class Pipeline implements ResourceRequestor {
         return dummyPriorStage
     }
     
+    List<Pipeline> children = []
+    
     /**
      * Create a new pipeline that is initialized with copies of all the same state
      * that this pipeline has.  The new pipeline can execute concurrently with this
@@ -1075,6 +1082,7 @@ public class Pipeline implements ResourceRequestor {
         else
             p.id = id
             
+        this.children << p
         ++this.childCount
         return p
     }

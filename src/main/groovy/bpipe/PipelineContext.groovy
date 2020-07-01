@@ -2526,107 +2526,13 @@ class PipelineContext {
        
        // Find all the pipeline stages outputs that were created
        // in the same thread
-       def reverseOutputs 
-       synchronized(pipelineStages) {
-           reverseOutputs = pipelineStages.reverse().grep { 
-                  isRelatedContext(it.context) && !it.context.is(this)
-           }.collect { Utils.box(it.context.@output) }
-           
-           // Add a final stage that represents the original inputs (bit of a hack)
-           // You can think of it as the initial inputs being the output of some previous stage
-           // that we know nothing about
-           reverseOutputs.add(Utils.box(pipelineStages[0].context.@input))
-       }
-       
-       // Add an initial stage that represents the current input to this stage.  This way
-       // if the from() spec is used and matches the actual inputs then it will go with those
-       // rather than searching backwards for a previous match
-       List myInput = Utils.box(this.@input)
-       log.info "Forcing input $myInput to head of resolution queue"
-       reverseOutputs.add(0,myInput)
-       
-       int outputCount = reverseOutputs*.size().sum()
-       if(outputCount<20) {
-           log.info "Input list to check:  $reverseOutputs"
-       }
-       else {
-           log.info "Input list to check has $outputCount entries (" + reverseOutputs[0].size() + ") in tier 1"
-       }
+       def reverseOutputs = getReverseOutputStack(pipelineStages)
        
        assert reverseOutputs.every { outs -> outs.every { it instanceof PipelineFile } }
        
        exts = Utils.box(exts).collect { (it instanceof PipelineOutput || it instanceof PipelineInput) ? it.toString() : it }
-       
-       Map extTotals = exts.countBy { it }
-       
-       // Counts of how many times each extension has been referenced
-       Map<String,Integer> counts = exts.inject([:]) { r,ext -> r[ext]=0; r }
-       def resolvedInputs = exts.collect { String ext ->
-           
-           String normExt = ext
-           def matcher
-           boolean globMatch = normExt.indexOf('*')>=0
-           if(!globMatch) {
-             ext.startsWith(".") ? ext : "." + ext
-             matcher = { log.info("Check $it ends with $normExt");  it?.path?.endsWith(normExt) }
-           }
-           else {
-             final Pattern m = FastUtils.globToRegex(normExt)
-             log.info "Converted glob pattern $normExt to regex ${m.pattern()}"
-             matcher = { PipelineFile fileToMatch ->
-//                 log.info "Match $fileName to ${m.pattern()}"
-                 fileToMatch ? m.matcher(fileToMatch.path).matches() : false
-             }
-           }
-           
-           int previousReferences = counts[ext]
-           counts[ext]++
-           
-           // Count of how many of this kind of extension have been consumed
-           int count = 0
-           for(s in reverseOutputs) {
-               List outputsFound = s.grep { matcher(it) }
-               
-               log.info "Matched : $outputsFound"
-               
-               if(outputsFound) {
-                   
-                   if(globMatch) {
-                       return outputsFound
-                   }
-                   else
-                   if(previousReferences - count < outputsFound.size()) {
-                     log.info("Checking ${s} vs $normExt Y")
-//                     int start = previousReferences - count
-//                     int end =   outputsFound.size() - (previousReferences - count)
-//                     if(previousReferences >= extTotals[ext]-1)
-//                       return outputsFound[start..end]
-//                     else
-                       return outputsFound[previousReferences - count]
-                   }
-                   else
-                       count+=outputsFound.size()
-               }
-//               log.info("Checking outputs ${s} vs $inp N")
-           }
-          
-           // Finally, resolve inputs using the default storage layer where they exist 
-           // in the file system, are not known outputs, AND are older than the start time of the pipeline
-           return resolveAsPreExistingFile(ext, (boolean)options.crossBranch, (boolean)options.allowForeign)
-       }
-       
-       log.info "Found inputs $resolvedInputs for spec $orig"
-       
-       List missingInputs = resolvedInputs.findIndexValues { it == null }
-       if(missingInputs) {
-           if(exts.size()>1)
-               throw new PipelineError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with $orig\nMost likely missing extensions: ${exts[missingInputs]}")
-           else
-               throw new PipelineError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with $orig")
-       }
-           
-       // resolvedInputs = Utils.unbox(resolvedInputs)
-       resolvedInputs = resolvedInputs.flatten().unique()
+     
+       List resolvedInputs = resolveInputsMatchingSpecs(exts, orig, reverseOutputs, (boolean)options.crossBranch, (boolean)options.allowForeign)
        
        def oldInputs = this.@input
        this.@input  = resolvedInputs
@@ -2639,6 +2545,188 @@ class PipelineContext {
        else
            return this // Allows chaining of the next command
    }
+   
+   /**
+    * Attempt to resolve an input for each extension specified in exts by searching upstream in the
+    * branch for this stage / context, or if crossBranch is enabled, also searching sibling branches,
+    * waiting for the sibling branches to finish if necessary.
+    * 
+    * @param exts            the file specifications ot search for
+    * @param orig            the original file specifications requested by the user
+    * @param reverseOutputs  the outputs of this branch up to this stage
+    * @param crossBranch    if true, search other branches of the parent, or globally if ext matches full path to a file
+    * @param allowForeign   if true, allow files not created by this pipeline
+    * 
+    * @return   List of resolved files matching the specification of exts
+    */
+   List<PipelineFile> resolveInputsMatchingSpecs(List exts, List orig, List reverseOutputs, boolean crossBranch, boolean allowForeign) {
+       List resolvedInputs
+       while(true) {
+           
+           boolean allSiblingsFinished = false
+           List siblingBranchOutputs = []
+           if(crossBranch) {
+               def myPipeline = Pipeline.currentRuntimePipeline.get()
+               Pipeline parentPipeline = myPipeline.parent
+               siblingBranchOutputs  = parentPipeline.children.collect { Pipeline siblingPipeline ->
+                   getReverseOutputStack(siblingPipeline.myStages, false)
+               }
+               allSiblingsFinished = parentPipeline.children.every { it.finished || it.is(myPipeline) }
+           }
+  
+           // Counts of how many times each extension has been referenced
+           Map<String,Integer> counts = exts.inject([:]) { r,ext -> r[ext]=0; r }
+
+           resolvedInputs = exts.collect { String ext ->
+               resolveInputsForExtension(ext, counts, reverseOutputs, siblingBranchOutputs, crossBranch, allowForeign)
+           }
+       
+           log.info "Found inputs $resolvedInputs for spec $orig"
+           
+           try {
+               checkForMissingInputs(orig, exts, resolvedInputs)
+               
+               break
+           }
+           catch(InputMissingError exMissing) {
+               if(!crossBranch)
+                   throw exMissing
+                   
+               if(allSiblingsFinished) {
+                   log.info "Give up waiting for inputs matching $exts because all sibling branches are complete"
+                   throw exMissing
+               }
+                   
+               log.info "Wait for one or more pending inputs of type(s) $exts for $stageName ($branch) ..."
+               Thread.sleep(5000)
+           }
+       }
+           
+       return resolvedInputs.flatten().unique().grep { it }
+    }
+
+    private resolveInputsForExtension(String ext, Map counts, List reverseOutputs, List siblingBranchOutputs, boolean crossBranch, boolean allowForeign) {
+        List result = resolveInputsFromUpstreamBranches(ext, counts, reverseOutputs)
+        if(result) {
+            log.info "Resolved: $result for $ext"
+            counts[ext]++
+            return result
+        }
+
+        if(crossBranch) {
+            for(siblingOutputs in siblingBranchOutputs) {
+                log.info "Attempt resolution from sibling outputs: " + siblingOutputs
+                result = resolveInputsFromUpstreamBranches(ext, counts, siblingOutputs)
+                if(result) {
+                    counts[ext]++
+                    return result
+                }
+            }
+        }
+
+        // Finally, resolve inputs using the default storage layer where they exist
+        // in the file system, are not known outputs, AND are older than the start time of the pipeline
+        result = resolveAsPreExistingFile(ext, crossBranch, allowForeign)
+        if(result) {
+            counts[ext]++
+            return result
+        }
+    }
+
+    private List getReverseOutputStack(List<PipelineStage> stages, boolean relatedOnly=true) {
+        def reverseOutputs
+        synchronized(stages) {
+            reverseOutputs = stages.reverse().grep {
+                !relatedOnly || (isRelatedContext(it.context) && !it.context.is(this))
+            }.collect { 
+                Utils.box(it.context.@output) 
+            }
+
+            // Add a final stage that represents the original inputs (bit of a hack)
+            // You can think of it as the initial inputs being the output of some previous stage
+            // that we know nothing about
+            reverseOutputs.add(Utils.box(stages[0].context.@input))
+        }
+
+        // Add an initial stage that represents the current input to this stage.  This way
+        // if the from() spec is used and matches the actual inputs then it will go with those
+        // rather than searching backwards for a previous match
+        
+        if(stages.is(pipelineStages)) {
+            List myInput = Utils.box(this.@input)
+            log.info "Forcing input $myInput to head of resolution queue"
+            reverseOutputs.add(0,myInput)
+        }
+
+        int outputCount = reverseOutputs*.size().sum()
+        if(outputCount<20) {
+            log.info "Input list to check:  $reverseOutputs"
+        }
+        else {
+            log.info "Input list to check has $outputCount entries (" + reverseOutputs[0].size() + ") in tier 1"
+        }
+        return reverseOutputs
+    }
+
+    private List resolveInputsFromUpstreamBranches(String ext, Map counts, List reverseOutputs) {
+        String normExt = ext
+        def matcher
+        boolean globMatch = normExt.indexOf('*')>=0
+        if(!globMatch) {
+            ext.startsWith(".") ? ext : "." + ext
+            matcher = { log.info("Check $it ends with $normExt");  it?.path?.endsWith(normExt) }
+        }
+        else {
+            final Pattern m = FastUtils.globToRegex(normExt)
+            log.info "Converted glob pattern $normExt to regex ${m.pattern()}"
+            matcher = { PipelineFile fileToMatch ->
+                //                 log.info "Match $fileName to ${m.pattern()}"
+                fileToMatch ? m.matcher(fileToMatch.path).matches() : false
+            }
+        }
+
+        int previousReferences = counts[ext]
+
+        // Count of how many of this kind of extension have been consumed
+        int count = 0
+        for(s in reverseOutputs) {
+            List outputsFound = s.grep { matcher(it) }
+
+            log.info "Matched : $outputsFound"
+
+            if(outputsFound) {
+
+                if(globMatch) {
+                    return outputsFound
+                }
+                else
+                if(previousReferences - count < outputsFound.size()) {
+                    log.info("Checking ${s} vs $normExt Y")
+                    return [outputsFound[previousReferences - count]]
+                }
+                else
+                    count+=outputsFound.size()
+            }
+        }
+    }
+
+    /**
+     * Throw a user level exception if any of the resolved inputs are null,
+     * referencing the index of the extension 
+     * 
+     * @param orig              the extensions the user requested
+     * @param exts              the mapping of requested extensions by index
+     * @param resolvedInputs    the actual inputs that were resolved (null when not resolved)
+     */
+    private checkForMissingInputs(orig, List exts, List resolvedInputs) {
+        List missingInputs = resolvedInputs.findIndexValues { it == null }
+        if(missingInputs) {
+            if(exts.size()>1)
+                throw new InputMissingError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with $orig\nMost likely missing extensions: ${exts[missingInputs]}")
+            else
+                throw new InputMissingError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with $orig")
+        }
+    }
    
    /**
     * Check if the given file is resolvable as a pre-existing file.
