@@ -947,7 +947,7 @@ public class Pipeline implements ResourceRequestor {
         }, intervalMs, intervalMs, TimeUnit.MILLISECONDS)
     }
     
-    static String DATE_FORMAT="yyyy-MM-dd HH:mm:ss"
+    final static String DATE_FORMAT="yyyy-MM-dd HH:mm:ss"
     
     void saveResultState(boolean failed, List<Check> allChecks, List<Check> failedChecks) {
        
