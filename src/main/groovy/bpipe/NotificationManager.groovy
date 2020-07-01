@@ -174,12 +174,15 @@ class NotificationManager {
 		}
         
         // Figure out the right template name from the channel configuration
-        // Note that in most situations, detail[send.contentType] below will be null
-        // - only when the pipeline itself is sending content and suggests a content type
-        // will it be non-null
-        String templateName = channel.getDefaultTemplate(detail["send.contentType"])
-        if(cfg.containsKey("template")) {
-            templateName = cfg.template
+        String templateName = detail['template']
+        if(templateName == null) {
+            // Note that in most situations, detail[send.contentType] below will be null
+            // - only when the pipeline itself is sending content and suggests a content type
+            // will it be non-null
+            templateName = channel.getDefaultTemplate(detail["send.contentType"])
+            if(cfg.containsKey("template")) {
+                templateName = cfg.template
+            }
         }
         
         // Is it customized for this event?
