@@ -339,7 +339,7 @@ class Dependencies {
                 if(!timestamps.containsKey(o.path)) { 
                     // TODO - CLOUD - comparing just the paths will get confused if the same path exists on two
                     // storage providers
-                    if(o.exists() || this.outputFilesGenerated.contains(o) || context.@input.any { it.path == o.path}) {
+                    if(p.exists() || this.outputFilesGenerated.contains(o) || context.@input.any { it.path == o.path}) {
                         log.info "Not overwriting meta data for $o because it was not created or modified by stage ${context.stageName}"
                         continue
                     }
