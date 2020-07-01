@@ -67,6 +67,7 @@ class BranchRunner implements Runnable {
             child.initBranch(childName, !applyName)
             child.branch.setParent(parent.branch)
             child.runSegment(files, segmentClosure)
+            child.finished = true
         }
         catch(Exception e) {
             log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
