@@ -2694,7 +2694,7 @@ class PipelineContext {
                 }
                 else
                 if(previousReferences - count < outputsFound.size()) {
-                    log.info("Checking ${s} vs $normExt Y")
+                    log.info("Checking ${s} vs $ext Y")
                     return [outputsFound[previousReferences - count]]
                 }
                 else
