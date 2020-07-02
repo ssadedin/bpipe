@@ -2559,6 +2559,7 @@ class PipelineContext {
     * 
     * @return   List of resolved files matching the specification of exts
     */
+   @CompileStatic
    List<PipelineFile> resolveInputsMatchingSpecs(List exts, List orig, List reverseOutputs, boolean crossBranch, boolean allowForeign) {
        List resolvedInputs
        while(true) {
@@ -2575,10 +2576,10 @@ class PipelineContext {
            }
   
            // Counts of how many times each extension has been referenced
-           Map<String,Integer> counts = exts.inject([:]) { r,ext -> r[ext]=0; r }
+           Map<String,Integer> counts = exts.collectEntries { [it, 0] }
 
-           resolvedInputs = exts.collect { String ext ->
-               resolveInputsForExtension(ext, counts, reverseOutputs, siblingBranchOutputs, crossBranch, allowForeign)
+           resolvedInputs = exts.collect { ext ->
+               resolveInputsForExtension((String)ext, counts, reverseOutputs, siblingBranchOutputs, crossBranch, allowForeign)
            }
        
            log.info "Found inputs $resolvedInputs for spec $orig"
@@ -2602,10 +2603,11 @@ class PipelineContext {
            }
        }
            
-       return resolvedInputs.flatten().unique().grep { it }
+       return (List<PipelineFile>)resolvedInputs.flatten().unique().grep { it }
     }
 
-    private List resolveInputsForExtension(String ext, Map counts, List reverseOutputs, List siblingBranchOutputs, boolean crossBranch, boolean allowForeign) {
+    @CompileStatic
+    private List resolveInputsForExtension(String ext, Map<String,Integer> counts, List reverseOutputs, List<List> siblingBranchOutputs, boolean crossBranch, boolean allowForeign) {
         List result = resolveInputsFromUpstreamBranches(ext, counts, reverseOutputs)
         if(result) {
             log.info "Resolved: $result for $ext"
@@ -2633,11 +2635,12 @@ class PipelineContext {
         }
     }
 
+    @CompileStatic
     private List getReverseOutputStack(List<PipelineStage> stages, boolean relatedOnly=true) {
         def reverseOutputs
         synchronized(stages) {
-            reverseOutputs = stages.reverse().grep {
-                !relatedOnly || (isRelatedContext(it.context) && !it.context.is(this))
+            reverseOutputs = stages.reverse().grep { PipelineStage s ->
+                !relatedOnly || (isRelatedContext(s.context) && !s.context.is(this))
             }.collect { 
                 Utils.box(it.context.@output) 
             }
@@ -2653,12 +2656,12 @@ class PipelineContext {
         // rather than searching backwards for a previous match
         
         if(stages.is(pipelineStages)) {
-            List myInput = Utils.box(this.@input)
+            List myInput = Utils.box(this.@input) as List
             log.info "Forcing input $myInput to head of resolution queue"
             reverseOutputs.add(0,myInput)
         }
 
-        int outputCount = reverseOutputs*.size().sum()
+        int outputCount = (int)reverseOutputs*.size().sum()
         if(outputCount<20) {
             log.info "Input list to check:  $reverseOutputs"
         }
@@ -2668,22 +2671,12 @@ class PipelineContext {
         return reverseOutputs
     }
 
-    private List resolveInputsFromUpstreamBranches(String ext, Map counts, List reverseOutputs) {
-        String normExt = ext
-        def matcher
-        boolean globMatch = normExt.indexOf('*')>=0
-        if(!globMatch) {
-            ext.startsWith(".") ? ext : "." + ext
-            matcher = { log.info("Check $it ends with $normExt");  it?.path?.endsWith(normExt) }
-        }
-        else {
-            final Pattern m = FastUtils.globToRegex(normExt)
-            log.info "Converted glob pattern $normExt to regex ${m.pattern()}"
-            matcher = { PipelineFile fileToMatch ->
-                //                 log.info "Match $fileName to ${m.pattern()}"
-                fileToMatch ? m.matcher(fileToMatch.path).matches() : false
-            }
-        }
+    @CompileStatic
+    private List resolveInputsFromUpstreamBranches(String ext, Map counts, List<List<PipelineFile>> reverseOutputs) {
+
+        boolean globMatch = ext.indexOf('*')>=0
+
+        def matcher = matcherForFileSpec(ext)
 
         int previousReferences = counts[ext]
 
@@ -2708,6 +2701,26 @@ class PipelineContext {
                     count+=outputsFound.size()
             }
         }
+    }
+
+    /**
+     * @param ext   the specification for files to match - a file extension or glob pattern
+     * @return      a closure that identifies whether the given spec matches a PipelineFile
+     */
+    private Closure matcherForFileSpec(String ext) {
+        def matcher
+        boolean globMatch = ext.indexOf('*')>=0
+        if(!globMatch) {
+            matcher = { PipelineFile f -> log.info("Check $f ends with $ext");  f?.path?.endsWith(ext) }
+        }
+        else {
+            final Pattern m = FastUtils.globToRegex(ext)
+            log.info "Converted glob pattern $ext to regex ${m.pattern()}"
+            matcher = { PipelineFile fileToMatch ->
+                fileToMatch ? m.matcher(fileToMatch.path).matches() : false
+            }
+        }
+        return matcher
     }
 
     /**
