@@ -19,6 +19,11 @@ class Config {
 	 * exposed.
 	 */
     static Map<String,Object> config = [
+        
+        // Environment to select, when multiple are availabe in a bpipe.config file
+        environment: 'default',
+        
+        // Width of output to display
         columns: 100,
         
         // Default mode is "run", but "define" will just produce a definition
@@ -131,8 +136,10 @@ class Config {
      * different analyses it will be useful)
      */
     public static void readUserConfig() {
+        
+        println "Loading user configuration using environment: " + Config.config.environment 
 		
-        ConfigSlurper slurper = new ConfigSlurper()
+        ConfigSlurper slurper = Config.config.environment == 'default' ? new ConfigSlurper() : new ConfigSlurper(Config.config.environment)
         
         slurper.setBinding(Runner.binding.getVariables().collectEntries {it})
         

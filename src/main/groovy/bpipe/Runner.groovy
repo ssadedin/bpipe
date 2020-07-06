@@ -297,6 +297,7 @@ class Runner {
                  p longOpt: 'param', 'defines a pipeline parameter, or file of paramaters via @<file>', args: 1, argName: 'param=value', valueSeparator: ',' as char
                  b longOpt: 'branch', 'Comma separated list of branches to limit execution to', args:1
                  s longOpt: 'source', 'Load the given pipeline file(s) before running / executing', args: 1
+                 e longOpt: 'env', 'Environment to select from alternate configurations in bpipe.config', args: 1
                  'L' longOpt: 'interval', 'the default genomic interval to execute pipeline for (samtools format)',args: 1
             }
             
@@ -333,6 +334,10 @@ class Runner {
             log.info "No CLI parameters specified"
         }
         
+        if(opt.e) {
+            Config.config.environment = opt.e
+        }
+        
         // read the configuration file, if available
         readUserConfig()
         
@@ -340,6 +345,9 @@ class Runner {
         if(opts.v) {
             Utils.configureVerboseLogging()
         }
+        
+        log.info "Loading user configuration using environment: " + Config.config.environment 
+	 
         
         if(opts.d) {
             Config.config.defaultOutputDirectory = opts.d
