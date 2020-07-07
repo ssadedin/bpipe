@@ -137,8 +137,7 @@ class Config {
      */
     public static void readUserConfig() {
         
-        println "Loading user configuration using environment: " + Config.config.environment 
-		
+	
         ConfigSlurper slurper = Config.config.environment == 'default' ? new ConfigSlurper() : new ConfigSlurper(Config.config.environment)
         
         slurper.setBinding(Runner.binding.getVariables().collectEntries {it})
