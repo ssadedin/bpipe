@@ -80,7 +80,7 @@ class GitlabNotificationChannel implements NotificationChannel {
         }
 
         List<GitlabFileReference> fileReferences = []
-        if('send.file' in model) {
+        if(model['send.file']) {
             fileReferences <<  uploadFile(model['send.file'])
         }
         

@@ -261,7 +261,8 @@ class Sender {
        // The file can actually be a PipelineOutput or similar which leads to 
        // bizarre errors when serializing to JSON because the whole PipelineContext
        // gets captured in there
-       props['send.file'] = String.valueOf(props['send.file'])
+       if(props['send.file'] != null)
+           props['send.file'] = String.valueOf(props['send.file'])
        
        if(details.containsKey('url')) {
            sendToURL(details)
