@@ -7,6 +7,7 @@ import static Utils.splitShellArgs as sp
 
 import org.junit.Test;
 
+import bpipe.storage.LocalPipelineFile
 import groovy.time.TimeCategory
 
 class UtilsTest {
@@ -109,4 +110,30 @@ class UtilsTest {
         
         assert result == "hello"
     }
+    
+    @Test
+    void findOlderTest() {
+        
+        new File('src/test/data').mkdirs()
+
+        def old = 'src/test/data/older.txt'
+        new File(old).text = 'hello'
+        Thread.sleep(2000)
+        
+        def newer ='src/test/data/newer.txt'
+        new File(newer).text = 'world'
+        
+        def older = Utils.findOlder([new LocalPipelineFile(old)],[new LocalPipelineFile(newer)])
+        
+        assert older.size() == 1
+        
+        older = Utils.findOlder([new LocalPipelineFile(newer)],[new LocalPipelineFile(newer)])
+
+        assert older.size() == 0
+        
+        older = Utils.findOlder([new LocalPipelineFile(newer)],[new LocalPipelineFile('src/test/data')])
+
+        assert older.size() == 0
+    }
+    
 }

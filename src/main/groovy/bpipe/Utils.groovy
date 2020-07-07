@@ -119,17 +119,17 @@ class Utils {
         if(outputsToCheck.any { it instanceof String })
             assert false : "Output specified as raw string: internal error"
         
-        // Some pipeline stages don't expect any outputs
-        // Fixing issue 44 - https://code.google.com/p/bpipe/issues/detail?id=44
-        if( !outputsToCheck || !inputs )
-            return []
-            
         List<Path> inputPaths = toPaths(inputs)
         
         // Remove any directories appearing as inputs - their timestamps change whenever
         // any file in the dir changes        
         inputPaths = inputPaths.grep { Path p -> !Files.isDirectory(p) }
         
+        // Some pipeline stages don't expect any outputs
+        // Fixing issue 44 - https://code.google.com/p/bpipe/issues/detail?id=44
+        if( !outputsToCheck || !inputPaths )
+            return []
+
         TreeMap inputFileTimestamps = new TreeMap()
         for(Path inputPath in inputPaths) {
             // NOTE: it doesn't actually matter if two have the same 
