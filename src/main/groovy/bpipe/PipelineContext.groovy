@@ -2576,7 +2576,7 @@ class PipelineContext {
            }
   
            // Counts of how many times each extension has been referenced
-           Map<String,Integer> counts = exts.collectEntries { [it, 0] }
+           Map<String,Integer> counts = exts.collectEntries { [String.valueOf(it), 0] }
 
            resolvedInputs = exts.collect { ext ->
                resolveInputsForExtension((String)ext, counts, reverseOutputs, siblingBranchOutputs, crossBranch, allowForeign)
