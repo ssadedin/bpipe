@@ -206,10 +206,6 @@ class Sender {
         if(cfgName?.startsWith('$'))
             cfgName = cfgName.substring(1)
         
-        if(details == null) {
-            details = [:]
-        }
-        
         if(!details.containsKey("subject")) {
             details.subject = defaultSubject
         }
