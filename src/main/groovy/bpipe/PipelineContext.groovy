@@ -2564,9 +2564,10 @@ class PipelineContext {
        List resolvedInputs
        while(true) {
            
+           boolean searchSiblings = Config.userConfig.getOrDefault('searchCrossBranchSiblings', false)
            boolean allSiblingsFinished = false
            List siblingBranchOutputs = []
-           if(crossBranch) {
+           if(crossBranch && searchSiblings) {
                def myPipeline = Pipeline.currentRuntimePipeline.get()
                Pipeline parentPipeline = myPipeline.parent
                if(parentPipeline) {
@@ -2592,7 +2593,7 @@ class PipelineContext {
                break
            }
            catch(InputMissingError exMissing) {
-               if(!crossBranch)
+               if(!crossBranch || !searchSiblings)
                    throw exMissing
                    
                if(allSiblingsFinished) {
