@@ -2685,20 +2685,24 @@ class PipelineContext {
         for(s in reverseOutputs) {
             List outputsFound = s.grep { matcher(it) }
 
-            log.info "Matched : $outputsFound"
+            log.info "Matched : $outputsFound for $ext"
 
             if(outputsFound) {
-
                 if(globMatch) {
                     return outputsFound
                 }
                 else
-                if(previousReferences - count < outputsFound.size()) {
+                if(previousReferences - count < outputsFound.size()) { // try to resolve as extension, but resolving expected input for index
                     log.info("Checking ${s} vs $ext Y")
                     return [outputsFound[previousReferences - count]]
                 }
+                else 
+                if(outputsFound.find { it.path == ext }) { // if we match the whole file name, we do not need to match the index
+                    return [outputsFound.find { it.path == ext }]
+                }
                 else
                     count+=outputsFound.size()
+
             }
         }
     }
