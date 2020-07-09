@@ -2643,8 +2643,12 @@ class PipelineContext {
         synchronized(stages) {
             reverseOutputs = stages.reverse().grep { PipelineStage s ->
                 !relatedOnly || (isRelatedContext(s.context) && !s.context.is(this))
-            }.collect { 
+            }
+            .collect { 
                 Utils.box(it.context.@output) 
+            }
+            .grep { 
+                it
             }
 
             // Add a final stage that represents the original inputs (bit of a hack)
