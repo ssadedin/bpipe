@@ -2569,10 +2569,12 @@ class PipelineContext {
            if(crossBranch) {
                def myPipeline = Pipeline.currentRuntimePipeline.get()
                Pipeline parentPipeline = myPipeline.parent
-               siblingBranchOutputs  = parentPipeline.children.collect { Pipeline siblingPipeline ->
-                   getReverseOutputStack(siblingPipeline.myStages, false)
+               if(parentPipeline) {
+                   siblingBranchOutputs  = parentPipeline.children.collect { Pipeline siblingPipeline ->
+                       getReverseOutputStack(siblingPipeline.myStages, false)
+                   }
+                   allSiblingsFinished = parentPipeline.children.every { it.finished || it.is(myPipeline) }
                }
-               allSiblingsFinished = parentPipeline.children.every { it.finished || it.is(myPipeline) }
            }
   
            // Counts of how many times each extension has been referenced
