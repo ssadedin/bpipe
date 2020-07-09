@@ -430,13 +430,17 @@ class PipelineStage {
      * Identify which files were modified by execution of the stage and 
      * update their saved metadata.
      */
+    @CompileStatic
     void saveOutputMetaData() {
         OutputDirectoryWatcher watcher = OutputDirectoryWatcher.getDirectoryWatcher(context.outputDirectory)
         
-        watcher.sync()
-                
         // Save the output meta data
         Map<String,Long> modifiedFiles = watcher.modifiedSince(startDateTimeMs)
+        
+        if(context.executedOutputs.any { !(it.path in modifiedFiles) }) {
+            watcher.sync()
+            modifiedFiles = watcher.modifiedSince(startDateTimeMs)
+        }
         
         if(modifiedFiles.size()<20) {
             log.info "Files modified since $startDateTimeMs in $stageName are $modifiedFiles"
@@ -444,7 +448,7 @@ class PipelineStage {
         else {
             log.info "${modifiedFiles.size()} files modified since $startDateTimeMs in $stageName"
         }
-        Dependencies.instance.saveOutputs(this, modifiedFiles, Utils.box(this.context.@input))
+        Dependencies.theInstance.saveOutputs(this, modifiedFiles, (List)Utils.box(this.context.@input))
         
     }
 
