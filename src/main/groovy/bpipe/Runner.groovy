@@ -121,6 +121,8 @@ class Runner {
     
     public static boolean testMode = false
     
+    public static boolean cleanupRequired = false
+    
     public static void main(String [] args) {
         
         if(!BPIPE_HOME || BPIPE_HOME.isEmpty()) {
@@ -180,12 +182,14 @@ class Runner {
         else
         if(mode == "preallocate")  {
             log.info("Mode is preallocate")
+            Config.config["mode"] = mode
             new PreallocateCommand(args as List).run(System.out)
             exit(0) 
         }
         else
         if(mode == "archive")  {
             log.info("Mode is archive")
+            Config.config["mode"] = mode
             new ArchiveCommand(args as List).run(System.out)
             exit(0) 
         }
@@ -210,6 +214,7 @@ class Runner {
         else
         if(mode == "jobs") {
             log.info("Mode is jobs")
+            Config.config["mode"] = mode
             new bpipe.cmd.JobsCommand(args as List).run(System.out)
             exit(0)
         } 
@@ -244,6 +249,7 @@ class Runner {
         else
         if(mode == "stats") {
             log.info("Displaying stats")
+            Config.config["mode"] = mode
             new bpipe.cmd.StatsCommand(args as List).run(System.out)
             exit(0)
         } 
@@ -257,6 +263,8 @@ class Runner {
         else {
             
             if(mode == "retry" || mode == "resume" || mode == "remake") {
+                
+                cleanupRequired = true
                 
                 if(mode == "resume")
                     runningCommands = CommandManager.getCurrentCommands()
@@ -800,7 +808,9 @@ class Runner {
             new File(".bpipe/logs/${parentPid}.erase.log").text=""
         }
             
-        DirtyFileManager.instance.cleanupDirtyFiles()
+        if(cleanupRequired) {
+            DirtyFileManager.instance.cleanupDirtyFiles()
+        }
     }
     
     static void checkDirtyFiles() {
