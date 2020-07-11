@@ -250,6 +250,64 @@ class PipelineCategory {
         return plusImplementation
     }
     
+    @CompileStatic
+    static Object rightShift(Closure c, String channel) {
+        
+        Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
+        
+        Closure rightShiftImplementation = {
+            
+            Pipeline runtimePipeline = Pipeline.currentRuntimePipeline.get()
+            String myChannel = runtimePipeline.channel ?: runtimePipeline.branch.name
+            String branchName = runtimePipeline.branch.name
+
+            Pipeline targetPipeline 
+            Pipeline targetParent = runtimePipeline.parent
+
+            while(!targetPipeline && !targetParent.is(null)) {
+                targetPipeline = targetParent.children.find { 
+                    it.channel == channel && it.branch.name == branchName
+                }
+                
+                if(targetPipeline)
+                    break
+                    
+                branchName = targetParent.branch.name
+                targetParent = targetParent.parent
+            }
+
+            if(!targetPipeline) 
+                throw new PipelineError('Unknown channel ' + channel + ' specified to forward results from ' + runtimePipeline.branch.name)
+  
+            log.info "Register channel $myChannel with $targetPipeline"
+            synchronized(targetPipeline.channelResults) {
+                targetPipeline.channelResults[myChannel] = (List<PipelineFile>)null // signifying pending
+            }
+               
+            def results = []
+            try {
+                results = (List<PipelineFile>)Utils.box(c())
+            }
+            finally {
+                log.info "Forwarding results: $results to channel $channel in target pipeline $targetPipeline"
+                synchronized(targetPipeline.channelResults) {
+                    targetPipeline.channelResults[myChannel] = results.collect { it }
+                    targetPipeline.channelResults.notifyAll()
+                }
+            }
+
+            return results
+        }
+        
+        pipeline.joiners << rightShiftImplementation
+        
+        return rightShiftImplementation
+    }
+    
+    static Object multiply(List objs, Map segments) {
+        multiply(objs.collect { String.valueOf(it) } as Set, segments*.value, segments*.key)
+    }
+
     static Object multiply(List objs, List segments) {
         multiply(objs.collect { String.valueOf(it) } as Set, segments)
     }
@@ -259,6 +317,10 @@ class PipelineCategory {
     }
     
     static Object multiply(Set objs, List segments) {
+        multiply(objs, segments, null)
+    }
+
+    static Object multiply(Set objs, List segments, List channels) {
         
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
         
@@ -290,6 +352,7 @@ class PipelineCategory {
             chrs.sort()
             
             Node branchPoint = parent.addBranchPoint("split")
+            int segmentIndex = 0
             for(Closure s in segments) {
                 log.info "Processing segment ${s.hashCode()}"
                 
@@ -314,6 +377,10 @@ class PipelineCategory {
                     
                     log.info "Creating pipeline to run on branch $chr"
                     Pipeline child = Pipeline.currentRuntimePipeline.get().fork(branchPoint, chr.toString(), forkId)
+                    if(channels) {
+                        child.channel = channels[segmentIndex]
+                        log.info "Assigned channel $child.channel to $child"
+                    }
                     forkId = child.id
                     currentStage.children << child
                     Closure segmentClosure = s
@@ -351,6 +418,7 @@ class PipelineCategory {
                     } as Runnable
                     childPipelines << child
                 }
+                ++segmentIndex
             }
             return runAndWaitFor(currentStage, childPipelines, threads)
         }

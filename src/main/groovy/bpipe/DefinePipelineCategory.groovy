@@ -407,6 +407,10 @@ class DefinePipelineCategory {
         multiply("*", segments)
     }
     
+    static Object multiply(List objs, Map segments) {
+        multiply(objs, segments*.value)
+    }
+
     static Object multiply(List chrs, List segments) {
         multiply("*", segments)
     }
@@ -422,6 +426,11 @@ class DefinePipelineCategory {
     static Object multiply(String pattern, Closure c) {
         throw new PipelineError("Multiply syntax requires a list of stages")
     }
+    
+    static Object rightShift(Closure c, String channel) {
+        return c
+    }
+    
     
     String branchSeparator = stageSeparator
         

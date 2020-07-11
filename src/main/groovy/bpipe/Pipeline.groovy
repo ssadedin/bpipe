@@ -164,6 +164,11 @@ public class Pipeline implements ResourceRequestor {
     Set<Closure> joiners = Collections.newSetFromMap(new ConcurrentHashMap())
     
     /**
+     * Files accumulated from channels in children of this pipeline
+     */
+    Map<String,List<PipelineFile>> channelResults = [:]
+    
+    /**
      * A node representing the graph structure of the pipeline underneath this 
      * pipeline
      */
@@ -194,6 +199,11 @@ public class Pipeline implements ResourceRequestor {
      * This is null and not used in the default, root pipeline
      */
     Branch branch = new Branch()
+    
+    /**
+     * The channel to which the pipeline belongs
+     */
+    String channel
     
     /**
      * If there are unmerged child branches pending for this branch, then they are set here

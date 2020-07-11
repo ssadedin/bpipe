@@ -2524,15 +2524,10 @@ class PipelineContext {
        
        def orig = exts
        
-       // Find all the pipeline stages outputs that were created
-       // in the same thread
-       def reverseOutputs = getReverseOutputStack(pipelineStages)
-       
-       assert reverseOutputs.every { outs -> outs.every { it instanceof PipelineFile } }
-       
+      
        exts = Utils.box(exts).collect { (it instanceof PipelineOutput || it instanceof PipelineInput) ? it.toString() : it }
      
-       List resolvedInputs = resolveInputsMatchingSpecs(exts, orig, reverseOutputs, (boolean)options.crossBranch, (boolean)options.allowForeign)
+       List resolvedInputs = resolveInputsMatchingSpecs(exts, orig, (boolean)options.crossBranch, (boolean)options.allowForeign)
        
        def oldInputs = this.@input
        this.@input  = resolvedInputs
@@ -2560,15 +2555,25 @@ class PipelineContext {
     * @return   List of resolved files matching the specification of exts
     */
    @CompileStatic
-   List<PipelineFile> resolveInputsMatchingSpecs(List exts, List orig, List reverseOutputs, boolean crossBranch, boolean allowForeign) {
+   List<PipelineFile> resolveInputsMatchingSpecs(List exts, List orig, boolean crossBranch, boolean allowForeign) {
        List resolvedInputs
+       
+       boolean lastCheck = false
+       
        while(true) {
+           
+           // Find all the pipeline stages outputs that were created
+           // in the same thread
+           def reverseOutputs = getReverseOutputStack(pipelineStages)
+           
+           assert reverseOutputs.every { outs -> outs.every { it instanceof PipelineFile } }
+  
            
            boolean searchSiblings = Config.userConfig.getOrDefault('searchCrossBranchSiblings', false)
            boolean allSiblingsFinished = false
            List siblingBranchOutputs = []
+           def myPipeline = Pipeline.currentRuntimePipeline.get()
            if(crossBranch && searchSiblings) {
-               def myPipeline = Pipeline.currentRuntimePipeline.get()
                Pipeline parentPipeline = myPipeline.parent
                if(parentPipeline) {
                    siblingBranchOutputs  = parentPipeline.children.collect { Pipeline siblingPipeline ->
@@ -2593,16 +2598,44 @@ class PipelineContext {
                break
            }
            catch(InputMissingError exMissing) {
-               if(!crossBranch || !searchSiblings)
-                   throw exMissing
+               
+               def channelResults = myPipeline.channelResults
+               
+               List<Map.Entry> pendingChannels = (List<Map.Entry>)channelResults.grep { Map.Entry e -> e.value.is(null) }
+               if(pendingChannels)  {
+                   log.info "Waiting for inputs from one or more input channels: " + pendingChannels*.key
+
+                   log.info "Waiting for inputs matching $exts from one or more input channels: " + pendingChannels*.key
                    
-               if(allSiblingsFinished) {
-                   log.info "Give up waiting for inputs matching $exts because all sibling branches are complete"
-                   throw exMissing
+                   synchronized(channelResults) {
+                       channelResults.wait(5000)
+                   }
                }
+               else {
                    
-               log.info "Wait for one or more pending inputs of type(s) $exts for $stageName ($branch) ..."
-               Thread.sleep(5000)
+                   log.info "Channels " + myPipeline.channelResults + " are all complete in $myPipeline"
+                   
+                   if(!lastCheck) {
+                       lastCheck = true
+                       synchronized(channelResults) {
+                           channelResults.wait(5000)
+                       }
+                   }
+                   else {
+
+                       if(!crossBranch || !searchSiblings)
+                           throw exMissing
+                           
+                       if(allSiblingsFinished) {
+                           log.info "Give up waiting for inputs matching $exts because all sibling branches are complete"
+                           throw exMissing
+                       }
+                       
+                       log.info println "Wait for one or more pending inputs of type(s) $exts for $stageName ($branch) ..."
+                       Thread.sleep(5000)
+                   }
+               }
+                       
            }
        }
            
@@ -2656,6 +2689,16 @@ class PipelineContext {
             // You can think of it as the initial inputs being the output of some previous stage
             // that we know nothing about
             reverseOutputs.add(Utils.box(stages[0].context.@input))
+        }
+        
+        Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
+
+        // Add inputs that come from channels fed into this branch
+        for(outputs in pipeline.channelResults*.value) {
+            if(outputs) {
+                println "Adding channel results: $outputs"
+                reverseOutputs.add(outputs)
+            }
         }
 
         // Add an initial stage that represents the current input to this stage.  This way
