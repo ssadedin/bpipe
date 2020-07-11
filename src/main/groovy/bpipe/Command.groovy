@@ -140,7 +140,14 @@ class Command implements Serializable {
         // Execute any executable properties that are closures
         rawCfg.each { key, value ->
             if(value instanceof Closure) {
-                cfg[key] = value(fileInputs)
+                
+                Closure valueClosure = value
+                if(valueClosure.getMaximumNumberOfParameters() == 2) {
+                    cfg[key] = value(fileInputs,cfg)
+                }
+                else {
+                    cfg[key] = value(fileInputs)
+                }
             }
             
             // Special case - walltime can be specified as integer number of seconds
