@@ -2631,7 +2631,7 @@ class PipelineContext {
                            throw exMissing
                        }
                        
-                       log.info println "Wait for one or more pending inputs of type(s) $exts for $stageName ($branch) ..."
+                       log.info "Wait for one or more pending inputs of type(s) $exts for $stageName ($branch) ..."
                        Thread.sleep(5000)
                    }
                }
