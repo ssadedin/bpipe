@@ -122,7 +122,7 @@ class OutputDirectoryWatcher extends Thread {
             
             for(Path newPath in newPaths) {
                 log.info "Manual poller detected $newPath.fileName"
-                this.processEvent(ENTRY_CREATE, newPath)
+                this.processEvent(ENTRY_CREATE, newPath.fileName)
             }
             
             // trigger notification for any threads sync() methods
