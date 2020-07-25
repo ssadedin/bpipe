@@ -28,6 +28,13 @@ import groovy.util.logging.Log;
 
 import java.util.List;
 
+/**
+ * A FileNameTransformer that preserves the file extension while
+ * adding a middle segment to indicate the output file is derived
+ * from the  input file.
+ * 
+ * @author Simon Sadedin
+ */
 @Log
 class FilterFileNameTransformer implements FileNameTransformer {
     
