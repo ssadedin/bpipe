@@ -126,9 +126,11 @@ class Sender {
     
     Sender report(String reportName) {
         
+        String threadId = Thread.currentThread().id
+        
         File reportDir = new File(".bpipe/reports/"+Config.config.pid+"/")
         reportDir.mkdirs()
-        File outFile = new File(reportDir, Math.round(Math.random()*100000) + "." + new File(reportName).name)
+        File outFile = new File(reportDir, Math.round(Math.random()*100000) + "." + threadId + '.' + new File(reportName).name)
         
         this.content = {
           Map binding = details.withDefault { ctx.myDelegate.propertyMissing(it) }
