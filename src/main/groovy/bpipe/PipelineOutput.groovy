@@ -187,7 +187,7 @@ class PipelineOutput {
                 throw new PipelineError(
                     """
                     A filter, transform or produce was specified, but an output was referenced using 
-                    extension $extraSegments that is not compatible with those outputs.
+                    extension ${extraSegments.join(',')} that is not compatible with those outputs.
                     
                     The files available for reference are $overrideOutputs
                     
