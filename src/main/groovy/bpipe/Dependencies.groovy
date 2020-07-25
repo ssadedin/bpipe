@@ -35,6 +35,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import bpipe.storage.LocalFileSystemStorageLayer
 import bpipe.storage.LocalPipelineFile
 
 /**
@@ -226,7 +227,7 @@ class Dependencies {
         PipelineFile firstMissing = missing[0]
 
         String storageDescription = ""
-        if(!(firstMissing instanceof LocalPipelineFile)) {
+        if(!(firstMissing?.storage instanceof LocalFileSystemStorageLayer)) {
             storageDescription = " (storage type " + firstMissing.storage + ")"
         }
 
