@@ -77,12 +77,15 @@ class TransformOperation {
      * The pipeline context for which this transform operation is occurring.
      */
     PipelineContext ctx
+    
+    List<Boolean> globExts
 
     public TransformOperation(PipelineContext ctx, List exts, Closure c) {
         this.ctx = ctx
         this.exts = exts
         this.body = c
         this.files = Utils.box(ctx.getRawInput())
+        this.globExts = exts.grep { isGlobPattern(it) }
     }
     
     void to(String toPattern, Closure c) {
@@ -206,10 +209,37 @@ class TransformOperation {
         if(providedToPatterns) {
             ctx.withInputs(this.files) {
                 ctx.produceImpl(outFiles, body)
+                filterOutputsToReferencedMatches(outFiles)
             }
         }
         else 
             ctx.produceImpl(outFiles, body)
+    }
+
+    /**
+     * When transform is used in combination with explicit output 
+     * references in the exec of the stage, we only require the
+     * outputs that are implied by those output references.
+     * By default, however, transform expects an output for every
+     * input that was transformed. So here we remove outputs
+     * that would otherwise fail as "not found"
+     * 
+     * @param outFiles
+     * @return
+     */
+    private void filterOutputsToReferencedMatches(List outFiles) {
+        if(ctx.allInferredOutputs && globExts) {
+            def unusedOutFiles =
+                    outFiles.grep { PipelineFile pf ->
+                        !(pf.path in ctx.allInferredOutputs)
+                    }*.path
+
+            List newOuts = ctx.getRawOutput().grep {
+                !(it.path in unusedOutFiles)
+            }
+
+            ctx.setRawOutput(newOuts)
+        }
     }
     
     final static Pattern DOUBLE_DOT_PATTERN = ~/\.\./
@@ -289,6 +319,9 @@ class TransformOperation {
      */
     @CompileStatic
     PipelineFile computeOutputFile(PipelineFile inp, String fromPattern, String toPattern, String extension, String applyBranchName) {
+        
+        log.info "Transform: $inp.path using from: $fromPattern to $toPattern with extension $extension applying branch $applyBranchName"
+        
         // If the pipeline branched, we need to add a segment to the new files name
         // to differentiate it from other parallel branches
         String additionalSegment = ""
@@ -333,6 +366,8 @@ class TransformOperation {
         else {
             // log.info "No inbound branches in $ctx.stageName"
         }
+        
+        log.info "Transform result : $inp.path => $txed.path"
                 
         return txed        
     }
