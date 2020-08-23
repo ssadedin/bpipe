@@ -99,8 +99,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
             //             In that case we expect the command still to be running, as long as the VM is - it runs forever!
             log.info "No local process launched but instance $instanceId found: assume command already running, probing instance"
             String sdkHome = getSDKHome()
-            List<String> zoneFlag = ['--zone', zone]
-            List<String> statusCommand = (["$sdkHome/bin/gcloud","compute","ssh"] + zoneFlag + ["--command","ps -p `cat $workingDirectory/.bpipe/gcloud/$commandId`",this.instanceId])*.toString()
+            List<String> statusCommand = (["$sdkHome/bin/gcloud","compute","ssh"] + projectArguments + zoneFlag + ["--command","ps -p `cat $workingDirectory/.bpipe/gcloud/$commandId`",this.instanceId])*.toString()
             ExecutedProcess result = Utils.executeCommand(statusCommand)
             if(result.exitValue == 0) {
                 log.info "Probe of $instanceId succeeded: instance is in running state"
@@ -124,10 +123,8 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
     @Override
     public void cleanup() {
         
-        List zoneFlag = zone ?  ['--zone', zone] : []
-        
         String sdkHome = getSDKHome()
-        List<String> deleteCommand = ["$sdkHome/bin/gcloud","compute","instances","delete"] + zoneFlag + ["--quiet",instanceId]
+        List<String> deleteCommand = ["$sdkHome/bin/gcloud","compute","instances","delete"] + projectArguments + zoneFlag + ["--quiet",instanceId]
         log.info "Executing delete command: " + deleteCommand.join(' ')
         ExecutedProcess result = Utils.executeCommand(deleteCommand)
         if(result.exitValue != 0) {
@@ -174,14 +171,13 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         List premptibleFlag = ('preemptible' in config) && (config.preemptible == true) ? ['--preemptible'] : []
         
         this.zone = getRegion(config)
-        List zoneFlag = ['--zone', zone]
         
         List<String> commandArgs = ["$sdkHome/bin/gcloud", "compute", "instances", 
               "create", this.instanceId,
               "--image", image,
               "--service-account", serviceAccount,
               "--scopes", "https://www.googleapis.com/auth/cloud-platform"
-        ] + machineTypeFlag + zoneFlag + premptibleFlag
+        ] + machineTypeFlag + projectArguments + zoneFlag + premptibleFlag
         
         // Create the instance
         log.info "Creating google cloud instance from image $image for command $id"
@@ -193,11 +189,9 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
 
     ExecutedProcess ssh(String cmd, Closure builder=null) {
         
-        List zoneFlag = zone ? ['--zone', zone] : []
-        
         String sdkHome = getSDKHome()
         
-        List<String> sshCommand = ["$sdkHome/bin/gcloud","compute","ssh"] + zoneFlag + ["--command",cmd,this.instanceId]*.toString()
+        List<String> sshCommand = ["$sdkHome/bin/gcloud","compute","ssh"] + projectArguments + zoneFlag + ["--command",cmd,this.instanceId]*.toString()
         
         return Utils.executeCommand([throwOnError: true], sshCommand, builder)        
     }
@@ -250,8 +244,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
             $command.command
         """.stripIndent()
         
-        def zoneFlag = ['--zone', zone]
-        def sshCommand = ["$sdkHome/bin/gcloud","compute","ssh"] + zoneFlag + ["--command","bash",this.instanceId]
+        def sshCommand = ["$sdkHome/bin/gcloud","compute","ssh"] + projectArguments + zoneFlag + ["--command","bash",this.instanceId]
         
         log.info "Lanching command using: " + sshCommand.join(' ')
         
@@ -371,8 +364,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         
         String sdkHome = getSDKHome()
         
-        def zoneFlag = zone ? ['--zone', zone] : []
-        List<String> sshCommand = (["$sdkHome/bin/gcloud","compute","ssh"] + zoneFlag + ["--command",mountCommand,this.instanceId])*.toString()        
+        List<String> sshCommand = (["$sdkHome/bin/gcloud","compute","ssh"] + projectArguments + zoneFlag + ["--command",mountCommand,this.instanceId])*.toString()        
         
         log.info "Executing command to mount storage $storage in GCE executor: $sshCommand"
         
@@ -380,5 +372,17 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
         
         mountedStorages[storageKey] = true
     }
+    
+    public List<String> getZoneFlag() {
+        if(!zone)
+            return []
+        else
+            return ['--zone', zone]
+    }
 
+    @CompileStatic
+    @Override
+    public List getProjectArguments() {
+        return ["--project",project]
+    }
 }

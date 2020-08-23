@@ -60,6 +60,16 @@ abstract class CloudExecutor implements PersistentExecutor {
     Integer exitCode = null
     
     /**
+     * The project within which this executor should work
+     */
+    String project
+  
+    /**
+     * Flag to added to commands
+     */
+    String projectFlag
+    
+    /**
      * The command executed, but only if it was started already
      */
     transient Command command
@@ -82,6 +92,7 @@ abstract class CloudExecutor implements PersistentExecutor {
         // Get the instance type
         String image = cfg.get('image')
         
+        this.project = cfg.getOrDefault('project',null)
         
         if(this.instanceId == null) {
             log.info "Cloud executor is not connected to running instance: acquiring instance"
@@ -162,6 +173,12 @@ abstract class CloudExecutor implements PersistentExecutor {
         if(!jobDirFile.exists())
 		    jobDirFile.mkdirs() 
         return jobDirFile
+    }
+    
+    List getProjectArguments() {
+        if(project)
+            throw new bpipe.PipelineError("A project has been configured for cloud execution but executor type $this does not define how to map projects to command line instructions")
+        return []
     }
     
     boolean canSSH() {
