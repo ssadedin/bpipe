@@ -2953,6 +2953,14 @@ class PipelineContext {
            if(((inp instanceof String) || (inp instanceof GString)) && (new File(inp).exists())) {
                return new LocalPipelineFile(inp)
            }
+           else
+           if((inp instanceof File) && ((File)inp).exists()) {
+               return new LocalPipelineFile(inp.path)
+           }
+           else
+           if((inp instanceof Path) && Files.exists((Path)inp)) {
+               return new LocalPipelineFile(((Path)inp).toFile().path)
+           }
            else {
                
                throw new PipelineError("Cannot forward file $inp: it is not a recognised pipeline input and it cannot be found as a file")
