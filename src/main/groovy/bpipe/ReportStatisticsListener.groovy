@@ -27,7 +27,7 @@ package bpipe
 import java.util.Map;
 import groovy.util.logging.Log;
 
-import static PipelineEvent.*
+import static bpipe.PipelineEvent.*
 
 @Log
 class ReportStatisticsListener implements PipelineEventListener {

@@ -2,8 +2,8 @@ package bpipe;
 
 import static org.junit.Assert.*;
 
-import static Utils.joinShellLines as jsl
-import static Utils.splitShellArgs as sp
+import static bpipe.Utils.joinShellLines as jsl
+import static bpipe.Utils.splitShellArgs as sp
 
 import org.junit.Test;
 

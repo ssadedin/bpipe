@@ -1,9 +1,9 @@
 package bpipe;
 
 import static org.junit.Assert.*;
-import static FastUtils.*
+import static bpipe.FastUtils.*
 
-import static FastUtils.globToRegex as gtr
+import static bpipe.FastUtils.globToRegex as gtr
 
 import org.junit.Before;
 import org.junit.Test;

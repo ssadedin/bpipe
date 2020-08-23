@@ -42,7 +42,7 @@ import bpipe.cmd.Stop;
 import groovy.json.JsonOutput;
 import groovy.json.JsonSlurper
 import groovy.util.logging.Log;
-import static PipelineEvent.*
+import static bpipe.PipelineEvent.*
 
 
 /**

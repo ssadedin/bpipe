@@ -54,10 +54,10 @@ import bpipe.graph.Graph;
 import bpipe.storage.StorageLayer
 import bpipe.storage.UnknownStoragePipelineFile
 
-import static Utils.isContainer 
-import static Utils.unbox 
+import static bpipe.Utils.isContainer 
+import static bpipe.Utils.unbox 
 
-import static Edge.*
+import static bpipe.Edge.*
 
 /**
  * Utility to convert a Node structure to a Map structure (primarily, for export as Json)
