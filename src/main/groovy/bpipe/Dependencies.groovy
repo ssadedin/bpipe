@@ -270,6 +270,7 @@ class Dependencies {
         }
     }
     
+    @CompileStatic
     synchronized GraphEntry getOutputGraph() {
         if(this.outputGraph == null) {
             List<OutputMetaData> outputMetaDataFiles = scanOutputFolder()
@@ -280,13 +281,7 @@ class Dependencies {
                 if(inps == null)
                     inps = []
 
-                outputMetaDataFiles = Utils.box(inps).collect { PipelineFile inputFile ->
-                    String inputFileValue = String.valueOf(inputFile)
-                    OutputMetaData omd = new OutputMetaData(inputFile)
-                    omd.timestamp = inputFile.lastModified()
-                    omd.outputFile = inputFile
-                    omd
-                }
+                outputMetaDataFiles = ((List<PipelineFile>)Utils.box(inps)).collect { OutputMetaData.fromInputFile(it) }
             }
             this.outputGraph = computeOutputGraph(outputMetaDataFiles)
             this.outputGraph.index(outputMetaDataFiles.size()*2)

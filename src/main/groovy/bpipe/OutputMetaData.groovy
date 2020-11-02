@@ -455,4 +455,14 @@ class OutputMetaData implements Serializable {
         // same timestamp
         return inputProps.stopTimeMs >= this.createTimeMs
     }
+    
+    @CompileStatic
+    static OutputMetaData fromInputFile(final PipelineFile inputFile) {
+        String inputFileValue = String.valueOf(inputFile)
+        OutputMetaData omd = new OutputMetaData(inputFile)
+        omd.timestamp = inputFile.lastModified()
+        omd.outputFile = inputFile
+        omd.canonicalPath = Utils.canonicalFileFor(inputFileValue).absolutePath
+        omd
+    }
 }
