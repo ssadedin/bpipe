@@ -111,11 +111,11 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
     
 	@Override
 	public Iterator iterator() {
-		return super.@input.listIterator()
+		return super.input.listIterator()
 	}
     
     public int size() {
-        return super.@input.size()
+        return super.input.size()
     }
     
     String asQuotedList() {
