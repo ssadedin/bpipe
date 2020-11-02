@@ -11,6 +11,8 @@ import groovy.util.logging.Log;
  */
 @Log
 class PipelineDelegate {
+
+    private static final String BPIPE_ANNOTATION_SUFFIX = '__bpipe_annotation'
     
     PipelineDelegate(PipelineContext ctx) {
         if(ctx == null)
@@ -79,6 +81,11 @@ class PipelineDelegate {
     def methodMissing(String name, args) {
 //        log.info "Query for method $name on ${context.get()} with args ${args.collect {it.class.name}} via delegate ${this} in thread ${Thread.currentThread().id}"
         
+        if(name.endsWith(BPIPE_ANNOTATION_SUFFIX)) {
+            name = name.substring(0,name.size()-BPIPE_ANNOTATION_SUFFIX.size())
+            this.context.get().annotated = true
+        }
+ 
         PipelineContext ctx = context.get()
         if(name == "from") {
             if(args.size()<1) 
@@ -107,7 +114,7 @@ class PipelineDelegate {
         }
         else
         if(name in ["produce","transform","filter","preserve"]) {
-            if(name == "transform" && !(args[-1] instanceof Closure)) {
+            if((name == "transform") && !(args[-1] instanceof Closure)) {
                 args = args.clone() + [null]
             }
             else

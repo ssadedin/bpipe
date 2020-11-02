@@ -151,7 +151,7 @@ class BpipeASTTransformation implements ASTTransformation {
         def transformStatement = 
             new ExpressionStatement(
                 new MethodCallExpression(new VariableExpression("this"), 
-                         new ConstantExpression(this.closureName), 
+                         new ConstantExpression(this.closureName + '__bpipe_annotation'), 
                          new ArgumentListExpression(
                              new ConstantExpression(annotationValue),
                              innerClosure
