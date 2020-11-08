@@ -266,10 +266,15 @@ class PipelineOutput {
                     this.outputChangeListener(baseOutput,null)
             }
         }
-
+        
         String result = parentDir.absoluteFile.canonicalPath
         if(Utils.isWindows())
             result  = result.replace('\\', '/')
+
+        if(result.startsWith(Runner.canonicalRunDirectory) && (result.size()>Runner.canonicalRunDirectory.size())) {
+            result = result.substring(Runner.canonicalRunDirectory.size()+1)
+        }
+
         return result
     }
     
