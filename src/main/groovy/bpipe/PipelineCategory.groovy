@@ -737,18 +737,19 @@ class PipelineCategory {
                 return currentStage.context.@input
             }
             else {
-                if(pipelines.every { it.aborted }) {
-                    log.info "Branch will terminate because all of its children aborted successfully"
-                    throw new UserTerminateBranchException("All branches [" + pipelines*.branch.unique().join(",") + "] self terminated")
-                }
-                
+               
                 def nextInputs = []
                 Pipeline parent = Pipeline.currentRuntimePipeline.get()
                 log.info "Parent pipeline of concurent sections ${pipelines.collect { it.hashCode() }} is ${parent.hashCode()}"
                 
                 mergeChildStagesToParent(parent, pipelines)
     
-                return parent.stages[-1].context.@output
+                if(pipelines.every { it.aborted }) {
+                    log.info "Branch will terminate because all of its children aborted successfully"
+                    throw new UserTerminateBranchException("All branches [" + pipelines*.branch.unique().join(",") + "] self terminated")
+                }
+                else
+                    return parent.stages[-1].context.@output
             }
     }
     
