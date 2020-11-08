@@ -35,7 +35,7 @@ import groovy.util.logging.Log;
  * input that matches what the user expects, {@link MultiPipelineInput} 
  * resolves all available inputs that match what the user expects and returns
  * them separated by spaces.
- * 
+ *  
  * @author ssadedin
  */
 @Log
@@ -58,7 +58,7 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
 	}
     
     List<PipelineFile> getResolvedValues() {
-       List boxed = Utils.box(super.@input).unique()
+       List boxed = Utils.box(this.input).unique()
        for(PipelineFile i in boxed) {
            if(!this.resolvedInputs.any { it.path == i.path })
                this.resolvedInputs.add(i)
@@ -105,7 +105,7 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
      */
     @Override
     public String withFlag(String flag) {
-       List<PipelineFile> boxed = Utils.box(super.@input).unique { it.path }
+       List<PipelineFile> boxed = Utils.box(super.input).unique { it.path }
        return super.formatFlag(flag,boxed)
     }
     
