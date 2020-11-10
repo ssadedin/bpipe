@@ -1999,7 +1999,7 @@ class PipelineContext {
     }
     
     void python(String pythonCommand) {
-        String python = resolveExe("python","python")
+        String python = Utils.resolveExe("python","python")
         exec("""
         $python <<!
         $pythonCommand
@@ -2021,7 +2021,7 @@ class PipelineContext {
     void sqlite(def db, String sqlCommand, String config = null) {
         
         String setSid = Utils.isLinux() ? " setsid " : ""
-        String sqliteCommand = resolveExe("sqlite","sqlite3")
+        String sqliteCommand = Utils.resolveExe("sqlite","sqlite3")
         exec("""
         $setSid $sqliteCommand $db <<!
         $sqlCommand
