@@ -1846,9 +1846,9 @@ class PipelineContext {
     @CompileStatic
     void checkAndClearImplicits(final GString cmd = null) {
         if(!cmd.is(null)) {
-            for(String value in cmd.values) {
-                if(value.size() > 0) {
-                    String implicitValue = value.substring(1)
+            for(Object value in cmd.values) {
+                if((value instanceof String) && (((String)value).size() > 0)) {
+                    String implicitValue = value.toString().substring(1)
                     implicitVariables.removeAll { ImplicitVariable v -> 
                         v.name == implicitValue 
                     }
