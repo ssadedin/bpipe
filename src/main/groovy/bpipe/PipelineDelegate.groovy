@@ -93,7 +93,7 @@ class PipelineDelegate {
             this.context.get()?.checkAndClearImplicits()
         }
         
-        log.info "Query for method $name on ${context.get()} with args ${args.collect {it.class.name}} via delegate ${this} in thread ${Thread.currentThread().id}"
+        // log.info "Query for method $name on ${context.get()} with args ${args.collect {it.class?.name}} via delegate ${this} in thread ${Thread.currentThread().id}"
         
         if(name.endsWith(BPIPE_ANNOTATION_SUFFIX)) {
             name = name.substring(0,name.size()-BPIPE_ANNOTATION_SUFFIX.size())
