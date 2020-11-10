@@ -1980,7 +1980,11 @@ class PipelineContext {
             this.echoWhenNotFound = true
             log.info("Entering echo mode on context " + this.hashCode())
             String rTempDir = Utils.createTempDir().absolutePath
-            String scr = c()
+            def scr = c()
+            if(scr instanceof GString) {
+                this.checkAndClearImplicits(scr)
+            }
+
             rCommand = execImpl("""unset TMP; unset TEMP; TEMPDIR="$rTempDir" $setSid $rscriptExe - <<'!'
             $scr
 !
