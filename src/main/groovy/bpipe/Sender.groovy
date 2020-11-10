@@ -385,6 +385,7 @@ class Sender {
      * @param recipient name of communication channel to use
      */
     void to(String recipient) {
+        this.ctx.checkAndClearImplicits("$recipient")
         to([channel:recipient])
     }
 }
