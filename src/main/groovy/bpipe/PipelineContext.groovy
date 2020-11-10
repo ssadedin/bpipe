@@ -1804,6 +1804,23 @@ class PipelineContext {
         }
     }
     
+    @CompileStatic
+    void exec(GString cmd) {
+        checkAndClearImplicits(cmd)
+        exec(cmd, true)
+    }
+    
+    /**
+     * @see #exec(String, boolean, String)
+     * @param cmd
+     * @param config
+     */
+    @CompileStatic
+    void exec(GString cmd, String config) {
+        checkAndClearImplicits(cmd)
+        exec(cmd, true, config)
+    }
+    
     /**
      * @see #exec(String, boolean, String)
      * @param cmd
@@ -1821,6 +1838,33 @@ class PipelineContext {
     @CompileStatic
     void exec(String cmd) {
         exec(cmd, true)
+    }
+    
+    List<ImplicitVariable> implicitVariables = []
+    
+   
+    @CompileStatic
+    void checkAndClearImplicits(final GString cmd = null) {
+        if(!cmd.is(null)) {
+            for(String value in cmd.values) {
+                if(value.size() > 0) {
+                    String implicitValue = value.substring(1)
+                    implicitVariables.removeAll { ImplicitVariable v -> 
+                        v.name == implicitValue 
+                    }
+                }
+            }
+        }
+        
+       if(implicitVariables) {
+           Exception e = implicitVariables[0].exception
+
+           e.stackTrace = e.stackTrace.grep { StackTraceElement el ->
+               !el.className.startsWith('bpipe.')
+           } as StackTraceElement[]
+
+           throw implicitVariables[0].exception
+       }
     }
     
     /**

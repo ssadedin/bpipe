@@ -4,6 +4,12 @@ import java.util.logging.Level;
 
 import groovy.util.logging.Log;
 
+
+class ImplicitVariable {
+    String name
+    MissingPropertyException exception
+}
+
 /**
  * Forwards all calls through to a thread specific context.
  * 
@@ -79,7 +85,15 @@ class PipelineDelegate {
     }
     
     def methodMissing(String name, args) {
-//        log.info "Query for method $name on ${context.get()} with args ${args.collect {it.class.name}} via delegate ${this} in thread ${Thread.currentThread().id}"
+        
+        if(name in ['exec','python','groovy'] && args && args[0] instanceof GString) {
+            this.context.get()?.checkAndClearImplicits(args[0])
+        }
+        else {
+            this.context.get()?.checkAndClearImplicits()
+        }
+        
+        log.info "Query for method $name on ${context.get()} with args ${args.collect {it.class.name}} via delegate ${this} in thread ${Thread.currentThread().id}"
         
         if(name.endsWith(BPIPE_ANNOTATION_SUFFIX)) {
             name = name.substring(0,name.size()-BPIPE_ANNOTATION_SUFFIX.size())
@@ -229,7 +243,8 @@ class PipelineDelegate {
                 //log.info "Retrieved result for $name = $result"
                 return result
             }
-            catch(Throwable t) {
+            catch(MissingPropertyException t) {
+                ctx.implicitVariables << new ImplicitVariable(name:name, exception:t)
                 return '$'+name
             }
         }

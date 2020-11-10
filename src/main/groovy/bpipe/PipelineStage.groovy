@@ -357,6 +357,7 @@ class PipelineStage {
                 Runner.binding.stageLocalVariables.set(bindingVariables)
                 try {
                     returnedInputs = runWrappedBody()
+                    this.context.checkAndClearImplicits()
                     runOutstandingChecks()
                 }
                 finally {
