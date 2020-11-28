@@ -248,6 +248,10 @@ class Sender {
             "send.file" : this.details.file
         ]
         
+        if('url' in details) {
+            props["send.url"] = details.url
+        }
+        
        FileNotificationChannel.modelContentToFile(props, sentFile)
 
         if('properties' in details) {
@@ -262,8 +266,8 @@ class Sender {
        if(props['send.file'] != null)
            props['send.file'] = String.valueOf(props['send.file'])
        
-       if(details.containsKey('url')) {
-           sendToURL(details)
+       if(details.containsKey('url') && !details.containsKey('channel')) {
+           new HTTPNotificationChannel(details, this.contentType).sendToURL(this.content)
        }
        else
        if(channelCfg != null) {
@@ -337,46 +341,6 @@ class Sender {
         }
 
         throw new PipelineTestAbort(msg)
-    }
-    
-    void sendToURL(Map details) {
-        
-        def contentIn = resolveJSONContentSource()
-        
-        String url = details.url
-        if(details.params) {
-            if(!url.contains('?'))
-                url += '?'
-            
-            url += details.params.collect { key, value -> 
-                URLEncoder.encode(key) + '=' + (value==null?'':URLEncoder.encode(value)) 
-            }.join('&')
-        }
-        
-        log.info "Sending to $details.url with content type $contentType"
-        try {
-            Utils.connectAndSend(contentIn, url, ['Content-Type':this.contentType])
-        }
-        finally {
-            if(contentIn.respondsTo('close'))
-                contentIn.close()
-        }
-    }
-    
-    def resolveJSONContentSource() {
-        def contentIn = this.content
-            
-        if(contentIn instanceof PipelineInput) {
-            contentIn = new File(contentIn.toString()).newInputStream()
-        }
-        else
-        if(contentIn instanceof File)
-            contentIn = contentIn.newInputStream()
-        else
-        if(contentIn instanceof Map || contentIn instanceof List) {
-            contentIn = JsonOutput.toJson(contentIn)
-        }
-        return contentIn
     }
     
     /**

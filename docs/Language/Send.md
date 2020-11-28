@@ -4,14 +4,14 @@
 
     
     
-    send [text {<text>} | html { <html> } | report(<template>)] to <notification channel name><pre>
-    send [{<text>} | html { <html> } | report(<template>)](text) to channel:<channel name>, 
+    send [text {<text>} | html { <html> } | report(<template>) | json(<data>)] to <notification channel name><pre>
+    send [text {<text>} | html { <html> } | report(<template>) | json(<data>)] to channel:<channel name>, 
                                                                subject:<subject>, 
                                                                file: <file to attach> 
  
 ### Availability
 
-0.9.8.6_beta_2 +
+0.9.8.6_beta_2 +, 0.9.9.10+ for HTTP headers, authentication
 
 ### Behavior
 
@@ -54,6 +54,15 @@ commands can accept the same syntax as `send`, but also have the effect of
 terminating the execution of the current pipeline branch with a
 corresponding status message.
 
+The destination of a `send` is specified after the `to` portion. If the 
+destination is specified as a string, it is expected to correspond to one of
+the channels defined in the `notifications` section of the `bpipe.config` for 
+the pipeline. This allows pipelines to be developed with generic notification
+capability and for end users to configure how they would like to receive those
+notifications. With the extended syntax, the pipeline code can specify options,
+up to and including the full channel specification. Some more advanced
+options are only available through this mechanism.
+
 **Note**: In Bpipe's generic notification framework, configuring a
 notification channel automatically enables certain events from the pipeline
 operation to be forwarded to the channel. If you only want to receive
@@ -91,6 +100,48 @@ full example below for more details.
 **Send a message based on a template using Gmail, and attach the first output as a file**
 ```groovy 
     send report("report-template.html") to channel: gmail, file: output1.txt
+```
+
+**Send a JSON message to a REST style HTTP Serivce**
+
+If the destination contains a `url` property and no other channel
+is specified, Bpipe will generate an HTTP POST request to the URL:
+
+```groovy
+    def data = [hello:1, world:'mars']
+    send json(data) to(url: 'http://my.server.com:12345/service/path')
+```
+
+The content type will be inferred from the content provided to the
+send. For example, sending JSON will cause the content type to be
+set to `application/json`. This can be over-ridden with custom 
+headers.
+
+Note: when specifying data inline, the above can be written more 
+compactly using Groovy's syntax for passing Maps to functions like so:
+
+```groovy
+    send json(hello:1, world:'mars') to(url: 'http://my.server.com:12345/service/path')
+```
+
+**Send a JSON message to a REST style HTTP Serivce with Basic Authentication**
+
+To provide basic authentication, add a username and password to the attributes
+of the destination:
+
+```groovy
+    send json(hello:1, world:'mars') to url: 'http://my.server.com:12345/service/path',
+                                        username: 'joe',
+                                        password: 'supersecret'
+```
+
+**Adding Headers to an HTTP Request**
+
+Headers can be added to HTTP requests as a map of key value pairs 
+
+```groovy
+    send json(hello:1, world:'mars') to url: 'http://my.server.com:12345/service/path',
+                                        headers:[AUTH_TOKEN:'a custom secret for my special auth scheme']
 ```
 
 **Send a JSON message to an ActiveMQ Queue**
@@ -148,5 +199,37 @@ in the `bpipe.config` file (see Gitlab Guide).
             ) to gitlab                                                                 
 ```
 
+**Send to HTTP Configured in bpipe.config**
+
+Create a `bpipe.config` file like this:
+
+```groovy
+notifications {
+    my_http {
+        type = 'http'
+        url = 'http://localhost:8005/myservice'
+        username = 'tester'
+        password = 'password'
+        events=''
+    }
+}
+```
+
+You can then send to it like this:
 
 
+```groovy
+    send json(hello:0, world:2) to 'my_http'
+```
+
+You can also send like this:
+
+```groovy
+    send json(hello:0, world:2) to channel: 'my_http',
+                                   url: '/subpath'
+```
+
+The latter version will combine the URL paths from the bpipe.config
+and pipeline command together, which is useful to allow you to specify
+a base URL in the bpipe.config and separate paths in the pipeline for
+different services.

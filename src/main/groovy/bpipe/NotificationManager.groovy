@@ -143,7 +143,9 @@ class NotificationManager {
 	 */
 	void sendNotification(ConfigObject cfg, PipelineEvent evt, String desc, Map detail) {
         
-        log.info "Sending to channel $cfg"
+        def sanitisedCfg = cfg.collectEntries { [it.key, it.key.contains('password') ? '******' : it.value] }
+        
+        log.info "Sending to channel $sanitisedCfg"
         
         Utils.waitWithTimeout(30000) { 
             cfg.containsKey('channel') 
@@ -240,8 +242,11 @@ class NotificationManager {
             log.info "Generating template from file $templateFile.absolutePath"
             template = engine.createTemplate(templateFile.getText())
         }
+        else {
+            template = new DummyTemplate()
+        }
     	
-    		sendTimestamps[category] = System.currentTimeMillis()
+        sendTimestamps[category] = System.currentTimeMillis()
 		
 		try {
 			channel.notify(evt, desc, template, detail)

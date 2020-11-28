@@ -54,20 +54,9 @@ class ActivemqNotificationChannel implements NotificationChannel {
     @Override
     public void notify(PipelineEvent event, String subject, Template template, Map<String, Object> model) {
         
-        Map eventDetails = model.collectEntries { key, value ->
-            if(value instanceof Number)
-                [key,value]
-            else {
-                if(value instanceof PipelineStage)
-                    value = value.toProperties()
-                return [key, 
-                    value instanceof Map || value instanceof List ? JsonOutput.toJson(value) : String.valueOf(value)
-                ]
-            }
-        }
+        Map eventDetails = HTTPNotificationChannel.sanitiseDetails(model)
 
         eventDetails.description = subject
-
         
         TextMessage msg
         String messageBody
