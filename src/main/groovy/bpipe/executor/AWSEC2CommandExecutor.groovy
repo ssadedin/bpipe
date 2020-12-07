@@ -94,7 +94,9 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     
     protected transient AmazonS3 s3client
 
-    transient Process logsProcess
+    transient List<Process> logsProcesses
+    
+    boolean autoShutdown = true
     
     public AWSEC2CommandExecutor() {
         super()
@@ -108,18 +110,21 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         File stdOut = new File(jobDir,"cmd.out")
         File stdErr = new File(jobDir,"cmd.err")
         
-        log.info "Connecting logs to $stdOut/$stdErr"
-        
-        List<String> sshCommand = ["ssh","-oStrictHostKeyChecking=no", "-i", keypair, user + '@' +hostname, "tail -f -n 1 ${remoteOutputPath}"]*.toString()
-        
-        ProcessBuilder pb = new ProcessBuilder(sshCommand)
-        pb.redirectOutput(stdOut)
-          .redirectError(stdErr)
-        
-        logsProcess = pb.start()
-        
-        forward(stdOut, outputLog) 
-        forward(stdErr, errorLog)
+        [
+            [ remote: remoteOutputPath,  local: stdOut, logger: outputLog ],
+            [ remote: remoteErrorPath,  local: stdErr, logger: errorLog ],
+        ].each { conn ->
+            
+            List<String> sshCommand = ["ssh","-oStrictHostKeyChecking=no", "-i", keypair, user + '@' +hostname, "tail -f -n 0 -c +${conn.local.length()} -n 1 ${conn.remote}"]*.toString()
+
+            log.info "Connecting logs to $conn.local via ${sshCommand.join(' ')}"
+            ProcessBuilder pb = new ProcessBuilder(sshCommand)
+            pb.redirectOutput(conn.local)
+              .redirectError(conn.local)
+
+            def logsProcess = pb.start()
+            forward(conn.local, conn.logger) 
+        }
     }
     
     @Override
@@ -138,7 +143,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         if(processId != null) {
             log.info "Checking exit code for ${commandId}"
             try {
-                ExecutedProcess probe = ssh("cd $workingDirectory; if [ -e ${exitFile} ]; then cat ${exitFile}; else echo running; fi")
+                ExecutedProcess probe = ssh("if [ -e ${exitFile} ]; then cat ${exitFile}; else echo running; fi")
                 String probeOutput = probe.out.toString().trim()
                 log.info "Probe output from command $commandId: [$probeOutput]"
                 if(probeOutput == "running") {
@@ -176,14 +181,21 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     
     @Override
     public void cleanup() {
-        if(logsProcess) {
-            logsProcess.destroy()
-            logsProcess = null
+        this.logsProcesses?.each { logsProcess ->
+            if(logsProcess) {
+                logsProcess.destroy()
+                logsProcess = null
+            }
         }
         
-        log.info "Terminating instance $instanceId for executor $this"
-        
-        ec2.terminateInstances(new TerminateInstancesRequest([instanceId]))
+        if(autoShutdown) {
+            log.info "Terminating instance $instanceId for executor $this"
+            
+            ec2.terminateInstances(new TerminateInstancesRequest([instanceId]))
+        }
+        else {
+            log.info "Instance $instanceId will not be terminated because autoShutdown = $autoShutdown"
+        }
     }
     
     @Override
@@ -243,7 +255,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         s3client = AmazonS3ClientBuilder
                 .standard()
                 .withCredentials(new AWSStaticCredentialsProvider(credentials))
-                .withRegion(Regions.AP_SOUTHEAST_2)
+                .withRegion(Regions.AP_SOUTHEAST_2) // TODO: FIX
                 .withRegion(Regions.fromName(config.region))
                 .build();
         
@@ -252,6 +264,8 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     @CompileStatic
     @Override
     public void acquireInstance(Map config, String image, String id) {
+        
+        this.autoShutdown = config.getOrDefault('autoShutdown', this.autoShutdown)
         
         createClient(config)
         
@@ -266,7 +280,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
                 .withInstanceType(instanceType)
                 .withMinCount(1)
                 .withMaxCount(1)
-                .withKeyName("vcgs-default-access")
+                .withKeyName("vcgs-default-access") // TODO: FIX
                 
         if(config.containsKey('securityGroup')) {
             runInstancesRequest = runInstancesRequest.withSecurityGroups((String)config.securityGroup)
@@ -322,19 +336,22 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         
         File cmdFile = new File(jobDir, "cmd.sh")
         cmdFile.text = """
-            cd $commandWorkDir || { echo "Unable to change to expected working directory: $workingDirectory"; exit 1; }
 
             mkdir -p .bpipe/aws
 
             echo \$\$ | tee .bpipe/aws/$command.id
 
+            HOMEDIR=`pwd`
+
+            cd $commandWorkDir || { echo "Unable to change to expected working directory: $workingDirectory"; exit 1; }
+
             (
 
             $command.command
 
-            ) > ${remoteOutputPath} 2> ${remoteErrorPath} 
+            ) > \$HOMEDIR/${remoteOutputPath} 2> \$HOMEDIR/${remoteErrorPath} 
 
-            echo \$? > ${exitFile}
+            echo \$? > \$HOMEDIR/${exitFile}
 
         """.stripIndent()
         
