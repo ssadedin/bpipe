@@ -38,6 +38,10 @@ filesystems {
 NOTE: in the current implementation, it is necessary to redundantly specify the access key and secret
 for both the storage and the executor.
 
+NOTE2: the name of the key pair is expected to match the file name it is stored in, absent the `.pem`
+extension. For example, if you call the file `my_secret_key.pem` then Bpipe expects the key is
+called in AWS `my_secret_key`.
+
 ## Preparing an image
 
 As shown in the example above, one thing you must provide is an image id. This image

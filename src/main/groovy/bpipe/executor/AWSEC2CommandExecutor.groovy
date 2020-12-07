@@ -280,7 +280,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
                 .withInstanceType(instanceType)
                 .withMinCount(1)
                 .withMaxCount(1)
-                .withKeyName("vcgs-default-access") // TODO: FIX
+                .withKeyName(new File(keypair).name.replaceAll('.pem$',''))
                 
         if(config.containsKey('securityGroup')) {
             runInstancesRequest = runInstancesRequest.withSecurityGroups((String)config.securityGroup)
