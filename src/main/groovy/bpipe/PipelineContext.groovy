@@ -650,7 +650,7 @@ class PipelineContext {
    PipelineOutput getOutputImpl() {
        
        OutputResolver resolver = new OutputResolver()
-       if(resolver.out == null || this.currentFileNameTransform) { // Output not set elsewhere, or set dynamically based on inputs
+       if(resolver.out == null || resolver.out.isEmpty() || this.currentFileNameTransform) { // Output not set elsewhere, or set dynamically based on inputs
            resolver.resolveOutput()
        }
        else {
