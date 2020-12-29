@@ -102,9 +102,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         
         addMemoryResources(cfg, cmd)
             
-        String threadAmount = resolveAndConfigureThreadResources(cfg)
-
-        prepareCommand(cmd, threadAmount)
+        prepareCommand(cmd)
 
         Pipeline pipeline = bpipe.Pipeline.currentRuntimePipeline.get()
         pipeline.isIdle = false
@@ -156,23 +154,17 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
     }
 
     /**
-     * Substitute the lazy variables in teh command and initialise the 
+     * Substitute the lazy variables in the command and initialise the 
      * execution statistics.
      */
     @CompileStatic
-    private void prepareCommand(Command cmd, String threadAmount) {
+    private void prepareCommand(Command cmd) {
+        
+        String threadAmount = resolveAndConfigureThreadResources(cfg)
+
+
         
         Pipeline pipeline = bpipe.Pipeline.currentRuntimePipeline.get()
-        
-//        if(cfg.containsKey('storage') && pipeline.branch.hasProperty('region')) {
-//            RegionValue region = (RegionValue) pipeline.branch.getProperty('region')
-//            StorageLayer storage = StorageLayer.create(Config.listValue((String)cfg.storage)[0])
-//            region.storage = storage
-//        }
-        
-//        TODO: match on something like {bpipe:?:/some/path} and replace with the resolved storage value
-//        command.command = command.command.replaceAll(PipelineContext.REGION_LAZY_VALUE, threadAmount)
-        
         command.command = command.command.replaceAll(PipelineContext.THREAD_LAZY_VALUE, threadAmount)
         command.command = this.replaceStorageMountPoints(command)
         if(command.@cfg.beforeRun != null) {
