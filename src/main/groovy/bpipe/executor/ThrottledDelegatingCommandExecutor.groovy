@@ -122,25 +122,6 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         this.command.save()
     }
 
-    @CompileStatic
-    private String resolveAndConfigureThreadResources(Map cfg) {
-        ResourceUnit threadResource = resources.find { ResourceUnit ru -> ru.key == "threads" }
-
-        if(isUnlimited(cfg,threadResource))
-            threadResource.amount = ResourceUnit.UNLIMITED
-
-        resources.each { Concurrency.theInstance.acquire(it) }
-
-        int threadCount = threadResource?threadResource.amount:1
-        String threadAmount = String.valueOf(threadCount)
-
-        // Problem: some executors use non-integer values here, if we overwrite with an integer value then
-        // we break them (Sge)
-        if((cfg.procs == null) || cfg.procs.toString().isInteger() || (cfg.procs instanceof IntRange))
-            cfg.procs = threadCount
-        return threadAmount
-    }
-
     /**
      * Throw an exception indicating the pipeline is aborting due to user initiated break
      */
@@ -210,24 +191,6 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         if(command.command.contains(PipelineContext.MEMORY_LAZY_VALUE)) 
             throw new PipelineError("Command in stage $command.name:\n\n" + command.command.replaceAll(PipelineContext.MEMORY_LAZY_VALUE,'\\${memory}') + "\n\ncontains reference to \$memory variable, but no memory is specified for this command in the configuration.\n\n" + 
                                     "Please add an entry for memory to the configuration of this command in your bpipe.config file")
-    }
-    
-    @CompileStatic
-    boolean isUnlimited(Map cfg, ResourceUnit threadResource) {
-        
-        if(threadResource == null)
-            return false
-        
-        if(!command.command.contains(PipelineContext.THREAD_LAZY_VALUE))
-            return false
-            
-        if((threadResource.amount==0) && (threadResource.maxAmount==0)) 
-            return true
-
-        if(!cfg.containsKey("procs") && (threadResource.amount == 1) && (threadResource.maxAmount == 0))
-            return true
-        else            
-            return false    
     }
     
     /**

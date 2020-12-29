@@ -2441,7 +2441,8 @@ class PipelineContext {
      * Inspect the given command to figure out the actual procs it will use by combining
      * the configured procs from bpipe.config with any configured resources by the 
      * use(...) statement or other means.
-     * 
+     * <p>
+     * Note the resources use the term "threads" while the config name is "procs"
      * @param command
      */
     @CompileStatic
