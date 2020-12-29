@@ -111,6 +111,7 @@ class Command implements Serializable {
     
     File dir
 
+    @CompileStatic
     Map getConfig(List<PipelineFile> inputs) {
         if(cfg != null)
             return cfg
@@ -125,9 +126,9 @@ class Command implements Serializable {
         def defaultConfig = Config.userConfig.findAll { !(it.value instanceof Map) }
         log.info "Default command properties: $defaultConfig"
         
-        def rawCfg = defaultConfig
+        Map rawCfg = defaultConfig
         
-        def cmdConfig = Config.userConfig.containsKey("commands")?Config.userConfig.commands[configName]:null
+        def cmdConfig = (ConfigObject)(Config.userConfig.containsKey("commands")?Config.userConfig.commands[configName]:null)
         if(cmdConfig && cmdConfig instanceof Map)  {
             // override properties in default config with those for the
             // specific command
@@ -135,7 +136,7 @@ class Command implements Serializable {
         }
         
         // Make a new map
-        this.cfg = rawCfg.clone()
+        this.cfg = new HashMap(rawCfg)
         
         // Resolve inputs to files
         List<Path> fileInputs = inputs == null ? [] : inputs.collect { it.toPath() }
@@ -144,7 +145,7 @@ class Command implements Serializable {
         rawCfg.each { key, value ->
             if(value instanceof Closure) {
                 
-                Closure valueClosure = value
+                Closure valueClosure = (Closure)value
                 if(valueClosure.getMaximumNumberOfParameters() == 2) {
                     cfg[key] = value(fileInputs,cfg)
                 }
