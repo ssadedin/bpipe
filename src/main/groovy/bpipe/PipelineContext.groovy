@@ -2278,10 +2278,10 @@ class PipelineContext {
      * @param deferred      If true, the command will not actually be started until
      *                      the waitFor() method is called
      */
-    Command async(String cmd, boolean joinNewLines=true, String config = null, boolean deferred=false) {
+    Command async(String cmd, boolean joinNewLines=true, String configName = null, boolean deferred=false) {
         
-      if(config == null)
-          config = this.defaultConfig
+      if(configName == null)
+          configName = this.defaultConfig
           
       def joined = ""
       if(joinNewLines) {
@@ -2293,14 +2293,14 @@ class PipelineContext {
       // note - set the command here, so that it can be used to resolve
       // the right configuration. However we set it again below
       // after we have resolved the right thread / procs value
-      Command command = new Command(command:joined, configName:config)
+      Command command = new Command(command:joined, configName:configName)
       
       this.inferUsedProcs(command)
 
       // Inferred outputs are outputs that are picked up through the user's use of 
       // $ouput.<ext> form in their commands. These are intercepted at string evaluation time
       // (prior to the async or exec command entry) and set as inferredOutputs until
-      // the command is executed, and then we wipe them out
+      // the command is executed, and then we reset them
       List unconvertedOutputs = (this.inferredOutputs + this.referencedOutputs + this.internalOutputs + this.pendingGlobOutputs).unique()
       List<PipelineFile> checkOutputs = convertToPipelineFiles(command, unconvertedOutputs)
       
@@ -2350,7 +2350,7 @@ class PipelineContext {
       command.stageId = this.pipelineStages[-1].id
       
       try {
-          command = commandManager.start(stageName, command, config, Utils.box(this.input), 
+          command = commandManager.start(stageName, command, configName, Utils.box(this.input), 
                                          this.usedResources,
                                          deferred, this.outputLog)
  

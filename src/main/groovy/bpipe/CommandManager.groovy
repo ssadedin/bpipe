@@ -103,7 +103,7 @@ class CommandManager {
      *                  on the resulting command executor
      * @return the {@link CommandExecutor} that is executing the job.
      */
-    Command start(String name, Command command, String configName, Collection inputs, Map resources, boolean deferred, Appendable outputLog) {
+    Command start(String name, Command command, String configName, List<PipelineFile> inputs, Map resources, boolean deferred, OutputLog outputLog) {
         
         String cmd = command.command
         Map cfg = command.getConfig(inputs)

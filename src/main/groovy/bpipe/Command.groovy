@@ -24,6 +24,7 @@
  */
 package bpipe
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 
 import java.nio.file.Path
@@ -108,12 +109,14 @@ class Command implements Serializable {
      */
     private Map cfg
     
+    File dir
+
     Map getConfig(List<PipelineFile> inputs) {
         if(cfg != null)
             return cfg
             
         // How to run the job?  look in user config
-        if(!configName && (command != null)) // preallocated executors use a null command
+        if(!configName && (command != null)) // preallocated executors use a null command
             configName = command.trim().tokenize(' \t')[0].trim()
         
         log.info "Checking for configuration for command $configName"
@@ -169,6 +172,7 @@ class Command implements Serializable {
      * 
      * @return  processed configuration, converted to Map
      */
+    @CompileStatic
     Map getProcessedConfig() {
         assert this.cfg != null
         return this.cfg
@@ -209,8 +213,6 @@ class Command implements Serializable {
         }
     }
     
-    File dir
-
     synchronized void save() {
         
        def e = this.executor
