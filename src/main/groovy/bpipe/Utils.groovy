@@ -273,13 +273,13 @@ class Utils {
      * return existing collections as is
      */
     @CompileStatic
-    static Collection box(outputs) {
+    static List box(Object outputs) {
         
         if(outputs == null)
             return []
         
         if(outputs instanceof Collection)
-            return (Collection)outputs
+            return outputs as List
         
         if(outputs.class.isArray())    
             return outputs as List
