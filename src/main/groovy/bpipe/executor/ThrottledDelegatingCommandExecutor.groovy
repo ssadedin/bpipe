@@ -12,6 +12,7 @@ import bpipe.Config
 import bpipe.Pipeline
 import bpipe.PipelineContext;
 import bpipe.ResourceUnit;
+import bpipe.processors.MemoryLimitReplacer
 import bpipe.processors.ThreadAllocationReplacer
 import bpipe.storage.StorageLayer
 import bpipe.RescheduleResult
@@ -99,10 +100,9 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
     /**
      * Resolve final variables and invoke the the wrapped / delegated start 
      */
+    @CompileStatic
     void doStart(Map cfg, Command cmd) {
         
-        addMemoryResources(cfg, cmd)
-            
         prepareCommand(cmd)
 
         Pipeline pipeline = bpipe.Pipeline.currentRuntimePipeline.get()
@@ -114,7 +114,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         
         synchronized(jobLaunchLock) {
             if(cfg.containsKey('jobLaunchSeparationMs')) {
-                Thread.sleep(cfg.jobLaunchSeparationMs)
+                Thread.sleep((int)cfg.jobLaunchSeparationMs)
             }
             commandExecutor.start(cfg, this.command, outputLog, errorLog)
         }
@@ -142,6 +142,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
     @CompileStatic
     private void prepareCommand(Command cmd) {
         
+        new MemoryLimitReplacer().transform(cmd, resources)
         new ThreadAllocationReplacer().transform(cmd, resources)
         
         Pipeline pipeline = bpipe.Pipeline.currentRuntimePipeline.get()
@@ -154,45 +155,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         command.createTimeMs = System.currentTimeMillis()
     }
     
-    @CompileStatic
-    void addMemoryResources(Map cfg, Command cmd) {
-        
-        if(!cfg.containsKey("memory")) {
-            checkIfMemoryInCommand()
-            return
-        }
-            
-        ResourceUnit memoryResource = ResourceUnit.memory(cfg.memory)
-        int memoryAmountMB = memoryResource.amount
-            
-        if(cfg.containsKey("memoryMargin")) {
-            ResourceUnit memoryMargin = ResourceUnit.memory(cfg.memoryMargin)
-            memoryAmountMB = Math.max((int)(memoryAmountMB/2),(int)(memoryAmountMB-memoryMargin.amount))
-            log.info "After applying memory margin of ${memoryMargin}MB, actual memory available is ${memoryAmountMB}MB"
-        }
-            
-        // Actual memory is passed to pipelines in GB
-        int memoryGigs = (int)Math.round((double)(memoryAmountMB / 1024))
-        String memoryValue = String.valueOf(memoryGigs)
-            
-        log.info "Reserving ${memoryValue} of memory for command due to presence of memory config"
-        command.command = command.command.replaceAll(PipelineContext.MEMORY_LAZY_VALUE, memoryValue)
-        resources << memoryResource
-    }
-    
-    /**
-     * Throws exception with informative error message if $memory was referenced in a command
-     * but was not defined anywhere in configuration.
-     * <p>
-     * <i>Note</i>: this was made a separate method because of IllegalAccessError with @CompileStatic
-     * in addMemoryResources
-     */
-    private void checkIfMemoryInCommand() {
-        if(command.command.contains(PipelineContext.MEMORY_LAZY_VALUE)) 
-            throw new PipelineError("Command in stage $command.name:\n\n" + command.command.replaceAll(PipelineContext.MEMORY_LAZY_VALUE,'\\${memory}') + "\n\ncontains reference to \$memory variable, but no memory is specified for this command in the configuration.\n\n" + 
-                                    "Please add an entry for memory to the configuration of this command in your bpipe.config file")
-    }
-    
+  
     /**
      * Wait for the delegate pipeline to stop and then release concurrency permits
      * that were allocated to it
