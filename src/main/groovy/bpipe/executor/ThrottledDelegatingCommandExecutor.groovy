@@ -12,6 +12,7 @@ import bpipe.Config
 import bpipe.Pipeline
 import bpipe.PipelineContext;
 import bpipe.ResourceUnit;
+import bpipe.processors.ThreadAllocationReplacer
 import bpipe.storage.StorageLayer
 import bpipe.RescheduleResult
 import bpipe.PipelineError
@@ -160,12 +161,9 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
     @CompileStatic
     private void prepareCommand(Command cmd) {
         
-        String threadAmount = resolveAndConfigureThreadResources(cfg)
-
-
+        new ThreadAllocationReplacer().transform(cmd, resources)
         
         Pipeline pipeline = bpipe.Pipeline.currentRuntimePipeline.get()
-        command.command = command.command.replaceAll(PipelineContext.THREAD_LAZY_VALUE, threadAmount)
         command.command = this.replaceStorageMountPoints(command)
         if(command.@cfg.beforeRun != null) {
             ((Closure)command.@cfg.beforeRun)(cmd.@cfg)

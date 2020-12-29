@@ -2263,12 +2263,7 @@ class PipelineContext {
         }
     }
     
-    /**
-     * Regular expression for identifying string matching a range of integers,
-     * eg: 10 - 30
-     */
-    final static Pattern INT_RANGE_PATTERN = ~/([0-9]*) *- *([0-9]*)$/
-     
+    
     /**
      * Asynchronously executes the given command by creating a CommandExecutor
      * and starting the command using it.  The exit code is not checked and
@@ -2437,47 +2432,52 @@ class PipelineContext {
     }
     
     /**
+     * Regular expression for identifying string matching a range of integers,
+     * eg: 10 - 30
+     */
+    final static Pattern INT_RANGE_PATTERN = ~/([0-9]*) *- *([0-9]*)$/
+
+     /**
      * Inspect the given command to figure out the actual procs it will use by combining
      * the configured procs from bpipe.config with any configured resources by the 
      * use(...) statement or other means.
      * 
-     * TODO: it is not clear to me this is actually used any more. 
-     * 
      * @param command
      */
+    @CompileStatic
     void inferUsedProcs(Command command) {
-      // Work out how many threads to request
-      String actualThreads = this.usedResources['threads'].amount as String  
-      
+
       // If the config itself specifies procs, it should override the auto-thread magic variable
       // which may get given a crazy high number of threads
       def commandCfg = command.getConfig(Utils.box(this.resolvedInputs))
-      if(commandCfg.containsKey('procs')) {
-          def procs = commandCfg.procs
-          int maxProcs = 0
-          if(procs instanceof String) {
-             // Allow range of integers
-             Matcher intRangeMatch = INT_RANGE_PATTERN.matcher(procs)
-             if(intRangeMatch) {
-                 procs = intRangeMatch[0][1].toInteger()
-                 maxProcs = intRangeMatch[0][2].toInteger()
-             }
-             else {
-                 // NOTE: currently SGE is using a procs option like
-                 // 'orte 3' for 3 processes. This here is a hack to enable
-                 // that not to fail, but we need to think about how to handle that better
-                 procs = procs.trim().replaceAll('[^0-9]','').toInteger()
-             }
-          }
-          else
-          if(procs instanceof IntRange) {
-              maxProcs = procs.to
-              procs = procs.from
-          }
-          log.info "Found procs value $procs (maxProcs = $maxProcs) to override computed threads value of $actualThreads"
-          this.usedResources['threads'].amount = procs
-          this.usedResources['threads'].maxAmount = maxProcs
+      if(!commandCfg.containsKey('procs'))
+          return
+          
+      def procs = commandCfg.procs
+      int maxProcs = 0
+      if(procs instanceof String) {
+         // Allow range of integers
+         Matcher intRangeMatch = INT_RANGE_PATTERN.matcher(procs)
+         if(intRangeMatch.find()) {
+             procs = intRangeMatch.group(1).toInteger()
+             maxProcs = intRangeMatch.group(2).toInteger()
+         }
+         else {
+             // NOTE: currently SGE is using a procs option like
+             // 'orte 3' for 3 processes. This here is a hack to enable
+             // that not to fail, but we need to think about how to handle that better
+             procs = ((String)procs).trim().replaceAll('[^0-9]','').toInteger()
+         }
       }
+      else
+      if(procs instanceof IntRange) {
+          maxProcs = ((IntRange)procs).to
+          procs = ((IntRange)procs).from
+      }
+
+      log.info "Found procs value $procs (maxProcs = $maxProcs) to override computed threads value of ${usedResources['threads'].amount}"
+      this.usedResources['threads'].amount = (int)procs
+      this.usedResources['threads'].maxAmount = maxProcs
     }
     
     /**
