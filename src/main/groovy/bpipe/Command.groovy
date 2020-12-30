@@ -150,7 +150,7 @@ class Command implements Serializable {
         this.cfg = new HashMap(rawCfg)
         
         // Resolve inputs to files
-        List<Path> fileInputs = inputs == null ? [] : inputs.collect { it.toPath() }
+        List<Path> fileInputs = (List<Path>)(inputs == null ? [] : inputs.collect { it.toPath() })
         
         // Execute any executable properties that are closures
         rawCfg.each { key, value ->
