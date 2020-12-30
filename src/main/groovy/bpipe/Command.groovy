@@ -158,10 +158,10 @@ class Command implements Serializable {
                 
                 Closure valueClosure = (Closure)value
                 if(valueClosure.getMaximumNumberOfParameters() == 2) {
-                    cfg[key] = value(fileInputs,cfg)
+                    cfg[key] = valueClosure(fileInputs,cfg)
                 }
                 else {
-                    cfg[key] = value(fileInputs)
+                    cfg[key] = valueClosure(fileInputs)
                 }
             }
             
