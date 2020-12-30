@@ -193,16 +193,17 @@ class CustomCommandExecutor implements PersistentExecutor {
      *              the standard set.
      */
     void setEnvironment(Map env) {
-        
+        String commandScript = '.bpipe/commandtmp/'+command.id+'/'+command.id+'.sh'
+        File commandScriptFile = new File(commandScript)
+        commandScriptFile.text = command.command
+        commandScriptFile.setExecutable(true)
+        String shell = command.shell ? command.shell.join(' ') : 'bash'
+   
         if(config?.stdbuf) {
-            String commandScript = '.bpipe/commandtmp/'+command.id+'/'+command.id+'.sh'
-            File commandScriptFile = new File(commandScript)
-            commandScriptFile.text = command.command
-            commandScriptFile.setExecutable(true)
             env.COMMAND = 'stdbuf -o0 ' + commandScript + ' > .bpipe/commandtmp/'+command.id+'/'+command.id+'.out 2>  .bpipe/commandtmp/'+command.id+'/'+command.id+'.err'
         }
         else {
-            env.COMMAND = '('+ command.command + ') > .bpipe/commandtmp/'+command.id+'/'+command.id+'.out 2>  .bpipe/commandtmp/'+command.id+'/'+command.id+'.err'
+            env.COMMAND = '( ' + shell + ' ' + commandScriptFile.path + ') > .bpipe/commandtmp/'+command.id+'/'+command.id+'.out 2>  .bpipe/commandtmp/'+command.id+'/'+command.id+'.err'
         }
             
         if(config == null) {

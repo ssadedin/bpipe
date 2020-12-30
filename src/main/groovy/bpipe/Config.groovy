@@ -112,8 +112,15 @@ class Config {
         return listValue(Config.userConfig, name)
     }
 
+    /**
+     * Safely interrogate a configuration for an attribute and interpret as a list
+     * 
+     * @return guaranteed non-null List
+     */
     @CompileStatic
     public static List<String> listValue(Map cfg, String name) {
+        if(cfg.is(null))
+            return []
         Object rawValue = cfg.getOrDefault(name,[])
         if(rawValue instanceof List)
             return (List)rawValue

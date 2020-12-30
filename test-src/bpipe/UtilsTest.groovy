@@ -136,4 +136,20 @@ class UtilsTest {
         assert older.size() == 0
     }
     
+    @Test
+    void 'conversion of nested config objects to map'() {
+       ConfigObject cfg = new ConfigObject()
+       cfg.foo.bar.baz = [hello:'world']
+       cfg.foo.tree = 5
+        
+       Map map = Utils.configToMap(cfg)
+       
+       assert map.foo
+       assert map.foo instanceof Map
+       assert map.foo.bar instanceof Map
+       assert map.foo.bar.baz instanceof Map
+
+       assert map.foo.bar.baz.hello == 'world'
+    }
+    
 }

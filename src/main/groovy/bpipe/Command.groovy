@@ -109,6 +109,11 @@ class Command implements Serializable {
      */
     private Map cfg
     
+    /**
+     * Custom shell to use to run this command
+     */
+    List<String> shell 
+    
     File dir
 
     @CompileStatic
@@ -124,6 +129,12 @@ class Command implements Serializable {
         
         // Use default properties from root entries into user config
         def defaultConfig = Config.userConfig.findAll { !(it.value instanceof Map) }
+        
+        // allow nested config for default container
+        if(Config.userConfig.containsKey('container')) {
+            defaultConfig.container = Config.userConfig.container
+        }
+        
         log.info "Default command properties: $defaultConfig"
         
         Map rawCfg = defaultConfig
@@ -159,6 +170,18 @@ class Command implements Serializable {
                 cfg[key] = formatWalltime(cfg[key])
                 log.info "Converted walltime is " + cfg[key]
             }
+        }
+        
+        if(cfg.containsKey('container') && (cfg.container instanceof String || cfg.container instanceof GString)) {
+            def container = Config.userConfig.containers[cfg.container.toString()]
+            if(!container) 
+                throw new PipelineError("""
+                    Command specified container $cfg.container but this could not be resolved to any known configured container type.
+                
+                    Please configure an entry named $cfg.container in the containers section of your bpipe.config file
+                """)
+
+           cfg.container = Config.userConfig.containers[cfg.container.toString()]
         }
         
         // Ensure configuration knows its own name
@@ -224,11 +247,8 @@ class Command implements Serializable {
            dir.mkdirs()
            
        // Temporarily swap out the config if necessary
-       def tempCfg = cfg
-       if(cfg instanceof ConfigObject) {
-           cfg = cfg.collectEntries { it }
-       }
-           
+       def tempCfg = Utils.configToMap(cfg)
+          
        File saveFile = new File(dir, this.id)
        Command me = this
        

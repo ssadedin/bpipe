@@ -17,7 +17,7 @@ if(config?.memory) {%>
 trap 'echo 255 > $jobDir/$CMD_EXIT_FILENAME;' HUP INT TERM QUIT KILL STOP USR1 USR2
 
 (
-bash -e ${CMD_FILENAME.absolutePath}
+<% if(shell){%>${shell.join(' ')}<%}else{%>bash -e <%}%> ${CMD_FILENAME.absolutePath}
 )
 
 result=\$?

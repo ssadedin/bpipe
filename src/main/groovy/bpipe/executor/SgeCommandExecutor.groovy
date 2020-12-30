@@ -155,6 +155,8 @@ class SgeCommandExecutor implements CommandExecutor {
                 CMD_EXIT_FILENAME : CMD_EXIT_FILENAME
         ]
         
+        props.shell = command.shell
+
         new CommandTemplate().populateCommandTemplate(new File(jobDir), "executor/sge-command.template.sh", props)
         
         /*

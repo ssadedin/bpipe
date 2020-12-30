@@ -149,7 +149,11 @@ class LocalCommandExecutor implements CommandExecutor {
           
           log.info "Launching command wrapper script ${wrapperScript.path}"
           
-          ProcessBuilder pb = new ProcessBuilder(['nohup','bash', wrapperScript.path])
+          List<String> shell = command.shell ?: ['bash']
+          
+          List<String> args = ['nohup'] + shell  + [wrapperScript.path]
+          
+          ProcessBuilder pb = new ProcessBuilder(args*.toString())
           pb.redirectOutput(Redirect.to(new File(jobDir, CMD_OUT_FILENAME)))
           pb.redirectError(Redirect.to(new File(jobDir, CMD_ERR_FILENAME)))
           

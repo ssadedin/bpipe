@@ -7,12 +7,15 @@ import java.nio.file.Path
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 import bpipe.Command;
+import bpipe.CommandProcessor
 import bpipe.Concurrency;
 import bpipe.Config
 import bpipe.Pipeline
 import bpipe.PipelineContext;
 import bpipe.ResourceUnit;
+import bpipe.processors.DockerContainerWrapper
 import bpipe.processors.MemoryLimitReplacer
+import bpipe.processors.SingularityContainerWrapper
 import bpipe.processors.StorageResolver
 import bpipe.processors.ThreadAllocationReplacer
 import bpipe.storage.StorageLayer
@@ -143,11 +146,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
     @CompileStatic
     private void prepareCommand(Command cmd) {
         
-        new MemoryLimitReplacer().transform(cmd, resources)
-        new ThreadAllocationReplacer().transform(cmd, resources)
-        new StorageResolver(commandExecutor).transform(cmd, resources)
-        
-        Pipeline pipeline = bpipe.Pipeline.currentRuntimePipeline.get()
+        runProcessors(cmd)
 
         if(command.@cfg.beforeRun != null) {
             ((Closure)command.@cfg.beforeRun)(cmd.@cfg)
@@ -155,6 +154,36 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
 
         command.allocated = true
         command.createTimeMs = System.currentTimeMillis()
+    }
+
+    private runProcessors(Command cmd) {
+        
+        
+        List<CommandProcessor> processors = [
+            new MemoryLimitReplacer(), 
+            new ThreadAllocationReplacer(),
+            new StorageResolver(commandExecutor),
+        ]
+        
+        String containerType = ((Map)cmd.processedConfig.container)?.type
+        log.info "Container type for command $cmd.id is $containerType"
+        if(containerType) {
+            if(containerType == "docker") {
+                log.info "Configuring command with singularity shell wrapper for command $cmd.id"
+                processors << new DockerContainerWrapper()
+            }
+            else
+            if(containerType == "singularity") {
+                log.info "Configuring command with singularity shell wrapper for command $cmd.id"
+                processors << new SingularityContainerWrapper()
+            }
+            else 
+                throw new IllegalArgumentException("Unknown container type $containerType configured")
+        }
+        
+        for(CommandProcessor processor in processors) {
+            processor.transform(cmd, resources)
+        }
     }
     
   

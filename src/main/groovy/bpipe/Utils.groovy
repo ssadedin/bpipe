@@ -1278,4 +1278,18 @@ class Utils {
             println("MSG: Touching file: $p")
         }
     }
+    
+    @CompileStatic
+    public static Map configToMap(Map m) {
+        if(m instanceof ConfigObject) {
+            m = m.collectEntries { it }
+        }
+        
+        for(Map.Entry e in m) {
+            if(e.value instanceof Map) {
+                e.value = configToMap((Map)e.value)
+            }
+        }
+        return m
+    }
 }
