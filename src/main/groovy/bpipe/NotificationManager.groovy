@@ -30,8 +30,15 @@ import java.util.logging.Level;
 import org.codehaus.groovy.runtime.StackTraceUtils
 
 import groovy.text.SimpleTemplateEngine
+import groovy.transform.CompileStatic
 import groovy.util.ConfigObject;
 import groovy.util.logging.Log;
+
+@CompileStatic
+class NotificationChannelReference {
+    String channelName
+    ConfigObject channel
+}
 
 /**
  * Responsible for sending out notifications over
@@ -54,7 +61,7 @@ class NotificationManager {
     /**
      * Configured notification channels
      */
-    Map<String,NotificationChannel> channels = [:]
+    Map<String,ConfigObject> channels = Collections.synchronizedMap([:])
     
     /**
      * Configure this notification manager with the given configuration object
@@ -77,47 +84,68 @@ class NotificationManager {
         }
             
         cfg.notifications.each { String name, ConfigObject channelCfg -> 
-            channelCfg.type = channelCfg.type?:name
-            
-            if(!channelCfg.containsKey('name'))
-                channelCfg.name = name
-			
-            NotificationChannel channel
+            configureChannel(name, channelCfg)
+        }
+    }
+    
+    @CompileStatic
+    void configureChannel(String name, ConfigObject channelCfg) {
+
+        channelCfg.type = channelCfg.type?:name
+
+        if(!channelCfg.containsKey('name'))
+            channelCfg.name = name
+
+        NotificationChannel channel
+        try {
+            channel = createChannel(channelCfg)
+        } catch (Exception e) {
+            String msg ="ERROR: Unable to create connection to notification channel $name (error: ${StackTraceUtils.sanitizeRootCause(e)}) - see bpipe log for full stack trace."
+            System.err.println(msg)
+            return
+        }
+
+        configureChannelEvents(channelCfg, name, channel)
+    }
+
+    @CompileStatic
+    private void configureChannelEvents(ConfigObject channelCfg, String name, NotificationChannel channel) {
+        PipelineEvent [] eventFilter = [PipelineEvent.FINISHED]
+        if(channelCfg.containsKey('events'))  {
             try {
-                channel = createChannel(channelCfg) 
-            } catch (Exception e) {
-                String msg ="ERROR: Unable to create connection to notification channel $name (error: ${StackTraceUtils.sanitizeRootCause(e)}) - see bpipe log for full stack trace."
-                System.err.println(msg)  
-                return
-            } 
-            
-            PipelineEvent [] eventFilter = [PipelineEvent.FINISHED]
-            if(channelCfg.containsKey('events'))  {
-                try {
-                    eventFilter = channelCfg.events.tokenize(",").collect { evt ->
-                        log.info("Subscribing channel $channelCfg.name to event " + evt)
-                        PipelineEvent.valueOf(evt) 
-                    }
-                }
-                catch(IllegalArgumentException e) {
-                    System.err.println("ERROR: unknown type of Pipeline Event configured for notification type $name: " + channelCfg.events)
-                    log.severe("ERROR: unknown type of Pipeline Event configured for notification type $name: " + channelCfg.events)
+                eventFilter = Config.listValue(channelCfg, 'events').collect { evt ->
+                    log.info("Subscribing channel $channelCfg.name to event " + evt)
+                    PipelineEvent.valueOf(evt)
                 }
             }
-            
-            // this.channels[name] = channel
-            channelCfg.channel = channel
-            
-            // Wire up required events
-            eventFilter.each {
-                EventManager.instance.addListener(it, { evt, desc, detail -> 
-					sendNotification(channelCfg, evt, desc, detail)
+            catch(IllegalArgumentException e) {
+                System.err.println("ERROR: unknown type of Pipeline Event configured for notification type $name: " + channelCfg.events)
+                log.severe("ERROR: unknown type of Pipeline Event configured for notification type $name: " + channelCfg.events)
+            }
+        }
 
-	            } as PipelineEventListener)
-            }    
+
+        channelCfg.channel = channel
+
+        this.channels[name] = channelCfg
+
+        // Wire up required events
+        eventFilter.each {
+            EventManager.theInstance.addListener(it, { PipelineEvent evt, String desc, Map detail ->
+                sendNotification(channelCfg, evt, desc, detail)
+            } as PipelineEventListener)
+        }
+    }
+    
+    @CompileStatic
+    void setChannelVariables(Binding binding) {
+        this.channels.each { String name, ConfigObject c ->
+            log.info "Binding channel variable $name"
+            binding.setVariable(name, new NotificationChannelReference(channelName:name, channel:c))
         }
     }
 	
+    @CompileStatic
 	void sendNotification(String channelName, PipelineEvent evt, String desc, Map detail) {
         
         // When run in test mode, notifications are not configured
@@ -126,7 +154,7 @@ class NotificationManager {
         if(this.cfg == null)
             return
         
-        if(!this.cfg.notifications.containsKey(channelName)) {
+        if(!((Map)this.cfg.notifications).containsKey(channelName)) {
             String msg = "An unknown communication recipient / channel was specified: $channelName for message: $desc"
             log.warning(msg)
             println "WARNING: $msg\nWARNING: To fix this, please edit bpipe.config and add a '$channelName' entry."
@@ -134,7 +162,7 @@ class NotificationManager {
         }
         
         // Find the correct configuration
-        sendNotification(this.cfg.notifications[channelName], evt, desc, detail)
+        sendNotification((ConfigObject)this.cfg.notifications[channelName], evt, desc, detail)
     }
     
 	/**

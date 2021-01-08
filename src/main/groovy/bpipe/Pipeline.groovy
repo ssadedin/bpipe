@@ -576,6 +576,8 @@ public class Pipeline implements ResourceRequestor {
             
         ToolDatabase.instance.setToolVariables(pipeline.externalBinding)
         
+        NotificationManager.instance.setChannelVariables(pipeline.externalBinding)
+        
         pipeline.loadExternalStages()
         pipeline.joiners += segmentJoiners
 

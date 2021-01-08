@@ -193,8 +193,17 @@ class Sender {
         this.details = extraDetails.collectEntries { it }
         
         // Find the config object
-        String cfgName = details.channel
+        String cfgName;
         ConfigObject channelCfg
+
+        if(details.channel instanceof String) {
+            cfgName = details.channel
+        }
+        else
+        if(details.channel instanceof NotificationChannelReference) {
+            cfgName = details.channel.channelName
+        }
+
         if(cfgName == null && details.containsKey("file")) {
             cfgName = "file"
             channelCfg = new ConfigObject()
@@ -351,5 +360,14 @@ class Sender {
     void to(String recipient) {
         this.ctx.checkAndClearImplicits("$recipient")
         to([channel:recipient])
+    }
+
+    /**
+     * Simplified form : 'send "hello" to gtalk'
+     * 
+     * @param recipient name of communication channel to use
+     */
+    void to(NotificationChannelReference recipient) {
+        to([channel:recipient.channelName])
     }
 }
