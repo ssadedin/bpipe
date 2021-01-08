@@ -110,7 +110,7 @@ class NotificationManager {
 
     @CompileStatic
     private void configureChannelEvents(ConfigObject channelCfg, String name, NotificationChannel channel) {
-        PipelineEvent [] eventFilter = [PipelineEvent.FINISHED]
+        List<PipelineEvent> eventFilter = [PipelineEvent.FINISHED]
         if(channelCfg.containsKey('events'))  {
             try {
                 eventFilter = Config.listValue(channelCfg, 'events').collect { evt ->
@@ -131,7 +131,7 @@ class NotificationManager {
 
         // Wire up required events
         eventFilter.each {
-            EventManager.theInstance.addListener(it, { PipelineEvent evt, String desc, Map detail ->
+            EventManager.theInstance.addListener((PipelineEvent)it, { PipelineEvent evt, String desc, Map detail ->
                 sendNotification(channelCfg, evt, desc, detail)
             } as PipelineEventListener)
         }
