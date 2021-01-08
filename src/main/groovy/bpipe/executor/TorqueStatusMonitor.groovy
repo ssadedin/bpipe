@@ -166,14 +166,14 @@ class TorqueStatusMonitor extends TimerTask {
                 def xml = new XmlSlurper().parseText(line)
                 String jobId = xml.Job.Job_Id.text()
 
-                log.info "Updating status for jobId ${jobId} based on $line"
+                log.fine "Updating status for jobId ${jobId} based on $line"
                 TorqueJobState jobState = jobs[jobId]
 
                 String state = xml.Job.job_state.text()
 
                 CommandStatus newState = STATES.get(state,CommandStatus.UNKNOWN)
                 if(newState != jobState.state) {
-                    log.info "Job $jobId transitioned state from $jobState.state to $newState"
+                    log.info "Job $jobId transitioned state from $jobState.state to $newState due to $line"
                 }
                 jobState.state = newState
                 
