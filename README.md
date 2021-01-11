@@ -4,7 +4,7 @@ Welcome to Bpipe  [![travis](https://travis-ci.org/ssadedin/bpipe.svg?branch=mas
 Bpipe provides a platform for running big bioinformatics jobs that consist of a series of processing stages - known as 'pipelines'.
 
 * January 2021 - New! [Bpipe 0.9.10](http://docs.bpipe.org/Releases/0.9.10/) released!
-* Download [latest](http://download.bpipe.org/versions/bpipe-0.9.10.tar.gz), [all](http://download.bpipe.org)
+* Download [latest](https://github.com/ssadedin/bpipe/releases/tag/0.9.10)
 * [Documentation](http://docs.bpipe.org)
 * [Mailing List](https://groups.google.com/forum/#!forum/bpipe-discuss) (Google Group)
 
