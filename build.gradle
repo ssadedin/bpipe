@@ -203,6 +203,10 @@ task stage(dependsOn: [jar,cloudjar]) {
       ant.copy(todir: "$STAGE") {
         ant.fileset(dir: 'src/main/config', includes: "bpipe.config")
       }
+
+      ant.chmod(perm: 'a+rx') {
+        ant.fileset(dir: "$STAGE/bin", includes: "**")
+      }
   }
 }
 
@@ -215,6 +219,12 @@ task dist(dependsOn: stage)  {
         ant.fileset(dir: "build/stage", includes: "bpipe-${VERSION}/templates/**", excludes:"**/*.swp")
         ant.tarfileset(dir: "build/stage", filemode:"755", includes: "bpipe-${VERSION}/bin/**", excludes:"**/*.swp")
       }
+
+      // Note: natively zipping loses permissions, but repackaging tar does not
+      ant.zip(destfile: "build/bpipe-${VERSION}.zip") {
+        ant.tarfileset(src: "build/bpipe-${VERSION}.tar")
+      }
+
       ant.gzip(destfile:"build/bpipe-${VERSION}.tar.gz", src: "build/bpipe-${VERSION}.tar")
   }
 }
