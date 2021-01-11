@@ -1,3 +1,90 @@
+=========== Changes for Bpipe Version 0.9.10 ============
+
+   - FEATURE: default groovy now changed to 2.5.13. To move back to 
+     old groovy, compile using -PGROOVY_VERSION=2.4.8
+
+   - FEATURE: many improvments to efficiency, decrease load created by bpipe
+    
+   - FEATURE: initial singularity and docker container support
+    
+   - FIX: reference to $output in check causing incorrect output not 
+     found error 
+    
+   - FIX: various fixes to AWS EC2 support 
+    
+   - FEATURE: support for auth and headers in http send, and 
+     support to config http as notification channel 
+     
+   - FIX: undefined variables referenced in stages resolving to
+     value instead of throwing error
+     
+   - FIX: output.dir unexpectedly uses absolute path when inside run dir 
+     
+   - FIX: branch outputs not resolved downstream when user terminates branch 
+     with success 
+     
+   - FIX: error generating reports with latest groovy 2.5.x 
+     
+   - FIX: ugly error if stage returns w/o output from annotated 
+     transform/filter 
+     
+   - FIX: null pointer exception thrown for pipeline with no outputs 
+     for some pipelines
+    
+   - FIX: support custom project for gcloud executor 
+     
+   - FEATURE: more flexible forwarding of local files 
+     
+   - FIX: reports potentially overwriting each other inside
+     transform with fixed outputs
+     
+   - FIX: storage system printed out even when local for not found files 
+     
+   - FIX: legacy / manual output poller failing to see files outside 
+          root dir 
+     
+   - FEATURE: config entries in bpipe.config defined as closure 
+     now receive optional arg containing config, eg: to configure 
+     memory based on procs
+     
+   - Initial implementation of channels to enable controlled async cross
+     branch dependencies, using from(..., crossBranch:true) { ... }
+     
+   - FIX: in-progress files cleaned up when bpipe stats executed 
+     
+   - FIX: resolving outputs across sibling branches now fails unless 
+          config option set 
+     
+   - FIX: failure to resolve full path in from when duplicated
+     in args 
+     
+   - FIX: regression causing resolution of pre-existing files to fail 
+     
+   - FIX: failure checking dependencies when only input is directory 
+     
+   - FEATURE: support for environments in bpipe.config, selected via 
+     -e option, embed multiple configs for specific env inside named
+     sections of bpipe.config
+     
+   - FEATURE: send can override template by supplying 'template' attribute
+     after send, eg: send text(....) to template: 'report_template.html'
+     
+   - FIX: outputs sometimes not recognised as generated in printed output after
+     pipeline finished
+     
+   - FEATURE: Support fo file attachments in gitlab notification / send 
+     
+   - FIX: fix content of saved sent file null when sending json 
+     
+   - FIX: crash / fail to send notification if pipeline input/output/file 
+     included in send of json 
+     
+   - FEATURE: print queuing system job id in command status output 
+
+   - FEATURE: check for dirty files now enforced by markers in .bpipe/inprogress -
+     error printed if present on retry.
+
+
 =========== Changes for Bpipe Version 0.9.9.9 ============
 
    - Fix not completely robust reading of exit code for
