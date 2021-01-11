@@ -79,6 +79,7 @@ pages:
 - ['Guides/JMS.md','Guides','Integration with JMS / Queuing Systems']
 - ['Guides/AWS.md','Guides','Using Bpipe with Amazon Web Services (AWS/EC2)']
 - ['Guides/GoogleCloud.md','Guides','Using Bpipe with Google Cloud (GCS)']
+- ['Guides/Containers.md','Guides','Running Commands in Containers']
 - ['Examples/PairedEndAlignment.md','Examples','Paired End Alignment']
 - ['Examples/RNASeqCorset.md','Examples','RNA Seq Corset']
 - ['Examples/WGSVariantCalling.md','Examples','WGS Variant Calling']
@@ -88,4 +89,5 @@ pages:
 - ['Releases/0.9.9.6.md','Releases','0.9.9.6']
 - ['Releases/0.9.9.7.md','Releases','0.9.9.7']
 - ['Releases/0.9.9.9.md','Releases','0.9.9.9']
+- ['Releases/0.9.10.md','Releases','0.9.10']
 #markdown_extensions: [gfm]
