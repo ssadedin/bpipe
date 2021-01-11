@@ -68,7 +68,7 @@ key for your commands.
 ```groovy
 commands {
     hello { container='ubuntu' }
-    world { container='world' }
+    world { container='ubuntu' }
 }
 
 containers {
