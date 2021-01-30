@@ -1,4 +1,4 @@
-# Advanced Settings 
+# Advanced Settings and Variables
 
 ## Introduction
 
@@ -59,7 +59,14 @@ echo "Command finished at: `date`"
 
 *Note*: this is not supported by every executor, but is supported by most, including the local executor.
 
+### Special Variables
 
+Sometimes it is helpful for your pipeline script to know variables about its environment. The following
+table defines variables that are available to pipeline scripts:
+
+| Variable | Meaning |
+|----------|---------|
+| bpipe.Config.scriptDirectory | The directory in which the currently running pipeline script is situated |
 
 
 
