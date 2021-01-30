@@ -33,3 +33,10 @@ test.out
 test.src.out
 
 /eclipse-build/
+
+site
+*.swp
+
+tests/*/notifications
+.bpipe.tmp-*
+.bpipe.*.run.pid
