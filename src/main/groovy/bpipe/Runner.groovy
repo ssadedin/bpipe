@@ -713,13 +713,10 @@ class Runner {
             exit(1)
         }
         
-        
         String scriptText = pipelineFile.text
         if(scriptText.startsWith('#!')) {
-            println "Stripping shebang"
            scriptText = scriptText.substring(scriptText.indexOf('\n')+1) 
         }
-
         
         // Note that it is important to keep this on a single line because 
         // we want any errors in parsing the script to report the correct line number

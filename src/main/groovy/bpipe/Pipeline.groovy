@@ -1188,10 +1188,9 @@ public class Pipeline implements ResourceRequestor {
                     String scriptClassName = scriptFile.name.replaceAll('.groovy$','_bpipe.groovy')
                     String scriptText = scriptFile.text
                     if(scriptText.startsWith('#!')) {
-                        println "Stripping shebang"
                        scriptText = scriptText.substring(scriptText.indexOf('\n')+1) 
                     }
-
+                    
                     Script script = shell.evaluate(PIPELINE_IMPORTS+
                         (includesLibs?" binding.variables['BPIPE_NO_EXTERNAL_STAGES']=true;":"") +
                         "bpipe.Pipeline.scriptNames['$scriptFile']=this.class.name;" +
