@@ -1030,9 +1030,18 @@ public class Pipeline implements ResourceRequestor {
         String startDateTime = cal.format("yyyy-MM-dd HH:mm") + " "
 
         OutputLog startLog = new OutputLog("----")
-        startLog.bufferLine("="*Config.config.columns)
-        startLog.bufferLine("|" + " Starting Pipeline at $startDateTime".center(Config.config.columns-2) + "|")
-        startLog.bufferLine("="*Config.config.columns)
+        startLog.bufferLine("╒" + "═"*(Config.config.columns-2) + '╕')
+        
+        if(documentation?.title) {
+            startLog.bufferLine("|" + " " * (Config.config.columns-2) + "|")
+            startLog.bufferLine("| " + documentation.title.center(Config.config.columns-3) + "|")
+            startLog.bufferLine("|" + " " * (Config.config.columns-2) + "|")
+            startLog.bufferLine("|" + " Starting at $startDateTime".center(Config.config.columns-2) + "|")
+        }
+        else {
+            startLog.bufferLine("|" + " Starting Pipeline at $startDateTime".center(Config.config.columns-2) + "|")
+        }
+        startLog.bufferLine("╘" + "═"*(Config.config.columns-2) + '╛')
         startLog.flush()
     }
     
