@@ -25,7 +25,7 @@
  */
 package bpipe;
 
-import java.util.List;
+import java.util.*;
 
 /**
  * This exception is thrown when the pipeline is aborted because
@@ -77,7 +77,10 @@ class PipelineTestAbort extends RuntimeException {
         
         StringBuilder b = new StringBuilder(super.getMessage());
         b.append("\n\nto create outputs:\n\n");
-        for(Object o : this.missingOutputs) {
+        
+        HashSet<String> uniqueMissingOutputs = new HashSet<String>(this.missingOutputs);
+        
+        for(Object o : uniqueMissingOutputs) {
             b.append("    " + String.valueOf(o) + "\n");
         }
         
