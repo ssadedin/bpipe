@@ -811,7 +811,10 @@ class Runner {
     }
     
     static void checkDirtyFiles() {
-        def dirtyFiles = DirtyFileManager.getTheInstance().getUncleanFilePaths()
+        def dirtyFiles = DirtyFileManager
+                            .getTheInstance()
+                            .getUncleanFilePaths()
+                            .grep { new File(it).exists() }
         if(dirtyFiles) {
             println "=" * Config.config.columns
             println ""
