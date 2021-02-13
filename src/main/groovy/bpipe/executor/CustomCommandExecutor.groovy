@@ -197,7 +197,7 @@ class CustomCommandExecutor implements PersistentExecutor {
         File commandScriptFile = new File(commandScript)
         commandScriptFile.text = command.command
         commandScriptFile.setExecutable(true)
-        String shell = command.shell ? command.shell.join(' ') : 'bash'
+        String shell = command.shell ? command.shell.join(' ') : 'bash -e'
    
         if(config?.stdbuf) {
             env.COMMAND = 'stdbuf -o0 ' + commandScript + ' > .bpipe/commandtmp/'+command.id+'/'+command.id+'.out 2>  .bpipe/commandtmp/'+command.id+'/'+command.id+'.err'
