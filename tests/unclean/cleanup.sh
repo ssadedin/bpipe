@@ -1,1 +1,1 @@
-rm -f hello.txt
+rm -f hello.txt .bpipe
