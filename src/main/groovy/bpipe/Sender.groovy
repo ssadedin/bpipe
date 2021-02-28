@@ -29,6 +29,7 @@ import java.util.logging.Level
 import bpipe.storage.LocalPipelineFile
 import bpipe.storage.UnknownStoragePipelineFile
 import groovy.json.JsonOutput
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 import groovy.xml.MarkupBuilder
 
@@ -79,6 +80,7 @@ class Sender {
         return this
     }
     
+    @CompileStatic
     Sender json(Closure c) {
         Object result = c()
         if(result instanceof PipelineInput) {
