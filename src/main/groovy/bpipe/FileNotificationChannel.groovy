@@ -51,43 +51,23 @@ class FileNotificationChannel implements NotificationChannel {
     }
 
     static void modelContentToFile(final Map model, final File targetFile) {
-        if(model["send.contentType"] == "application/json") {
-
-            JsonGenerator jsonGenerator = safeJsonGenerator()
-
-            Object content = model["send.content"]
-            String json = jsonGenerator.toJson(content)
-
-            targetFile.text = JsonOutput.prettyPrint(json) + '\n'
+        def content = model["send.content"]
+        boolean isJson = (model["send.contentType"] == "application/json")
+        if(content instanceof String) {
+            targetFile.text = isJson ? ((String)content + '\n') : content
         }
         else
-        if(model["send.content"] instanceof String) {
-            targetFile.text = model["send.content"]
+        if(isJson) {
+           String json = Utils.safeJson(content)
+           targetFile.text = json + '\n'
         }
         else
-        if(model["send.content"] instanceof File)
-            targetFile << model["send.content"].bytes
-    }
-
-    static JsonGenerator safeJsonGenerator() {
-        JsonGenerator jsonGenerator =
-                new JsonGenerator.Options()
-                .addConverter(PipelineFile) { PipelineFile f ->
-                    f.absolutePath
-                }
-                .addConverter(PipelineInput) { PipelineInput i ->
-                    i.toString()
-                }
-                .addConverter(PipelineOutput) { PipelineOutput i ->
-                    i.toString()
-                }
-                .build()
-        return jsonGenerator
+        if(content instanceof File)
+            targetFile << ((File)model["send.content"]).bytes
     }
 
     @Override
     public String getDefaultTemplate(String contentType) {
         "file.template.txt"
     }
-
 }

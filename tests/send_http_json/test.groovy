@@ -5,6 +5,8 @@ def port = 8680
 
 received = null
 
+jsonParser = new groovy.json.JsonSlurper()
+
 def server = HttpServer.create(new InetSocketAddress(port), 0)
     server.createContext("/", { HttpExchange exchange ->    
         try {
@@ -40,7 +42,7 @@ there = {
 
     Thread.sleep(2000)
 
-    assert received == '{"hello":1,"world":2}' 
+    assert jsonParser.parseText(received) == ["hello":1,"world":2] 
 }
 
 world = {
@@ -48,7 +50,7 @@ world = {
 
     Thread.sleep(2000)
 
-    assert received.trim() == '{"hi":1, "there":2}' 
+    assert jsonParser.parseText(received) == ["hi":1,"there":2] 
 
 }
 

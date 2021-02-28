@@ -24,6 +24,8 @@
  */
 package bpipe
 
+import groovy.json.JsonGenerator
+import groovy.json.JsonOutput
 import groovy.time.TimeCategory;
 
 import groovy.transform.CompileStatic;
@@ -1278,6 +1280,31 @@ class Utils {
             println("MSG: Touching file: $p")
         }
     }
+    
+    @CompileStatic
+    static String safeJson(Object obj) {
+        JsonGenerator jsonGenerator = safeJsonGenerator()
+        return JsonOutput.prettyPrint(jsonGenerator.toJson(obj))
+    }
+    
+    @CompileStatic
+    static JsonGenerator safeJsonGenerator() {
+        JsonGenerator jsonGenerator =
+                new JsonGenerator.Options()
+                .addConverter(PipelineFile) { PipelineFile f ->
+                    f.absolutePath
+                }
+                .addConverter(PipelineInput) { PipelineInput i ->
+                    i.toString()
+                }
+                .addConverter(PipelineOutput) { PipelineOutput i ->
+                    i.toString()
+                }
+                .build()
+        return jsonGenerator
+    }
+
+    
     
     @CompileStatic
     public static Map configToMap(Map m) {

@@ -88,10 +88,11 @@ class Sender {
         // If it is a file object, send the content of the file, not the literal file object
         if(result instanceof File) {
             log.info "Sent JSON resolves to file: sending content of file $result"
-            this.content = result.text
+            this.content = ((File)result).text
         }
-        else
-            this.content = JsonOutput.toJson(result)
+        else {
+            this.content = Utils.safeJson(result)
+        }
             
         this.contentType = "application/json"
         this.defaultSubject = "JSON content from stage ${ctx.stageName}"
