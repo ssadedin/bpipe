@@ -64,9 +64,21 @@ class GitlabNotificationChannel implements NotificationChannel {
         gitlab = new GitLabApi(cfg.url, cfg.token)
         
 		log.info "Notification channel $cfg.name connected to gitlab successfully"
-        project = gitlab.projectApi.getProjects(cfg.project).find { Project p -> p.name == cfg.project }
+
+        if(cfg.project instanceof Number) {
+            project = gitlab.projectApi.getProject((int)cfg.project)
+        }
+        else
+        if(cfg.project instanceof String) {
+            project = gitlab.projectApi.getProject(cfg.project).find { p -> 
+                   p.name == cfg.project 
+            }            
+        }
+        else
+            throw new IllegalArgumentException("Gitlab project must be specified by either string (name) or id (integer) but you provided a value of type ${cfg.project.class.name}")
         
 		log.info "Found project $project.name from Gitlab at $cfg.url"
+
 		this.baseURL = "$cfg.url/api/v4"
     }
 
