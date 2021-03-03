@@ -471,7 +471,7 @@ class Runner {
 
         initThreads*.join(20000)
         
-       
+      
         // create the pipeline script instance and set the binding obj
         log.info "Parsing script ... "
         
@@ -484,6 +484,12 @@ class Runner {
 
         // RUN it
         try {
+            Exception fatalError = NotificationManager.instance.fatalError
+            if(fatalError) {
+                throw new bpipe.PipelineError('One or more of your required notification channels could not be configured. Please check your configuration to resolve the error below', fatalError)
+            }
+        
+ 
             checkDirtyFiles()
 
             log.info "Run ... "

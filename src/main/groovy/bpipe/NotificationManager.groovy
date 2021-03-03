@@ -64,6 +64,12 @@ class NotificationManager {
     Map<String,ConfigObject> channels = Collections.synchronizedMap([:])
     
     /**
+     * If one or more notification channels fails with a fatal error, 
+     * it will be set here and reported as a pipeline error
+     */
+    Exception fatalError
+    
+    /**
      * Configure this notification manager with the given configuration object
      * <p>
      * Causes the manager to subscribe to necessary events to send configured
@@ -102,6 +108,8 @@ class NotificationManager {
         } catch (Exception e) {
             String msg ="ERROR: Unable to create connection to notification channel $name (error: ${StackTraceUtils.sanitizeRootCause(e)}) - see bpipe log for full stack trace."
             System.err.println(msg)
+            if(channelCfg.getOrDefault('required', false))
+                fatalError = e
             return
         }
 
