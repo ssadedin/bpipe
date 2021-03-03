@@ -23,8 +23,7 @@ class DummyTemplate implements Template, Writable {
 
     @Override
     public Writable make(Map arg0) {
-        assert 'content' in arg0
-        this.contents = arg0.content
+        this.contents = arg0.content?:''
         return this
     }
 
