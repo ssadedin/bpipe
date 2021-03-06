@@ -43,9 +43,20 @@ import bpipe.worx.WorxConnection
 import groovy.util.logging.Log;
 import groovy.json.JsonOutput
 
+/**
+ * Listens or monitors for job requests (bpipe commands) and dispatches them for execution,
+ * facilitating return of responses to the caller.
+ * 
+ * @author Simon Sadedin
+ */
 @Log
 abstract class Agent extends TimerTask {
     
+    /**
+     * Mapping of each command that may be passed in an incoming agent request to a handler
+     * for that command type. These are either objects extending BpipeCommand or Closures 
+     * that are executed directly.
+     */
     public static Map COMMANDS = [
         "retry" : { dir, args, writer -> bpipe(dir, ['retry'], writer)},
         "stop" : Stop,
