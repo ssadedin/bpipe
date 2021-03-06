@@ -146,9 +146,16 @@ class JMSAgent extends Agent {
                 log.info "Sending reply for command $commandAttributes.id"
                 
                 BpipeCommand command = runner.command
+                
+                log.info "Loading checks from $command.dir "
+                        
+                def checks = bpipe.Check.loadAll(new File(command.dir, '.bpipe/checks'))
+        
                 Map resultDetails = [
                         command: commandAttributes,
-                        result: result
+                        result: result + [ 
+                            checks:  checks.collect { [name: it.name, stage: it.stage, branch: it.branch, message: it.message, passed: it.passed] }
+                        ]
                 ]
                 
                 if(command instanceof RunPipelineCommand) {

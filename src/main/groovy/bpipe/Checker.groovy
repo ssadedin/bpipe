@@ -31,7 +31,7 @@ import java.util.regex.Pattern
 class Checker {
     
     // Directory in which checks will be stored
-    final static CHECK_DIR = new File(".bpipe/checks")
+    final static File CHECK_DIR = new File(".bpipe/checks")
     
     static {
         CHECK_DIR.mkdirs()

@@ -234,11 +234,11 @@ class Check {
      * 
      * @return
      */
-    static List<Check> loadAll() {
-        def allFiles = Checker.CHECK_DIR.listFiles().grep { it.name.endsWith(".properties") }
+    static List<Check> loadAll(File dir=Checker.CHECK_DIR) {
+        def allFiles = dir.listFiles().grep { File f -> f.name.endsWith(".properties") }
         return allFiles.collect { new Check().load(it) }
     }
-    
+
     String toString() {
         "Check $name for stage $stage in branch $branch"
     }
