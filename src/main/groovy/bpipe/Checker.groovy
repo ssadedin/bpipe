@@ -24,6 +24,7 @@
  */
 package bpipe
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 import java.util.regex.Pattern
 
@@ -83,10 +84,15 @@ class Checker {
         if(!inputs.isEmpty() && check.isUpToDate(inputs)) { // If inputs were referenced, use those to determine if check is up to date
             log.info "Check ${check.toString()} was already executed and is up to date with inputs $inputs"
             log.info "Cached result of ${check} was Passed: ${check.passed} Overridden: ${check.override}"
+
+            // Still need to execute the check closure as this causes outputs to be resolved
+            // which is required for eg: bpipe retry type re-execution
+            runCheckClosure(true)
         }
         else
         if(ctx.executedOutputs.isEmpty() && check.isUpToDate(inputs)) { // No inputs? then we execute the check only IF a command ran
             log.info "Check ${check.toString()} was already executed and there are no inputs, and the stage did not execute any commands"
+            runCheckClosure(true)
         }
         else {
             log.info "Check ${check.toString()} was not already executed or not up to date with inputs $inputs"
@@ -122,7 +128,7 @@ class Checker {
                  "Executing check $check.name", 
                  check.getEventDetails(pipelineStage))
   
-            runCheckClosure()
+            runCheckClosure(ctx.probeMode)
             
             check.passed = true
 			check.state = 'pass'
@@ -154,7 +160,8 @@ class Checker {
      * Note: the closure throws an exception if the check fails. If no exception
      * is thrown, the check passed.
      */
-    void runCheckClosure() {
+    @CompileStatic
+    void runCheckClosure(boolean probeMode) {
         
         check.executed = new Date()
             
@@ -162,8 +169,10 @@ class Checker {
         log.info "Executing check: $check with status in file: $checkFile"
 		
         List oldOutputs = ctx.@output
-		ctx.internalOutputs = [checkFile.path]
+		ctx.internalOutputs = ctx.resolvePipelineFiles([checkFile.path])
 		ctx.internalInputs = Utils.box(ctx.@output)
+        boolean oldProbeMode = this.ctx.probeMode
+        this.ctx.probeMode = probeMode
 		try {
             checkClosure()
 		}
@@ -173,6 +182,7 @@ class Checker {
             ctx.setRawOutput(oldOutputs)
 			ctx.internalOutputs = []
 			ctx.internalInputs = []
+            ctx.probeMode = oldProbeMode
 		}
     }
     
