@@ -389,7 +389,7 @@ class Runner {
             log.info "Set branch filter = ${Config.config.branchFilter}"
         }
         
-        if(((ConfigObject)Config.userConfig.worx).enable) {
+        if(((ConfigObject)Config.userConfig.worx)?.enable) {
             new WorxEventListener().start()
         }
         
