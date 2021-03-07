@@ -434,9 +434,9 @@ class Runner {
         def gcl = new GroovyClassLoader()
         
         if('parameters' in Config.userConfig) {
-            Config.userConfig.parameters.collect { k,v ->
-                if(!binding.parameters.contains(k))
-                    binding.setParam((String)k,v)
+            Config.userConfig.parameters.collect { Map.Entry<String,Object> e ->
+                if(!binding.parameters.contains(e.key))
+                    binding.setParam(e.key,e.value)
             }
         }
        
