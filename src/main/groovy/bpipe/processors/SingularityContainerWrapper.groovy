@@ -23,6 +23,9 @@ class SingularityContainerWrapper implements CommandProcessor {
         .sum()
         ?: []
         
+        if(extraVolumes)
+            log.info "Additonal volume mounts configured for command $command.id: $extraVolumes"
+        
         File imagePath = new File(config.image.toString())
         if(!imagePath.exists()) {
             def scriptDirImagePath = new File(Config.scriptDirectory, 'containers/' + config.image)
@@ -37,7 +40,10 @@ class SingularityContainerWrapper implements CommandProcessor {
             [
                 "singularity",
                 "run",
-                "-B", Runner.runDirectory
+                "-B", Runner.runDirectory,
+                "--pwd", bpipe.Runner.runDirectory,
             ] + extraVolumes + [imagePath, 'bash', '-e']
+            
+       log.info "Singularity command prefix: " + command.shell.join(' ')
     }
 }
