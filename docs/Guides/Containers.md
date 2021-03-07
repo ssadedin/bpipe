@@ -42,6 +42,29 @@ my_stage = {
 run { my_stage }
 ```
 
+**Example: Run VEP in Singularity Container**
+
+```groovy
+commands {
+    vep {
+        container {
+            type='singularity'
+            image='vep.sif'
+        }
+    }
+}
+```
+
+Then in your Bpipe script:
+
+```groovy
+annotate_vcf = {
+    exec "vep ... "
+}
+
+run { annotate_vcf }
+```
+
 Note that the command itself does not have any reference to container settings, which 
 is what allows you to create portable pipeline scripts that can run inside or outside of
 a container system.
@@ -54,6 +77,19 @@ container {
     image='ubuntu:14.04'
 }
 ```
+
+### Image References
+
+The image property fo the configuration is passed directly to the container runtime. This means
+you can use either remote image URLs that will be pulled and built automatically or you can pass
+a locally resolved image path (for example, for Singularity, you can pass the absolute path 
+to a SIF file).
+
+As a convenience, with Singularity if the image path is a file path and is not resolved relative
+to the current directory or as an absolute path, Bpipe will also check within the
+`containers` directory within the direcotry that the pipeline script resides. This allows you 
+to ship a `containers` directory with your pipeline that contains all the images needed for it to
+run.
 
 ## Reusing Container Configurations
 
