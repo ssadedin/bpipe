@@ -72,24 +72,26 @@ class Runner {
 	
     final static String DEFAULT_HELP = """
         bpipe [run|test|debug|touch|execute] [options] <pipeline> <in1> <in2>...
-              retry [job id] [test]
-              remake <file1> <file2>...
-              resume
-              stop [preallocated]
-              history 
-              log
-              jobs
-              checks [options]
-              override 
-              status
-              cleanup
-              query
-              preallocate
-              preserve
-              register <pipeline> <in1> <in2>...
-              diagram <pipeline> <in1> <in2>...
-              diagrameditor <pipeline> <in1> <in2>...
-    """.stripIndent().trim()
+                   retry [job id] [test]
+                   remake <file1> <file2>...
+                   resume
+                   stop [preallocated]
+                   history 
+                   log [-n <lines>] [job id]
+                   jobs
+                   checks [options]
+                   override 
+                   status
+                   cleanup
+                   query <file>
+                   preallocate
+                   preserve
+                   register <pipeline> <in1> <in2>...
+                   diagram <pipeline> <in1> <in2>...
+                   diagrameditor <pipeline> <in1> <in2>...
+
+      Options:
+    """.stripIndent().trim() + '\n\n'
     
     static Map<String,BpipePlugin> plugins = [:]
     
@@ -503,34 +505,35 @@ class Runner {
         }
    }
    
-   static void configureRunCli(CliBuilder cli) {
+    static void configureRunCli(CliBuilder cli) {
+        cli.width = 100
         cli.with {
-             h longOpt:'help', 'usage information'
-             d longOpt:'dir', 'output directory', args:1
-             a longOpt: 'autoarchive', 'clean up all internal files after run into given archive', args:1
-             t longOpt:'test', 'test mode'
-             f longOpt: 'filename', 'output file name of report', args:1
-             r longOpt:'report', 'generate an HTML report / documentation for pipeline'
-             'R' longOpt:'report', 'generate report using named template', args: 1
-             n longOpt:'threads', 'maximum threads', args:1
-             m longOpt:'memory', 'maximum memory in MB, or specified as <n>GB or <n>MB', args:1
-             l longOpt:'resource', 'place limit on named resource', args:1, argName: 'resource=value'
-             v longOpt:'verbose', 'print internal logging to standard error'
-             y longOpt:'yes', 'answer yes to any prompts or questions'
-             u longOpt:'until', 'run until stage given',args:1
-             p longOpt: 'param', 'defines a pipeline parameter, or file of paramaters via @<file>', args: 1, argName: 'param=value', valueSeparator: ',' as char
-             b longOpt: 'branch', 'Comma separated list of branches to limit execution to', args:1
-             s longOpt: 'source', 'Load the given pipeline file(s) before running / executing', args: 1
-             e longOpt: 'env', 'Environment to select from alternate configurations in bpipe.config', args: 1
-             'L' longOpt: 'interval', 'the default genomic interval to execute pipeline for (samtools format)',args: 1
+            h longOpt:'help', 'usage information'
+            d longOpt:'dir', 'output directory', args:1
+            a longOpt: 'autoarchive', 'clean up all internal files after run into given archive', args:1
+            t longOpt:'test', 'test mode'
+            f longOpt: 'filename', 'output file name of report', args:1
+            r longOpt:'report', 'generate an HTML report / documentation for pipeline'
+            'R' longOpt:'report', 'generate report using named template', args: 1
+            n longOpt:'threads', 'maximum threads', args:1
+            m longOpt:'memory', 'maximum memory in MB, or specified as <n>GB or <n>MB', args:1
+            l longOpt:'resource', 'place limit on named resource', args:1, argName: 'resource=value'
+            v longOpt:'verbose', 'print internal logging to standard error'
+            y longOpt:'yes', 'answer yes to any prompts or questions'
+            u longOpt:'until', 'run until stage given',args:1
+            p longOpt: 'param', 'defines a pipeline parameter, or file of parameters via @<file>', args: 1, argName: 'param=value', valueSeparator: ',' as char
+            b longOpt: 'branch', 'Comma separated list of branches to limit execution to', args:1
+            s longOpt: 'source', 'Load the given pipeline file(s) before running / executing', args: 1
+            e longOpt: 'env', 'Environment to select from alternate configurations in bpipe.config', args: 1
+            'L' longOpt: 'interval', 'the default genomic interval to execute pipeline for (samtools format)',args: 1
         }
-   }
+    }
     
-   static void exit(int code) {
-       normalShutdown = true
-       System.exit(code)
-   }
-    
+    static void exit(int code) {
+        normalShutdown = true
+        System.exit(code)
+    }
+
    synchronized static reportExceptionToUser(Throwable e) {
         log.severe "Reporting exception to user: "
         log.log(Level.SEVERE, "Reporting exception to user", e)
