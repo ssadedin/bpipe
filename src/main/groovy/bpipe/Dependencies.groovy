@@ -83,6 +83,7 @@ class Dependencies {
      * @return  true iff file is newer than all inputs, but older than all 
      *          non-up-to-date outputs
      */
+    @CompileStatic
     List<Path> getOutOfDate(List<PipelineFile> originalOutputs, List<PipelineFile> inputs) {
         
         List<PipelineFile> outputs = originalOutputs.unique(false)
@@ -114,7 +115,11 @@ class Dependencies {
         // If the outputs are created from nothing (no inputs)
         // then they are up to date as long as they exist
         if(!inputs)  {
-            outOfDateOutputs.addAll(outputs.collect { it instanceof PipelineFile ? it : new LocalPipelineFile(it) }.grep { !it.exists() }*.toPath())
+            def ood = 
+                outputs.collect { it instanceof PipelineFile ? it : new LocalPipelineFile(String.valueOf(it)) }
+                       .grep { PipelineFile pf -> !pf.exists() }*.toPath()
+
+            outOfDateOutputs.addAll(ood)
             return outOfDateOutputs
         }
             
@@ -128,8 +133,9 @@ class Dependencies {
         }
         else
         if(older.any { Files.exists(it) }) { // If any of the older files exist then we have no choice but to rebuild them
-            log.info "Not up to date because these files exist and are older than inputs: " + older.grep { Files.exists(it) }
-            outOfDateOutputs.addAll(older.grep{ Files.exists(it)})
+            List olderFiles = older.grep { Path p -> Files.exists(p) }
+            log.info "Not up to date because these files exist and are older than inputs: " + olderFiles
+            outOfDateOutputs.addAll(olderFiles)
             return outOfDateOutputs
         }
         else {
