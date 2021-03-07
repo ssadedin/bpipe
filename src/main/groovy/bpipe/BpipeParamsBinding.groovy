@@ -45,7 +45,7 @@ import groovy.util.logging.Log
 @Log
 class BpipeParamsBinding extends Binding {
     
-    def parameters = []
+    List parameters = []
     
     /**
      * This global binding takes precendence of the binding assigned to the closures that

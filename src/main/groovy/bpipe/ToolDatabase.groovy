@@ -24,6 +24,7 @@
  */
 package bpipe
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 import java.util.regex.Pattern
 
@@ -218,5 +219,10 @@ class ToolDatabase {
             log.warning(msg)
             System.err.println(msg)
         }
+    }
+    
+    @CompileStatic
+    static ToolDatabase getTheInstance() {
+        return ToolDatabase.instance
     }
 }

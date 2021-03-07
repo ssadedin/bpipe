@@ -372,4 +372,9 @@ class NotificationManager {
                log.info("Channel $id does not support close")
        }
    }
+   
+   @CompileStatic
+   static NotificationManager getTheInstance() {
+       return NotificationManager.instance
+   }
 }

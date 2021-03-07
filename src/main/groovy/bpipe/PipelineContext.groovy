@@ -647,7 +647,8 @@ class PipelineContext {
         }
      }
     
-   PipelineOutput getOutputImpl() {
+     @CompileStatic
+    PipelineOutput getOutputImpl() {
        
        OutputResolver resolver = new OutputResolver()
        if(resolver.out == null || resolver.out.isEmpty() || this.currentFileNameTransform) { // Output not set elsewhere, or set dynamically based on inputs
@@ -668,13 +669,13 @@ class PipelineContext {
        PipelineOutput po = new PipelineOutput(resolver.out,
                                    this.stageName, 
                                    resolver.baseOutput,
-                                   resolver.overrideOutputs,
+                                   (List<Object>)resolver.overrideOutputs,
                                    inboundBranches,
-                                   { o,replaced -> onNewOutputReferenced(pipeline, o, replaced)}) 
+                                   { o,replaced -> onNewOutputReferenced(pipeline, o, (String)replaced)}) 
        
        po.branchName = branchName
        if(this.currentFileNameTransform instanceof FilterFileNameTransformer)
-         po.currentFilter = currentFileNameTransform
+         po.currentFilter = (FilterFileNameTransformer)currentFileNameTransform
        po.resolvedInputs = this.resolvedInputs
        po.outputDirChangeListener = this.&outputTo
        
