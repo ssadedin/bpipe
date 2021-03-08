@@ -1,18 +1,19 @@
 [comment]: <> ( vim: ts=20 expandtab tw=100 spell nocindent nosmartindent filetype=Markdown)
 
-# Pipeline Configuration
+## Pipeline Configuration
 
-This section deals with how to create configuration files for parameters, variables
+This section deals with how to create end-user editable configuration files for parameters, variables
 and environment for your pipelines. Configuration is a key topic for computational
 pipelines as it is very common that a pipeline needs to be generalised - whether to run
 on different types of input data, using different computational resources, with different
 sets of reference data or other static resources, or many other types of settings that
-can differ between different contexts in which the pipeline may run.
+can differ between different contexts in which the pipeline may run. Therefore you
+need a way to specify sets of useful default values while allowing the end user to 
+easily customise the values themselves in flexible ways.
 
-Bpipe offers features to make it easier to set sensible default configuration values, but 
-then allow these to be over-ridden at different levels of specificity.
+Bpipe offers features to achieve this.
 
-# Precedence of Configuration Files
+## Precedence of Configuration Files
 
 Although Bpipe offers several different ways to reference configuration settings, there is
 a common patterns to which are used in a setting where more than one value is available to 
@@ -34,14 +35,14 @@ or specify overrides on the command line.
 In general, for user specific global preferences (for example, the user's email address), you would
 leave this as a setting for them to provide in their `~/.bpipeconfig` file.
 
-# The Bpipe Config File
+## The Bpipe Config File
 
 The main configuration file you should use for settings for your script should be the `bpipe.config` file.
 This file can be placed in the same directory as your pipeline file, and you can set in there
 configuration for both how commands are executed (directly on a server, or on an HPC cluster, for example), and
 also for the environment and settings those command use when they execute.
 
-## Tools
+### Tools
 
 You can set the default location of some common tools that are used in computational workflows by setting 
 their locations in the `bpipe.config` file:
@@ -73,9 +74,16 @@ These configurations will be used when their inline scripting functions are invo
 Bpipe pipelines. In some cases relevant environment variables will also be inferred and set
 for your commands as well.
 
-## Command Configuration
+### Command Configuration
 
-## Environment Variables
+The resources allocate to any given job often need to be customised to suit either the 
+particular compute environment a pipeline is running in, or to the data that is being 
+analysed.
+
+To customise configuration for these settings, you can create a `commands` section in your
+`bpipe.config` file. The options for configuring commands are described in detail in [Resource Managers](ResourceManagers.md).
+
+### Environment Variables
 
 Environment variables can be set for commands using an `env` block. This can be set globally or within 
 the specific commands section:
@@ -91,7 +99,7 @@ command {
 ```
 
 
-## Per-Environment Settings
+### Per-Environment Settings
 
 Groovy offers a standard way to allow for multiple environments within a single configuration file. For example,
 you can have different settings for development, test and production within one `bpipe.config` file. To use 
@@ -123,7 +131,7 @@ environments {
 }
 ```
 
-# Loading Configuration Directly
+## Loading Configuration Directly
 
 While most configuration can be accomplished with a `bpipe.config` file you may prefer to separate 
 configuration variables from the runtime execution configuration. If you would like to do this,
