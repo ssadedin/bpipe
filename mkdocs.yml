@@ -55,6 +55,7 @@ pages:
 - ['Tutorials/Hello,World.md','Tutorials','Hello, World']
 - ['Tutorials/ExampleWithInputsAndOutputs.md','Tutorials','Example With Inputs And Outputs']
 - ['Tutorials/RealPipelineTutorial.md','Tutorials','Real Pipeline Tutorial']
+- ['Guides/Configuration.md','Guides','Configuration Support']
 - ['Guides/Variables.md','Guides','Variables']
 - ['Guides/ParallelTasks.md','Guides','Parallel Tasks']
 - ['Guides/BranchVariables.md','Guides','Branch Variables']

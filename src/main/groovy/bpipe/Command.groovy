@@ -135,6 +135,11 @@ class Command implements Serializable {
             defaultConfig.container = Config.userConfig.container
         }
         
+        // allow nested config for env
+        if(Config.userConfig.containsKey('env')) {
+            defaultConfig.env = Config.userConfig.env
+        }
+        
         log.info "Default command properties: $defaultConfig"
         
         Map rawCfg = defaultConfig
