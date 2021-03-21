@@ -520,7 +520,8 @@ class PipelineContext {
     * The default output property reference.  Actually returns a quasi
     * String-like object that intercepts property references
     */
-   def getOutput() {
+   @CompileStatic
+   PipelineOutput getOutput() {
        try {
            return getOutputImpl()
        }
@@ -757,6 +758,9 @@ class PipelineContext {
        return raw
    }
    
+   private static Pattern FILE_EXTENSION_PATTERN = ~"\\.([^.]*)\$"
+   
+   @CompileStatic
    def getOutputByIndex(int index) {
        try {
            PipelineOutput origOutput = getOutput()
@@ -767,8 +771,8 @@ class PipelineContext {
            if(result == null) {
                log.info "No previously set output at $index from ${o.size()} outputs. Synthesizing from index based on first output"
                if(o[0].indexOf('.')>=0) {
-                   result = o[0].replaceAll("\\.([^.]*)\$",".${index+1}.\$1")
-                   origDefaultOutput = origDefaultOutput.replaceAll("\\.([^.]*)\$",".${index+1}.\$1")
+                   result = o[0].replaceAll(FILE_EXTENSION_PATTERN,".${index+1}.\$1")
+                   origDefaultOutput = origDefaultOutput.replaceAll(FILE_EXTENSION_PATTERN,".${index+1}.\$1")
                }
                else
                    result = o[0] + (index+1)
@@ -780,34 +784,36 @@ class PipelineContext {
            
            Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
            
-           def overrideOutputs = (origOutput.overrideOutputs && origOutput.overrideOutputs.size() > index ? [ origOutput.overrideOutputs[index] ] : [] )
+           List overrideOutputs = (origOutput.overrideOutputs && origOutput.overrideOutputs.size() > index ? [ origOutput.overrideOutputs[index] ] : [] )
            
            return new PipelineOutput([result],
                                      origOutput.stageName, 
                                      origDefaultOutput,
-                                     overrideOutputs,
+                                     (List)overrideOutputs,
                                      inboundBranches,
-                                     { op,replaced -> onNewOutputReferenced(pipeline, op, replaced)}) 
+                                     { op, String replaced -> onNewOutputReferenced(pipeline, op, replaced)}) 
        }
        catch(Exception e) {
            e.printStackTrace()
        }
    }
      
+   @CompileStatic
    private trackOutput(def output) {
        log.info "Tracking output $output"
-       referencedOutputs << output
+       referencedOutputs << String.valueOf(output)
        return output
    } 
    
-   void var(Map values) {
+   @CompileStatic
+   void var(Map<String,Object> values) {
        values.each { k,v ->
            if(!this.localVariables.containsKey(k) && !this.extraBinding.variables.containsKey(k) && !Runner.binding.variables.containsKey(k) && !branch.properties.containsKey(k)) {
                log.info "Using default value of variable $k = $v"
                if(v instanceof Closure)
-                 this.localVariables[k] = v()
+                 localVariables[k] = ((Closure)v.call())
                else
-                 this.localVariables[k] = v
+                 localVariables[k] = v
            }
        }
    }
@@ -849,6 +855,7 @@ class PipelineContext {
     * 
     * @return   A list of the same type as the inputs (PipelineFile,String)
     */
+   @CompileStatic
    List toOutputFolder(outputs) {
        
        List boxed = Utils.box(outputs)
