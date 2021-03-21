@@ -232,7 +232,10 @@ class OutputDirectoryWatcher extends Thread {
             return
         }
         
-        long timestamp = Files.getLastModifiedTime(resolvedPath).toMillis()
+        long timestamp = (long)Utils.withRetries(2) {  
+            Files.getLastModifiedTime(resolvedPath).toMillis()
+        }
+        
         synchronized(timestamps) {
             // Known file?
             String fileName = path.fileName.toString()
