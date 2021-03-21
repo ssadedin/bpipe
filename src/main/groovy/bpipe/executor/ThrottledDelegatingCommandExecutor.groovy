@@ -14,6 +14,7 @@ import bpipe.Pipeline
 import bpipe.PipelineContext;
 import bpipe.ResourceUnit;
 import bpipe.processors.DockerContainerWrapper
+import bpipe.processors.EnvironmentVariableSetter
 import bpipe.processors.MemoryLimitReplacer
 import bpipe.processors.SingularityContainerWrapper
 import bpipe.processors.StorageResolver
@@ -160,6 +161,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         
         
         List<CommandProcessor> processors = [
+            new EnvironmentVariableSetter(), 
             new MemoryLimitReplacer(), 
             new ThreadAllocationReplacer(),
             new StorageResolver(commandExecutor),
