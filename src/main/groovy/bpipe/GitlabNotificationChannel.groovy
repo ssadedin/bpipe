@@ -70,7 +70,7 @@ class GitlabNotificationChannel implements NotificationChannel {
         }
         else
         if(cfg.project instanceof String) {
-            project = gitlab.projectApi.getProject(cfg.project).find { p -> 
+            project = gitlab.projectApi.projects.find { p -> 
                    p.name == cfg.project 
             }            
         }
