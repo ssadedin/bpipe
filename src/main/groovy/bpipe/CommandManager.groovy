@@ -250,7 +250,9 @@ class CommandManager {
                 Utils.cleanup(cmd.outputs)
             }
             catch(Exception e) {
-                log.info "Failed to cleanup one or more commands from $cmd.outputs: " + e.toString()
+                def msg = "Failed to cleanup one or more commands from $cmd.outputs: " + e.toString()               
+                log.info msg
+                println "WARNING: $msg"
             }
         }
         

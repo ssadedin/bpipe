@@ -214,18 +214,21 @@ class Utils {
     }
     
     /**
-     * Attempt to delete all of the specified outputs, if any
+     * Attempt to move all of the specified outputs to trash, if any,
+     * including appropriate audit trail logging and / or warnings to 
+     * console
      * 
      * @param outputs   string or collection of strings representing 
      *                  names of files to be deleted
      * @return List of outputs that could not be cleaned up
      */
+    @CompileStatic
     static List<String> cleanup(def outputs) {
         if(!outputs)
             return
             
         List<String> failed = []
-        box(outputs).collect { new File(it) }.each { File f -> 
+        box(outputs).collect { new File(String.valueOf(it)) }.each { File f -> 
             
             if(!fileExists(f)) {
                 log.info "Not cleaning up file $f because it does not exist"

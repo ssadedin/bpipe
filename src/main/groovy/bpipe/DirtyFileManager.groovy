@@ -156,6 +156,8 @@ class DirtyFileManager {
         }        
         List<File> uncleanFileManifests = getUncleanManifests()
         List<String> uncleanFilePaths = getUncleanFilePaths()
+        
+        log.info "Cleanup required for ${dirtyFiles.size()} dirty files and ${uncleanFilePaths.size()} unclean files"
        
         List<String> failedFiles = []
         (dirtyFiles + uncleanFilePaths).each { String file ->
@@ -198,6 +200,35 @@ class DirtyFileManager {
                 ((File)it).readLines()*.trim().grep { it }
         }
         .sum()?:[]) as List<String>
+    }
+    
+    
+    /**
+     * Clear any previous state about dirty files from previous runs and
+     * set the flag that indicates if new dirty files appear, they need
+     * cleanup processing
+     */
+    void initCleanupState() {
+
+        Runner.cleanupRequired = true
+        
+        List<File> filesToClear = []
+        
+        if(!CommandManager.UNCLEAN_FILE_DIR.exists())        
+            return
+            
+        try {
+            CommandManager.UNCLEAN_FILE_DIR.eachFileMatch(~'[0-9]{1,}') {
+                filesToClear << it
+            }
+            
+            log.info "Clearing ${filesToClear.size()} existing inprogress files"
+            
+            filesToClear*.delete()        
+        }
+        catch(Exception e) {
+            log.warning "Unable to initialise cleanp processing: dirty files may carry over from previous run ($e)"
+        }
     }
     
     @CompileStatic

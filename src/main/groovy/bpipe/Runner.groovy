@@ -264,8 +264,7 @@ class Runner {
             
             if(mode == "retry" || mode == "resume" || mode == "remake") {
                 
-                cleanupRequired = true
-                
+               
                 if(mode == "resume")
                     runningCommands = new CommandManager().getCurrentCommands()
                 
@@ -470,6 +469,9 @@ class Runner {
             }
  
             checkDirtyFiles()
+            
+            DirtyFileManager.theInstance.initCleanupState()
+  
 
             log.info "Run ... "
             normalShutdown = false
@@ -771,6 +773,7 @@ class Runner {
      * Note: This function is added as a shutdown hook. Therefore it executes in the very
      *       limited context and constraints applied to Java shutdown hooks.
      */
+    @CompileStatic
     static void shutdown() {
         
         String pid = Config.config.pid
@@ -778,7 +781,7 @@ class Runner {
         
         ExecutorPool.shutdownAll()
         
-        Poller.instance.executor.shutdown()
+        Poller.theInstance.executor.shutdown()
             
         // The normalShutdown flag is set to false by default, and only set to true
         // when Bpipe executes through one of the normal / expected paths. In this 
@@ -815,7 +818,7 @@ class Runner {
         }
             
         if(cleanupRequired) {
-            DirtyFileManager.instance.cleanupDirtyFiles()
+            DirtyFileManager.theInstance.cleanupDirtyFiles()
         }
     }
     
