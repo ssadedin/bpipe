@@ -291,7 +291,7 @@ class TransformOperation {
     
     void checkForDuplicateMappings(final List<String> froms, final List<String> tos) {
         
-        Map counts = [froms,tos].transpose().countBy { List mapping -> mapping[0] + ' -> ' + mapping[1] } 
+        Map counts = [froms,tos].transpose().countBy { List mapping -> String.valueOf(mapping[0]) + ' -> ' + mapping[1] } 
         List duplicates = counts.grep { it.value > 1 }*.key
         if(duplicates) {
             throw new PipelineError("""
