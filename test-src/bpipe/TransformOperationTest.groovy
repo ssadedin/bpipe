@@ -149,4 +149,29 @@ class TransformOperationTest {
             assert o1.toString() == "test.xml"
         }
     } 
+    
+    @Test
+    void multi_files_match_regex() {
+        def inputs = ["test_1.fastq.gz", "test_2.fastq.gz"].collect { new LocalPipelineFile(it) }
+        
+        ctx.@input = inputs
+        op = new TransformOperation(ctx, [~"(.*).fastq.gz"], null)         
+        
+        op.to("\$1.xml") {
+            ctx.trackedOutputs[1] = new Command(cfg:[:])
+            def i1 = input1.gz
+            assert i1.toString() == "test_1.fastq.gz"
+
+            def i2 = input2.gz
+            assert i2.toString() == "test_2.fastq.gz"
+            
+            def o1 = output1.xml
+            assert o1.toString() == "test_1.xml"
+            
+            def o2 = output2
+            assert o2.toString() == "test_2.xml"
+             
+        }
+        
+    }
 }

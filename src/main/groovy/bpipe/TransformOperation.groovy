@@ -58,7 +58,7 @@ class TransformOperation {
     /**
      * The list of file extensions that this transform operation is set to work on
      */
-    List exts
+    List<String> exts
     
     /**
      * The body closure to execute when the transform is executed
@@ -79,13 +79,16 @@ class TransformOperation {
     PipelineContext ctx
     
     List<Boolean> globExts
+    
+    List<Boolean> wildcardExts
 
     public TransformOperation(PipelineContext ctx, List exts, Closure c) {
         this.ctx = ctx
-        this.exts = exts
+        this.exts = exts.collect { String.valueOf(it) }
         this.body = c
         this.files = Utils.box(ctx.getRawInput())
         this.globExts = exts.grep { isGlobPattern(it) }
+        this.wildcardExts = exts.collect { isWildCardPattern(it) }
     }
     
     void to(String toPattern, Closure c) {
@@ -147,6 +150,7 @@ class TransformOperation {
         
         // In the advanced case, the "file extensions" are not file extensions, but
         // regular expressions for matching files to transform from
+        int extensionIndex = 0
         for(List<String> toFromPair in (List<List<String>>)[toPatterns,exts].transpose()) {
             
             String toPattern = toFromPair[0]
@@ -158,12 +162,14 @@ class TransformOperation {
                 
             PipelineInput input = new PipelineInput(originalFiles, this.ctx.pipelineStages, this.ctx.aliases)
             List<PipelineFile> filesResolved = input.resolveInputsEndingWithPatterns([fromPattern + '$'], [fromPattern])
-            if(isGlobPattern(fromPattern)) {
+            if(wildcardExts[extensionIndex]) {
                 
                 this.files.addAll(filesResolved)
                 
+                String matchedPortion = isGlobPattern(fromPattern) ? fromPattern[1..-1] : fromPattern
+                
                 // Add a from pattern for every file that was resolved
-                fromPatterns.addAll([fromPattern[1..-1]] * filesResolved.size())
+                fromPatterns.addAll([matchedPortion] * filesResolved.size())
                 expandedToPatterns.addAll([toPattern] * filesResolved.size())
             }
             else {
@@ -174,6 +180,7 @@ class TransformOperation {
                     expandedToPatterns.add(toPattern)
                 }
             }
+            ++extensionIndex
         }
         
         // Replace the original list of from patterns with our expanded list
@@ -189,6 +196,7 @@ class TransformOperation {
      * outputs are computed by taking their inputs, and replacing their extensions
      * with those set in the constructor by {@link #exts}.
      */
+    @CompileStatic
     void execute(List<String> fromPatterns = ['\\.[^\\.]*$'], List<String> providedToPatterns = null) {
         
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
@@ -227,15 +235,16 @@ class TransformOperation {
      * @param outFiles
      * @return
      */
-    private void filterOutputsToReferencedMatches(List outFiles) {
+    @CompileStatic
+    private void filterOutputsToReferencedMatches(List<PipelineFile> outFiles) {
         if(ctx.allInferredOutputs && globExts) {
             def unusedOutFiles =
                     outFiles.grep { PipelineFile pf ->
                         !(pf.path in ctx.allInferredOutputs)
                     }*.path
 
-            List newOuts = ctx.getRawOutput().grep {
-                !(it.path in unusedOutFiles)
+            List newOuts = ctx.getRawOutput().grep { PipelineFile f ->
+                !(f.path in unusedOutFiles)
             }
 
             ctx.setRawOutput(newOuts)
@@ -247,9 +256,10 @@ class TransformOperation {
     /**
      * Compute a list of expected output file names from this transform's input files (files attribute)
      */
+    @CompileStatic
     List<PipelineFile> computeOutputFiles(final String applyBranchName, List<String> fromPatterns = ['\\.[^\\.]*$'], List<String> providedToPatterns = null) {
         
-        Map extensionCounts = [:]
+        Map<String,Integer> extensionCounts = [:]
         for(def e in exts) {
             extensionCounts[e] = 0
         }
@@ -265,10 +275,12 @@ class TransformOperation {
         
         int count = 0
         List outFiles = exts.collect { String extension ->
+
             // In the simple case, only 1 from pattern exists - we always replace the file extension
             // In advanced case we expect 1 from pattern and 1 toPattern per file
             int fromPatternIndex = count%fromPatterns.size()
-            int fileIndex = (providedToPatterns == null) ? extensionCounts[extension] % files.size() : fromPatternIndex
+            int fileIndex = (providedToPatterns == null) ? 
+                extensionCounts[extension] % files.size() : fromPatternIndex
             
             PipelineFile inp = this.files[fileIndex]
             String fromPattern = fromPatterns[fromPatternIndex]
@@ -410,9 +422,24 @@ class TransformOperation {
      * @param ext
      * @return
      */
+    @CompileStatic
     boolean isGlobPattern(ext) {
         boolean result = ext instanceof String && ext.startsWith('*.')
         return result
+    }
+    
+    @CompileStatic
+    boolean isWildCardPattern(ext) {
+        if(isGlobPattern(ext))
+            return true
+            
+        if(ext instanceof Pattern)
+            return true
+
+        return ext instanceof String && (
+            // note, due to above check, we know it does not start with *
+            ext.contains('*') || (ext.contains('[') && ext.contains(']'))
+        )
     }
 }
 
