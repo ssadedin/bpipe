@@ -68,7 +68,8 @@ class ActivemqNotificationChannel implements NotificationChannel {
                 if(v instanceof PipelineStage)
                     v = v.toProperties()
                 else
-                msg.setStringProperty(k,v)
+                if(k != 'send.content')
+                    msg.setStringProperty(k,v)
             }
         }
         else {
