@@ -65,8 +65,8 @@ class ActivemqNotificationChannel implements NotificationChannel {
             msg = session.createTextMessage(messageBody)
             eventDetails.each { k,v ->
                 
-                if(v instanceof PipelineStage)
-                    v = v.toProperties()
+                if(v instanceof PipelineStage) 
+                    v = v.toProperties() // TODO: dead code - remove
                 else
                 if(k != 'send.content')
                     msg.setStringProperty(k,v)
