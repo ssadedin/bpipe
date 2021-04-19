@@ -156,7 +156,7 @@ class Config {
 			builtInConfigFile = new File(System.getProperty("bpipe.home") + "/src/main/config", "bpipe.config")
 		}
         
-        Map configFiles = [builtInConfig: builtInConfigFile]
+        Map<String,File> configFiles = [builtInConfig: builtInConfigFile]
         
         // The default way to prompt user for information is to ask at the console
         // Configuration in user home directory
@@ -196,7 +196,8 @@ class Config {
         
         Map<String,ConfigObject> configs
         GParsPool.withPool(configFiles.size()) {
-            configs = configFiles.collectParallel { name, file ->
+            configs = configFiles.grep { it.value.exists() }.collectParallel { e ->
+                def file = e.value
                 Utils.time("Read config from $file") {
                     [name, slurper.parse(file.toURI().toURL())]
                 }
