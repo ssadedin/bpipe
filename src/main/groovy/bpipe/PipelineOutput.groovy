@@ -388,14 +388,16 @@ class PipelineOutput {
         }.join(".")
          
         File outputFile = new File(firstOutput)
+        
+        String fullExt = extraSegments.join('.') + name
          
         if(stageName.equals(outputFile.name)) {
            this.outputUsed = FastUtils.dotJoin(([this.defaultOutput] + branchSegment + [name]) as String[])
         }
         else
-        if(firstOutput.endsWith(name+"."+stageName)) {
-            log.info("Replacing " + name+"\\."+stageName + " with " +  stageName+'.'+name)
-            this.outputUsed = this.defaultOutput.replaceAll("[.]{0,1}"+name+"\\."+stageName, '.' + segments)
+        if(firstOutput.endsWith(fullExt+"."+stageName)) {
+            log.info("Replacing " + fullExt+"\\."+stageName + " with " +  stageName+'.'+name)
+            this.outputUsed = this.defaultOutput.replaceAll("[.]{0,1}"+fullExt+"\\."+stageName, '.' + segments)
         }
         else { // more like a transform: keep the old extension in there (foo.csv.bar => foo.csv.bar.xml)
             this.outputUsed = computeOutputUsedAsTransform(name, segments)
@@ -413,6 +415,7 @@ class PipelineOutput {
         return this.outputUsed
     }
     
+   
     private static Pattern DOT_NUMBER_PATTERN = ~'\\.[^\\.]*(\\.[0-9]*){0,1}$'
     
     /**
@@ -427,7 +430,7 @@ class PipelineOutput {
         
         // First remove the stage name, if it is at the end
         String result = this.defaultOutput
-        if(result.endsWith(stageName) && result.endsWith('.'+stageName))
+        if(result.endsWith('.'+stageName))
             result = defaultOutput.substring(0,result.size() - stageName.size()-1)
             
         // If the branch name is now at the end and there is a suffix we can remove the suffix
