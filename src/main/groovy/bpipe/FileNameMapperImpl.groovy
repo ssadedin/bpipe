@@ -26,12 +26,12 @@ class FileNameMapperImpl implements FileNameMapper {
     
     final String stageName
 
-    public FileNameMapperImpl(PipelineContext.OutputResolver resolver) {
+    public FileNameMapperImpl(PipelineContext.OutputResolver resolver, String branchPrefix) {
         super();
         this.ctx = resolver.context
         this.resolver = resolver
-        this.branchName = this.ctx.branch.toString()    
         this.stageName = this.ctx.stageName
+        this.branchName = branchPrefix
     }
 
     @Override
