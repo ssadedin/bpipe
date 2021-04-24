@@ -2,6 +2,7 @@ package bpipe.executor
 
 import static org.junit.Assert.*
 
+
 import org.junit.Before
 import org.junit.BeforeClass
 
@@ -9,7 +10,7 @@ import bpipe.Command
 import bpipe.CommandId
 import bpipe.Utils
 
-import com.amazonaws.services.ec2.model.TerminateInstancesRequest
+//import com.amazonaws.services.ec2.model.TerminateInstancesRequest
 import org.junit.Test
 
 class AWSEC2CommandExecutorTest {
@@ -40,7 +41,7 @@ class AWSEC2CommandExecutorTest {
         Thread.sleep(2000)
         
         println "Terminating instance $awse.instanceId"
-        awse.ec2.terminateInstances(new TerminateInstancesRequest([awse.instanceId]))
+//        awse.ec2.terminateInstances(new TerminateInstancesRequest([awse.instanceId]))
     }
     
     @Test
@@ -64,6 +65,6 @@ class AWSEC2CommandExecutorTest {
         assert exitCode == 0
         
         println "Terminating instance $awse.instanceId"
-        awse.ec2.terminateInstances(new TerminateInstancesRequest([awse.instanceId]))
+//        awse.ec2.terminateInstances(new TerminateInstancesRequest([awse.instanceId]))
     }
 }
