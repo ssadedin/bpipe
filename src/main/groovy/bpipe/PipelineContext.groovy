@@ -662,7 +662,7 @@ class PipelineContext {
        Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
        String branchName = applyName  ? pipeline.unappliedBranchNames.join(".") : null
        
-       FileNameMapper mapper = new FileNameMapperImpl(resolver)
+       FileNameMapper mapper = new FileNameMapperImpl(resolver, branchName)
        
        PipelineOutput po = new PipelineOutput(resolver.out,
                                    this.stageName, 
@@ -804,15 +804,18 @@ class PipelineContext {
            resolver.resolveOutput()
            resolver.overrideOutputs = [resolver.overrideOutputs[index]]
 
-           FileNameMapper mapper = new FileNameMapperImpl(resolver)
+           FileNameMapper mapper = new FileNameMapperImpl(resolver, origOutput.branchName)
            
-           return new PipelineOutput([result],
+           def po = new PipelineOutput([result],
                                      origOutput.stageName, 
                                      origDefaultOutput,
                                      (List)overrideOutputs,
                                      inboundBranches,
                                      mapper,
                                      { op, String replaced -> onNewOutputReferenced(pipeline, op, replaced)}) 
+           
+           po.branchName = origOutput.branchName 
+           return po
        }
        catch(Exception e) {
            e.printStackTrace()
