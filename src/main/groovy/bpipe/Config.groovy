@@ -18,7 +18,7 @@ class Config {
 	 * Lower level configuration values.  These are not directly user 
 	 * exposed.
 	 */
-    static Map<String,Object> config = [
+    public static Map<String,Object> config = [
         
         // Environment to select, when multiple are availabe in a bpipe.config file
         environment: 'default',
@@ -198,6 +198,7 @@ class Config {
         GParsPool.withPool(configFiles.size()) {
             configs = configFiles.grep { it.value.exists() }.collectParallel { e ->
                 def file = e.value
+                def name = e.key
                 Utils.time("Read config from $file") {
                     [name, slurper.parse(file.toURI().toURL())]
                 }
