@@ -311,7 +311,8 @@ class PipelineOutput {
     
     @CompileStatic
     PipelineOutput createChildOutput(String result, String extraSegment) {
-        def po = new PipelineOutput(result ? [result] : [],
+        List<String> resultList = result ? [result] : []
+        def po = new PipelineOutput(resultList,
             this.stageName,
             this.defaultOutput,
             (List<Object>)this.overrideOutputs,
