@@ -14,6 +14,6 @@ jobs:
           java-version: '8'
           distribution: 'adopt'
       - name: Build with Gradle
-        run: ./gradlew build
+        run: ./gradlew dist -x test
       - name: Execute tests
         run: cd tests && ./run.sh          
