@@ -25,6 +25,7 @@
 
 package bpipe;
 
+import java.util.List;
 import java.util.regex.Pattern;
 
 /**
@@ -69,7 +70,7 @@ public class FastUtils {
      *         can contain nulls, which are skipped in forming the 
      *         output value.
      */
-    static String dotJoin(String... values) {
+    static String dotJoin(final String... values) {
         StringBuilder result = new StringBuilder(128);
         boolean first = true;
         for(String value : values) {
@@ -99,6 +100,38 @@ public class FastUtils {
         }
         return result.toString(); 
     }    
+    
+    static String dotJoin(final List<String> values) {
+        StringBuilder result = new StringBuilder(128);
+        boolean first = true;
+        for(String value : values) {
+            
+            if(value == null)
+                continue;
+            
+            if(first) {
+                first = false;
+                if(value.startsWith("."))
+                    value = value.substring(1);
+            }
+            
+            if(value.endsWith(".")) {
+                value = value.substring(0, value.length()-1);
+            }
+            
+            if(value.startsWith(".")) {
+                result.append(value);
+            }
+            else {
+              if(result.length() > 0 && !value.isEmpty()) {
+                  result.append(".");
+              }
+              result.append(value);
+            }
+        }
+        return result.toString(); 
+    }    
+    
     
     public static String strip(String value, String c) {
         

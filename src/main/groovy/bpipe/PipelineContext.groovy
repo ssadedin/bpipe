@@ -536,12 +536,12 @@ class PipelineContext {
     * 
     * @author simon.sadedin
     */
-   private class OutputResolver {
-        String baseOutput 
-        List<String> out 
-        List<PipelineFile> overrideOutputs 
-        OutputResolver() {
-            baseOutput = Utils.first(getDefaultOutput())
+   class OutputResolver {
+        public String baseOutput 
+        public List<String> out 
+        public List<PipelineFile> overrideOutputs 
+        OutputResolver(String alternateBaseOutput = null) {
+            baseOutput = alternateBaseOutput?:Utils.first(getDefaultOutput())
             out = rawOutput?.collect { it.path }
             overrideOutputs = (List)rawOutput?.clone()?:[]            
         }
@@ -582,7 +582,7 @@ class PipelineContext {
             }
         }
 
-//        @CompileStatic - causes error when compiled with gradle
+        @CompileStatic // - causes error when compiled with gradle
         private void resolveFromInputs(List<PipelineFile> allResolved) {
               
             int defaultValueIndex = computeDefaultInputIndex(allResolved)
@@ -592,7 +592,7 @@ class PipelineContext {
             log.info("Using non-default output due to input property reference: " + resolved + " from resolved inputs " + allResolved)
             
             if(currentFileNameTransform != null) {
-                out = currentFileNameTransform.transform(allResolved, applyName)*.path
+                out = currentFileNameTransform.transform(allResolved)*.path
                 overrideOutputs = toOutputFolder(out)
             }
             else
@@ -646,12 +646,48 @@ class PipelineContext {
             assert out != null
             assert out.isEmpty() || out[0] != null
         }
+        
+        @CompileStatic
+        PipelineContext getContext() {
+            return PipelineContext.this
+        }
      }
+     
     
      @CompileStatic
     PipelineOutput getOutputImpl() {
        
-       OutputResolver resolver = new OutputResolver()
+       OutputResolver resolver = createOutputResolver()
+       
+       Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
+       String branchName = applyName  ? pipeline.unappliedBranchNames.join(".") : null
+       
+       FileNameMapper mapper = new FileNameMapperImpl(resolver)
+       
+       PipelineOutput po = new PipelineOutput(resolver.out,
+                                   this.stageName, 
+                                   resolver.baseOutput,
+                                   (List<Object>)resolver.overrideOutputs,
+                                   inboundBranches,
+                                   mapper,
+                                   { o,replaced -> onNewOutputReferenced(pipeline, o, (String)replaced)}) 
+       
+       po.branchName = branchName
+       if(this.currentFileNameTransform instanceof FilterFileNameTransformer)
+         po.currentFilter = (FilterFileNameTransformer)currentFileNameTransform
+
+       po.resolvedInputs = this.resolvedInputs
+       po.outputDirChangeListener = this.&outputTo
+       
+       if(this.activeAccompanierPattern)
+           po.transformMode = "extend"
+           
+       return po
+   }
+   
+   @CompileStatic
+   OutputResolver createOutputResolver(String alternateBaseOutput=null) {
+       OutputResolver resolver = new OutputResolver(alternateBaseOutput)
        if(resolver.out == null || resolver.out.isEmpty() || this.currentFileNameTransform) { // Output not set elsewhere, or set dynamically based on inputs
            resolver.resolveOutput()
        }
@@ -663,27 +699,7 @@ class PipelineContext {
        
        resolver.out = toOutputFolder(resolver.out)
        resolver.baseOutput = toOutputFolder(resolver.baseOutput)[0]
-       
-       Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
-       String branchName = applyName  ? pipeline.unappliedBranchNames.join(".") : null
-       
-       PipelineOutput po = new PipelineOutput(resolver.out,
-                                   this.stageName, 
-                                   resolver.baseOutput,
-                                   (List<Object>)resolver.overrideOutputs,
-                                   inboundBranches,
-                                   { o,replaced -> onNewOutputReferenced(pipeline, o, (String)replaced)}) 
-       
-       po.branchName = branchName
-       if(this.currentFileNameTransform instanceof FilterFileNameTransformer)
-         po.currentFilter = (FilterFileNameTransformer)currentFileNameTransform
-       po.resolvedInputs = this.resolvedInputs
-       po.outputDirChangeListener = this.&outputTo
-       
-       if(this.activeAccompanierPattern)
-           po.transformMode = "extend"
-           
-       return po
+       return resolver
    }
    
     /**
@@ -780,17 +796,22 @@ class PipelineContext {
            
            log.info "Query for output $index base result = $result"
            
-           // result = trackOutput(result)
-           
            Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
            
            List overrideOutputs = (origOutput.overrideOutputs && origOutput.overrideOutputs.size() > index ? [ origOutput.overrideOutputs[index] ] : [] )
+           
+           OutputResolver resolver = createOutputResolver(result)
+           resolver.resolveOutput()
+           resolver.overrideOutputs = [resolver.overrideOutputs[index]]
+
+           FileNameMapper mapper = new FileNameMapperImpl(resolver)
            
            return new PipelineOutput([result],
                                      origOutput.stageName, 
                                      origDefaultOutput,
                                      (List)overrideOutputs,
                                      inboundBranches,
+                                     mapper,
                                      { op, String replaced -> onNewOutputReferenced(pipeline, op, replaced)}) 
        }
        catch(Exception e) {
@@ -1221,9 +1242,10 @@ class PipelineContext {
             Utils.ext(f.path) // For each such file, return the file extension
         }
         
-        this.currentFileNameTransform = new FilterFileNameTransformer(types: types, exts: currentFilter, inboundBranches: inboundBranches)
+        this.currentFileNameTransform = 
+            new FilterFileNameTransformer(types: types, exts: currentFilter, inboundBranches: inboundBranches, nameApplied: !this.applyName)
         
-        def files = currentFileNameTransform.transform(boxed, applyName)
+        def files = currentFileNameTransform.transform(boxed)
         
         // Coerce any inputs coming from different folders to the correct output folder
         files = toOutputFolder(files)
@@ -1582,7 +1604,7 @@ class PipelineContext {
             List<String> origInputPaths = originalInputFiles*.path
             List<String> origOutputPaths = fixedOutputs*.path
             
-            List<PipelineFile> retransformed = this.currentFileNameTransform.transform(probeResolvedInputs, this.applyName)
+            List<PipelineFile> retransformed = this.currentFileNameTransform.transform(probeResolvedInputs)
             
             probeResolvedInputs.eachWithIndex { PipelineFile inpFile, int i ->
                 if(!origOutputPaths.contains(inpFile.path))  {
@@ -2643,7 +2665,7 @@ class PipelineContext {
            
            boolean searchSiblings = Config.userConfig.getOrDefault('searchCrossBranchSiblings', false)
            boolean allSiblingsFinished = false
-           List siblingBranchOutputs = []
+           List<List> siblingBranchOutputs = []
            def myPipeline = Pipeline.currentRuntimePipeline.get()
            if(crossBranch && searchSiblings) {
                Pipeline parentPipeline = myPipeline.parent
@@ -2833,11 +2855,28 @@ class PipelineContext {
      * @param ext   the specification for files to match - a file extension or glob pattern
      * @return      a closure that identifies whether the given spec matches a PipelineFile
      */
+    @CompileStatic
     private Closure matcherForFileSpec(String ext) {
         def matcher
         boolean globMatch = ext.indexOf('*')>=0
         if(!globMatch) {
-            matcher = { PipelineFile f -> log.info("Check $f ends with $ext");  f?.path?.endsWith(ext) }
+            List<String> expansions = Pipeline.fileTypeMappings[ext]
+            if(expansions) {
+                matcher = { PipelineFile f -> 
+                    log.fine("Check $f ends with $ext");  
+                    for(mappedExt in expansions) {
+                        if(f?.path?.endsWith(ext))
+                            return true
+                    }
+                }
+            }
+            else {
+                matcher = { PipelineFile f -> 
+                    if(f?.path?.endsWith(ext))
+                        return true
+                }
+            }
+             
         }
         else {
             final Pattern m = FastUtils.globToRegex(ext)
@@ -2857,6 +2896,7 @@ class PipelineContext {
      * @param exts              the mapping of requested extensions by index
      * @param resolvedInputs    the actual inputs that were resolved (null when not resolved)
      */
+    @CompileStatic
     private checkForMissingInputs(orig, List exts, List resolvedInputs) {
         List missingInputs = resolvedInputs.findIndexValues { it == null }
         if(missingInputs) {
