@@ -92,7 +92,7 @@ public class Pipeline implements ResourceRequestor {
     /**
      * Default imports added to the top of all files executed by Bpipe
      */
-    static final String PIPELINE_IMPORTS = "import static Bpipe.*; import static bpipe.RegionSet.bed; import Preserve as preserve; import Intermediate as intermediate; import Accompanies as accompanies; import Produce as produce; import Transform as transform; import Filter as filter;"
+    static final String PIPELINE_IMPORTS = "import static Bpipe.*; import static bpipe.RegionSet.bed; import static bpipe.Pipeline.filetype; import Preserve as preserve; import Intermediate as intermediate; import Accompanies as accompanies; import Produce as produce; import Transform as transform; import Filter as filter;"
     
     /**
      * The thread id of the master thread that is running the baseline root
@@ -137,6 +137,7 @@ public class Pipeline implements ResourceRequestor {
      */
     Map<String,String> variables = [:]
     
+   
     /**
      * File name mappings belonging to this pipeline instance
      */
@@ -1302,6 +1303,18 @@ public class Pipeline implements ResourceRequestor {
         }
             
         loadedPaths << f
+    }
+    
+    /**
+     * Map of custom file types (extension => list of mappings)
+     */
+    static Map<String,List<String>> fileTypeMappings = Collections.synchronizedMap([:])
+
+    static synchronized void filetype(Map<String,List<String>> mappings) {
+        mappings.each { 
+            log.info "Registered custom file type $it.key => $it.value"
+            fileTypeMappings[it.key]=it.value 
+        }
     }
     
     static synchronized void config(Closure cfgClosure) {
