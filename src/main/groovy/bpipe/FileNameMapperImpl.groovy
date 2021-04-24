@@ -50,7 +50,10 @@ class FileNameMapperImpl implements FileNameMapper {
         final String dotName = '.' + name
         final endExt = segments.join('.')
         
-        String result = this.resolver.overrideOutputs.find { it.toString().endsWith(endExt) }
+        String result = this.resolver.overrideOutputs.find { 
+            String.valueOf(it).endsWith(endExt) 
+        }
+
         def replaced = null
         if(!result) {
             if(name in ctx.currentFilter) {
