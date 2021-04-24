@@ -58,12 +58,10 @@ class FilterFileNameTransformer implements FileNameTransformer {
     boolean nameApplied = false
 
     @Override
-    public List<PipelineFile> transform(List<PipelineFile> inputs,  boolean applyName) {
+    public List<PipelineFile> transform(List<PipelineFile> inputs) {
         
         log.info("Inputs to transform: " + inputs.join(','))
-        
-        this.nameApplied = applyName
-        
+       
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
         
         if(!inputs)
@@ -87,7 +85,7 @@ class FilterFileNameTransformer implements FileNameTransformer {
             boolean branchInName = inputPath.contains('.' + pipeline.name + '.') || inputPath.startsWith(pipeline.name + '.')
             
 //            println "Branch $pipeline.name is in file name $inputPath? " + branchInName
-            if(applyName && !branchInName) {
+            if(!nameApplied && !branchInName) {
                 // Arguably, we should add the filter type to the name here as well.
                 // However we're already adding the branch name, so the filename is already
                 // unique at this point, and we'd like to keep it short
@@ -119,7 +117,7 @@ class FilterFileNameTransformer implements FileNameTransformer {
         
         log.info "Filtering using $types produces outputs $files"
         
-        if(applyName)
+        if(nameApplied)
             pipeline.nameApplied = true
 
         return files

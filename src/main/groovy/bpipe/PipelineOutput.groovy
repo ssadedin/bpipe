@@ -119,6 +119,8 @@ class PipelineOutput {
      */
     PipelineOutput parentOutput = null
     
+    FileNameMapper mapper 
+    
     boolean multiple = false
     
     /**
@@ -134,7 +136,7 @@ class PipelineOutput {
      * @param listener          a closure that will be called whenever a property is requested from this object 
      *                          and provided with the computed property value
      */
-    PipelineOutput(List<String> output, String stageName, String defaultOutput, List<Object> overrideOutputs, List<Branch> inboundBranches, Closure listener) {
+    PipelineOutput(List<String> output, String stageName, String defaultOutput, List<Object> overrideOutputs, List<Branch> inboundBranches, FileNameMapper mapper, Closure listener) {
         assert output instanceof List
         assert output.isEmpty() || output[0] instanceof String
         this.output = output
@@ -142,6 +144,7 @@ class PipelineOutput {
         this.stageName = stageName
         this.defaultOutput = defaultOutput
         this.inboundBranches = inboundBranches
+        this.mapper = mapper
         this.overrideOutputs = overrideOutputs.collect { 
              String.valueOf(it) 
         }
@@ -289,26 +292,31 @@ class PipelineOutput {
      */
     def propertyMissing(String name) {
         
-        String result = null
+       String result = null
         
-        // When "produce", "transform" or "filter" is used, they specify
-        // the outputs,  so the output extension acts as a selector from
-        // those rather than a synthesis of a new name
-        if(this.overrideOutputs) {
-           return selectFromOverrides(name)  
-        }
-        else 
-           result = synthesiseFromName(name)
+       // When "produce", "transform" or "filter" is used, they specify
+       // the outputs,  so the output extension acts as a selector from
+       // those rather than a synthesis of a new name
         
-        return this.createChildOutput(result, name)
+       String mappedPath = mapper.mapFileName(this.extraSegments + [name])
+       
+       this.outputUsed = this.createChildOutput(mappedPath, name)
+           
+       if(this.outputChangeListener != null && result != null) {
+            this.outputChangeListener(result,replaced)
+       }
+        
+       return outputUsed
     }
     
+    @CompileStatic
     PipelineOutput createChildOutput(String result, String extraSegment) {
         def po = new PipelineOutput(result ? [result] : [],
             this.stageName,
             this.defaultOutput,
-            this.overrideOutputs,
+            (List<Object>)this.overrideOutputs,
             this.inboundBranches,
+            this.mapper,
             this.outputChangeListener)
 
         po.branchName = this.branchName
@@ -323,139 +331,7 @@ class PipelineOutput {
         return po
     }
     
-    static Pattern FILE_EXT_PATTERN = ~'\\.[^.]*$'
-    
-    PipelineOutput selectFromOverrides(String name) {
-        String result = this.overrideOutputs.find { it.toString().endsWith('.' + name) }
-        def replaced = null
-        if(!result) {
-            if(currentFilter && (name in currentFilter.exts)) {
-                log.info "Allowing reference to output not produced by filter because it was available from a filtering of an alternative input"
-                
-                replaced = this.overrideOutputs[0]
-                
-                PipelineFile baseInput = this.resolvedInputs.find {it.path.endsWith(name)}
-                if(!baseInput) {
-                    baseInput = new UnknownStoragePipelineFile(this.overrideOutputs[0])
-                    result = baseInput.newName(baseInput.path.replaceAll(FILE_EXT_PATTERN,"." + name))
-                }
-                else {
-                    log.info "Recomputing filter on base input $baseInput to achieve match with output extension $name"
-                    result = this.currentFilter.transform([baseInput], this.currentFilter.nameApplied)[0]
-                }
-                result = Utils.toDir([result], this.getDir())[0]
-            }
-       }
-        
-       PipelineOutput childOutput = this.createChildOutput(result, name) 
-       
-        if(!result) {
-            String dottedName = '.' + name + '.'
-            
-            List<String> filteredResults = overrideOutputs.grep { it.contains(dottedName) }
-            
-            if(filteredResults.isEmpty()) {
-                throw new PipelineError("An output containing or ending with '." + name + "' was referenced.\n\n"+
-                                        "However such an output was not in the outputs specified by an enclosing transform / filter / produce statement.\n\n" +
-                                        "Valid outputs according to the enclosing block are: ${overrideOutputs.join('\n')}")
-            }
-            else {
-                childOutput.overrideOutputs = filteredResults
-            }
-        }
-        
-        log.info "Selected output $result with extension $name from expected outputs $overrideOutputs"
-          
-        this.outputUsed = result
-        if(this.outputChangeListener != null && result != null) {
-            this.outputChangeListener(result,replaced)
-        }
-        
-        return childOutput
-    }
-    
-    def synthesiseFromName(String name) {
-        
-        String firstOutput = Utils.first(this.output)
-        
-        // If the extension of the output is the same as the extension of the 
-        // input then this is more like a filter; remove the previous output extension from the path
-        // eg: foo.csv.bar => foo.baz.csv
-        List branchSegment = branchName ? ['.' + branchName] : [] 
-        
-        String segments = (branchSegment + [stageName] + extraSegments + [name]).collect { 
-            FastUtils.strip(it,'.')
-        }.join(".")
-         
-        File outputFile = new File(firstOutput)
-        
-        String fullExt = extraSegments.join('.') + name
-         
-        if(stageName.equals(outputFile.name)) {
-           this.outputUsed = FastUtils.dotJoin(([this.defaultOutput] + branchSegment + [name]) as String[])
-        }
-        else
-        if(firstOutput.endsWith(fullExt+"."+stageName)) {
-            log.info("Replacing " + fullExt+"\\."+stageName + " with " +  stageName+'.'+name)
-            this.outputUsed = this.defaultOutput.replaceAll("[.]{0,1}"+fullExt+"\\."+stageName, '.' + segments)
-        }
-        else { // more like a transform: keep the old extension in there (foo.csv.bar => foo.csv.bar.xml)
-            this.outputUsed = computeOutputUsedAsTransform(name, segments)
-        }
-        
-        if(this.outputUsed.startsWith(".") && !this.outputUsed.startsWith("./")) // occurs when no inputs given to script and output extension used
-            this.outputUsed = this.outputUsed.substring(1) 
-            
-        if(this.inboundBranches) {
-            for(Branch branch in this.inboundBranches) {
-                log.info "Excise inbound merging branch reference $branch due to merge point"
-                this.outputUsed = this.outputUsed.replace('.' + branch.name + '.','.merge.')
-            }
-        }
-        return this.outputUsed
-    }
-    
-   
-    private static Pattern DOT_NUMBER_PATTERN = ~'\\.[^\\.]*(\\.[0-9]*){0,1}$'
-    
-    /**
-     * Compute a name for the output based on the assumption it is 
-     * doing something like a 'transform' operation.
-     * 
-     * ie: the new extension is appended to the output.
-     * 
-     * @return  the transformed output name
-     */
-    String computeOutputUsedAsTransform(String extension, String segments) {
-        
-        // First remove the stage name, if it is at the end
-        String result = this.defaultOutput
-        if(result.endsWith('.'+stageName))
-            result = defaultOutput.substring(0,result.size() - stageName.size()-1)
-            
-        // If the branch name is now at the end and there is a suffix we can remove the suffix
-        // eg: from test.chr1.txt produce test.chr1.hello.csv rather than test.txt.chr1.hello.csv
-        // (see param_chr_override test)
-        
-        result = result.replaceAll(/(\.[^.]*)\./+branchName,'.'+branchName)
-            
-        // Then replace the extension on the file with the requested one
-        if(this.transformMode == "replace") {
-            if(result.contains("."))
-                // Here we allow a potential match on a number in the base output, since that can 
-                // occur when the use uses multiple outputs ($output1.csv, $output2.csv) and 
-                // the same output file is generated for the outputs - such file names get 
-                // a numeric index inserted. eg: test1.txt, test1.txt.2
-                result = result.replaceAll(DOT_NUMBER_PATTERN, '$1.'+segments)
-            else
-                result = result + "." + segments
-        }
-        else {
-            result = result + "." + extension
-        } 
-        return result
-    }
-    
+  
     def methodMissing(String name, args) {
         // faux inheritance from String class
         if(name in String.metaClass.methods*.name)
@@ -501,4 +377,24 @@ class PipelineOutput {
            return boxed.collect { "$flag $it" }.join(" ")
     } 
     
+    /**
+     * TODO: needs testing
+     */
+    @CompileStatic
+    void checkCompatibleFileName(final String output) {
+        
+        List<String> overrides = this.overrideOutputs
+        PipelineOutput o = this
+        while(o = o.parentOutput) {
+            overrides = o.overrideOutputs
+        }
+        
+        if(overrides && !(output in overrides)) {
+            
+            // TODO: check the output matches the overrides
+            throw new PipelineError("An output $output was referenced.\n\n"+
+                                    "However such an output was not in the outputs specified by an enclosing transform / filter / produce statement.\n\n" +
+                                    "Valid outputs according to the enclosing block are: ${overrides.join('\n')}")
+        }
+    }
 }
