@@ -248,8 +248,9 @@ class PipelineInput {
      * previous stages to find the first output that ends with the extension specified
      * for each of the given exts.
      */
-    List<PipelineFile> resolveInputsEndingWith(def exts) {    
-        resolveInputsEndingWithPatterns(exts.collect { it.replace('.','\\.')+'$' }, exts)
+    @CompileStatic
+    List<PipelineFile> resolveInputsEndingWith(final List<String> exts) {    
+        resolveInputsEndingWithPatterns(exts.collect { String ext -> ext.replace('.','\\.')+'$' }, exts)
     }
     
     List<PipelineFile> probe(def pattern) {
@@ -275,19 +276,23 @@ class PipelineInput {
      * @param origs user friendly versions of the above to display in errors
      * @return  list of inputs matching given patterns
      */
+    @CompileStatic
     List<PipelineFile> resolveInputsEndingWithPatterns(def exts, def origs, failIfNotFound=true) {    
         
         def orig = exts
         synchronized(stages) {
-            
+
             List<List<PipelineFile>> reverseOutputs = computeOutputStack()
 	        
-            List missingExts = []
+            List<String> missingExts = []
 	        def filesWithExts = [Utils.box(exts),origs].transpose().collect { extsAndOrigs ->
-	            String pattern = extsAndOrigs[0]
-	            String origName = extsAndOrigs[1]
                 
-	            List<String> resolved = resolveInputFromExtension(pattern, origName, reverseOutputs)
+                List<String> extOrigPair = (List<String>) extsAndOrigs
+
+	            String pattern = extOrigPair[0]
+	            String origName = extOrigPair[1]
+                
+	            List<PipelineFile> resolved = resolveInputFromExtension(pattern, origName, reverseOutputs)
                 if(resolved == null)
                     missingExts << origName
                 return resolved
@@ -297,13 +302,28 @@ class PipelineInput {
 	            throw new InputMissingError("Unable to locate one or more specified inputs from pipeline with the following extension(s):\n\n" + missingExts*.padLeft(15," ").join("\n"))
 	            
 			log.info "Found files with exts $exts : $filesWithExts"
-	        return filesWithExts.flatten().unique()
+	        return (List<PipelineFile>)filesWithExts.flatten().unique()
         }
     }
     
     
     @CompileStatic
     List<PipelineFile> resolveInputFromExtension(String regex, String origName, List<List<PipelineFile>> reverseOutputs) {
+
+        List<String> mappings = Pipeline.fileTypeMappings[origName]
+        if(!mappings.is(null)) {
+            for(String ext in mappings) {
+                def result = resolveInputFromRawExtension(ext+'$', origName, reverseOutputs)
+                if(!result.is(null))
+                    return result
+            }
+        }
+        else
+            return resolveInputFromRawExtension(regex, origName, reverseOutputs)
+    }
+
+    @CompileStatic
+    List<PipelineFile> resolveInputFromRawExtension(String regex, String origName, List<List<PipelineFile>> reverseOutputs) {
         
             Pattern wholeMatch = ~('(^|^.*/)' + regex + '$')
                 
@@ -368,7 +388,7 @@ class PipelineInput {
                     throw new PipelineError("Expected a directory as input, but no current input to this stage was a directory: \n" + Utils.box(input).join("\n"))
             }
             else {
-              def exts = this.extensionPrefix?[extensionPrefix+"."+name]:[name]
+              List<String> exts = this.extensionPrefix?[extensionPrefix+"."+name]:[name]
               resolved = resolveInputsEndingWith(exts)
               if(resolved.size() <= defaultValueIndex)
                   throw new PipelineError("Insufficient inputs: at least ${defaultValueIndex+1} inputs are expected with extension .${name} but only ${resolved.size()} are available")
