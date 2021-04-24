@@ -15,3 +15,5 @@ jobs:
           distribution: 'adopt'
       - name: Build with Gradle
         run: ./gradlew build
+      - name: Execute tests
+        run: cd tests && ./run.sh          
