@@ -54,7 +54,7 @@ class FileNameMapperImpl implements FileNameMapper {
             String.valueOf(it).endsWith(endExt) 
         }
 
-        def replaced = null
+        PipelineFile replaced = null
         if(!result) {
             if(name in ctx.currentFilter) {
                 log.info "Allowing reference to output not produced by filter because it was available from a filtering of an alternative input"
@@ -76,7 +76,7 @@ class FileNameMapperImpl implements FileNameMapper {
         
       log.info "Selected output $result with extension $name from expected outputs $resolver.overrideOutputs"
        
-       return new FileNameMappingResult(path:result, replaced:replaced)
+       return new FileNameMappingResult(path:result, replaced:replaced.path)
     }
     
     FileNameMappingResult synthesiseFromName(List<String> extSegments) {
