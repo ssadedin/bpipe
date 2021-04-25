@@ -755,40 +755,52 @@ class Utils {
     * Coerce all of the arguments to point to files in the specified directory.
     */
     @CompileStatic
-    static List toDir(List outputs, dir) {
+    static List toDir(List outputs, String dir) {
         
        String targetDir = dir
        File targetDirFile = new File(targetDir)
        if(!targetDirFile.exists())
            targetDirFile.mkdirs()
            
-       String outPrefix = targetDir == "." ? "" : targetDir + "/" 
-       
        List<Class> types = outputs.collect { it.class }
        def newOutputs = outputs.collect { out ->
-           Class type = out.class
-           
-           String outString = out.toString()
-           if(outString.contains("/") && outString.contains("*")) 
-               return out
-           else
-           if(out instanceof PipelineFile) {
-               PipelineFile pf = (PipelineFile)out
-               String newPath = targetDir == "." ? pf.name : targetDir + '/' + pf.name
-               return pf.newName(newPath)
-           }
-           else
-           if(outString.contains("/") && new File(outString).exists())  {
-               return out
-           }
-           else {
-             def result = outPrefix + new File(out.toString()).name 
-             return type == Pattern ? Pattern.compile(result) : result
-           }
+           fileToDir(out, dir, false)
        }
-       
        return newOutputs
     }
+    
+    @CompileStatic
+    static def fileToDir(def fileLike, String dir, boolean create=true) {
+        
+       if(create) {
+           File targetDirFile = new File(dir)
+           if(!targetDirFile.exists())
+               targetDirFile.mkdirs()
+       }
+        
+       String fileLikePrefix = dir == "." ? "" : dir + "/" 
+         
+       Class type = fileLike.class
+       
+       String fileLikeString = fileLike.toString()
+       if(fileLikeString.contains("/") && fileLikeString.contains("*")) 
+           return fileLike
+       else
+       if(fileLike instanceof PipelineFile) {
+           PipelineFile pf = (PipelineFile)fileLike
+           String newPath = dir == "." ? pf.name : dir + '/' + pf.name
+           return pf.newName(newPath)
+       }
+       else
+       if(fileLikeString.contains("/") && new File(fileLikeString).exists())  {
+           return fileLike
+       }
+       else {
+         def result = fileLikePrefix + new File(fileLike.toString()).name 
+         return type == Pattern ? Pattern.compile(result) : result
+       }
+    }
+    
     
     static String urlToFileName(String url, String defaultExt) {
         String result = url.replaceAll('^.*/','')

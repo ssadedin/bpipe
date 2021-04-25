@@ -121,7 +121,7 @@ class FileNameMapperImpl implements FileNameMapper {
                 outputUsed = outputUsed.replace('.' + branch.name + '.','.merge.')
             }
         }
-        return new FileNameMappingResult(path:outputUsed)
+        return new FileNameMappingResult(path:Utils.fileToDir(outputUsed, ctx.getDir()))
     }
 
     /**
