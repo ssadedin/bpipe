@@ -76,7 +76,7 @@ class FileNameMapperImpl implements FileNameMapper {
         
       log.info "Selected output $result with extension $name from expected outputs $resolver.overrideOutputs"
        
-       return new FileNameMappingResult(path:result, replaced:replaced.path)
+       return new FileNameMappingResult(path:result, replaced:replaced?.path)
     }
     
     FileNameMappingResult synthesiseFromName(List<String> extSegments) {
