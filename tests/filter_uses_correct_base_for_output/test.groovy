@@ -17,7 +17,6 @@
  *   somecommand foo.bed bar.txt > bar.xxx.bed
  *   
  */
-@filter("hello")
 hello = {
     filter("hello") {
         exec """

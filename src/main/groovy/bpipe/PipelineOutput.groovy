@@ -290,20 +290,19 @@ class PipelineOutput {
      * Return the first input with the file extension replaced with the 
      * one specified.
      */
+    //@CompileStatic
     def propertyMissing(String name) {
-        
-       String result = null
         
        // When "produce", "transform" or "filter" is used, they specify
        // the outputs,  so the output extension acts as a selector from
        // those rather than a synthesis of a new name
         
-       String mappedPath = mapper.mapFileName(this.extraSegments + [name])
+       FileNameMappingResult mappedPath = mapper.mapFileName(this.extraSegments + [name])
        
-       this.outputUsed = this.createChildOutput(mappedPath, name)
+       this.outputUsed = this.createChildOutput(mappedPath.path, name)
            
-       if(this.outputChangeListener != null && result != null) {
-            this.outputChangeListener(result,replaced)
+       if(this.outputChangeListener != null && mappedPath.path != null && mappedPath.replaced) {
+            this.outputChangeListener.call(mappedPath.path,mappedPath.replaced)
        }
         
        return outputUsed

@@ -1195,7 +1195,7 @@ class PipelineContext {
        return outFile
    }
    
-   private boolean applyName = false
+   boolean applyName = false
    
    /**
     * Specifies an output that converts an input file to a different kind of file,
