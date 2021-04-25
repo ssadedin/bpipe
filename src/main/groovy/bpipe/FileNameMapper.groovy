@@ -1,7 +1,15 @@
 package bpipe
 
-interface FileNameMapper {
+import groovy.transform.CompileStatic
 
-    String mapFileName(List<String> segments)
+@CompileStatic
+class FileNameMappingResult {
+    String path
+    String replaced
+}
+
+@CompileStatic
+interface FileNameMapper {
+    FileNameMappingResult mapFileName(List<String> segments)
 }
 

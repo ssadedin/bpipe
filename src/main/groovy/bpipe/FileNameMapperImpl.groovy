@@ -35,7 +35,7 @@ class FileNameMapperImpl implements FileNameMapper {
     }
 
     @Override
-    public String mapFileName(final List<String> segments) {
+    public FileNameMappingResult mapFileName(final List<String> segments) {
         
         if(this.resolver.overrideOutputs) {
            return selectFromOverrides(segments)  
@@ -44,7 +44,7 @@ class FileNameMapperImpl implements FileNameMapper {
            return synthesiseFromName(segments)
     }
     
-    String selectFromOverrides(List<String> segments) {
+    FileNameMappingResult selectFromOverrides(List<String> segments) {
 
         final String name = segments[-1]
         final String dotName = '.' + name
@@ -76,10 +76,10 @@ class FileNameMapperImpl implements FileNameMapper {
         
       log.info "Selected output $result with extension $name from expected outputs $resolver.overrideOutputs"
        
-       return result
+       return new FileNameMappingResult(path:result, replaced:replaced)
     }
     
-    String synthesiseFromName(List<String> extSegments) {
+    FileNameMappingResult synthesiseFromName(List<String> extSegments) {
         
         String firstOutput = Utils.first(this.resolver.out)
         
@@ -121,7 +121,7 @@ class FileNameMapperImpl implements FileNameMapper {
                 outputUsed = outputUsed.replace('.' + branch.name + '.','.merge.')
             }
         }
-        return outputUsed
+        return new FileNameMappingResult(path:outputUsed)
     }
 
     /**
