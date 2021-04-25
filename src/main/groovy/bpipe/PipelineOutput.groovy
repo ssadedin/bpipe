@@ -290,7 +290,7 @@ class PipelineOutput {
      * Return the first input with the file extension replaced with the 
      * one specified.
      */
-    //@CompileStatic
+    @CompileStatic
     def propertyMissing(String name) {
         
        // When "produce", "transform" or "filter" is used, they specify
