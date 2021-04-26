@@ -592,8 +592,8 @@ class PipelineContext {
             log.info("Using non-default output due to input property reference: " + resolved + " from resolved inputs " + allResolved)
             
             if(currentFileNameTransform != null) {
-                out = currentFileNameTransform.transform(allResolved)*.path
-                overrideOutputs = toOutputFolder(out)
+                overrideOutputs = toOutputFolder(currentFileNameTransform.transform(allResolved))
+                out = overrideOutputs*.path
             }
             else
                 out = [resolved.newName(resolved.name +"." + stageName).path]
