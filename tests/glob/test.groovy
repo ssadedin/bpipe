@@ -7,7 +7,7 @@ hello = {
 }
 
 world = {
-  from(glob("*.xls","*.csv")) {
+  from("*.xls","*.csv") {
     exec "cat $inputs.xls > $output.xml"
     exec "cat $inputs.csv > $output.tsv"
   }

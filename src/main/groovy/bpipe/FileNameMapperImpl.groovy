@@ -3,6 +3,7 @@ package bpipe
 import java.util.regex.Pattern
 
 import groovy.transform.CompileStatic
+import groovy.transform.Memoized
 import groovy.util.logging.Log
 
 import bpipe.storage.*
@@ -106,7 +107,10 @@ class FileNameMapperImpl implements FileNameMapper {
         else
         if(firstOutput.endsWith(fullExt+"."+stageName)) {
             log.info("Replacing " + fullExt+"\\."+stageName + " with " +  stageName+'.'+name)
-            outputUsed = this.resolver.baseOutput.replaceAll("[.]{0,1}"+fullExt+"\\."+stageName, '.' + segments)
+            Pattern extWithNumberPattern = getExtWithNumberPattern(fullExt)
+            println("Replace $extWithNumberPattern in $resolver.baseOutput")
+
+            outputUsed = this.resolver.baseOutput.replaceAll(extWithNumberPattern, '$1.' + segments)
         }
         else { // more like a transform: keep the old extension in there (foo.csv.bar => foo.csv.bar.xml)
             outputUsed = computeOutputUsedAsTransform(name, segments)
@@ -122,6 +126,11 @@ class FileNameMapperImpl implements FileNameMapper {
             }
         }
         return new FileNameMappingResult(path:(String)Utils.fileToDir(outputUsed, ctx.getDir()))
+    }
+    
+    @Memoized
+    Pattern getExtWithNumberPattern(final String fullExt) {
+        Pattern.compile("[.]{0,1}"+fullExt+"([.][0-9]{1,}){0,1}\\."+stageName + '$')        
     }
 
     /**
