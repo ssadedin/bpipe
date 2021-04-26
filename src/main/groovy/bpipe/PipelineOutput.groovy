@@ -304,6 +304,9 @@ class PipelineOutput {
        if(this.outputChangeListener != null && mappedPath.path != null && mappedPath.replaced) {
             this.outputChangeListener.call(mappedPath.path,mappedPath.replaced)
        }
+       
+       if(mappedPath.path == null) 
+           throw new PipelineError("Unable to compute an appropriate output path based on file extension $name")
         
        return outputUsed
     }
