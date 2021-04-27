@@ -802,7 +802,7 @@ class PipelineContext {
            
            OutputResolver resolver = createOutputResolver(result)
            resolver.resolveOutput()
-           resolver.overrideOutputs = resolver.overrideOutputs?.size()>index ? [resolver.overrideOutputs[index]] : []
+           resolver.overrideOutputs = (List<PipelineFile>)(resolver.overrideOutputs?.size()>index ? [resolver.overrideOutputs[index]] : [])
 
            FileNameMapper mapper = new FileNameMapperImpl(resolver, origOutput.branchName)
            
