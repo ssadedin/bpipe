@@ -45,7 +45,7 @@ QSUB_FAILED=7              # qsub command returned non-zero exit status
 MKDIR_JOBDIR_FAILED=8      # mkdir $JOBDIR failed
 
 ESSENTIAL_ENV_VARS="COMMAND NAME"
-OPTIONAL_ENV_VARS="WALLTIME PROCS QUEUE JOBDIR MEMORY CUSTOM_SUBMIT_OPTS"
+OPTIONAL_ENV_VARS="WALLTIME PROCS QUEUE JOBDIR MEMORY CUSTOM_SUBMIT_OPTS GPUS"
 DEFAULT_BATCH_MEM=1
 DEFAULT_BATCH_PROCS=1
 DEFAULT_WALLTIME="01:00:00" # one hour
@@ -74,6 +74,11 @@ set_procs() {
         procs_request="#PBS -l procs=$1"
     else
         procs_request="#PBS -l nodes=$NODES:ppn=$1"
+    fi
+    
+    if [ ! -z "$GPUS" ];
+    then
+        procs_request="$procs_request:gpus=$GPUS"
     fi
 }
 

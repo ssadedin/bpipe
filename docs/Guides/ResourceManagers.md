@@ -107,7 +107,18 @@ commands {
 }
 ```
 
-## Sun Grid Engine options
+## PBS Torque Options
+
+Torque clusters may use different options for requesting cores depending on the configuration 
+of the cluster. To request cores using the `procs=n` option with Torque, leave the 
+configuration as its default. However if your cluster requires the format `nodes=1:ppn=n` 
+option, you should set `proc_mode=1` in your `bpipe.config` file.
+
+Additionally, bpipe also supports requesting GPU hardware when configured with torque. To
+request gpus, add `gpus=n` where `n` is the number of GPUs you are requesting. At the moment,
+there is not any specific support to request the type of GPU.
+
+## Sun Grid Engine Options
 
 In order to enable the Sun Grid Engine (SGE) resource manager define the following entry in the `bpipe.config` file :
 

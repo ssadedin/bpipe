@@ -243,6 +243,10 @@ class CustomCommandExecutor implements PersistentExecutor {
             
         if('custom_submit_options' in config)
             env.CUSTOM_SUBMIT_OPTS = String.valueOf(config.custom_submit_options)
+            
+        if('gpus' in config) {
+            env.GPUS = String.valueOf(config.gpus)
+        } 
   
         // modules since we may need to load modules before the command... - Simon Gladman (slugger70) 2014
         if(config?.modules) {
