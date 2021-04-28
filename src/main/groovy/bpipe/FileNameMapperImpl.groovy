@@ -163,12 +163,12 @@ class FileNameMapperImpl implements FileNameMapper {
             result = (List<String>)[*result[0..-3], branchName, result[-2]]
         }
             
-        // If last segment is purely numeric, remove it
+        // If last segment is purely numeric, switch its order
         // occurs when the use uses multiple outputs ($output1.csv, $output2.csv) and 
         // the same output file is generated for the outputs - such file names get 
         // a numeric index inserted. eg: test1.txt, test1.txt.2
-        if(result[-1].isInteger()) {
-            result = result[0..-2]
+        if(result[-1].isInteger() && result.size()>2) {
+            result = result[0..-3] + [result[-1], result[-2] ]
         }
 
         // Then replace the extension on the file with the requested one
