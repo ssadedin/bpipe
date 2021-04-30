@@ -418,8 +418,7 @@ class PipelineInput {
      * in the pipeline, and includes the original inputs as the last stage. This "stack" of inputs
      * provides an appropriate order for searching for inputs to a pipeline stage.
      */
-// Causes ClassCastException at line ~395
-//    @CompileStatic
+    @CompileStatic
     List<List<PipelineFile>> computeOutputStack() {
         
         List relatedThreads = [Thread.currentThread().id, Pipeline.rootThreadId]
