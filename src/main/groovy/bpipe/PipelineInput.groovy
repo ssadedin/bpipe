@@ -335,7 +335,8 @@ class PipelineInput {
         List<String> mappings = Pipeline.fileTypeMappings[customExt]
         if(!mappings.is(null)) {
             for(String ext in mappings) {
-                def result = resolveInputFromRawExtension(ext+'$', origName, reverseOutputs)
+                String newExt = origName.substring(0, origName.size() - customExt.size()) + ext + '$'
+                def result = resolveInputFromRawExtension(newExt, origName, reverseOutputs)
                 if(!result.is(null)) {
                     for(r in result) {
                         utilisedMappings[r.path] =  ext
