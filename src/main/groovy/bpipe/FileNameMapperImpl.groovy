@@ -101,18 +101,17 @@ class FileNameMapperImpl implements FileNameMapper {
         
         String name = extSegments[-1]
          
-        if(stageName.equals(outputFile.name)) {
-           outputUsed = FastUtils.dotJoin((List<String>)[this.resolver.baseOutput, *branchSegment, name])
+        outputUsed = resolveFromPureStageName(outputFile, branchSegment, name)
+        
+        if(!outputUsed) {
+            outputUsed = resolveAsFilterOnSameExt(firstOutput, fullExt, segments)
         }
-        else
-        if(firstOutput.endsWith(fullExt+"."+stageName)) {
-            log.info("Replacing " + fullExt+"\\."+stageName + " with " +  stageName+'.'+name)
-            Pattern extWithNumberPattern = getExtWithNumberPattern(fullExt)
-            println("Replace $extWithNumberPattern in $resolver.baseOutput")
+        
+        if(!outputUsed)
+            outputUsed = resolveAsFilterOnCustomExt(firstOutput, name, fullExt, segments)
 
-            outputUsed = this.resolver.baseOutput.replaceAll(extWithNumberPattern, '$1.' + segments)
-        }
-        else { // more like a transform: keep the old extension in there (foo.csv.bar => foo.csv.bar.xml)
+        if(!outputUsed) { 
+            // like a transform: keep the old extension in there (foo.csv.bar => foo.csv.bar.xml)
             outputUsed = computeOutputUsedAsTransform(name, segments)
         }
         
@@ -126,6 +125,37 @@ class FileNameMapperImpl implements FileNameMapper {
             }
         }
         return new FileNameMappingResult(path:(String)Utils.fileToDir(outputUsed, ctx.getDir()))
+    }
+    
+    String resolveFromPureStageName(final File outputFile, List<String> branchSegment, String name) {
+        if(!stageName.equals(outputFile.name)) 
+            return null
+            
+        return FastUtils.dotJoin((List<String>)[this.resolver.baseOutput, *branchSegment, name])
+    }
+    
+    String resolveAsFilterOnSameExt(final String firstOutput, String fullExt, String segments) {
+        if(!firstOutput.endsWith(fullExt+"."+stageName)) 
+            return null
+            
+        log.info("Replacing " + fullExt+"\\."+stageName + " with " +  stageName+'.'+fullExt)
+        Pattern extWithNumberPattern = getExtWithNumberPattern(fullExt)
+        return this.resolver.baseOutput.replaceAll(extWithNumberPattern, '$1.' + segments)
+    }
+    
+    String resolveAsFilterOnCustomExt(final String firstOutput, String name, String fullExt, String segments) {
+        
+        // Check each utilised custom type mapping. If the output matches one of them, 
+        // treat the mappign as a single unit in creating a filter expression
+        for(PipelineInput inp in ctx.allUsedInputWrappers*.value) {
+            for(Map.Entry<String,String> e in inp.utilisedMappings) {
+                
+                String result = resolveAsFilterOnSameExt(firstOutput, e.value, segments)
+                if(result)
+                    return result
+            }
+        }
+        return null
     }
     
     @Memoized

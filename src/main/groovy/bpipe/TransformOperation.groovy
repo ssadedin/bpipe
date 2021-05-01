@@ -168,14 +168,22 @@ class TransformOperation {
                 
                 String matchedPortion = isGlobPattern(fromPattern) ? fromPattern[1..-1] : fromPattern
                 
+                PipelineFile resolved = filesResolved[0]
+                if(resolved.path in input.utilisedMappings) {
+                    matchedPortion = input.utilisedMappings[resolved.path]
+                }                
+                
                 // Add a from pattern for every file that was resolved
                 fromPatterns.addAll([matchedPortion] * filesResolved.size())
                 expandedToPatterns.addAll([toPattern] * filesResolved.size())
             }
             else {
                 if(filesResolved) {
-                    this.files.add(filesResolved[0])
-                    String escapedPattern = fromPattern
+                    PipelineFile resolved = filesResolved[0]
+                    this.files.add(resolved)
+                    if(resolved.path in input.utilisedMappings) {
+                        fromPattern = input.utilisedMappings[resolved.path]
+                    }
                     fromPatterns.add(fromPattern)
                     expandedToPatterns.add(toPattern)
                 }
