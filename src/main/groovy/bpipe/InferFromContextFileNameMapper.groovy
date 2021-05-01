@@ -13,7 +13,7 @@ import bpipe.storage.*
  */
 @CompileStatic
 @Log
-class FileNameMapperImpl implements FileNameMapper {
+class InferFromContextFileNameMapper implements FileNameMapper {
 
  
     private static Pattern DOT_NUMBER_PATTERN = ~'\\.[^\\.]*(\\.[0-9]*){0,1}$'
@@ -26,7 +26,7 @@ class FileNameMapperImpl implements FileNameMapper {
     
     final String stageName
 
-    public FileNameMapperImpl(PipelineContext.OutputResolver resolver, String branchPrefix) {
+    public InferFromContextFileNameMapper(PipelineContext.OutputResolver resolver, String branchPrefix) {
         super();
         this.ctx = resolver.context
         this.resolver = resolver
