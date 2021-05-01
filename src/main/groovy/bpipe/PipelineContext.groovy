@@ -657,7 +657,7 @@ class PipelineContext {
                 return new SelectFromPredefinedFileNameMapper(overrideOutputs, context)
             }
             else
-                return new FileNameMapperImpl(this, branchPrefix)
+                return new InferFromContextFileNameMapper(this, branchPrefix)
         }
      }
     
