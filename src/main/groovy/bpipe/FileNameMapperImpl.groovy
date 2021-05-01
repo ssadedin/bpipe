@@ -15,8 +15,7 @@ import bpipe.storage.*
 @Log
 class FileNameMapperImpl implements FileNameMapper {
 
-    static Pattern FILE_EXT_PATTERN = ~'\\.[^.]*$'
-  
+ 
     private static Pattern DOT_NUMBER_PATTERN = ~'\\.[^\\.]*(\\.[0-9]*){0,1}$'
      
     final PipelineContext ctx
@@ -36,52 +35,8 @@ class FileNameMapperImpl implements FileNameMapper {
     }
 
     @Override
-    public FileNameMappingResult mapFileName(final List<String> segments) {
-        
-        if(this.resolver.overrideOutputs) {
-           return selectFromOverrides(segments)  
-        }
-        else 
-           return synthesiseFromName(segments)
-    }
-    
-    FileNameMappingResult selectFromOverrides(List<String> segments) {
-
-        final String name = segments[-1]
-        final String dotName = '.' + name
-        final endExt = segments.join('.')
-        
-        String result = this.resolver.overrideOutputs.find { 
-            String.valueOf(it).endsWith(endExt) 
-        }
-
-        PipelineFile replaced = null
-        if(!result) {
-            if(name in ctx.currentFilter) {
-                log.info "Allowing reference to output not produced by filter because it was available from a filtering of an alternative input"
-                
-                replaced = this.resolver.overrideOutputs[0]
-                
-                PipelineFile baseInput = this.ctx.resolvedInputs.find {it.path.endsWith(name)}
-                if(!baseInput) {
-                    baseInput = new UnknownStoragePipelineFile(String.valueOf(this.resolver.overrideOutputs[0]))
-                    result = baseInput.newName(baseInput.path.replaceAll(FILE_EXT_PATTERN,dotName))
-                }
-                else {
-                    log.info "Recomputing filter on base input $baseInput to achieve match with output extension $name"
-                    result = this.ctx.currentFileNameTransform.transform([baseInput])[0]
-                }
-                result = Utils.toDir([result], this.ctx.getDir())[0]
-            }
-       }
-        
-      log.info "Selected output $result with extension $name from expected outputs $resolver.overrideOutputs"
+    public FileNameMappingResult mapFileName(final List<String> extSegments) {
        
-       return new FileNameMappingResult(path:result, replaced:replaced?.path)
-    }
-    
-    FileNameMappingResult synthesiseFromName(List<String> extSegments) {
-        
         String firstOutput = Utils.first(this.resolver.out)
         
         // If the extension of the output is the same as the extension of the 
@@ -89,7 +44,7 @@ class FileNameMapperImpl implements FileNameMapper {
         // eg: foo.csv.bar => foo.baz.csv
         List<String> branchSegment = (ctx.applyName && branchName) ? [branchName] : [] 
         
-        String segments = (branchSegment + [stageName] + extSegments).collect { 
+        String joinedSegments = (branchSegment + [stageName] + extSegments).collect { 
             FastUtils.strip(it,'.')
         }.join(".")
          
@@ -104,15 +59,15 @@ class FileNameMapperImpl implements FileNameMapper {
         outputUsed = resolveFromPureStageName(outputFile, branchSegment, name)
         
         if(!outputUsed) {
-            outputUsed = resolveAsFilterOnSameExt(firstOutput, fullExt, segments)
+            outputUsed = resolveAsFilterOnSameExt(firstOutput, fullExt, joinedSegments)
         }
         
         if(!outputUsed)
-            outputUsed = resolveAsFilterOnCustomExt(firstOutput, name, fullExt, segments)
+            outputUsed = resolveAsFilterOnCustomExt(firstOutput, name, fullExt, joinedSegments)
 
         if(!outputUsed) { 
             // like a transform: keep the old extension in there (foo.csv.bar => foo.csv.bar.xml)
-            outputUsed = computeOutputUsedAsTransform(name, segments)
+            outputUsed = computeOutputUsedAsTransform(name, joinedSegments)
         }
         
         if(outputUsed.startsWith(".") && !outputUsed.startsWith("./")) // occurs when no inputs given to script and output extension used
