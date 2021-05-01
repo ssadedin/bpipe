@@ -87,7 +87,7 @@ class FileNameMapperImpl implements FileNameMapper {
         // If the extension of the output is the same as the extension of the 
         // input then this is more like a filter; remove the previous output extension from the path
         // eg: foo.csv.bar => foo.baz.csv
-        List branchSegment = (ctx.applyName && branchName) ? [branchName] : [] 
+        List<String> branchSegment = (ctx.applyName && branchName) ? [branchName] : [] 
         
         String segments = (branchSegment + [stageName] + extSegments).collect { 
             FastUtils.strip(it,'.')
