@@ -135,6 +135,7 @@ class PipelineInput {
         return resolvedValue
     }
     
+    @CompileStatic
     String toString() {
         try {
             PipelineFile resolvedValue = getResolvedValue()
@@ -171,6 +172,17 @@ class PipelineInput {
 	String getPrefix() {
         return PipelineCategory.getPrefix(this.toString());
 	}
+    
+    @CompileStatic
+    String getSuffix() {
+        if(utilisedMappings.isEmpty())  {
+            String value = this.toString()
+            return value.substring(value.lastIndexOf('.'))
+        }
+        
+        PipelineFile firstValue = this.getResolvedValue()
+        return utilisedMappings.find { firstValue.path == it.key }.value
+    }
     
     /**
      * Support accessing inputs by index - allows the user to use the form
@@ -253,18 +265,18 @@ class PipelineInput {
         resolveInputsEndingWithPatterns(exts.collect { String ext -> ext.replace('.','\\.')+'$' }, exts)
     }
     
-    List<PipelineFile> probe(def pattern) {
-        if(pattern instanceof String)
-            pattern = pattern.replace('.','\\.')+'$' 
-        
-        // TODO: refactor the resolveInputsEndingWithPatterns method to not return a
-        // list with [null] when there is no result
-        List<PipelineFile> result = resolveInputsEndingWithPatterns([pattern], [pattern], false)
-        if(result.size()==1 && result[0]  == null)
-            return []
-        return result
-    }
-    
+//    List<PipelineFile> probe(def pattern) {
+//        if(pattern instanceof String)
+//            pattern = pattern.replace('.','\\.')+'$' 
+//        
+//        // TODO: refactor the resolveInputsEndingWithPatterns method to not return a
+//        // list with [null] when there is no result
+//        List<PipelineFile> result = resolveInputsEndingWithPatterns([pattern], [pattern], false)
+//        if(result.size()==1 && result[0]  == null)
+//            return []
+//        return result
+//    }
+//    
     /**
      * Search the pipeline hierarchy backwards to find inputs matching the patterns specified 
      * in 'exts'.
@@ -306,20 +318,34 @@ class PipelineInput {
         }
     }
     
+    /**
+     * When a user defined type mapping is used in resolving a pipeline input,
+     * the mapping is recorded here. This then can inform later manipulation of
+     * the input so that the mapping is taken into account
+     */
+    Map<String, String> utilisedMappings = [:]
     
     @CompileStatic
-    List<PipelineFile> resolveInputFromExtension(String regex, String origName, List<List<PipelineFile>> reverseOutputs) {
+    List<PipelineFile> resolveInputFromExtension(String pattern, String origName, List<List<PipelineFile>> reverseOutputs) {
 
-        List<String> mappings = Pipeline.fileTypeMappings[origName]
+        String customExt = origName.tokenize('.')[-1]
+        if(customExt.endsWith('$'))
+            customExt = customExt[1..-1]
+
+        List<String> mappings = Pipeline.fileTypeMappings[customExt]
         if(!mappings.is(null)) {
             for(String ext in mappings) {
                 def result = resolveInputFromRawExtension(ext+'$', origName, reverseOutputs)
-                if(!result.is(null))
+                if(!result.is(null)) {
+                    for(r in result) {
+                        utilisedMappings[r.path] =  ext
+                    }
                     return result
+                }
             }
         }
         else
-            return resolveInputFromRawExtension(regex, origName, reverseOutputs)
+            return resolveInputFromRawExtension(pattern, origName, reverseOutputs)
     }
 
     @CompileStatic
@@ -397,13 +423,14 @@ class PipelineInput {
         		mapToCommandValue(resolved)
         }
         catch(InputMissingError e) {
-            log.info("No input resolved for property $name: returning child PipelineInput for possible double extension resolution")
+            log.fine("No input resolved for property $name: returning child PipelineInput for possible double extension resolution")
             resolved = this.resolvedInputs
             ime = e
         }
         
         PipelineInput childInp = new PipelineInput((List<PipelineFile>)resolved.collect{it} , stages, aliases)
         childInp.parent = this
+        childInp.utilisedMappings = this.utilisedMappings
         childInp.resolvedInputs = (List<PipelineFile>)resolved.collect { it }
         childInp.currentFilter = this.currentFilter
         childInp.extensionPrefix = this.extensionPrefix ? this.extensionPrefix+"."+name : name
