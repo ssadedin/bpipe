@@ -651,10 +651,17 @@ class PipelineContext {
         PipelineContext getContext() {
             return PipelineContext.this
         }
+        
+        FileNameMapper createNameMapper(String branchPrefix) {
+            if(this.overrideOutputs) {
+                return new SelectFromPredefinedFileNameMapper(overrideOutputs, context)
+            }
+            else
+                return new FileNameMapperImpl(this, branchPrefix)
+        }
      }
-     
     
-     @CompileStatic
+    @CompileStatic
     PipelineOutput getOutputImpl() {
        
        OutputResolver resolver = createOutputResolver()
@@ -662,7 +669,7 @@ class PipelineContext {
        Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
        String branchName = applyName  ? pipeline.unappliedBranchNames.join(".") : null
        
-       FileNameMapper mapper = new FileNameMapperImpl(resolver, branchName)
+       FileNameMapper mapper = resolver.createNameMapper(branchName)
        
        PipelineOutput po = new PipelineOutput(resolver.out,
                                    this.stageName, 
@@ -805,7 +812,7 @@ class PipelineContext {
            resolver.baseOutput = result
            resolver.overrideOutputs = (List<PipelineFile>)(resolver.overrideOutputs?.size()>index ? [resolver.overrideOutputs[index]] : [])
 
-           FileNameMapper mapper = new FileNameMapperImpl(resolver, origOutput.branchName)
+           FileNameMapper mapper = resolver.createNameMapper(origOutput.branchName)
            
            def po = new PipelineOutput([result],
                                      origOutput.stageName, 
