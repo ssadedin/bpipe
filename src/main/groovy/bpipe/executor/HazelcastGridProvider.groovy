@@ -59,7 +59,7 @@ class HazelcastGridProvider implements ExecutorServiceProvider {
     @Lazy
     HazelcastInstance client = {
 
-        def addresses = Config.userConfig.get("hazelcast.client.addresses", "localhost")
+        def addresses = Config.userConfig.getOrDefault("hazelcast.client.addresses", "localhost")
         log.info("Connecting Hazelcast grid to addresses: ${addresses}")
 
         ClientConfig clientConfig = new ClientConfig();

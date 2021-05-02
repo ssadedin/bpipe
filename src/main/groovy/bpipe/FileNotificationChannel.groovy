@@ -6,8 +6,6 @@ import groovy.text.Template
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 
-import java.util.Map;
-
 /**
  * A dummy notification channel that just saves files in a "notifications" folder
  * 
@@ -17,13 +15,13 @@ import java.util.Map;
 @CompileStatic
 class FileNotificationChannel implements NotificationChannel {
     
-    ConfigObject cfg
+    Map cfg
     
     File dir = new File("notifications")
     
     int count = 1
 
-    public FileNotificationChannel(ConfigObject cfg) {
+    public FileNotificationChannel(Map cfg) {
         this.cfg = cfg
     }
 

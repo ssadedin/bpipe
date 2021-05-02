@@ -595,7 +595,7 @@ class ExecutorPool {
             assert !('name' in Config.userConfig)
             
             
-            Map mergedCfg = Config.userConfig.clone().merge(cfg)
+            Map mergedCfg = ((ConfigObject)Config.userConfig).clone().merge(cfg)
             
             // These are large entries in the root of the default config that are not 
             // wanted for executors (mainly they just pollute the logs)

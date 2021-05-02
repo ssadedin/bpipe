@@ -1,6 +1,5 @@
 package bpipe
 
-import groovy.util.ConfigObject
 import groovy.util.logging.Log
 import groovy.json.JsonOutput
 import groovy.text.Template
@@ -17,7 +16,7 @@ class HTTPNotificationChannel implements NotificationChannel {
     
     String contentType
     
-    public HTTPNotificationChannel(ConfigObject config) {
+    public HTTPNotificationChannel(Map config) {
         this(config,'application/json')
     }
 

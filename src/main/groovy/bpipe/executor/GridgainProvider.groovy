@@ -55,7 +55,7 @@ class GridgainProvider implements ExecutorServiceProvider {
          * try to look for a bpipe-gridgain.xml file on the current path
          */
 
-        String configFileName = Config.userConfig.get("gridgain.conf.file", "./gridgain.xml")
+        String configFileName = Config.userConfig.getOrDefault("gridgain.conf.file", "./gridgain.xml")
 
         File gg = new File(configFileName)
         if( gg.exists() ) {

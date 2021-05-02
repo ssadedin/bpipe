@@ -242,7 +242,7 @@ class Dependencies {
 
     private List checkParallel(List filesToCheck, List missing, Closure checkInput) {
         log.info "Using parallelized file check for checking ${filesToCheck.size()} inputs ..."
-        int concurrency = Config.userConfig.get('outputScanConcurrency',5)
+        int concurrency = Config.userConfig.getOrDefault('outputScanConcurrency',5)
         missing = (List)GParsPool.withPool(concurrency) {
             filesToCheck.grepParallel(checkInput)
         }
@@ -780,7 +780,7 @@ class Dependencies {
      * @return
      */
     List<OutputMetaData> scanOutputFolder() {
-        int concurrency = Config.userConfig.get('outputScanConcurrency',5)
+        int concurrency = Config.userConfig.getOrDefault('outputScanConcurrency',5)
         List result = []
         Utils.time("Output folder scan (concurrency=$concurrency)") {
             

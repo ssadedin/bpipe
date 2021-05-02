@@ -43,7 +43,7 @@ class EventManager {
 	
 	Map<PipelineEvent,PipelineEventListener> listeners = [:]
 
-	ConfigObject cfg
+	Map cfg
     
     @CompileStatic
     static EventManager getTheInstance() {
@@ -55,7 +55,7 @@ class EventManager {
 	 * 
 	 * @param cfg
 	 */
-	void configure(ConfigObject cfg) {
+	void configure(Map cfg) {
 		this.cfg = cfg
 	}
 	

@@ -98,7 +98,7 @@ class Config {
     /**
      * Configuration loaded from the local directory
      */
-    public static ConfigObject userConfig
+    public static Map userConfig
     
     /**
      * Return an element from the user config (bpipe.config) that is expected to be a List
@@ -245,6 +245,18 @@ class Config {
            log.info "The following stages are configured to be ignored in diagrams: $noDiagramStages"
            Config.noDiagram.addAll(noDiagramStages)
        }
+    }
+    
+    public static void lockUserConfig() {
+        userConfig = userConfig.collectEntries {  k, v ->
+            if(v instanceof Map) {
+                [k,v.asUnmodifiable()]
+            }
+            else {
+                [k,v]
+            }
+        }
+        userConfig = userConfig.asUnmodifiable()
     }
     
     /**

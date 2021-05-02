@@ -550,6 +550,8 @@ public class Pipeline implements ResourceRequestor {
             ExecutorPool.startPools(ExecutorFactory.instance, Config.userConfig, false, true) 
         }  
         
+        Config.lockUserConfig()
+        
         log.info("Running with INPUT " + inputFile)
         
         initResourceUnitMetaClass()
@@ -953,7 +955,7 @@ public class Pipeline implements ResourceRequestor {
     private final static int STATS_POLLER_INTERVAL = 120000
     
     private scheduleStatsUpdate() {
-        long intervalMs = Config.userConfig.get('stats_update_interval', STATS_POLLER_INTERVAL)
+        long intervalMs = Config.userConfig.getOrDefault('stats_update_interval', STATS_POLLER_INTERVAL)
         
         Poller.instance.executor.scheduleAtFixedRate({
             try {

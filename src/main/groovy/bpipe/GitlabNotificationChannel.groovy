@@ -25,7 +25,6 @@
  */
 package bpipe
 
-import java.util.Map
 import java.util.regex.Pattern
 
 import org.gitlab4j.api.GitLabApi
@@ -50,7 +49,7 @@ class GitlabFileReference {
 @Log
 class GitlabNotificationChannel implements NotificationChannel {
     
-    ConfigObject cfg
+    Map cfg
     
 	GitLabApi gitlab 
     
@@ -58,7 +57,7 @@ class GitlabNotificationChannel implements NotificationChannel {
 	
 	String baseURL
     
-    public GitlabNotificationChannel(ConfigObject cfg) {
+    public GitlabNotificationChannel(Map cfg) {
         this.cfg = cfg
         log.info "Connecting to gitlab at $cfg.url using token"
         gitlab = new GitLabApi(cfg.url, cfg.token)

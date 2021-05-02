@@ -3,7 +3,6 @@ package bpipe
 import org.apache.activemq.ActiveMQConnectionFactory
 
 
-import groovy.util.ConfigObject
 import groovy.util.logging.Log
 import groovy.json.JsonOutput
 import groovy.text.Template
@@ -24,11 +23,11 @@ class ActivemqNotificationChannel implements NotificationChannel {
     
     Connection connection
     
-    ConfigObject config
+    Map config
     
     MessageProducer producer
     
-    public ActivemqNotificationChannel(ConfigObject config) {
+    public ActivemqNotificationChannel(Map config) {
         try {
             this.config = config;
             

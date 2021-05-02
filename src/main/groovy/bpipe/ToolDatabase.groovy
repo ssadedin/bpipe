@@ -50,7 +50,7 @@ class ToolDatabase {
      * 
      * @param parentConfig
      */
-    void init(ConfigObject parentConfig, Binding binding=null) {
+    void init(Map parentConfig, Binding binding=null) {
         if(parentConfig.containsKey("tools")) {
             log.info "Loading tool database from user configuration"
             config = parentConfig.get("tools")
@@ -178,7 +178,7 @@ class ToolDatabase {
      * to help within locating the groovy-all jar.
      */
     private void setGroovyVariables(Binding externalBinding) {
-        if(!Config.userConfig.groovy.containsKey('executable'))
+        if(!Config.userConfig?.groovy?.containsKey('executable'))
             return 
             
         String rawExe = Config.userConfig.groovy.executable

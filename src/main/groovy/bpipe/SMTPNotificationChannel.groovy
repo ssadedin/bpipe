@@ -28,8 +28,6 @@ import groovy.text.SimpleTemplateEngine
 import groovy.text.Template
 import groovy.util.logging.Log;
 
-import java.util.Map
-
 import javax.activation.DataHandler;
 import javax.activation.DataSource;
 import javax.activation.FileDataSource;
@@ -68,7 +66,7 @@ class SMTPNotificationChannel implements NotificationChannel {
     
     String format = "html"
     
-	SMTPNotificationChannel(ConfigObject cfg) {
+	SMTPNotificationChannel(Map cfg) {
 		host = cfg.host
 		ssl = cfg.secure?:false
 		if(!cfg.port) {
@@ -210,7 +208,7 @@ class SMTPNotificationChannel implements NotificationChannel {
 
 @Log
 class GMAILNotificationChannel extends SMTPNotificationChannel {
-	GMAILNotificationChannel(ConfigObject cfg) {
+	GMAILNotificationChannel(Map cfg) {
 		host = "smtp.gmail.com"
 		ssl = true
 		port = 465

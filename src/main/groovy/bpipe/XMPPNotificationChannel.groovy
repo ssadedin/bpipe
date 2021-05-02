@@ -24,8 +24,6 @@
  */
 package bpipe
 
-import java.util.Map
-
 import groovy.text.Template;
 import groovy.util.logging.Log;
 import java.util.regex.Pattern.LastNode;
@@ -67,7 +65,7 @@ class XMPPNotificationChannel implements NotificationChannel {
 	 * Create an XMPP notification channel using the provided configuration
 	 * @param cfg
 	 */
-	XMPPNotificationChannel(ConfigObject cfg) {
+	XMPPNotificationChannel(Map cfg) {
 		// Examples for Google talk
 		//
 		//	host = "talk.google.com"
@@ -157,7 +155,7 @@ class XMPPNotificationChannel implements NotificationChannel {
  */
 @Log
 class GTALKNotificationChannel extends XMPPNotificationChannel {
-	GTALKNotificationChannel(ConfigObject cfg) {
+	GTALKNotificationChannel(Map cfg) {
 		connConfig = new ConnectionConfiguration("talk.google.com", 5222, "gmail.com");
 		recipients = cfg.to
 		username = cfg.username
