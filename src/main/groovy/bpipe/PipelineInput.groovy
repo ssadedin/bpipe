@@ -254,7 +254,19 @@ class PipelineInput {
     def split() {
         toString().split()
     }
-        
+
+    List<PipelineFile> probe(def pattern) {
+        if(pattern instanceof String)
+            pattern = pattern.replace('.','\\.')+'$'
+    
+        // TODO: refactor the resolveInputsEndingWithPatterns method to not return a
+        // list with [null] when there is no result
+        List<PipelineFile> result = resolveInputsEndingWithPatterns([pattern], [pattern], false)
+        if(result.size()==1 && result[0]  == null)
+            return []
+        return result
+    }
+
     /**
      * Search backwards through the inputs to the current stage and the outputs of
      * previous stages to find the first output that ends with the extension specified
