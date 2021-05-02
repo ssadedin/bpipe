@@ -1410,10 +1410,16 @@ class PipelineContext {
                     associatedStorage = StorageLayer.defaultStorage
                 }
                 else {
-                    if(annotated && associatedCommand.is(null)) {
-                        log.info "Stage $stageName did not appear to execute a command : clearing outputs and terminating produce early because it was executed implicitly via annotation"
-                        this.@output?.clear()
-                        return
+                    if(associatedCommand.is(null)) {
+                        if(annotated) {
+                            log.info "Stage $stageName did not appear to execute a command : clearing outputs and terminating produce early because it was executed implicitly via annotation"
+                            this.@output?.clear()
+                            return
+                        }
+                        else {
+                            log.info "No commands were executed in stage $stageName but an output is expected. Assume local storage"
+                            associatedStorage = new LocalFileSystemStorageLayer()
+                        }
                     }
                     assert associatedStorage != null : "Unable to find any storage to associate to outputs: (fixed outputs: $fixedOutputs, associatedCommand=$associatedCommand, stage = $stageName)"
                 }
