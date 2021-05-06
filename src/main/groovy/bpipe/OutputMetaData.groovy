@@ -428,7 +428,7 @@ class OutputMetaData implements Serializable {
         if(!this.inputs.contains(inputProps.outputPath)) // Not an input used to produce this output
             return false
 
-        log.info "Checking timestamp of $outputFile vs input $inputProps.outputPath"
+        log.fine "Checking timestamp of $outputFile vs input $inputProps.outputPath"
         if(inputProps?.maxTimestamp < this.timestamp) { // inputs unambiguously older than output
             return false
         }
