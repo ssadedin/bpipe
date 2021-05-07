@@ -189,6 +189,11 @@ class Utils {
     }
     
     @CompileStatic
+    static boolean fileExists(String o) {
+        fileExists(new File(o))
+    }
+
+    @CompileStatic
     static boolean fileExists(PipelineOutput o) {
         fileExists(new File(o.toString()))
     }
