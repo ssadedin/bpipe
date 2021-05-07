@@ -550,8 +550,7 @@ public class Pipeline implements ResourceRequestor {
             ExecutorPool.startPools(ExecutorFactory.instance, Config.userConfig, false, true) 
         }  
         
-        Config.lockUserConfig()
-        
+       
         log.info("Running with INPUT " + inputFile)
         
         initResourceUnitMetaClass()
@@ -578,6 +577,8 @@ public class Pipeline implements ResourceRequestor {
             PipelineCategory.addStages(pipelineBuilder.binding)
             
         ToolDatabase.instance.setToolVariables(pipeline.externalBinding)
+        
+        Config.lockUserConfig()
         
         NotificationManager.instance.setChannelVariables(pipeline.externalBinding)
         
