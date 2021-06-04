@@ -1905,11 +1905,6 @@ class PipelineContext {
         
        if(implicitVariables) {
            Exception e = implicitVariables[0].exception
-
-           e.stackTrace = e.stackTrace.grep { StackTraceElement el ->
-               !el.className.startsWith('bpipe.')
-           } as StackTraceElement[]
-
            throw implicitVariables[0].exception
        }
     }

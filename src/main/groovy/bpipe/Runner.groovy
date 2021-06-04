@@ -550,7 +550,7 @@ class Runner {
             System.err.println("\nPlease see the details below for more information.\n")
             System.err.println(" Error Details ".center(Config.config.columns, "="))
             System.err.println()
-            Throwable sanitized = StackTraceUtils.deepSanitize(e)
+            Throwable sanitized = Utils.sanitizeForDisplay(e)
             StringWriter sw = new StringWriter()
             sanitized.printStackTrace(new PrintWriter(sw))
             String stackTrace = sw.toString()

@@ -7,6 +7,16 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 
 
+/**
+ * Tracks occurrence of an undefined variable exception inside bpipe stages
+ * 
+ * This is needed because due to some of bpipe's dynamic behavior, variables can
+ * be resolved lazily. However that means that real undefined variables need to be accepted
+ * at certain points, which can make it very confusing and the original location where they
+ * occurred is lost. This class allows the exceptions to be captured and kept until it is 
+ * determined the variable does not match anything that is resolved lazily, then the original
+ * exception can be thrown after the fact.
+ */
 class ImplicitVariable {
     String name
     MissingPropertyException exception
@@ -250,7 +260,10 @@ class PipelineDelegate {
                 return result
             }
             catch(MissingPropertyException t) {
-                ctx.implicitVariables << new ImplicitVariable(name:name, exception:t)
+                ctx.implicitVariables << new ImplicitVariable(
+                    name:name, 
+                    exception: new MissingPropertyException("No such property: $name in stage $ctx.stageName")
+                )
                 return '$'+name
             }
         }

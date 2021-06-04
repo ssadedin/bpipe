@@ -1339,4 +1339,13 @@ class Utils {
         }
         return m
     }
+    
+    @CompileStatic
+    public static Throwable sanitizeForDisplay(Throwable e) {
+           e = StackTraceUtils.deepSanitize(e)
+           e.stackTrace = e.stackTrace.grep { StackTraceElement el ->
+               !el.className.startsWith('bpipe.')
+           } as StackTraceElement[]
+           return e
+    }
 }
