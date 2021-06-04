@@ -320,7 +320,8 @@ class PipelineCategory {
         multiply(objs, segments, null)
     }
 
-    static Object multiply(Set objs, List segments, List channels) {
+    @CompileStatic
+    static Object multiply(Set objs, List<Closure> segments, List channels) {
         
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
         
@@ -340,7 +341,7 @@ class PipelineCategory {
             
             if(!objs) {
                 if(parent.branch?.name && parent.branch.name != "all") {
-                    println "MSG: Parallel segment inside branch $branch.name will not execute because the list to parallelise over is empty"
+                    println "MSG: Parallel segment inside branch $parent.branch.name will not execute because the list to parallelise over is empty"
                 }
                 else {
                     println "MSG: Parallel segment will not execute because the list to parallelise over is empty"
@@ -370,7 +371,7 @@ class PipelineCategory {
                 String forkId = null
                 chrs.each { chr ->
                     
-                    if(!Config.config.branchFilter.isEmpty() && !Config.config.branchFilter.contains(chr)) {
+                    if(!Config.listValue(Config.config,'branchFilter').contains(chr)) {
                         System.out.println "Skipping branch $chr because not in branch filter ${Config.config.branchFilter}"
                         return
                     }
@@ -389,11 +390,11 @@ class PipelineCategory {
                         try {
                             
                             // If the filterInputs option is set, match input files on the region name
-                            def childInputs = input
+                            List<PipelineFile> childInputs = (List<PipelineFile>)input
                             
                             child.branch = new Branch()
                             if(chr instanceof Chr) {
-                                childInputs = initChildFromChr(child,chr,input)
+                                childInputs = initChildFromChr(child,chr,childInputs)
                                 if(childInputs == null)
                                     return
                             }
@@ -412,7 +413,7 @@ class PipelineCategory {
                         catch(Exception e) {
                             log.log(Level.SEVERE,"Pipeline segment in thread " + Thread.currentThread().name + " failed with internal error: " + e.message, e)
                             Runner.reportExceptionToUser(e)
-                            Concurrency.instance.unregisterResourceRequestor(child)
+                            Concurrency.theInstance.unregisterResourceRequestor(child)
                             child.failed = true
                         }
                     } as Runnable
@@ -478,7 +479,7 @@ class PipelineCategory {
      * @param chr
      * @return a list of inputs to use for the child, or null if the child should not execute
      */
-    static def initChildFromChr(Pipeline child, Chr chr, List<PipelineFile> input) {
+    static List<PipelineFile> initChildFromChr(Pipeline child, Chr chr, List<PipelineFile> input) {
         
         List<PipelineFile> childInputs = input 
         if(childInputs == null)
