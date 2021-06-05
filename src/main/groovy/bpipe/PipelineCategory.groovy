@@ -371,7 +371,8 @@ class PipelineCategory {
                 String forkId = null
                 chrs.each { chr ->
                     
-                    if(!Config.listValue(Config.config,'branchFilter').contains(chr)) {
+                    List branchFilter = Config.listValue(Config.config,'branchFilter')
+                    if(branchFilter && !branchFilter.contains(chr)) {
                         System.out.println "Skipping branch $chr because not in branch filter ${Config.config.branchFilter}"
                         return
                     }
