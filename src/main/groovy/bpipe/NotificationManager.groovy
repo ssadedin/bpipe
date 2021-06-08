@@ -178,7 +178,7 @@ class NotificationManager {
 	 */
 	void sendNotification(Map cfg, PipelineEvent evt, String desc, Map detail) {
         
-        def sanitisedCfg = cfg.collectEntries { [it.key, it.key.contains('password') ? '******' : it.value] }
+        def sanitisedCfg = cfg.collectEntries { [it.key, (it.key.contains('password') || it.key.contains('token')) ? '******' : it.value] }
         
         log.info "Sending to channel $sanitisedCfg"
         
