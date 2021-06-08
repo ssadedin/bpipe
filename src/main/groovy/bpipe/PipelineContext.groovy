@@ -2017,6 +2017,9 @@ class PipelineContext {
        // http://stackoverflow.com/questions/20338162/how-can-i-launch-a-new-process-that-is-not-a-child-of-the-original-process
        String setSid = Utils.isLinux() ? " setsid " : ""
        String rscriptExe = Utils.resolveRscriptExe()
+       String rLibs = Config.userConfig.getOrDefault('R',null)?.getOrDefault('libs',null)
+       String libSetting = rLibs ? """export R_LIBS_USER="$rLibs";""" : ""
+
        boolean oldEchoFlag = this.echoWhenNotFound
        try {
             this.echoWhenNotFound = true
@@ -2027,7 +2030,7 @@ class PipelineContext {
                 this.checkAndClearImplicits(scr)
             }
 
-            rCommand = execImpl("""unset TMP; unset TEMP; TEMPDIR="$rTempDir" $setSid $rscriptExe - <<'!'
+            rCommand = execImpl("""$libSetting unset TMP; unset TEMP; TEMPDIR="$rTempDir" $setSid $rscriptExe - <<'!'
             $scr
 !
 """,false, config)
