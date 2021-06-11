@@ -118,6 +118,37 @@ class PipelineCategory {
         sequentially(list,c)
     }
     
+    @CompileStatic
+    static Closure when(Closure target, Closure condition) {
+        Pipeline.currentUnderConstructionPipeline.joiners.add(condition)
+        def result = { input1 ->
+            Pipeline pipeline = Pipeline.currentRuntimePipeline.get()
+            PipelineContext conditionContext = pipeline.createContext()
+            PipelineDelegate.setDelegateOn(conditionContext,condition)
+
+            def result = condition()
+            if(result) {
+                PipelineStage currentStage = new PipelineStage(pipeline.createContext(), target)
+                pipeline.addStage(currentStage)
+                currentStage.context.setInput(input1)
+                currentStage.run()
+                return currentStage.context.nextInputs?:currentStage.context.@output
+            }
+            else {
+                Branch branch = pipeline.branch
+                if(branch?.toString())
+                    println "======> Skipping stage ${closureNames[target]} in branch $branch"
+                else
+                    println "======> Skipping stage ${closureNames[target]}"
+
+                return null
+            }
+        }
+        Pipeline.currentUnderConstructionPipeline.joiners.add(result)
+        closureNames[result] = closureNames[target]
+        return result
+    }
+    
     static Closure sequentially(List list, Closure c) {
         List nameSetters = []
         Closure result = list.collect { n -> 

@@ -178,6 +178,10 @@ class DefinePipelineCategory {
             return org.codehaus.groovy.runtime.DefaultGroovyMethods.plus(l,other)
     }
     
+    static Closure when(Closure target, Closure condition) {
+        return target
+    }
+    
     static Closure power(List list, Closure c) {
         sequentially(list,c)
     }
