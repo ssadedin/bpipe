@@ -130,7 +130,7 @@ class OutputMetaData implements Serializable {
      */
     StorageLayer storage
     
-    private OutputMetaData() {
+    OutputMetaData() {
     }
     
     OutputMetaData(PipelineFile outputFile) {
