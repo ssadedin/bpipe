@@ -37,12 +37,21 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import org.gitlab4j.api.models.*
 
+@CompileStatic
 class GitlabFileReference {
     FileUpload upload
     String path
     
     String replaceIn(String content) {
         content.replaceAll(/\[(.*)\]\($path\)/, '[$1](' + upload.url + ')')
+    }
+}
+
+@CompileStatic
+class NonuniqueGitlabIssue extends FatalMessagingError {
+
+    public NonuniqueGitlabIssue(String msg) {
+        super(msg);
     }
 }
 
@@ -103,6 +112,9 @@ class GitlabNotificationChannel implements NotificationChannel {
  	
         if(this.updateExistingIssue(issueDetails))
             return
+            
+        if(issueDetails.required)
+            throw new FatalMessagingError("Unable to locate required issue matching $issueDetails.title on channel $cfg.name")
             
         if(issueDetails.title instanceof Map) {
             log.info "Could not identify issue matching $issueDetails.title: issue will not be updated"
@@ -169,6 +181,9 @@ class GitlabNotificationChannel implements NotificationChannel {
 			if(searchResult.isEmpty()) {
                 return false
 			}
+            
+            if(searchResult.size()>1 && issueDetails.unique) 
+                throw new NonuniqueGitlabIssue("Search for $issueDetails.title in project $project.id yielded multiple results when configured with a unique constraint")
              
             issueId = searchResult[0].iid
             log.info "Found issue $issueId corresonding to title $issueDetails.title in project $project.id"
@@ -177,6 +192,9 @@ class GitlabNotificationChannel implements NotificationChannel {
     		notesApi.createIssueNote(project.id, issueId , issueDetails.description)
             return true
 		}
+        catch(NonuniqueGitlabIssue ngi) {
+            throw ngi
+        }
 		catch(PipelineError e) {
 			log.info "No issue found corresonding to title $issueDetails.title in project $project.id: treating as new issue"
             return false

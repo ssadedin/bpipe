@@ -39,6 +39,14 @@ class NotificationChannelReference {
     Map channel
 }
 
+@CompileStatic
+class FatalMessagingError extends PipelineError {
+
+    public FatalMessagingError(String msg) {
+        super(msg);
+    }
+}
+
 /**
  * Responsible for sending out notifications over
  * notification channels, such as XMPP or SMTP
@@ -288,9 +296,19 @@ class NotificationManager {
 		}
 		catch(Throwable t) {
 			log.warning("Failed to send notification via channel "+ channel + " with using template file $templateFile?.absolutePath,configuration " + cfg + ": " + t)
-            log.log(Level.SEVERE, "Failed to send notification to channel $channel using template $templateFile, coniguration $cfg", t)
-            String msg =  "MSG: unable to send notification to channel $channel due to $t"
+            log.log(Level.SEVERE, "Failed to send notification to channel $cfg.name using template $templateFile, coniguration $cfg", t)
+            
+            String stagePart = detail.containsKey('stage') ? " Stage ${detail.stage.stageName} " : ""
+            String branchPart = (detail.containsKey('send.branch') && detail['send.branch']) ? " in branch ${detail.'send.branch'} " : ""
+            
+            String msg =  "MSG: ${stagePart}${branchPart}unable to send notification to channel $cfg.name due to $t"
             handleError(cfg, msg)
+            if(t instanceof FatalMessagingError) {
+                Pipeline pipeline = Pipeline.rootPipeline
+                pipeline.failExceptions << t
+                pipeline.failed = true
+                pipeline.failReason = pipeline.failReason ? "$pipeline.failReason\n\n$msg" :  msg
+            }
 		}
 	}
 

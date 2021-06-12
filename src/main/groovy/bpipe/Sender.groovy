@@ -257,7 +257,8 @@ class Sender {
             "send.content": content,
             "send.subject": this.details.subject,
             "send.contentType" : this.contentType,
-            "send.file" : this.details.file
+            "send.file" : this.details.file,
+            "send.branch" : ctx.branch.name 
         ]
         
         if('url' in details) {

@@ -36,6 +36,8 @@ import java.util.List;
  */
 class SummaryErrorException extends PipelineError {
     
+    private static final long serialVersionUID = 1L;
+
     private HashSet<PipelineError> summarisedErrors = new HashSet<PipelineError>();
     
     public SummaryErrorException(List<PipelineError> children) throws Exception {

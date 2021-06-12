@@ -267,13 +267,13 @@ public class Pipeline implements ResourceRequestor {
     /**
      * If a pipeline failed with an exception, it sets the exception(s) here
      */
-    List<Throwable> failExceptions = []
+    List<Throwable> failExceptions = Collections.synchronizedList([])
     
     /**
      * If a pipeline fails but not with an exception, the reason, if known
      * is set here
      */
-    String failReason = "Unknown"
+    String failReason
     
     /**
      * The base context from which all others are generated
@@ -838,7 +838,7 @@ public class Pipeline implements ResourceRequestor {
             runSegment(resolvedInputFiles, constructedPipeline)
                     
             if(failed) {
-                failureMessage = ("\n" + failExceptions*.message.join("\n"))
+                failureMessage = summarizeExceptions(failExceptions)
             }
         }
         catch(PatternInputMissingError e) {
@@ -882,6 +882,19 @@ public class Pipeline implements ResourceRequestor {
         if(!failed) {
             summarizeOutputs(stages)
         }
+    }
+    
+    @CompileStatic
+    String summarizeExceptions(List<Throwable> failExceptions) {
+        return '\n' + failExceptions.collect { e ->
+            if(e instanceof PipelineError && ((PipelineError)e).ctx) {
+                PipelineError pe = (PipelineError)e
+                String branchPart = pe.ctx?.branch?.name ? " ($pe.ctx.branch.name) " : ""
+                return "In stage ${pe.ctx?.stageName}$branchPart: " + pe.message
+            }
+            else 
+                return e.message
+        }.join('\n')
     }
     
     private void clearMissingFilePromptText() {

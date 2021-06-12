@@ -810,15 +810,14 @@ class PipelineCategory {
      * @param current
      * @param pipelines
      */
-    private static void throwCombinedParallelError(Pipeline current, List pipelines) {
+    private static void throwCombinedParallelError(Pipeline current, List<Pipeline> pipelines) {
+
         def messages = summarizeErrors(pipelines)
 
-        for(Pipeline p in pipelines.grep { it.failed }) {
-            // current.failExceptions.addAll(p.failExceptions)
-        }
-        current.failReason = messages
+        // If the fail reason already exists, added to it
+        current.failReason = (current.failReason ? (current.failReason + '\n\n' + messages) : messages)
 
-        List<PipelineError> childFailures = pipelines.grep { it.failed }*.failExceptions.flatten()
+        List<PipelineError> childFailures = pipelines.findAll { Pipeline p -> p.failed }*.failExceptions.flatten()
 
         Exception e
         if(pipelines.every { p -> p.failExceptions.every { it instanceof PipelineTestAbort } }) {
