@@ -15,7 +15,7 @@ jobs:
           java-version: '8'
           distribution: 'adopt'
       - name: Install groovy
-        run: sudo apt-get install groovy
+        run: sudo apt-get update && sudo apt-get install groovy
       - name: Build with Gradle
         run: ./gradlew dist -x test
       - name: Execute tests
