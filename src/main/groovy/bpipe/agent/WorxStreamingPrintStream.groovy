@@ -3,10 +3,13 @@ package bpipe.agent
 import java.io.IOException
 import java.io.PrintStream
 import java.io.Writer
+import java.util.logging.Level
 import java.util.logging.Logger
 
 import bpipe.worx.WorxConnection
+import groovy.transform.CompileStatic
 
+@CompileStatic
 class WorxStreamingPrintStream extends Writer {
     
     private static Logger log = Logger.getLogger("WorxStreamingPrintStream")
@@ -34,14 +37,14 @@ class WorxStreamingPrintStream extends Writer {
     @Override
     public Writer append(CharSequence s) throws IOException {
         this.buffer(s.getChars(), 0, s.size())
-        this.writer.write(s)
+        this.writer.write(s.toString())
     }
 
     @Override
     public Writer append(CharSequence csq, int start, int end) throws IOException {
         
         this.buffer(csq.getChars(), start, end - start)
-        this.writer.write(csq, start, end - start)
+        this.writer.write(csq.toString(), start, end - start)
     }
 
     @Override
@@ -56,7 +59,9 @@ class WorxStreamingPrintStream extends Writer {
         
     public void buffer(char[] cbuf, int off, int len) throws IOException {
         if(pos + len < buffer.size()) {
-            log.info "Buffer $len chars (pos=$pos / ${buffer.size()})"
+            if(log.isLoggable(Level.FINE)) {
+                log.fine "Buffer $len chars (pos=$pos / ${buffer.size()})"
+            }
             System.arraycopy(cbuf, off, buffer, pos, len)
             pos += len
             return
@@ -89,7 +94,7 @@ class WorxStreamingPrintStream extends Writer {
     
     void flushToWorx(char[] cbuf, int off, int len) {
         
-        log.info "Flush ${len} chars to worx connection"
+        log.info "Flush ${len} chars to upstream connection"
         
         worx.sendJson("/commandResult/$commandId",
                 [
