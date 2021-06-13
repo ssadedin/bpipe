@@ -53,7 +53,7 @@ tmsg() {
 launch_in_foreground() {
     LAUNCH_MODE="$1"
     shift 1
-    exec java -Xmx${MAX_JAVA_MEM} \
+    exec java $EXTRA_BPIPE_JVM_OPTS \
              -noverify \
               -classpath "$CP:$BPIPE_JAR" \
               $BPIPEDEBUG \
@@ -566,6 +566,7 @@ then
     shift 1
     MODEFLAG="-Dbpipe.mode=agent"
     COMMAND="run"
+    EXTRA_BPIPE_AGENT_OPTS="-Xmx256m -XX:CICompilerCount=4 -XX:ParallelGCThreads=4"
     launch_in_foreground agent $*
 elif [ "$COMMAND" == "test" ];
 then
