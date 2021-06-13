@@ -284,14 +284,14 @@ class Runner {
                 if(mode == "remake") {
                     log.info "Remaking $args"
                     Dependencies.theInstance.remakeFiles(args as List)
-                    args = [] as String[]
+                    args = [] as List<String>
                     mode = "retry"
                 }
 
                 // Substitute arguments from prior command 
                 // to re-run it
                 def retryInfo = parseRetryArgs(args)
-                args = retryInfo[1]
+                args = retryInfo[1] as List<String>
                 mode = retryInfo[0]
                 
                 Config.config["mode"] = mode
