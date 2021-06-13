@@ -85,6 +85,8 @@ class Runner {
                    cleanup
                    query <file>
                    preallocate
+                   archive [--delete] <zip file path>
+                   autoarchive
                    preserve
                    register <pipeline> <in1> <in2>...
                    diagram <pipeline> <in1> <in2>...
@@ -126,7 +128,9 @@ class Runner {
     public static boolean cleanupRequired = false
     
     @CompileStatic
-    public static void main(String [] args) {
+    public static void main(String [] arguments) {
+        
+        List<String> args = arguments as List<String>
         
         if(!BPIPE_HOME || BPIPE_HOME.isEmpty()) {
             System.err.println "ERROR: The system property bpipe.home was not set. Please check that Bpipe was correctly started from its launch script."
@@ -191,6 +195,13 @@ class Runner {
             log.info("Mode is archive")
             Config.config["mode"] = mode
             new ArchiveCommand(args as List).run(System.out)
+            exit(0) 
+        }
+        else
+        if(mode == "autoarchive")  {
+            log.info("Mode is autoarchive")
+            Config.config["mode"] = mode
+            new ArchiveCommand(['--delete'] + args.grep { String arg -> arg.startsWith('-') } + ['.bpipe.zip']).run(System.out)
             exit(0) 
         }
         else

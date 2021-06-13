@@ -25,7 +25,7 @@
 package bpipe.cmd
 
 import java.io.Writer;
-
+import java.nio.file.Path
 import java.util.List
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -61,7 +61,10 @@ class ArchiveCommand extends BpipeCommand {
     public void run(Writer out) {
         parse('archive <zip file>') {
             d 'Remove archived files', longOpt:'delete'
+            dir 'Directory of Bpipe run to archive', longOpt:'dir', args:1, required: false, type: File
         }
+        
+        String dir = (opts.dir ?: new File('.')).absolutePath
 
         String zipPath = opts.arguments()[0]
         if(!zipPath)
@@ -76,9 +79,15 @@ class ArchiveCommand extends BpipeCommand {
         if(!zipPath.endsWith('.zip')) 
             throw new IllegalArgumentException("The archive file name should end with .zip")
 
+        if(!new File(dir, '.bpipe').exists() || !new File(dir,'commandlog.txt').exists()) 
+            throw new IllegalArgumentException("Could not find a .bpipe folder or commandlog.txt in  directory $dir - already archived or not a bpipe folder?")
+
+        if(new File(zipPath).exists()) 
+            throw new IllegalArgumentException("The path $zipPath already exists. Please provide a new path or delete the existing archive zip")
+
         List archivedFiles 
         new File(zipPath).withOutputStream { 
-            archivedFiles = createArchiveZip(new ZipOutputStream(it))
+            archivedFiles = createArchiveZip(dir, new ZipOutputStream(it))
         }
         
         out.println "MSG: Archived ${archivedFiles.size()} files"
@@ -93,9 +102,9 @@ class ArchiveCommand extends BpipeCommand {
             }
             
             System.addShutdownHook { 
-                new File('.bpipe').deleteDir()
-                new File('.bpipe/logs').deleteOnExit()
-                new File('.bpipe').deleteOnExit()
+                new File(dir, '.bpipe').deleteDir()
+                new File(dir, '.bpipe/logs').deleteOnExit()
+                new File(dir, '.bpipe').deleteOnExit()
             }
         }
     }
@@ -107,16 +116,20 @@ class ArchiveCommand extends BpipeCommand {
      * @return
      */
     @CompileStatic
-    List<File> createArchiveZip(ZipOutputStream zos) {
+    List<File> createArchiveZip(String dir, ZipOutputStream zos) {
         List<File> toDelete = []
-        new File('.bpipe').eachFileRecurse(FileType.FILES) { File f ->
-            zos.putNextEntry(new ZipEntry(f.path))
+        Path basePath = new File(dir).toPath()
+        new File(dir, '.bpipe').eachFileRecurse(FileType.FILES) { File f ->
+            String zipPath = basePath.relativize(f.toPath()).toString()
+            zos.putNextEntry(new ZipEntry(zipPath))
             f.withInputStream { zos << it }
             zos.closeEntry()
             toDelete << f
         }
-        File commandlog = new File("commandlog.txt")
-        zos.putNextEntry(new ZipEntry(commandlog.path))
+
+
+        File commandlog = new File(dir,"commandlog.txt")
+        zos.putNextEntry(new ZipEntry(basePath.relativize(commandlog.toPath()).toString()))
         zos.write(commandlog.readBytes())
         zos.close()
         toDelete << commandlog
