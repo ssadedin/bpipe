@@ -249,8 +249,8 @@ class JMSAgent extends Agent {
 
     @Override
     public WorxConnection createConnection() {
-        if(config.containsKey('responseQueue')) {
-            Queue queue = this.session.createQueue(config.responseQueue)
+        if(config.getOrDefault('responseQueue', false)) {
+            Queue queue = this.session.createQueue((String)config.responseQueue)
             return new JMSWorxConnection(queue, session)
         }
         else {
