@@ -9,7 +9,7 @@ import groovy.util.logging.Log;
 
 @Log
 class AgentRunner {
-    static void main(String [] args) {
+    static void main(List<String> args) {
         
         CliBuilder cli = new CliBuilder(usage: "bpipe agent [-v] [-n <concurrency>")
         cli.with {
