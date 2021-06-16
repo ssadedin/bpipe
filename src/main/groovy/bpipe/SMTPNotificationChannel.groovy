@@ -95,11 +95,26 @@ class SMTPNotificationChannel implements NotificationChannel {
 	
 	@Override
 	public void notify(PipelineEvent event, String subject, Template template, Map<String, Object> model) {
+
 		String subjectLine = "Pipeline " + event.name().toLowerCase() + ": " + subject + " in directory " + (new File(".").absoluteFile.parentFile.name)
+        
+        if(model["send.contentType"] == 'application/json') {
+            log.info "Not sending message [$subject] to SMTP notification channel because it has unsupported content-type"
+            return
+        }
         
         if(event == PipelineEvent.SEND) {
             // For SEND event, the text is extracted entirely from send.content, the template is already applied
-            sendEmail(subjectLine, model["send.content"], model["send.file"]?new File(model["send.file"]):null, model["send.contentType"])
+            String content
+            if(model["send.content"] instanceof String)
+                content = model["send.content"]
+            else
+            if(model["send.file"])
+                content = "See attached file"
+            else
+                content = "See subject"
+
+            sendEmail(subjectLine, content, model["send.file"]?new File(model["send.file"]):null, model["send.contentType"])
         }
         else {
             String text = template.make(model).toString()
@@ -114,6 +129,7 @@ class SMTPNotificationChannel implements NotificationChannel {
     
     public void sendEmail(String subjectLine, String text, File attachment = null, String contentType = null) {
         
+       
         if(contentType == null)
             contentType = "text/plain"
         
