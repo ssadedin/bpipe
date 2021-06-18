@@ -23,8 +23,8 @@ class RegionSetComparator implements Comparator {
             return 0
         
         // Sizes are the same - compare the internal sequences
-        Iterator<Map.Entry> aIter = a.sequences.iterator()
-        Iterator<Map.Entry> bIter = b.sequences.iterator()
+        Iterator<Map.Entry<String,Sequence>> aIter = a.sequences.iterator()
+        Iterator<Map.Entry<String,Sequence>> bIter = b.sequences.iterator()
         while(aIter.hasNext() && bIter.hasNext()) {
             Sequence aSeq = aIter.next().value
             Sequence bSeq = bIter.next().value

@@ -521,7 +521,7 @@ class PipelineInput {
         // Add an initial stage that prioritises the inputs provided to or resolved
         // by this PipelineInput already. This way if the from() spec is used and matches 
         // then it will go with those rather than searching backwards for a previous match
-        for(List inps in inputInputs.reverse()) {
+        for(inps in inputInputs.reverse()) {
            if(inps) {
                log.info "Add input from PipelineInput resolution chain: " + inps
                reverseOutputs.add(0,inps) 

@@ -346,7 +346,7 @@ class PipelineStage {
                     Map resolvedExtras
                     def extras = ((ParameterizedClosure)body).getExtraVariables()
                     if(extras instanceof Closure)
-                        resolvedExtras = extras()
+                        resolvedExtras = (Map)extras()
                     else
                         resolvedExtras = (Map)extras
                             

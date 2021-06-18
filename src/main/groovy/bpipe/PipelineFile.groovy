@@ -114,7 +114,7 @@ class PipelineFile implements Serializable {
         if(this.exists())
             return false // not missing
                     
-        long fileSystemSyncTimeMs = Config.userConfig.getOrDefault('fileSystemSyncTimeMs', 500)
+        long fileSystemSyncTimeMs = Config.userConfig.getOrDefault('fileSystemSyncTimeMs', 500) as Long
         if(!p) {
             log.info "There are no properties for $path and file is missing"
             return this.flushMetadataAndCheckIfMissing(fileSystemSyncTimeMs)

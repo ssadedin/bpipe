@@ -20,7 +20,7 @@ class GenomicRange implements Serializable {
     /**
      * Convert a non-Genomic range into a GenomicRange
      */
-    GenomicRange(Range r) {
+    GenomicRange(IntRange r) {
         this.from = r.from
         this.to = r.to
     }
@@ -28,7 +28,7 @@ class GenomicRange implements Serializable {
     /**
      * Convenience method to make constructing ranges very concise
      */
-    public static GenomicRange range(Range r) {
+    public static GenomicRange range(IntRange r) {
         new GenomicRange(r)
     } 
     

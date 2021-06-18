@@ -121,14 +121,7 @@ class TransformOperation {
         // from patterns (which are stored in exts)
         this.files = []
         
-        // Expanded list of from patterns : there will be one for each input resolved
-        // (so if one pattern matches 2 inputs, it appears twice).
-        List fromPatterns = []
-        
-        // Expanded list of to patterns : there will be one for each input resolved
-        // (so if one pattern matches 2 inputs, it appears twice).
-        List expandedToPatterns = []
-        
+       
         checkForDuplicateMappings(exts, toPatterns)
         
         // If there are not enough exts to match all the patterns
@@ -151,7 +144,15 @@ class TransformOperation {
         // In the advanced case, the "file extensions" are not file extensions, but
         // regular expressions for matching files to transform from
         int extensionIndex = 0
-        for(List<String> toFromPair in (List<List<String>>)[toPatterns,exts].transpose()) {
+
+        // Expanded list of from patterns : there will be one for each input resolved
+        // (so if one pattern matches 2 inputs, it appears twice).
+        List<String> fromPatterns = []
+        
+        // Expanded list of to patterns : there will be one for each input resolved
+        // (so if one pattern matches 2 inputs, it appears twice).
+        List<String> expandedToPatterns = []
+         for(List<String> toFromPair in (List<List<String>>)[toPatterns,exts].transpose()) {
             
             String toPattern = toFromPair[0]
             String fromPattern = toFromPair[1]
