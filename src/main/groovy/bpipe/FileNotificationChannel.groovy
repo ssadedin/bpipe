@@ -51,6 +51,7 @@ class FileNotificationChannel implements NotificationChannel {
     }
 
     static void modelContentToFile(final Map model, final File targetFile) {
+        targetFile.absoluteFile.parentFile.mkdirs()
         def content = model["send.content"]
         boolean isJson = (model["send.contentType"] == "application/json")
         if(content instanceof String) {
