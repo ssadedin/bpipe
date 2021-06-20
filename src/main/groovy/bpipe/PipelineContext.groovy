@@ -746,7 +746,7 @@ class PipelineContext {
     *                   becomes replaced by in input extension reference using
     *                   $output.bam
     */
-   void onNewOutputReferenced(Pipeline pipeline, Object o, String replaced = null) {
+   synchronized void onNewOutputReferenced(Pipeline pipeline, Object o, String replaced = null) {
        
        assert o != null
        assert !(o instanceof List)
