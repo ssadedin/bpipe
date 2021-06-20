@@ -3,9 +3,11 @@ package bpipe
 import org.junit.Before;
 import org.junit.Test
 
+import bpipe.storage.LocalPipelineFile
+
 class DependenciesTest {
 
-    Properties a,b,c,d
+    OutputMetaData a,b,c,d
 
     static {
         Runner.initializeLogging("tests")
@@ -26,10 +28,11 @@ class DependenciesTest {
         d = testFile('d.txt',c)
     }
 
-    Properties testFile(def name, def input) {
-        def a = new Properties()
+    OutputMetaData testFile(def name, def input) {
+        def a = new OutputMetaData()
+
         // a.outputFile = [ getName: { name }, exists: { true } ] as File
-        a.outputFile = new File(name) {
+        a.outputFile = new LocalPipelineFile(name) {
             boolean existsOverride = true;
             boolean exists() { existsOverride }
         }
@@ -62,13 +65,13 @@ class DependenciesTest {
     void testComputeOutputGraph() {
 
 
-       def result = Dependencies.instance.computeOutputGraph([a,b,c,d]).children[0]
+       GraphEntry result = Dependencies.instance.computeOutputGraph([a,b,c,d])
 
        println result.dump()
 
-       assert result.values*.inputs.flatten() == ['input1.txt']
+       assert result.children[1].values*.inputs.flatten() == ['input1.txt']
 
-       assert result.children.size() == 2
+       assert result.children[1].children.size() == 2
 
        def bEntry = result.entryFor(new File("b.txt"))
 
