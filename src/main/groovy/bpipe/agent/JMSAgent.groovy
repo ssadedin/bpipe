@@ -142,7 +142,7 @@ class JMSAgent extends Agent {
         log.info "Processing command: " + commandAttributes
         AgentCommandRunner runner = this.processCommand(commandAttributes)
         
-        if(message.getJMSReplyTo() || message.getStringProperty('reply-to')) {
+        if(message.getJMSReplyTo() || message.getStringProperty('reply-to') || message.getStringProperty('replyTo')) {
             log.info "ReplyTo set on message: will send message when complete"
             runner.completionListener = { Map result ->
                 log.info "Sending reply for command $commandAttributes.id"
@@ -181,7 +181,11 @@ class JMSAgent extends Agent {
     private void sendReply(Message tm, String responseJSON) {
         Destination dest = tm.getJMSReplyTo()
         if(dest == null)
-            dest = session.createQueue(tm.getStringProperty('reply-to'))
+            if(tm.getStringProperty('reply-to'))
+                dest = session.createQueue(tm.getStringProperty('reply-to'))
+
+        if(dest == null)
+            dest = session.createQueue(tm.getStringProperty('replyTo'))
 
         TextMessage response = session.createTextMessage(responseJSON)
         MessageProducer producer = session.createProducer(dest)
