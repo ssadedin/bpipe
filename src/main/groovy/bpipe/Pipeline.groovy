@@ -927,7 +927,7 @@ public class Pipeline implements ResourceRequestor {
      * Send the event signalling that the pipeline has completed
      */
     private void sendFinishedEvent(Date startDate, List allChecks) {
-        log.info "Sending FINISHED event"
+        log.info "Sending FINISHED event for $startDate - $finishDate"
 
         EventManager.instance.signal(PipelineEvent.FINISHED, "Pipeline " + (failed?"Failed":"Succeeded"),
                 [
