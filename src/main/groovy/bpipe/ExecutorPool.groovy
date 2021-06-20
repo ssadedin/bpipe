@@ -584,7 +584,7 @@ class ExecutorPool {
             if(!(e.value instanceof ConfigObject))
                 throw new PipelineError("An entry in your preallocate section had the wrong type: each entry should be a subconfiguration. You specified: " + e.value.class?.name)
             
-            ConfigObject cfg = e.value
+            ConfigObject cfg = (ConfigObject) e.value
             
             if(!('configs' in cfg))
                 cfg.configs = e.key
