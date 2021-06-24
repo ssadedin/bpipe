@@ -80,7 +80,10 @@ class ActivemqNotificationChannel implements NotificationChannel {
         
         log.info "Send $event to ActiveMQ queue"
         
-        String queue = model.getOrDefault('queue', this.queue)
+        Queue queue = this.queue
+        if(model.containsKey('queue')) {
+            queue = session.createQueue(model.queue)
+        }
         producer.send(queue, msg)
     }
 
