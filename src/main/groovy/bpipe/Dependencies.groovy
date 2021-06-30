@@ -678,9 +678,11 @@ class Dependencies {
                                      outputs*.outputFile.join('\n') + 
                                      "\n\nThis may indicate a circular dependency in your pipeline")
         
-//        log.info "There are ${outputGroups.size()} output groups: ${outputGroups.values()*.outputPath}"
-        log.info "There are ${outputGroups.size()} output groups"
-        log.info "Subtracting ${outputsWithExternalInputs.size()} remaining outputs from ${outputs.size()} total outputs"
+        if(outputGroups.size()>0)
+            log.info "There are ${outputGroups.size()} output groups"
+            
+        if(outputs.size()>0)
+            log.info "Subtracting ${outputsWithExternalInputs.size()} remaining outputs from ${outputs.size()} total outputs"
         
         Set outputsWithExternalInputsSet = outputsWithExternalInputs as Set
         
@@ -693,7 +695,7 @@ class Dependencies {
             computeOutputGraph(remainingOutputs, createdEntries[key], topRoot, handledOutputs)
 //          log.info "Handled outputs: " + handledOutputs*.outputPath + " Hashcode  " + handledOutputs.hashCode()
             remainingOutputs.removeAll(handledOutputs)
-            log.info "There are ${remainingOutputs.size()} remaining outputs"
+//            log.info "There are ${remainingOutputs.size()} remaining outputs"
         }
         
         if(!computeUpToDate)
@@ -708,8 +710,15 @@ class Dependencies {
         // Here 'leaf node' means a final output as opposed to something that is only used
         // as an intermediate step in calculating a final output.
         for(GraphEntry entry in entries) {
-            
-            List<OutputMetaData> inputValues = (List<OutputMetaData>)entry.parents*.values.flatten().findAll { it != null }
+           
+           if(entry.values.is(null))
+               continue
+
+           List<OutputMetaData> inputValues = [] 
+           for(GraphEntry parent in entry.parents) {
+               if(parent.values != null)
+                   inputValues.addAll(parent.values)
+           }
             
             for(OutputMetaData p in entry.values) {
                 
