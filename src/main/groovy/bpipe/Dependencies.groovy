@@ -590,6 +590,7 @@ class Dependencies {
      *                  
      * @return          the root node in the graph of outputs
      */
+    @CompileStatic
     GraphEntry computeOutputGraph(List<OutputMetaData> outputs, GraphEntry rootTree = null, GraphEntry topRoot=null, List handledOutputs=[], boolean computeUpToDate=true) {
         
         // Special case: no outputs at all
@@ -608,7 +609,7 @@ class Dependencies {
         // from the list of outputs and recursively do the same for each output we discovered, building
         // the whole graph from the original inputs through to the final outputs
         
-        List allInputs = Utils.time("Calculate unique inputs") { outputs*.inputs.flatten().unique() }
+        List allInputs = outputs*.inputs.flatten().unique() 
         Set allOutputs = outputs*.canonicalPath as Set
         
         // Find outputs with "external" inputs - these are the top layer of outputs which
@@ -626,9 +627,9 @@ class Dependencies {
         
         // find groups of outputs (ie. ones that belong in the same branch of the tree)
         // If there is no tree to attach to, make one
-        List entries = []
+        List<GraphEntry> entries = []
         Map<String,List> outputGroups = [:]
-        Map createdEntries = [:]
+        Map<String,GraphEntry> createdEntries = [:]
         if(rootTree == null) {
             rootTree = new GraphEntry()
             outputGroups = rootTree.groupOutputs(outputsWithExternalInputs)
@@ -708,16 +709,13 @@ class Dependencies {
         // as an intermediate step in calculating a final output.
         for(GraphEntry entry in entries) {
             
-            List inputValues = entry.parents*.values.flatten().grep { it != null }
+            List<OutputMetaData> inputValues = (List<OutputMetaData>)entry.parents*.values.flatten().findAll { it != null }
             
             for(OutputMetaData p in entry.values) {
                 
                 // No entry is up to date if one of its inputs is newer
                 log.info " $p.outputFile / entry ${entry.hashCode()} ".center(40,"-")
-//                log.info "Parents: " + entry.parents?.size()
-//                
-//                log.info "Values: " + entry.parents*.values
-//                
+                
                 List newerInputs = findNewerInputs(p, inputValues)
                 
                 if(newerInputs) {
@@ -748,7 +746,9 @@ class Dependencies {
                 log.info "Checking  " + entry.children*.values*.outputPath + " from " + entry.children.size() + " children"
                 if(entry.children) {
                     
-                    List<GraphEntry> outOfDateChildren = entry.children.grep { c -> c.values.grep { !it.upToDate }*.outputPath  }.flatten()
+                    List<GraphEntry> outOfDateChildren = (List<GraphEntry>)entry.children.findAll { c -> 
+                        c.values.findAll { !it.upToDate }*.outputPath  
+                    }.flatten()
                     
 //                    p.upToDate = entry.children.every { it.values*.upToDate.every() }
                     p.upToDate = outOfDateChildren.empty
@@ -765,8 +765,7 @@ class Dependencies {
             }
         }
         
-        log.info "Finished Output Graph".center(30,"=")
-        
+//        log.info "Finished Output Graph".center(30,"=")
         return rootTree
     }
     
