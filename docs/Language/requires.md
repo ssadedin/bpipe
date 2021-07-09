@@ -13,7 +13,7 @@ Specify a parameter or variable that must be provided for this pipeline stage to
 
 ### Examples
 
-**This Pipeline will Print an Error because WOLRD is not defined anywhere**
+**This Pipeline will Print an Error because WORLD is not defined anywhere**
 ```groovy 
 
 hello = {

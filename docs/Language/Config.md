@@ -1,5 +1,5 @@
 
-# The cleanup statement
+# The config statement
 
 ### Synopsis
     
