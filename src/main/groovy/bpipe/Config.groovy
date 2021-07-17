@@ -122,13 +122,15 @@ class Config {
         if(cfg.is(null))
             return []
         Object rawValue = cfg.getOrDefault(name,[])
+        if(rawValue.is(null))
+            return []
         if(rawValue instanceof List)
             return (List)rawValue
         else
         if(rawValue instanceof String || rawValue instanceof GString)
             return rawValue.toString().tokenize(',')*.trim()
         else
-            throw new PipelineError("Configuration value ${name} is expected to be a string (text) value or a List object but was provided as type " + rawValue.class?.name)
+            throw new PipelineError("Configuration value ${name} is expected to be a string (text) value or a List object but was provided as type " + rawValue?.class?.name)
     }
     
     /**
