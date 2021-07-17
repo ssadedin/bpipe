@@ -68,6 +68,8 @@ class Command implements Serializable {
     String command
     
     List<PipelineFile> outputs = []
+
+    private List<PipelineFile> inputs 
     
     CommandExecutor executor
     
@@ -118,9 +120,14 @@ class Command implements Serializable {
 
     @CompileStatic
     Map getConfig(List<PipelineFile> inputs) {
+
         if(cfg != null)
             return cfg
             
+        assert this.inputs == null
+        
+        this.inputs = inputs
+
         // How to run the job?  look in user config
         if(!configName && (command != null)) // preallocated executors use a null command
             configName = command.trim().tokenize(' \t')[0].trim()
@@ -284,6 +291,10 @@ class Command implements Serializable {
         this.command = cmd
         if(commandListener != null)
             commandListener(this)
+    }
+    
+    List<PipelineFile> getInputs() {
+        return this.@inputs
     }
     
     static Command readCommand(File saveFile) {

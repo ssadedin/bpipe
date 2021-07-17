@@ -30,6 +30,7 @@ import java.util.Map
 import bpipe.Command
 import bpipe.CommandStatus
 import bpipe.ExecutedProcess
+import bpipe.PipelineFile
 import bpipe.Utils
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
@@ -80,6 +81,12 @@ abstract class CloudExecutor implements PersistentExecutor {
     boolean finished = false
     
     /**
+     * If files need to be transferred back from the cloud instance, this flag
+     * is set to true after that has occurred
+     */
+    boolean transferredFrom = false
+    
+    /**
      * Whether the executor is currently in the process of acquiring its instance
      */
     boolean acquiring = false
@@ -88,6 +95,8 @@ abstract class CloudExecutor implements PersistentExecutor {
         
         // Acquire my instance
         acquiring = true
+        
+        this.command = cmd
         
         // Get the instance type
         String image = cfg.get('image')
@@ -109,9 +118,25 @@ abstract class CloudExecutor implements PersistentExecutor {
        
         this.mountStorage(cfg)
         
+        this.transferFiles(cfg, cmd.inputs)
+        
         // Execute the command via SSH
         this.startCommand(cmd, outputLog, errorLog)
     }
+    
+    @CompileStatic
+    void transferFiles(Map config, List<PipelineFile> files) {
+       
+//        if(!((Map)config.getOrDefault('storage', null))?.getOrDefault('transfer', false)) {
+//            return
+//        }
+        
+        if(!config.getOrDefault('transfer', false))
+            return
+            
+        this.transferTo(files)
+    }
+     
     
     @Override
     @CompileStatic
@@ -119,8 +144,9 @@ abstract class CloudExecutor implements PersistentExecutor {
         
         while(true) {
             CommandStatus status = this.status()
-            if(status == CommandStatus.COMPLETE) 
+            if(status == CommandStatus.COMPLETE) { 
                 return exitCode
+            }
                 
             Thread.sleep(5000)
         }
@@ -134,6 +160,10 @@ abstract class CloudExecutor implements PersistentExecutor {
      * The implementation <em>must</em> throw an exception if the SSH command fails.
      */
     abstract ExecutedProcess ssh(String cmd, Closure builder=null)
+
+    abstract void transferTo(List<PipelineFile> files)
+
+    abstract void transferFrom(Map config, List<PipelineFile> fileList) 
 
     abstract void startCommand(Command command, Appendable outputLog, Appendable errorLog) 
     
@@ -179,6 +209,18 @@ abstract class CloudExecutor implements PersistentExecutor {
         if(project)
             throw new bpipe.PipelineError("A project has been configured for cloud execution but executor type $this does not define how to map projects to command line instructions")
         return []
+    }
+    
+    @Override
+    void cleanup() {
+        if(!command.processedConfig.getOrDefault('transfer', false))
+            return
+         if(transferredFrom)
+             return
+             
+        log.info("Command on $instanceId complete, transferring outputs $command.outputs back")
+        this.transferFrom(command.processedConfig, command.outputs)
+        this.transferredFrom = true
     }
     
     boolean canSSH() {

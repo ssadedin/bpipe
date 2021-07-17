@@ -29,6 +29,8 @@ import bpipe.CommandStatus
 import bpipe.ExecutedProcess
 import bpipe.ForwardHost
 import bpipe.PipelineError
+import bpipe.PipelineFile
+import bpipe.Runner
 import bpipe.Utils
 import bpipe.storage.StorageLayer
 
@@ -43,8 +45,11 @@ import com.amazonaws.services.ec2.model.DescribeInstancesResult
 import com.amazonaws.services.ec2.model.Instance
 import com.amazonaws.services.ec2.model.InstanceType
 import com.amazonaws.services.ec2.model.Reservation
+import com.amazonaws.services.ec2.model.ResourceType
 import com.amazonaws.services.ec2.model.RunInstancesRequest
 import com.amazonaws.services.ec2.model.RunInstancesResult
+import com.amazonaws.services.ec2.model.Tag
+import com.amazonaws.services.ec2.model.TagSpecification
 import com.amazonaws.services.ec2.model.TerminateInstancesRequest
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
@@ -52,9 +57,13 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import groovy.transform.CompileStatic
 import groovy.transform.ToString
 
+import static com.amazonaws.services.ec2.model.ResourceType.Instance
+
 import java.util.logging.Logger
 
-
+/**
+ * An executor that runs commands by starting AWS EC2 images
+ */
 @ToString(includeNames=true)
 @Mixin(ForwardHost)
 class AWSEC2CommandExecutor extends CloudExecutor {
@@ -188,6 +197,9 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             }
         }
         
+        // Must be done before termination to get cloud output files back
+        super.cleanup()
+        
         if(autoShutdown) {
             log.info "Terminating instance $instanceId for executor $this"
             
@@ -281,6 +293,10 @@ class AWSEC2CommandExecutor extends CloudExecutor {
                 .withMinCount(1)
                 .withMaxCount(1)
                 .withKeyName(new File(keypair).name.replaceAll('.pem$',''))
+                .withTagSpecifications(
+                    new TagSpecification(resourceType: ResourceType.Instance).withTags(new Tag().withKey('Name').withValue(command.name))
+                )
+
                 
         if(config.containsKey('securityGroup')) {
             runInstancesRequest = runInstancesRequest.withSecurityGroups((String)config.securityGroup)
@@ -328,6 +344,12 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         
         String commandWorkDir = workingDirectory
         
+        // When files are mirrored to the cloud instance, the working directory should be the
+        // same as the local host
+        if(command.processedConfig.getOrDefault('transfer',false)) {
+            commandWorkDir = Runner.runDirectory
+        }
+        
         if(command.processedConfig?.containsKey('workingDirectory')) {
             commandWorkDir = command.processedConfig.workingDirectory
         }
@@ -343,7 +365,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
 
             HOMEDIR=`pwd`
 
-            cd $commandWorkDir || { echo "Unable to change to expected working directory: $workingDirectory"; exit 1; }
+            cd $commandWorkDir || { echo "Unable to change to expected working directory: $workingDirectory > /dev/stderr"; exit 1; }
 
             (
 
@@ -403,12 +425,46 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         
         return Utils.executeCommand(sshCommand, throwOnError: true)        
     }
+    
+    @Override
+    @CompileStatic
+    public void transferTo(List<PipelineFile> fileList) {
+
+        assert hostname != null && hostname != ""
+        
+        Map<String,List<PipelineFile>> dirGroups = fileList.groupBy { it.toPath().toFile().absoluteFile.parentFile.absolutePath }
+
+        log.info "Creating directories on $hostname : ${dirGroups*.key}"
+        ssh('sudo mkdir -p ' + dirGroups*.key.join(' ') + ' && sudo chmod uga+rwx ' + dirGroups*.key.join(' ') )
+        
+        dirGroups.each { dir, dirFiles ->
+            log.info "Transfer $dirFiles to $hostname ..."
+            List sshCommand = ["scp","-oStrictHostKeyChecking=no", "-i", keypair,*dirFiles*.toString(), user + '@' +hostname+':'+dir]*.toString()
+            Utils.executeCommand((List<Object>)sshCommand, throwOnError: true)        
+        }
+    }
+    
+    @Override
+    @CompileStatic
+    public void transferFrom(Map config, List<PipelineFile> fileList) {
+        assert hostname != null && hostname != ""
+        
+        Map<String,List<PipelineFile>> dirGroups = fileList.groupBy { it.toPath().toFile().absoluteFile.parentFile.absolutePath }
+
+        dirGroups.each { dir, dirFiles ->
+            log.info "Transfer $dirFiles to $hostname ..."
+            String fileExpr = dirFiles.size()>1 ? "{${dirFiles*.toString().join(',')}}" : dirFiles[0]
+            List sshCommand = ["scp","-oStrictHostKeyChecking=no", "-i", keypair, "$user@$hostname:$dir/$fileExpr", dir]*.toString()
+            Utils.executeCommand((List<Object>)sshCommand, throwOnError: true)        
+        }
+    }
 
     @Override
     public void mountStorage(Map config) {
         def storageConfig = config.get('storage',null)
         if(storageConfig.is(null))
-            throw new PipelineError("Please configure the storage attribute with a single value to use AWS")
+            return
+//            throw new PipelineError("Please configure the storage attribute with a single value to use AWS")
             
         StorageLayer storage = StorageLayer.create(storageConfig)
         
