@@ -10,6 +10,7 @@ import bpipe.CommandStatus
 import bpipe.Config
 import bpipe.ExecutedProcess
 import bpipe.PipelineError
+import bpipe.PipelineFile
 import bpipe.Utils
 import bpipe.storage.GoogleCloudStorageLayer
 import bpipe.storage.StorageLayer
@@ -384,5 +385,16 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
     @Override
     public List getProjectArguments() {
         return ["--project",project]
+    }
+
+    @Override
+    public void transferTo(List<PipelineFile> files) {
+        throw new UnsupportedOperationException()
+        
+    }
+
+    @Override
+    public void transferFrom(Map config, List<PipelineFile> fileList) {
+        throw new UnsupportedOperationException()
     }
 }
