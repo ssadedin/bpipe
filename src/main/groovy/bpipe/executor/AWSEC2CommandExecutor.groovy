@@ -233,11 +233,19 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     
     protected void createClient(Map config) {
         
-        if(!config.containsKey('accessKey')) 
-            throw new Exception('AWSEC2 executor requires the accessKey configuration setting')
+        if(!config.containsKey('accessKey')) { 
+            if(System.getenv('AWS_ACCESS_KEY_ID'))
+                config.accessKey = System.getenv('AWS_ACCESS_KEY_ID')
+            else
+                throw new Exception('AWSEC2 executor requires the accessKey configuration setting')
+        }
             
-        if(!config.containsKey('accessSecret')) 
-            throw new Exception('AWSEC2 executor requires the accessSecret configuration setting')            
+        if(!config.containsKey('accessSecret'))  {
+            if(System.getenv('AWS_SECRET_ACCESS_KEY'))
+                config.accessSecret = System.getenv('AWS_SECRET_ACCESS_KEY')
+            else
+                throw new Exception('AWSEC2 executor requires the accessSecret configuration setting')
+        }
             
         if(!config.containsKey('keypair')) 
             throw new Exception('AWSEC2 executor requires the keypair configuration setting. Please set this to the path to the PEM file to allow SSH access to your instances')            
