@@ -302,7 +302,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
                 .withMaxCount(1)
                 .withKeyName(new File(keypair).name.replaceAll('.pem$',''))
                 .withTagSpecifications(
-                    new TagSpecification(resourceType: ResourceType.Instance).withTags(new Tag().withKey('Name').withValue(command.name))
+                    new TagSpecification(resourceType: ResourceType.Instance.toString()).withTags(new Tag().withKey('Name').withValue(command.name))
                 )
 
                 
