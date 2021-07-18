@@ -566,7 +566,7 @@ then
     shift 1
     MODEFLAG="-Dbpipe.mode=agent"
     COMMAND="run"
-    EXTRA_BPIPE_JVM_OPTS="-Xmx256m -XX:CICompilerCount=4 -XX:ParallelGCThreads=4"
+    EXTRA_BPIPE_JVM_OPTS="-Xmx512m -XX:CICompilerCount=4 -XX:ParallelGCThreads=4"
     launch_in_foreground agent $*
 elif [ "$COMMAND" == "test" ];
 then
