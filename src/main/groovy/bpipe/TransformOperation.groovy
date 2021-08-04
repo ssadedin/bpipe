@@ -133,6 +133,8 @@ class TransformOperation {
             }
         }
         
+        this.wildcardExts = exts.collect { isWildCardPattern(it) }
+
         // Similarly, if there are not enough to patterns, fill them up from
         // the first to pattern
         if(toPatterns.size() < exts.size()) {
