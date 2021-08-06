@@ -364,25 +364,27 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         
         log.info "Working directory for command $command.id is $commandWorkDir"
         
+        
         File cmdFile = new File(jobDir, "cmd.sh")
-        cmdFile.text = """
-
+        cmdFile.text = 
+        """
             mkdir -p .bpipe/aws
 
             echo \$\$ | tee .bpipe/aws/$command.id
 
-            HOMEDIR=`pwd`
+            export HOMEDIR=`pwd`
+
+            sudo mkdir -p $commandWorkDir && sudo chown \$USER $commandWorkDir
 
             cd $commandWorkDir || { echo "Unable to change to expected working directory: $workingDirectory > /dev/stderr"; exit 1; }
 
-            (
+            nohup bash  <<'BPIPEEOF' > \$HOMEDIR/${remoteOutputPath} 2> \$HOMEDIR/${remoteErrorPath} &
 
             $command.command
 
-            ) > \$HOMEDIR/${remoteOutputPath} 2> \$HOMEDIR/${remoteErrorPath} 
-
             echo \$? > \$HOMEDIR/${exitFile}
 
+            BPIPEEOF
         """.stripIndent()
         
         List sshCommand = ["ssh","-oStrictHostKeyChecking=no", "-i", keypair, this.user + '@' + this.hostname,"bash"]
@@ -441,9 +443,13 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         assert hostname != null && hostname != ""
         
         Map<String,List<PipelineFile>> dirGroups = fileList.groupBy { it.toPath().toFile().absoluteFile.parentFile.absolutePath }
-
+        
+        List<String> outputDirs = (List<String>)command.outputs.groupBy { it.toPath().toFile().absoluteFile.parentFile.absolutePath  }*.key
+        
+        List<String> allDirs = (dirGroups*.key + outputDirs).unique()
+        
         log.info "Creating directories on $hostname : ${dirGroups*.key}"
-        ssh('sudo mkdir -p ' + dirGroups*.key.join(' ') + ' && sudo chmod uga+rwx ' + dirGroups*.key.join(' ') )
+        ssh('sudo mkdir -p ' + allDirs.join(' ') + ' && sudo chmod uga+rwx ' + allDirs.join(' ') )
         
         dirGroups.each { dir, dirFiles ->
             log.info "Transfer $dirFiles to $hostname ..."
@@ -460,7 +466,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         Map<String,List<PipelineFile>> dirGroups = fileList.groupBy { it.toPath().toFile().absoluteFile.parentFile.absolutePath }
 
         dirGroups.each { dir, dirFiles ->
-            log.info "Transfer $dirFiles to $hostname ..."
+            log.info "Transfer $dirFiles from $hostname ..."
             String fileExpr = dirFiles.size()>1 ? "{${dirFiles*.name.join(',')}}" : dirFiles[0].name
             List sshCommand = ["scp","-oStrictHostKeyChecking=no", "-i", keypair, "$user@$hostname:$dir/$fileExpr", dir]*.toString()
             Utils.executeCommand((List<Object>)sshCommand, throwOnError: true)        
