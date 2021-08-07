@@ -100,6 +100,11 @@ class AWSEC2CommandExecutor extends CloudExecutor {
      */
     String workingDirectory = 'work'
     
+    /**
+     * The command that was launched
+     */
+    String runningCommand
+    
     protected transient AmazonEC2 ec2
     
     protected transient AmazonS3 s3client
@@ -218,14 +223,13 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     
     @Override
     public void mountStorage(StorageLayer storage) {
-        // TODO Auto-generated method stub
-        
     }
+
     @Override
     public String statusMessage() {
-        // TODO Auto-generated method stub
-        return null;
+        return "${runningCommand?:'pending command'} running on AWSEC2 instance $instanceId ($hostname)";
     }
+
     @Override
     public List<String> getIgnorableOutputs() {
         // TODO Auto-generated method stub
@@ -348,6 +352,10 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         assert this.instanceId != null
         
         this.commandId = command.id
+        
+        this.runningCommand = command.command
+        
+        this.command.save()
         
         File jobDir = this.getJobDir(commandId)
         

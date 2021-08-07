@@ -112,7 +112,8 @@ abstract class CloudExecutor implements PersistentExecutor {
         else 
             this.acquiring = false
         
-        
+        this.command.save()
+         
         // It can take a small amount of time before the instance can be ssh'd to - downstream 
         // functions will assume that an instance is available for SSH, so it's best to do
         // that check now
