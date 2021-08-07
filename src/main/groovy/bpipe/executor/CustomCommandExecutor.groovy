@@ -25,6 +25,8 @@
 
 package bpipe.executor
 
+import java.util.concurrent.Semaphore
+
 import bpipe.Command;
 import bpipe.CommandStatus
 import bpipe.Config;
@@ -501,5 +503,10 @@ class CustomCommandExecutor implements PersistentExecutor {
     public void mountStorage(StorageLayer storage) {
         // noop - default assumption is that the storage is mounted already
         // TODO for futre:
+    }
+
+    @Override
+    public Semaphore getLaunchLock() {
+        return null;
     }
 }

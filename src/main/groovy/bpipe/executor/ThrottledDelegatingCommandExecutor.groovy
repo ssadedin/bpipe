@@ -4,6 +4,7 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.Semaphore
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 import bpipe.Command;
@@ -72,7 +73,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
      * This lock controls concurrency so that we do not try to launch too many concurrent jobs.
      * On some scheduling systems this can cause failures in an of itself.
      */
-    private static Object jobLaunchLock = new Object()
+    private static Semaphore jobLaunchLock = new Semaphore(1)
     
     // Stored parameters that are cached from the original "start" command
     // and used when "waitFor" is called
@@ -117,15 +118,20 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
             triggerBreak(cmd, cfg)
         }
         
-        synchronized(jobLaunchLock) {
+        Semaphore lock = commandExecutor.getLaunchLock() ?: jobLaunchLock        
+        lock.acquire()
+        try {
             if(cfg.containsKey('jobLaunchSeparationMs')) {
                 Thread.sleep((int)cfg.jobLaunchSeparationMs)
             }
             commandExecutor.start(cfg, this.command, outputLog, errorLog)
         }
+        finally {
+            lock.release()
+        }
         
         this.command.save()
-    }
+    } 
 
     /**
      * Throw an exception indicating the pipeline is aborting due to user initiated break

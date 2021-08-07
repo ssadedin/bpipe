@@ -59,6 +59,7 @@ import groovy.transform.ToString
 
 import static com.amazonaws.services.ec2.model.ResourceType.Instance
 
+import java.util.concurrent.Semaphore
 import java.util.logging.Logger
 
 /**

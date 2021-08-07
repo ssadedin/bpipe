@@ -27,6 +27,9 @@ package bpipe.executor
 
 import groovy.text.SimpleTemplateEngine;
 import groovy.util.logging.Log
+
+import java.util.concurrent.Semaphore
+
 import bpipe.Command;
 import bpipe.ForwardHost
 import bpipe.Utils
@@ -366,5 +369,11 @@ class SgeCommandExecutor implements CommandExecutor {
     @Override
     public void mountStorage(StorageLayer storage) {
         // noop for now
+    }
+
+    @Override
+    public Semaphore getLaunchLock() {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

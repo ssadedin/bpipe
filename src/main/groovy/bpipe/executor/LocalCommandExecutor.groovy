@@ -30,6 +30,7 @@ import groovy.util.logging.Log
 
 import java.beans.PropertyChangeEvent
 import java.lang.ProcessBuilder.Redirect;
+import java.util.concurrent.Semaphore
 
 import bpipe.Command;
 import bpipe.OutputLog;
@@ -405,5 +406,11 @@ class LocalCommandExecutor implements CommandExecutor {
     @Override
     String toString() {
         "LocalCommandExecutor(job=$id, pid=$pid, started=$startedAt, exitValue=$exitValue)"
+    }
+
+    @Override
+    public Semaphore getLaunchLock() {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

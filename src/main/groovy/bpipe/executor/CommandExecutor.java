@@ -27,6 +27,7 @@ package bpipe.executor;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
 
 import bpipe.Command;
 import bpipe.storage.StorageLayer;
@@ -77,6 +78,12 @@ public interface CommandExecutor extends Serializable {
     void stop();
     
     void cleanup();
+    
+    /**
+     * Return an optional semaphore for rate limiting the starting of new commands via
+     * executors of this type
+     */
+    Semaphore getLaunchLock();
     
     /**
      * Return the path at which the given named storage is mounted within this executor

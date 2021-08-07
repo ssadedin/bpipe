@@ -26,6 +26,7 @@ package bpipe.executor
 
 import groovy.util.logging.Log
 import java.util.regex.Pattern
+import java.util.concurrent.Semaphore
 import java.util.regex.Matcher
 
 import bpipe.Command;
@@ -371,5 +372,11 @@ class LsfCommandExecutor implements CommandExecutor {
     @Override
     public void mountStorage(StorageLayer storage) {
         // no idea how to implement this!
+    }
+
+    @Override
+    public Semaphore getLaunchLock() {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

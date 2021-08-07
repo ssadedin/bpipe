@@ -27,6 +27,7 @@ package bpipe.executor;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
 
 import bpipe.Command;
 import bpipe.storage.StorageLayer;
@@ -82,6 +83,11 @@ public class ProbeCommandExecutor implements CommandExecutor {
     @Override
     public void mountStorage(StorageLayer storage) {
         // noop
+    }
+
+    @Override
+    public Semaphore getLaunchLock() {
+        return null;
     }
 
 }

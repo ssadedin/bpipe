@@ -27,6 +27,8 @@ package bpipe.executor
 
 import groovy.util.logging.Log;
 
+import java.util.concurrent.Semaphore
+
 import bpipe.PipelineError
 import bpipe.storage.StorageLayer
 
@@ -121,5 +123,12 @@ class GridgainCommandExecutor extends AbstractGridBashExecutor {
     @Override
     public void mountStorage(StorageLayer storage) {
         // Nooop
+    }
+
+
+    @Override
+    public Semaphore getLaunchLock() {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

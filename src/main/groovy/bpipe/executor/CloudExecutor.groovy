@@ -26,7 +26,7 @@ package bpipe.executor
 
 import java.util.List
 import java.util.Map
-
+import java.util.concurrent.Semaphore
 import bpipe.Command
 import bpipe.CommandStatus
 import bpipe.ExecutedProcess
@@ -44,6 +44,8 @@ import groovy.util.logging.Log
  */
 @Log
 abstract class CloudExecutor implements PersistentExecutor {
+    
+    public static final long serialVersionUID = 0L
     
     /**
      * The command executed by the executor
@@ -229,4 +231,10 @@ abstract class CloudExecutor implements PersistentExecutor {
         return true // if we could not SSH, the command would have thrown
     }
     
+    private static Semaphore cloudExecutorLaunchLock = new Semaphore(8)
+   
+    @Override
+    public Semaphore getLaunchLock() {
+        return cloudExecutorLaunchLock
+    }
 }

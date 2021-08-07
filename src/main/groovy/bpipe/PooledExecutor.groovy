@@ -26,6 +26,7 @@ package bpipe
 
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.Semaphore
 import java.util.logging.Logger
 
 import bpipe.executor.CommandExecutor
@@ -403,5 +404,10 @@ class PooledExecutor implements CommandExecutor {
     @Override
     public void mountStorage(StorageLayer storage) {
         this.executor.mountStorage(storage)
+    }
+
+    @Override
+    public Semaphore getLaunchLock() {
+        return null;
     }
 }
