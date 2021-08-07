@@ -153,7 +153,7 @@ class Utils {
         List<Path> outputPaths = toPaths(outputsToCheck)
         List<Path> result = outputPaths.grep { Path outFile ->
             isOlder(outFile, inputFileTimestamps, maxInputTimestamp)
-        } + outputsToCheck.grep { PipelineFile pf -> !pf.exists() }*.toPath()
+        } + outputsToCheck.grep { PipelineFile pf -> !pf.exists() }.collect { pf -> ((PipelineFile)pf).toPath() }
         
         return result.unique { it.toString() }
     }
