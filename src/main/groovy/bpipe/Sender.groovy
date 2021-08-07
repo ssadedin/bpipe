@@ -351,7 +351,7 @@ class Sender {
 
         Utils.table(['Property','Value'], [extraDetails*.key, extraDetails*.value].transpose(), out: sw)
         
-        String msg = "Would send message to channel '$cfgName' using details:\n\n" + sw.toString()
+        String msg = "Stage $ctx.stageName would send message to channel '$cfgName' using details:\n\n" + sw.toString()
         if(content instanceof String) {
             if(this.contentType == "application/json") {
                 content = JsonOutput.prettyPrint(content)
