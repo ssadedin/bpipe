@@ -389,6 +389,10 @@ class CommandManager {
             catch(PipelineError e) {
               System.err.println("Failed to read details for command $f.name: $cmdExec.\n\n${Utils.indent(e.message)}")
             }
+            catch(InvalidClassException ice) {
+              log.severe("Error reading saved command state: old version of bpipe? $ice")
+              System.err.println("Error reading saved command state: old version of bpipe? $ice")
+            }
             catch(Throwable t) {
               System.err.println("An unexpected error occured while reading details for command $f.name : $cmdExec.\n\n${Utils.indent(t.message)}")
               t.printStackTrace()
