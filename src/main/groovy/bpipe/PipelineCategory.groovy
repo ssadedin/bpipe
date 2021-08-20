@@ -118,6 +118,13 @@ class PipelineCategory {
         sequentially(list,c)
     }
     
+    static Closure from(Closure recipient, Closure... donors) {
+        def pc = new ParameterizedClosure(donors as List, recipient)
+        if(closureNames.containsKey(recipient))
+            closureNames[pc] = closureNames[recipient]
+        return pc
+    }
+
     @CompileStatic
     static Closure when(Closure target, Closure condition) {
         Pipeline.currentUnderConstructionPipeline.joiners.add(condition)

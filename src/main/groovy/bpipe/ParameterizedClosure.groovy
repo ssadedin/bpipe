@@ -43,12 +43,26 @@ class ParameterizedClosure extends Closure {
         this.body = body
         this.extraVariables = variables
     }
-    
+  
+    public ParameterizedClosure(List<Closure> inputStages, Closure body) {
+        super(body.owner);
+        this.body = body
+        this.inputStages = inputStages
+        this.extraVariables = [:]
+    }
+     
     /**
      * A Map defining variables OR a closure that can be 
      * executed to return such a map
      */
     def extraVariables
+    
+    /**
+     * Input stages to prioritise
+     * 
+     * These are set when using stage.from(...) in the pipeline
+     */
+    List<Closure> inputStages
     
     Closure body
 

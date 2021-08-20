@@ -182,10 +182,13 @@ class DefinePipelineCategory {
         return target
     }
     
+    static Closure from(Closure recipient, Closure... donor) {
+        return recipient
+    }
+
     static Closure power(List list, Closure c) {
         sequentially(list,c)
     }
-  
     
     static Closure sequentially(List list, Closure c) {
         list.collect { Object branch -> 

@@ -214,6 +214,8 @@ class PipelineStage {
     @CompileStatic
     def run() {
         
+       checkAndInitAlternativeInputs()
+        
         // Cache the original inputs for reference when searching back up through 
         // the pipeline for inputs matching a pattern
         this.originalInputs = this.context.rawInput
@@ -302,6 +304,45 @@ class PipelineStage {
             throw e 
         }
         return context.nextInputs
+    }
+
+    /**
+     * If the user has connected this stage to an alternative input point, then 
+     * swap out the input stack for the input stack of the stage it is connected to
+     */
+    @CompileStatic
+    private checkAndInitAlternativeInputs() {
+        if(!(this.body instanceof ParameterizedClosure))
+            return
+        ParameterizedClosure bodyClosure = (ParameterizedClosure)this.body
+        List<Closure> inputStageBodies = bodyClosure.@inputStages
+        if(inputStageBodies.is(null))
+            return 
+            
+        List<PipelineStage> sourceInputStages = inputStageBodies.collect { Closure inputStageBody ->
+            PipelineStage sourceInputStage = this.context.pipelineStages.find {
+                it.body.is(inputStageBody)
+            }
+            
+            if(sourceInputStage.is(null)) {
+                println("WARNING: Unable to locate source input stage for stage $stageName") 
+                log.warning("Unable to locate source input stage for stage $stageName") 
+                return
+            }
+            return sourceInputStage
+        }
+        .grep { 
+            !it.is(null) 
+        }
+        
+        if(sourceInputStages.isEmpty())
+            return
+
+        log.info "Adding ${sourceInputStages.size()} input stages (${sourceInputStages*.stageName}) to $stageName due to alternate input specified in pipeline"
+
+        this.context.pipelineStages = this.context.pipelineStages[0..-2] + sourceInputStages + [this.context.pipelineStages[-1]]
+
+        this.context.setRawInput(sourceInputStages[0].context.rawOutput)
     }
     
     @CompileStatic
