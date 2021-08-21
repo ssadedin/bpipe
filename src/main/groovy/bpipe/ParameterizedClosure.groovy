@@ -48,7 +48,12 @@ class ParameterizedClosure extends Closure {
         super(body.owner);
         this.body = body
         this.inputStages = inputStages
+        
         this.extraVariables = [:]
+        if(body instanceof ParameterizedClosure) {
+            ParameterizedClosure pc = (ParameterizedClosure)body
+            this.extraVariables = pc.@extraVariables
+        }
     }
      
     /**

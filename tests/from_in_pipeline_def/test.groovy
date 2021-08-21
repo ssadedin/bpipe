@@ -26,15 +26,17 @@ world = {
 
 take_me = {
 
+    var foo : 'bar'
+
     exec """
-        echo "take_me: $input.csv $input.xml"
+        echo "take_me: $input.csv $input.xml $foo"
 
         cat $input.csv $input.xml > $output.tsv
     """
 }
 
 run {
-    hello + there + world.from(hello) + take_me.from(hello,there)
+    hello + there + world.from(hello) + take_me.using(foo:'baz').from(hello,there)
 }
 
 
