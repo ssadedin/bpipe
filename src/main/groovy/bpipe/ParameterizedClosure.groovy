@@ -42,6 +42,10 @@ class ParameterizedClosure extends Closure {
         super(body.owner);
         this.body = body
         this.extraVariables = variables
+        if(body instanceof ParameterizedClosure) {
+            ParameterizedClosure pc = (ParameterizedClosure)body
+            this.inputStages = pc.@inputStages
+        }
     }
   
     public ParameterizedClosure(List<Closure> inputStages, Closure body) {
