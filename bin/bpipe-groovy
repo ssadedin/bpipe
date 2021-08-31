@@ -28,8 +28,6 @@ fi
 
 : ${JAVA:="java"}
 
-set -x
-
 if [ "$1" == "-cp" ];
 then
     shift;
@@ -43,7 +41,6 @@ do
 done
 
 #set -f
-#set -x
 
 $JAVA $JAVA_OPTS -noverify -cp $CPFLAG groovy.ui.GroovyMain "$@"
 
