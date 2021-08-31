@@ -21,15 +21,30 @@ BPIPE_HOME=$( cd `dirname $0`/.. ; pwd)
 
 if [ ! -z "$EXTRA_GROOVY_CLASSPATH" ];
 then
-    CPFLAG="-cp $EXTRA_GROOVY_CLASSPATH:$BPIPE_HOME/bpipe.jar"
+    CPFLAG="$EXTRA_GROOVY_CLASSPATH:$BPIPE_HOME/lib/bpipe.jar"
 else
-    CPFLAG="-cp $BPIPE_HOME/bpipe.jar:$BPIPE_HOME/build/libs/bpipe.jar"
+    CPFLAG="$BPIPE_HOME/lib/bpipe.jar:$BPIPE_HOME/build/libs/bpipe.jar"
 fi
 
 : ${JAVA:="java"}
 
+set -x
+
+if [ "$1" == "-cp" ];
+then
+    shift;
+    CPFLAG="$1:$CPFLAG"
+    shift
+fi
+
+for i in "$@";
+do
+    echo "arg: [$i]" ; 
+done
+
+#set -f
 #set -x
 
-set -f
+$JAVA $JAVA_OPTS -noverify -cp $CPFLAG groovy.ui.GroovyMain "$@"
 
-$JAVA $JAVA_OPTS -noverify $CPFLAG groovy.ui.GroovyMain $*
+
