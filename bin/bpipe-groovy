@@ -1,0 +1,35 @@
+#!/bin/bash
+#vim: ts=4:expandtab:sw=4:
+#----------------------------------------------------------
+#
+# Groovy launcher script
+#
+# A small wrapper to execute groovy scripts which uses the
+# groovy version bundled with the Bpipe jar file. This means,
+# there is no need to bundle a separate groovy to include
+# groovy scripts in your bpipe pipeline.
+#
+# Author:  Simon Sadedin, simon.sadedin@mcri.edu.au
+#----------------------------------------------------------
+
+#----------------------------------------------------------
+# Work out the real full file system path that Bpipe is 
+# installed in (resolving any symbolic links, etc), and set it 
+# in BPIPE_HOME and JVM_BPIPE_HOME
+#----------------------------------------------------------
+BPIPE_HOME=$( cd `dirname $0`/.. ; pwd)
+
+if [ ! -z "$EXTRA_GROOVY_CLASSPATH" ];
+then
+    CPFLAG="-cp $EXTRA_GROOVY_CLASSPATH:$BPIPE_HOME/bpipe.jar"
+else
+    CPFLAG="-cp $BPIPE_HOME/bpipe.jar:$BPIPE_HOME/build/libs/bpipe.jar"
+fi
+
+: ${JAVA:="java"}
+
+#set -x
+
+set -f
+
+$JAVA $JAVA_OPTS -noverify $CPFLAG groovy.ui.GroovyMain $*
