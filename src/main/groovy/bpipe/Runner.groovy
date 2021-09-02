@@ -25,6 +25,7 @@
  */  
 package bpipe
 
+import java.nio.channels.FileLock
 import java.util.logging.ConsoleHandler
 import java.util.logging.FileHandler
 import java.util.logging.Handler;
@@ -126,6 +127,11 @@ class Runner {
     public static boolean testMode = false
     
     public static boolean cleanupRequired = false
+    
+    /**
+     * Lock used to ensure only one instance of bpipe runs in a directory at a time 
+     **/
+    public static FileLock runLock
     
     @CompileStatic
     public static void main(String [] arguments) {
@@ -273,8 +279,19 @@ class Runner {
         } 
         else {
             
+            def lockChannel = new RandomAccessFile('.bpipe/lock', 'rw').channel
+            runLock = lockChannel.tryLock()
+            if(runLock.is(null)) {
+                String otherPid = new File('.bpipe/run.pid').text
+                println "\n" + " Pipeline in Progress ".center(100,"=") + "\n"
+                println "${new Date()}: Bpipe is locked due to another running pipeline in process ${otherPid}."
+                println "${new Date()}: This instance will wait until the other Bpipe process completes before proceeding"
+                println "${new Date()}: Waiting for lock ...\n"
+                lockChannel.lock()
+                println "${new Date()}: Lock acquired. Continuing ... \n"
+            }
+            
             if(mode == "retry" || mode == "resume" || mode == "remake") {
-                
                
                 if(mode == "resume")
                     runningCommands = new CommandManager().getCurrentCommands()
