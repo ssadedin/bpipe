@@ -1077,5 +1077,6 @@ class Runner {
         cli.with {
             f "Set output format to 'png' or 'svg'", args:1
         }
+        return cli
     }
 }
