@@ -340,9 +340,16 @@ class PipelineStage {
 
         log.info "Adding ${sourceInputStages.size()} input stages (${sourceInputStages*.stageName}) to $stageName due to alternate input specified in pipeline"
 
-        this.context.pipelineStages = this.context.pipelineStages[0..-2] + sourceInputStages + [this.context.pipelineStages[-1]]
+        this.context.pipelineStages = 
+            this.context.pipelineStages[0..-2] + 
+            sourceInputStages + 
+            [this.context.pipelineStages[-1]]
 
-        this.context.setRawInput(sourceInputStages[0].context.rawOutput)
+        List<PipelineFile> matchingRawInputs = 
+            sourceInputStages[0].context.rawOutput.grep { PipelineFile pf ->
+                pf.sourceBranch == context.branch.name
+            }
+        this.context.setRawInput(matchingRawInputs)
     }
     
     @CompileStatic
@@ -466,6 +473,8 @@ class PipelineStage {
         context.defaultOutput = null
         log.info "Setting next inputs $nextInputs on stage ${this.hashCode()}, context ${context.hashCode()} in thread ${Thread.currentThread().id}"
         context.nextInputs = nextInputs
+       
+        nextInputs*.sourceBranch = this.context.branch.name
     }
     
     /**

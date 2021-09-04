@@ -33,7 +33,9 @@ class PipelineFile implements Serializable {
     
     StorageLayer storage
     
-    protected PipelineFile(path) {
+    String sourceBranch
+    
+    protected PipelineFile(String path) {
         assert path != null
         this.path = path
     }
@@ -45,8 +47,14 @@ class PipelineFile implements Serializable {
         this.storage = storage
     }
     
+    PipelineFile(String path, StorageLayer storage, String channel) {
+        this(path, storage)
+        this.sourceBranch = channel
+    }
+    
+    
     PipelineFile newName(String newName) {
-        return new PipelineFile(newName, storage)
+        return new PipelineFile(newName, storage, sourceBranch)
     }
     
     boolean exists() {
@@ -64,11 +72,11 @@ class PipelineFile implements Serializable {
     }
     
     PipelineFile normalize() {
-        new PipelineFile(toPath().normalize().toString(), storage)
+        new PipelineFile(toPath().normalize().toString(), storage, sourceBranch)
     }
     
     PipelineFile div(String subDir) {
-        new PipelineFile(this.path + '/' + subDir, storage)
+        new PipelineFile(this.path + '/' + subDir, storage, sourceBranch)
     }
     
     boolean isDirectory() {

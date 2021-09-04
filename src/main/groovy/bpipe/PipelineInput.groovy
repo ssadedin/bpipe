@@ -480,21 +480,47 @@ class PipelineInput {
             // !this.is(it.context.@inputWrapper) && ( this.parent == null || !this.parent.is(it.context.@inputWrapper)    )
         }
         
+        PipelineStage myStage = currentStage
+        List<Closure> fromStages = null
+        
+        if(myStage.body instanceof ParameterizedClosure) {
+            
+            ParameterizedClosure pc = (ParameterizedClosure)myStage.body
+            if(pc.@inputStages) {
+                fromStages = pc.@inputStages
+            }
+        }
+
         List reverseOutputs = new ArrayList(reverseStages.size()*2)
         for(PipelineStage stage in reverseStages) {
             
+            List<List<PipelineFile>> outputsToAdd = []
             if(stage.context.nextInputs != null) {
                 log.info "nextInputs are $stage.context.nextInputs" 
                 List nextInputs = Utils.box(stage.context.nextInputs) as List
-                reverseOutputs.add(nextInputs)
+                outputsToAdd.add(nextInputs)
             }
             
             List outputs = Utils.box(stage.context.@output)  as List
             if(!outputs.isEmpty()) {
                 log.info "Outputs in search from $stage.stageName $outputs"            
-                reverseOutputs.add(outputs)
+                outputsToAdd.add(outputs)
             }
+           
+            if(fromStages?.contains(stage.body)) {
+                outputsToAdd = outputsToAdd.collect { inps ->
+                    List<PipelineFile> pipelineInps = (List<PipelineFile>)inps
+                    List filtered = pipelineInps.grep { PipelineFile pf ->
+                        myStage.context.branch.hasParentWithName(pf.sourceBranch)
+                    }
+                    log.info "Filtered $pipelineInps to $filtered from stage ${stage.hashCode()} based on source branches ${pipelineInps*.sourceBranch}"
+                    return filtered
+                }
+            }
+            
+            reverseOutputs.addAll(outputsToAdd)
         }
+        
         
         // Add a final stage that represents the original inputs (bit of a hack)
         // You can think of it as the initial inputs being the output of some previous stage

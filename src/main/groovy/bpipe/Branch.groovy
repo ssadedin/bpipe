@@ -102,6 +102,14 @@ class Branch extends Expando implements Serializable {
             this.dirChangeListener(dir)
     }
     
+    @CompileStatic
+    boolean hasParentWithName(String name) {
+        Branch check = this
+        while(!check.is(null) && check.@name != name)
+            check = check.parent
+        return !check.is(null)
+    }
+    
     void setProperty(String name, Object value) {
         
         if((name in PipelineCategory.closureNames.values()) && !(value instanceof Closure)) {
