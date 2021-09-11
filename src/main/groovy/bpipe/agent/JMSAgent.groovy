@@ -1,5 +1,6 @@
 package bpipe.agent
 
+import bpipe.ActivemqNotificationChannel
 import bpipe.PipelineError
 import bpipe.cmd.BpipeCommand
 import bpipe.cmd.RunPipelineCommand
@@ -242,7 +243,7 @@ class JMSAgent extends Agent {
             
         log.info "Connecting to: ${config.brokerURL}"
             
-        this.connection = new ActiveMQConnectionFactory((String)config.brokerURL).createConnection()
+        this.connection = ActivemqNotificationChannel.createActiveMQConnection(config)      
         this.connection.start()        
         this.session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE)
         this.queue = session.createQueue((String)config.commandQueue)

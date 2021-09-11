@@ -143,6 +143,33 @@ from('activemq:analyse_file')
 Note that the `inOut` automatically handles the correlation id and reply-to headers and waits for the reply. The bpipe agent, in this case, would be configured to 
 listen on the `run_bpipe` queue.
 
+## Configuring Security
+
+You can cause Bpipe to authenticate using a username and password when creating the connection
+by adding these properties to the configuration:
+
+```
+agent {
+    commandQueue='run_pipeline_queue'
+    responseQueue='bpipe_results'
+    brokerURL='tcp://activemq.server.com:61616'
+    username='myuser'
+    passsword='secretpassword'
+}
+```
+
+If you prefer not to hard code the password into your configuration, you can use regular Groovy 
+language features to resolve it an alternative way. For example, to read it from an environment 
+variable:
 
 
+```
+agent {
+    ....
+    passsword=System.getenv('ACTIVEMQ_PASSWORD')
+}
+```
+
+The same configuration properties are applicable when configuring ActiveMQ as a notification 
+channel.
 

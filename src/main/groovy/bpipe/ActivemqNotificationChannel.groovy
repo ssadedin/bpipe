@@ -1,5 +1,6 @@
 package bpipe
 
+import org.apache.activemq.ActiveMQConnection
 import org.apache.activemq.ActiveMQConnectionFactory
 
 
@@ -29,15 +30,11 @@ class ActivemqNotificationChannel implements NotificationChannel {
     
     public ActivemqNotificationChannel(Map config) {
         try {
-            this.config = config;
-            
-            if(!(config.containsKey('brokerURL')))
-                throw new PipelineError("ActiveMQ configuration is missing required key 'brokerURL'")
-                
             if(!(config.containsKey('queue')))
                 throw new PipelineError("ActiveMQ configuration is missing required key 'queue'")
-            
-            this.connection = new ActiveMQConnectionFactory(brokerURL: config.brokerURL).createConnection()
+
+            this.config = config;
+            this.connection = createActiveMQConnection(config)
             this.connection.start()
             this.session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE)
             this.producer = session.createProducer()
@@ -115,5 +112,32 @@ class ActivemqNotificationChannel implements NotificationChannel {
         log.info "Closing ActiveMQ connections to $config.queue at $config.brokerURL"
         Utils.closeQuietly(session)
         Utils.closeQuietly(connection)
+    }
+    
+    static ActiveMQConnection createActiveMQConnection(Map config) {
+        if(!(config.containsKey('brokerURL')))
+            throw new PipelineError("ActiveMQ configuration is missing required key 'brokerURL'")
+            
+           
+        def connectionFactory = new ActiveMQConnectionFactory(brokerURL: config.brokerURL)
+        
+        if(config.containsKey('username')) {
+            if(!(config.containsKey('password')))
+                throw new PipelineError("ActiveMQ configuration is missing required key 'password'")
+                
+            def password = config.password
+            if(password instanceof Closure) {
+                password = password()
+            }
+            assert config.username instanceof String
+            assert config.password instanceof String
+
+            log.info "Configured ActiveMQ using usernmae $config.username"
+            return connectionFactory.createConnection(config.username, config.password)
+        }
+        else {
+            log.info "Configured ActiveMQ without usernmae / password"
+            return connectionFactory.createConnection()
+        }        
     }
 }
