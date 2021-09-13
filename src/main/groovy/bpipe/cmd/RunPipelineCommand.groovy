@@ -25,6 +25,7 @@
 package bpipe.cmd
 
 import bpipe.ExecutedProcess
+import bpipe.Runner
 import bpipe.Utils
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
@@ -109,7 +110,20 @@ class RunPipelineCommand extends BpipeCommand {
      * Regular expression to identify increment within paths
      */
     public static final Pattern PATH_INCREMENTER_REGEX = ~/.*(\{inc\}).*/
-    
+   
+    /**
+     * Attempt to resolve the pipeline file from the arguments provided
+     * 
+     * @return
+     */
+    @SuppressWarnings("deprecation")
+    String getPipelineFile() {
+        CliBuilder cli = new CliBuilder()
+        Runner.configureRunCli(cli)
+        OptionAccessor opts = cli.parse(args)
+        return opts.arguments()[0]
+    }
+     
     /**
      * Create the given childDir, replacing any incrementing portion
      * of the path (specified by the form <code>{inc}</code> within the path.

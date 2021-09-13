@@ -29,6 +29,10 @@ class HttpAgent extends Agent implements Runnable {
     
     long pollPeriodMs = 15000
     
+    HttpAgent(ConfigObject config) {
+        super(config)
+    }
+    
     WorxConnection  pollConnection
     
     WorxConnection createConnection()  {

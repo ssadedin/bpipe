@@ -25,6 +25,7 @@
 package bpipe.agent
 
 import java.nio.file.Files;
+import java.nio.file.Paths
 import java.util.concurrent.Semaphore
 import java.util.logging.Level
 
@@ -75,6 +76,13 @@ abstract class Agent extends TimerTask {
 //    String id = Utils.sha1(String.valueOf(System.currentTimeMillis()) + new Random().nextInt())
     
     String id = Utils.sha1(Runner.BPIPE_HOME + '::' + name + '::' + System.properties['user.name'])
+    
+    ConfigObject allowed = null
+    
+    Agent(ConfigObject cfg) {
+        if(cfg.containsKey('allow'))
+            allowed = cfg.allow
+    }
     
     abstract WorxConnection createConnection() 
     
@@ -143,6 +151,7 @@ abstract class Agent extends TimerTask {
             ++this.executed
             BpipeCommand command = createCommandFromAttributes(commandAttributes)
             command.dir = commandAttributes.directory ?: pipelines[commandAttributes.run.id].path
+            validateCommand(command)
             AgentCommandRunner runner = new AgentCommandRunner(createConnection(), commandAttributes.id, command)
             runner.concurrency = this.concurrency
             new Thread(runner).start()
@@ -157,6 +166,36 @@ abstract class Agent extends TimerTask {
             return null
         }
     }
+    
+    void validateCommand(BpipeCommand command) {
+        if(!allowed)
+            return
+            
+        if(!(command instanceof RunPipelineCommand)) {
+            log.info "Command $command.id is not a run pipeline command: allowing"
+            return
+        }
+        
+        RunPipelineCommand cmd = (RunPipelineCommand)command
+            
+        // Check pipelines
+        String pipeline = cmd.getPipelineFile()
+        if(allowed.containsKey('pipelines')) {
+            if(!Config.listValue(allowed, 'pipelines').contains(pipeline)) 
+                throw new IllegalArgumentException("Pipeline $pipeline is not allowed in configuration of agent")
+        }
+            
+        // Check directories
+        if(allowed.containsKey('directories')) {
+            def commandDirPath = Paths.get(cmd.dir)
+            boolean isAllowed = Config.listValue(allowed, 'directories').any { allowedDir ->
+                cmd.dir == allowedDir
+                return commandDirPath.startsWith(new File(allowedDir).toPath())
+            }
+            if(!isAllowed)
+                throw new IllegalArgumentException("Directory $cmd.dir is not allowed in configuration of agent")
+        }
+     }
     
     /**
      * Create a command by introspecting its class and arguments from

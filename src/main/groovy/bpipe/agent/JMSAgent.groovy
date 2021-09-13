@@ -41,6 +41,7 @@ class JMSAgent extends Agent {
     ConfigObject config
     
     JMSAgent(ConfigObject config) {
+        super(config)
         this.config = config
     }
     
