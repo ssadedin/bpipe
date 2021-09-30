@@ -112,9 +112,11 @@ is_running() {
     then
       return 1
     fi
+    
+    BPIPE_USER=`stat -c '%U' .bpipe/logs/${LAST_PID}.bpipe.log`
 
     # Has been run, is it finished?
-    (kill -0 $LAST_PID > /dev/null 2>&1 || [ -e /proc/$LAST_PID ]) && (ps -p $LAST_PID -o user | grep -q $USER) 
+    (kill -0 $LAST_PID > /dev/null 2>&1 || [ -e /proc/$LAST_PID ]) && (ps -p $LAST_PID -o user | grep -q $BPIPE_USER) 
 }
 
 #----------------------------------------------------------
