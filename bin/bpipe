@@ -43,6 +43,18 @@ tmsg() {
     [ ! -z "$BPIPE_SHOW_TIMINGS" ] && { echo `date +'%M:%S.%N'`" $1"; }
 }
 
+IS_MAC=false
+IS_LINUX=false
+IS_WINDOWS=false
+
+case "$OSTYPE" in
+  darwin*)  IS_MAC=true ;; 
+  linux*)   IS_LINUX=true ;;
+  bsd*)     IS_BSD=true ;;
+  msys*)    IS_WINDOWS=true ;;
+  cygwin*)  IS_WINDOWS=true ;;
+esac
+
 #----------------------------------------------------------
 # A variety of commands run in the foreground. These can be 
 # launched in a simpler manner than running a pipeline, which
@@ -113,7 +125,12 @@ is_running() {
       return 1
     fi
     
-    BPIPE_USER=`stat -c '%U' .bpipe/logs/${LAST_PID}.bpipe.log`
+    if $IS_MAC ; 
+    then
+        BPIPE_USER=`stat -f '%Su' .bpipe/logs/${LAST_PID}.bpipe.log`
+    else
+        BPIPE_USER=`stat -c '%U' .bpipe/logs/${LAST_PID}.bpipe.log`
+    fi
 
     # Has been run, is it finished?
     (kill -0 $LAST_PID > /dev/null 2>&1 || [ -e /proc/$LAST_PID ]) && (ps -p $LAST_PID -o user | grep -q $BPIPE_USER) 
