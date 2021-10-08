@@ -37,14 +37,16 @@ class WorxStreamingPrintStream extends Writer {
     @Override
     public Writer append(CharSequence s) throws IOException {
         this.buffer(s.getChars(), 0, s.size())
-        this.writer.write(s.toString())
+        if(this.writer!=null)
+            this.writer.write(s.toString())
     }
 
     @Override
     public Writer append(CharSequence csq, int start, int end) throws IOException {
         
         this.buffer(csq.getChars(), start, end - start)
-        this.writer.write(csq.toString(), start, end - start)
+        if(this.writer!=null)
+            this.writer.write(csq.toString(), start, end - start)
     }
 
     @Override
@@ -52,7 +54,8 @@ class WorxStreamingPrintStream extends Writer {
         
         log.info "Append: $cbuf"
         
-        this.writer.write(cbuf, off, len)
+        if(this.writer!=null)
+            this.writer.write(cbuf, off, len)
         
         this.buffer(cbuf, off, len)
     }
@@ -79,7 +82,8 @@ class WorxStreamingPrintStream extends Writer {
     
     String flushToWorx() {
         
-        this.writer.flush()
+        if(this.writer!=null)
+            this.writer.flush()
         
         try {
             flushToWorx(buffer,0,pos)

@@ -18,6 +18,14 @@ import bpipe.Utils
 interface AgentCommandCompletionListener {
     void onFinish(Map result) 
 }
+
+@CompileStatic
+public class NullOutputStream extends OutputStream {
+    @Override
+    public void write(int b) throws IOException { }
+}
+
+@CompileStatic
 class AgentCommandRunner implements Runnable {
     
     private static Logger log = Logger.getLogger("AgentCommandRunner")
@@ -34,16 +42,19 @@ class AgentCommandRunner implements Runnable {
     
     AgentCommandCompletionListener completionListener
     
+    String outputMode = 'both'
+    
     /**
      * When waiting for acquisition of a lock, this object will be notified to interrupt
      */
     public static Object waitingForLockObject = new Object()
     
-    public AgentCommandRunner(WorxConnection worx, Long worxCommandId, BpipeCommand command) {
+    public AgentCommandRunner(WorxConnection worx, Long worxCommandId, BpipeCommand command, String outputMode) {
         super();
         this.worx = worx
         this.worxCommandId = worxCommandId;
         this.command = command;
+        this.outputMode = outputMode
     }
     
     /**
@@ -53,11 +64,12 @@ class AgentCommandRunner implements Runnable {
      * @param worxCommandId
      * @param e
      */
-    public AgentCommandRunner(WorxConnection worx, Long worxCommandId, Exception e) {
+    public AgentCommandRunner(WorxConnection worx, Long worxCommandId, Exception e, String outputMode) {
         super();
         this.worx = worx
         this.worxCommandId = worxCommandId;
         this.errorResponse = e
+        this.outputMode = outputMode
     }
     
     static long MAX_LOCK_WAIT_TIME_MS = 300000L
@@ -80,20 +92,47 @@ class AgentCommandRunner implements Runnable {
                 if(errorResponse)
                     throw errorResponse
                 
-                ByteArrayOutputStream bos = new ByteArrayOutputStream()
-                Writer out = new WorxStreamingPrintStream(this.worxCommandId, new BufferedWriter(bos.newWriter(), 512), worx)
-                if(command instanceof RunPipelineCommand || command instanceof ClosurePipelineCommand) {
-                    command.out = out
-                    command.run(out)
-                    bos.toString()
-                    if(command instanceof RunPipelineCommand)
-                        exitCode = command.result.exitValue
+                ByteArrayOutputStream bos = null
+                Writer writer = null
+                if(outputMode == 'both' || outputMode == 'reply') {
+                    bos = new ByteArrayOutputStream()
+                    writer = new BufferedWriter(bos.newWriter(), 512)
                 }
-                else {
-                    command.out = out
-                    command.shellExecute("bpipe", command.dir)
+
+                Writer out = null
+                if(outputMode == 'both' || outputMode == 'stream') {
+                    out = new WorxStreamingPrintStream(this.worxCommandId, writer, worx)
                 }
-                return bos.toString()
+                else
+                    out = writer
+
+                if(writer==null)
+                    writer = new NullOutputStream().newWriter()
+
+                String result = ""
+                try {
+                    log.info "Command $worxCommandId starting"
+                    if(command instanceof RunPipelineCommand || command instanceof ClosurePipelineCommand) {
+                        RunPipelineCommand rpc = (RunPipelineCommand)command
+                        command.out = out
+                        command.run(out)
+                        if(command instanceof RunPipelineCommand)
+                            exitCode = ((RunPipelineCommand)command).result.exitValue
+                    }
+                    else {
+                        command.out = out
+                        command.shellExecute("bpipe", command.dir)
+                    }
+                }
+                finally {
+                    log.info "Command $worxCommandId finished"
+                    Utils.closeQuietly(out)
+                    Utils.closeQuietly(writer)
+                    Utils.closeQuietly(bos)
+                }
+                if(bos)
+                    result = bos.toString()
+                return result
             }
         }
         catch(Exception e) {

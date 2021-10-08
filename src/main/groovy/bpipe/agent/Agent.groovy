@@ -43,6 +43,7 @@ import bpipe.worx.HttpWorxConnection
 import bpipe.worx.WorxConnection
 import groovy.util.logging.Log;
 import groovy.json.JsonOutput
+import groovy.transform.CompileStatic
 
 /**
  * Listens or monitors for job requests (bpipe commands) and dispatches them for execution,
@@ -79,9 +80,12 @@ abstract class Agent extends TimerTask {
     
     ConfigObject allowed = null
     
+    String outputMode = 'both'
+    
     Agent(ConfigObject cfg) {
         if(cfg.containsKey('allow'))
             allowed = cfg.allow
+        this.outputMode = cfg.getOrDefault('outputMode', 'both')
     }
     
     abstract WorxConnection createConnection() 
@@ -146,20 +150,21 @@ abstract class Agent extends TimerTask {
         
     }
     
-    AgentCommandRunner processCommand(Map commandAttributes) {
+    @CompileStatic
+    AgentCommandRunner processCommand(Map<String,Object> commandAttributes) {
         try {
             ++this.executed
             BpipeCommand command = createCommandFromAttributes(commandAttributes)
-            command.dir = commandAttributes.directory ?: pipelines[commandAttributes.run.id].path
+            command.dir = commandAttributes.directory ?: ((PipelineInfo)pipelines[((Map)(commandAttributes.run)).id]).path
             validateCommand(command)
-            AgentCommandRunner runner = new AgentCommandRunner(createConnection(), commandAttributes.id, command)
+            AgentCommandRunner runner = new AgentCommandRunner(createConnection(), (Long)commandAttributes.id, command, outputMode)
             runner.concurrency = this.concurrency
             new Thread(runner).start()
             return runner
         }
         catch(Exception e) {
             // report the error upstream if we can
-            AgentCommandRunner runner = new AgentCommandRunner(createConnection(), commandAttributes.id, e)
+            AgentCommandRunner runner = new AgentCommandRunner(createConnection(), (Long)commandAttributes.id, e, outputMode)
             runner.concurrency = this.concurrency
             ++this.errors
             new Thread(runner).start() 
