@@ -127,9 +127,9 @@ is_running() {
     
     if $IS_MAC ; 
     then
-        BPIPE_USER=`stat -f '%Su' .bpipe/logs/${LAST_PID}.bpipe.log`
+        BPIPE_USER=`stat -f '%Su' .bpipe/logs/${LAST_PID}.log`
     else
-        BPIPE_USER=`stat -c '%U' .bpipe/logs/${LAST_PID}.bpipe.log`
+        BPIPE_USER=`stat -c '%U' .bpipe/logs/${LAST_PID}.log`
     fi
 
     # Has been run, is it finished?
