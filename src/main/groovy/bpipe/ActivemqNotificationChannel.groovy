@@ -136,7 +136,7 @@ class ActivemqNotificationChannel implements NotificationChannel {
             return connectionFactory.createConnection(config.username, config.password)
         }
         else {
-            log.info "Configured ActiveMQ without usernmae / password"
+            log.info "Configured ActiveMQ without username / password"
             return connectionFactory.createConnection()
         }        
     }
