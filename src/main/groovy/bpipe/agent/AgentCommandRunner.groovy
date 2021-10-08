@@ -92,6 +92,9 @@ class AgentCommandRunner implements Runnable {
                 if(errorResponse)
                     throw errorResponse
                 
+                boolean isRunCommand = (command instanceof RunPipelineCommand || command instanceof ClosurePipelineCommand)
+                String outputMode = isRunCommand ? outputMode : 'reply'
+
                 ByteArrayOutputStream bos = null
                 Writer writer = null
                 if(outputMode == 'both' || outputMode == 'reply') {
