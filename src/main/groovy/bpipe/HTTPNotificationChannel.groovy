@@ -1,6 +1,7 @@
 package bpipe
 
 import groovy.util.logging.Log
+import groovy.json.JsonGenerator
 import groovy.json.JsonOutput
 import groovy.text.Template
 
@@ -138,14 +139,31 @@ class HTTPNotificationChannel implements NotificationChannel {
      * @return  Sanitised model for sending
      */
     static Map sanitiseDetails(Map model) {
+        
+        def jsonOutput = 
+            new JsonGenerator.Options()
+            .excludeFieldsByType(Closure)
+            .build()
+        
         model.collectEntries { key, value ->
             if(value instanceof Number)
                 [key,value]
             else {
+                if(value instanceof Pipeline) {
+                    value = [ 
+                        startDate: value.startDate, 
+                        finishDate: value.finishDate, 
+                        failed: value.failed, 
+                        aborted: value.aborted, 
+                        finished: value.finished,
+                        failReason: value.failReason
+                   ]
+                }
+
                 if(value instanceof PipelineStage)
                     value = value.toProperties()
                 return [key, 
-                    value instanceof Map || value instanceof List ? JsonOutput.toJson(value) : String.valueOf(value)
+                    value instanceof Map || value instanceof List ? jsonOutput.toJson(value) : String.valueOf(value)
                 ]
             }
         }
