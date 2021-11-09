@@ -50,6 +50,10 @@ class ActivemqNotificationChannel implements NotificationChannel {
     @Override
     public void notify(PipelineEvent event, String subject, Template template, Map<String, Object> model) {
         
+        if(event == PipelineEvent.FINISHED) {
+            model.remove('commands')
+        }
+        
         Map eventDetails = HTTPNotificationChannel.sanitiseDetails(model)
 
         eventDetails.description = subject
