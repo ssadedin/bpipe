@@ -154,11 +154,14 @@ class AgentCommandRunner implements Runnable {
             }
             
             if(this.completionListener != null) {
-                log.info "Completion listener set: sending completion notification"
+                log.info "Completion listener set: sending completion notification for command $worxCommandId with exit code $exitCode"
                 this.completionListener.onFinish([
                     command: worxCommandId,
                     status: exitCode == 0 ? "ok" : "failed"
                 ])
+            }
+            else {
+                log.info "Command $worxCommandId completed with exit code $exitCode (no completion listener set)"
             }
         }
     }

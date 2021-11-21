@@ -74,7 +74,7 @@ launch_in_foreground() {
               org.codehaus.groovy.tools.GroovyStarter \
               --classpath "$CP" \
               --main bpipe.Runner9 $*
-    exit
+    exit $?
 }
 
 
@@ -724,16 +724,16 @@ if $LAUNCH_IN_FOREGROUND ;
 then
     echo "Launching in foreground due to debug flag set"
     
-    (sleep 1;  BPIPE_PID=`cat .bpipe.$LAUNCHER_PID.run.pid`; create_pid_file $BPIPE_PID ) &
+    bash -o pipefail -c "$LAUNCH_CMD" 
 
-    bash -c "$LAUNCH_CMD" 
+    exit_code=$?
 
-    echo "Done"
-
-    exit
+    exit $exit_code
 else
-    nohup bash -c "$LAUNCH_CMD" \
+    nohup bash -o pipefail -c "$LAUNCH_CMD" \
         > /dev/null 2>&1 &
+
+    exit_code=$?
 fi
 
 # Re-enable wildcard expansion: don't want it turned off in case it's 
@@ -826,6 +826,10 @@ then
     else
       tail $LOGFILE | sed "$TAIL_PATTERN"
     fi
+
+    wait $BPIPE_PID
+
+    exit_code=$?
 else
     # (tail -f $LOGFILE | sed -l "$TAIL_PATTERN") &
     
@@ -837,6 +841,8 @@ else
 
     # Wait for the Java Bpipe process to finish naturally (not Ctrl-C, see above for that)
     wait $BPIPE_PID
+    
+    exit_code=$?
     
     # echo "Now killing tail: $TAIL_PID"
     
@@ -869,3 +875,4 @@ then
     grep -q '<succeeded>true</succeeded>' .bpipe/results/$BPIPE_PID.xml
 fi
 
+exit $exit_code
