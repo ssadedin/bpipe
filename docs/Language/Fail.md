@@ -1,4 +1,4 @@
-# The succeed statement
+# The fail statement
 
 ### Synopsis
 
