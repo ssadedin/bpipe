@@ -106,6 +106,50 @@ is received, it will respond by sending a message to the queue specified in the 
 This message will have a JSON body containing information about the agent, and receiving it can be used to confirm
 that the agent is alive and processing messages.
 
+## Using Response Messages
+
+If you are integrating Bpipe into a larger system, it is likely that you will want to know
+the status of the pipeline that run (did it succeed, fail, where is it up to, etc).
+
+To support these use cases, the Bpipe Agent will send messages to a "response queue". This can
+be set to a fixed value in the agent configuration:
+
+```groovy
+agent {
+    commandQueue='run_pipeline_queue'
+    responseQueue='bpipe_results' // send output to JMS queue called bpipe_results
+    brokerURL='tcp://activemq.server.com:61616'
+}
+```
+
+Alternatively, Bpipe will respect the JMS Reply-To header ("reply-to" or "JMSReplyTo") so 
+another strategy is to leave this blank and configure the reply queue on the appropriate 
+messages. This latter strategy has the advantage that you can then use different
+response queues for different messages.
+
+**Reply Modes**
+
+The Bpipe Agent supports several "reply modes" which contain different amounts of detail.
+To set these, configure the `outputMode` setting in the agent `bpipe.config` file:
+
+```groovy
+agent {
+    commandQueue='run_pipeline_queue'
+    responseQueue='bpipe_results' 
+    brokerURL='tcp://activemq.server.com:61616'
+    outputMode="stream"
+
+}
+```
+
+The `outputMode` can be set to the following values:
+
+- none  : do not send anything
+- stream : send full pipeline output, streamed in chunks
+- reply : send a single message at the end, containing status
+- both : send both streaming output and a final reply message
+
+
 ## Handling Pipeline Completion 
 
 It can be useful to coordinate downstream actions when the pipeline completes running. For this purpose, Bpipe will observe the `reply-to` or `JMSReplyTo`
