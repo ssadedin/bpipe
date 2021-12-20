@@ -421,8 +421,9 @@ class OutputDirectoryWatcher extends Thread {
     static int countGlobalPatternMatches(List<Pattern> patterns) {
         int result = 0
         for(Map.Entry<String,OutputDirectoryWatcher> watcher in watchers) {
-            synchronized(watcher.value.timestamps) {
-                for(String key in watcher.value.files.keySet()) {
+            OutputDirectoryWatcher w = watcher.value
+            synchronized(w.timestamps) {
+                for(String key in w.files.keySet()) {
                     for(Pattern pattern in patterns) {
                         if(key.matches(pattern))    {
                             ++result

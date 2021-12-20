@@ -1109,7 +1109,7 @@ public class Pipeline implements ResourceRequestor {
         
         Pipeline p = new Pipeline()
         p.node = new Node(branchPoint, childName, [type:'pipeline',pipeline:p])
-        p.stages = [] + this.stages
+        p.stages = new ArrayList<PipelineStage>(this.stages)
         p.joiners =  this.joiners
         p.aliases = this.aliases
         p.parent = this

@@ -31,7 +31,7 @@ class Aliases {
         assert fromPath != null
         assert toFile != null
         aliases[fromPath] = new AliasMapping(from:fromPath, to:toFile)
-        aliasTargets.get(toFile.toString(),[]).add(fromPath)
+        aliasTargets.get(toFile.toString(),(List<String>)[]).add(fromPath)
     }
     
     @CompileStatic

@@ -663,7 +663,7 @@ class Dependencies {
                 entry.addAsChildInGraph(out, topRoot)
                 
                 List<OutputMetaData> dependenciesOnParents = entry.getParentDependencies(out)
-                out.maxTimestamp = (dependenciesOnParents*.maxTimestamp.flatten() + out.timestamp).max()
+                out.maxTimestamp = (long)(dependenciesOnParents*.maxTimestamp.flatten() + out.timestamp).max()
                     
                 log.info "Maxtimestamp for $out.outputFile = $out.maxTimestamp"
                 
