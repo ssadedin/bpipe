@@ -26,7 +26,7 @@ import org.apache.activemq.ActiveMQConnectionFactory
 @CompileStatic
 class JMSAgent extends Agent {
     
-    final static long MESSAGE_WAIT_TIMEOUT_MS = 30000
+    final static long MESSAGE_WAIT_TIMEOUT_MS = 60000
     
     final static File STOP_FILE = new File(".agent.stop")
     
