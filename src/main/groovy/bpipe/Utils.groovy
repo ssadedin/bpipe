@@ -1222,9 +1222,12 @@ class Utils {
                 
             int code = getResponseCode()
             log.info("Received response code $code from server")
+            
+
             if(code >= 400) {
+                int maxErrorOutputSize = Config.userConfig.getOrDefault('error_output_max', 512)
                 String output = errorStream.text
-                throw new PipelineError("Send to $url failed with error $code. Response contains: ${output.take(80)}")
+                throw new PipelineError("Send to $url failed with error $code. Response contains:\n${output.take(maxErrorOutputSize)}")
             }
                     
             if(log.isLoggable(Level.FINE))
