@@ -70,6 +70,22 @@ the events you explicitly send using `send`, you must set the
 `events` property for the channel to blank (`''`). See the 
 full example below for more details.
 
+**Note**: The original use of the notification framework was for sending
+advisory messages that are often non-essential. For this reason, the `send` command
+will *not* terminate the pipeline by default when a send errors. Rather, it will
+print a message to the console and bpipe log and continue processing. If you wish
+to have your pipeline terminate when a notification, message or API call cannot be 
+transmitted successfully, set the `terminateOnError` attribute in the channel configuration 
+to `true`. For example:
+
+```
+    my_api {
+        type = 'http'
+        url = 'http://localhost:8000'
+        terminateOnError = true
+    }
+```
+
 ### Examples
 
 **Send a message via Google Talk**
