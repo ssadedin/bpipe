@@ -151,20 +151,20 @@ abstract class Agent extends TimerTask {
     }
     
     @CompileStatic
-    AgentCommandRunner processCommand(Map<String,Object> commandAttributes) {
+    AgentCommandRunner processCommand(Map<String,Object> commandAttributes, Closure onRun = null) {
         try {
             ++this.executed
             BpipeCommand command = createCommandFromAttributes(commandAttributes)
             command.dir = commandAttributes.directory ?: ((PipelineInfo)pipelines[((Map)(commandAttributes.run)).id]).path
             validateCommand(command)
-            AgentCommandRunner runner = new AgentCommandRunner(createConnection(), (Long)commandAttributes.id, command, outputMode)
+            AgentCommandRunner runner = new AgentCommandRunner(createConnection(), (Long)commandAttributes.id, command, outputMode, onRun)
             runner.concurrency = this.concurrency
             new Thread(runner).start()
             return runner
         }
         catch(Exception e) {
             // report the error upstream if we can
-            AgentCommandRunner runner = new AgentCommandRunner(createConnection(), (Long)commandAttributes.id, e, outputMode)
+            AgentCommandRunner runner = new AgentCommandRunner(createConnection(), (Long)commandAttributes.id, e, outputMode, onRun)
             runner.concurrency = this.concurrency
             ++this.errors
             new Thread(runner).start() 

@@ -44,17 +44,20 @@ class AgentCommandRunner implements Runnable {
     
     String outputMode = 'both'
     
+    Closure onRun = null
+    
     /**
      * When waiting for acquisition of a lock, this object will be notified to interrupt
      */
     public static Object waitingForLockObject = new Object()
     
-    public AgentCommandRunner(WorxConnection worx, Long worxCommandId, BpipeCommand command, String outputMode) {
+    public AgentCommandRunner(WorxConnection worx, Long worxCommandId, BpipeCommand command, String outputMode, Closure onRun = null) {
         super();
         this.worx = worx
         this.worxCommandId = worxCommandId;
         this.command = command;
         this.outputMode = outputMode
+        this.onRun = onRun
     }
     
     /**
@@ -64,12 +67,13 @@ class AgentCommandRunner implements Runnable {
      * @param worxCommandId
      * @param e
      */
-    public AgentCommandRunner(WorxConnection worx, Long worxCommandId, Exception e, String outputMode) {
+    public AgentCommandRunner(WorxConnection worx, Long worxCommandId, Exception e, String outputMode, Closure onRun = null) {
         super();
         this.worx = worx
         this.worxCommandId = worxCommandId;
         this.errorResponse = e
         this.outputMode = outputMode
+        this.onRun = onRun
     }
     
     static long MAX_LOCK_WAIT_TIME_MS = 300000L
@@ -77,14 +81,14 @@ class AgentCommandRunner implements Runnable {
     @Override
     public void run() {
         
-        // Check for the run.pid file and try to lock it
-        checkRunningPipelineLock()
-           
         if(concurrency != null) {
             concurrency.acquire()
             log.info "Gained concurrency permit (${concurrency.availablePermits()} remaining) to run command $worxCommandId"
         }
 
+        // Check for the run.pid file and try to lock it
+        checkRunningPipelineLock()
+           
         int exitCode = 0
         try {
             executeAndRespond(worxCommandId) {
@@ -115,11 +119,17 @@ class AgentCommandRunner implements Runnable {
                 String result = ""
                 try {
                     log.info "Command $worxCommandId starting"
+                    
+                    if(!onRun.is(null))
+                        onRun.call()
+
                     if(command instanceof RunPipelineCommand || command instanceof ClosurePipelineCommand) {
                         RunPipelineCommand rpc = (RunPipelineCommand)command
                         command.out = out
-                        command.run(out)
-                        if(command instanceof RunPipelineCommand)
+
+                         command.run(out)
+                        
+                       if(command instanceof RunPipelineCommand)
                             exitCode = ((RunPipelineCommand)command).result.exitValue
                     }
                     else {

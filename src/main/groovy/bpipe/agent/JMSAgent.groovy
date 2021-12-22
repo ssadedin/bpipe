@@ -21,6 +21,7 @@ import javax.jms.Session
 import javax.jms.Queue
 import javax.jms.TextMessage
 import org.apache.activemq.ActiveMQConnectionFactory
+import org.apache.activemq.ActiveMQSession
 
 @Log
 @CompileStatic
@@ -40,12 +41,21 @@ class JMSAgent extends Agent {
     
     ConfigObject config
     
+    /**
+     * Whether bpipe agent will acknowledge messages as soon as it reads them or only when it
+     * actually runs a pipeline
+     */
+    String acknowledgeMode
+    
     JMSAgent(ConfigObject config) {
         super(config)
         this.config = config
+        this.acknowledgeMode = config.getOrDefault('acknowledgeMode', 'run')
     }
     
     void run() {
+        
+        log.info "Acknowledge mode is $acknowledgeMode"
         while(true) {
             try {
                 connect()
@@ -127,11 +137,13 @@ class JMSAgent extends Agent {
         
         if(text == "stop") {
             this.stopRequested = true
+            acknowledgeRun(message)
             return
         }
         
         if(text == "ping") {
             this.respondToPing(message)
+            acknowledgeRun(message)
             return
         }            
         
@@ -142,7 +154,10 @@ class JMSAgent extends Agent {
         }
         
         log.info "Processing command: " + commandAttributes
-        AgentCommandRunner runner = this.processCommand(commandAttributes)
+        AgentCommandRunner runner = this.processCommand(commandAttributes) {
+            // Callback invoked when command actually gets to execute
+            acknowledgeRun(message)
+        }
         
         if(message.getJMSReplyTo() || message.getStringProperty('reply-to') || message.getStringProperty('replyTo')) {
             log.info "ReplyTo set on message: will send message when complete"
@@ -172,6 +187,13 @@ class JMSAgent extends Agent {
         
         if(this.singleShot)
             stopRequested=true
+    }
+    
+    void acknowledgeRun(Message msg) {
+        if(acknowledgeMode == 'run') {
+            log.info "Acknowledging message $msg.JMSMessageID at run start"
+             msg.acknowledge()
+        }
     }
     
     void respondToPing(Message tm) {
@@ -246,7 +268,10 @@ class JMSAgent extends Agent {
             
         this.connection = ActivemqNotificationChannel.createActiveMQConnection(config)      
         this.connection.start()        
-        this.session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE)
+        
+       
+        this.session = connection.createSession(false,
+             acknowledgeMode == 'read' ? Session.AUTO_ACKNOWLEDGE  : ActiveMQSession.INDIVIDUAL_ACKNOWLEDGE)
         this.queue = session.createQueue((String)config.commandQueue)
         this.consumer = session.createConsumer(queue)
         
