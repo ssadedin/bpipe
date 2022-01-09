@@ -172,11 +172,9 @@ class GraphEntry implements Serializable {
             return index[canonicalPath]
         }
         
-//        println "MISS: find " + canonicalPath + " in output graph (${cacheMisses++}) index enabled ? " + (index != null)
-        
         // In case of non-default output directory, the outputFile itself may be in a directory
-        GraphEntry result = findBy { OutputMetaData p -> 
-            canonicalPathFor(p) == canonicalPath  
+        GraphEntry result = findBy { OutputMetaData p ->
+           !p.outputFile.is(null) && (canonicalPathFor(p) == canonicalPath)
         }
         
         if(index != null)
@@ -200,6 +198,8 @@ class GraphEntry implements Serializable {
         if(p.canonicalPath != null)
             return p.canonicalPath
                 
+        assert p.outputFile
+
         p.canonicalPath = Utils.canonicalFileFor(p.outputFile.path).path
     }
     

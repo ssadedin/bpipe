@@ -722,6 +722,9 @@ class Dependencies {
             
             for(OutputMetaData p in entry.values) {
                 
+                if(p.outputFile.is(null))
+                    continue
+                
                 // No entry is up to date if one of its inputs is newer
                 log.info " $p.outputFile / entry ${entry.hashCode()} ".center(40,"-")
                 
