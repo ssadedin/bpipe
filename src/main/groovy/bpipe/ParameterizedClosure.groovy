@@ -40,7 +40,7 @@ import groovy.util.logging.Log;
 @CompileStatic
 class ParameterizedClosure extends Closure {
     
-    public ParameterizedClosure(def variables, Closure body) {
+    public ParameterizedClosure(Map<String,Object> variables, Closure body) {
         super(body.owner);
         this.body = body
         this.extraVariables = variables
@@ -50,12 +50,12 @@ class ParameterizedClosure extends Closure {
         }
     }
   
-    public ParameterizedClosure(Map options, List spec, Closure body) {
+    public ParameterizedClosure(Map options=null, List spec, Closure body) {
         super(body.owner);
         this.body = body
         
         if(spec.every { it instanceof Closure}) {
-            this.inputStages = inputStages
+            this.inputStages = spec
         }
         else
         if(spec.every { it instanceof String}) {

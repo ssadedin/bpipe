@@ -1,4 +1,4 @@
-source ../test_support.sh
+source ../testsupport.sh
 
 run test.txt
 
