@@ -696,7 +696,7 @@ fi
 # downstream processes to inherit the flag
 if [ ! -z "$BPIPEDEBUG" ];
 then
-    BPIPEDEBUG_FLAGS="$BPIPE_DEBUG"
+    BPIPEDEBUG_FLAGS="$BPIPEDEBUG"
 else
     BPIPEDEBUG_FLAGS=""
 fi
