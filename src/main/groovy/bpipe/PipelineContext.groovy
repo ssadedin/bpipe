@@ -1017,6 +1017,7 @@ class PipelineContext {
        this.@input = Utils.box(inp)
    }
    
+   @CompileStatic
    def getInputs() {
        if(!inputWrapper || !(inputWrapper instanceof MultiPipelineInput)) {
            this.inputWrapper = new MultiPipelineInput(this.@input, pipelineStages, this.aliases)
@@ -1244,11 +1245,12 @@ class PipelineContext {
      * as "filter" - see {@link PipelineDelegate#methodMissing(String, Object)}
      * for how this actually happens.
      */
+    @CompileStatic
     Object filterImpl(List<String> types, Closure body) {
         
         def boxed = Utils.box(this.@input)
             
-        this.currentFilter = (boxed + Utils.box(this.pipelineStages[-1].originalInputs)).grep { PipelineFile f ->
+        this.currentFilter = ((List<PipelineFile>)(boxed + Utils.box(this.pipelineStages[-1].originalInputs))).grep { PipelineFile f ->
              f.path.indexOf('.')>=0  // only consider file names that actually contain periods
         }.collect { PipelineFile f ->
             Utils.ext(f.path) // For each such file, return the file extension

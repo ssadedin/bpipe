@@ -178,6 +178,7 @@ class PipelineStage {
      * 
      * @param pipeline
      */
+    @CompileStatic
     void initializeStage(Pipeline pipeline) {
         this.synthetic = false
         
@@ -186,14 +187,14 @@ class PipelineStage {
                         
         displayName = calculateDisplayName(pipeline)
                         
-        context.outputLog.flush("\n"+" Stage ${displayName} ".center(Config.config.columns,"="))
+        context.outputLog.flush("\n"+" Stage ${displayName} ".center((int)Config.config.columns,"="))
         CommandLog.cmdLog << "# Stage $displayName"
         ++stageCount
                     
         // Note: make sure startDateTimeMs is assigned before event is sent
         this.startDateTimeMs = System.currentTimeMillis()
                     
-        EventManager.instance.signal(PipelineEvent.STAGE_STARTED, 
+        EventManager.theInstance.signal(PipelineEvent.STAGE_STARTED, 
                                      "Starting stage $displayName", 
                                      [stage:this])
                     
