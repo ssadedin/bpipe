@@ -2618,16 +2618,22 @@ class PipelineContext {
     * @return
     */
    @CompileStatic
-   Object fromImpl(Map options=[:], Object exts, Closure body) {
+   Object fromImpl(Map options=[:], Object rawExts, Closure body) {
+       
        
        // If from is invoked in the form from('a','b',option:'someValue')
 	   // then we get the first argument as a map of options
-	   if((exts instanceof List) && (exts[0] instanceof Map)) {
-           options = exts[0]
-           exts = exts.tail()
+	   if(rawExts instanceof List) {
+           List listExts = (List)rawExts
+           if(listExts[0] instanceof Map) {
+               options = listExts[0]
+               rawExts = listExts.tail()
+           }
 	   }
        
-        log.info "From clause searching for inputs matching spec $exts"
+       List exts = Utils.box(rawExts)
+
+       log.info "From clause searching for inputs matching spec $exts"
         
        if(!exts || exts.every { it == null })
            throw new PipelineError("A call to 'from' was invoked with an empty or null argument. From requires a list of file patterns to match.")
