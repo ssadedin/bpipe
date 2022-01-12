@@ -26,6 +26,7 @@
 package bpipe
 
 import groovy.lang.Closure
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 
 /**
@@ -36,6 +37,7 @@ import groovy.util.logging.Log;
  * @author simon.sadedin@mcri.edu.au
  */
 @Log
+@CompileStatic
 class ParameterizedClosure extends Closure {
     
     public ParameterizedClosure(def variables, Closure body) {
@@ -48,10 +50,19 @@ class ParameterizedClosure extends Closure {
         }
     }
   
-    public ParameterizedClosure(List<Closure> inputStages, Closure body) {
+    public ParameterizedClosure(Map options, List spec, Closure body) {
         super(body.owner);
         this.body = body
-        this.inputStages = inputStages
+        
+        if(spec.every { it instanceof Closure}) {
+            this.inputStages = inputStages
+        }
+        else
+        if(spec.every { it instanceof String}) {
+            this.patterns = spec
+            if(options)
+                this.options = options
+        }
         
         this.extraVariables = [:]
         if(body instanceof ParameterizedClosure) {
@@ -73,6 +84,19 @@ class ParameterizedClosure extends Closure {
      */
     List<Closure> inputStages
     
+    /**
+     * List of input patterns to prioritise inputs by name
+     */
+    List<String> patterns
+    
+    /**
+     * Options for looking up patterns
+     */
+    Map options = null
+    
+    /**
+     * The wrapped body that will be executed after customisations to inputs and vairables are applied
+     */
     Closure body
 
     @Override

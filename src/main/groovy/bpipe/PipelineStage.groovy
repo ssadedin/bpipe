@@ -314,7 +314,25 @@ class PipelineStage {
     private checkAndInitAlternativeInputs() {
         if(!(this.body instanceof ParameterizedClosure))
             return
+            
         ParameterizedClosure bodyClosure = (ParameterizedClosure)this.body
+        
+        List patterns = bodyClosure.@patterns
+        if(!patterns.is(null)) {
+            
+            List<PipelineFile> inps = this.context.resolveInputsMatchingSpecs(patterns, false, false, false)
+            
+            String branchName = bodyClosure.@options?.branch
+            if(branchName) {
+                log.info "Filtering list of inputs $inps matched to patterns $patterns  on branch $branchName"
+                inps = inps.findAll { it.sourceBranch == branchName }
+            }
+
+            PipelineInput inp = this.context.getInput()
+            inp.input.addAll(0, inps)
+            inp.resolvedInputs.addAll(0, inps)
+        }
+         
         List<Closure> inputStageBodies = bodyClosure.@inputStages
         if(inputStageBodies.is(null))
             return 

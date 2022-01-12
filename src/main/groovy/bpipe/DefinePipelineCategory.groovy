@@ -186,6 +186,10 @@ class DefinePipelineCategory {
         return recipient
     }
 
+    static Closure from(Closure recipient, Map options,  String... pattern) {
+        return recipient
+    }
+
     static Closure power(List list, Closure c) {
         sequentially(list,c)
     }

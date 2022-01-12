@@ -1003,6 +1003,7 @@ class PipelineContext {
    /**
     * Check if there is an input, if so, return it.  
     */
+   @CompileStatic
    PipelineInput getInput() {
        if(!inputWrapper || inputWrapper instanceof MultiPipelineInput) {
            inputWrapper = new PipelineInput(this.@input, pipelineStages, this.aliases)
@@ -2616,6 +2617,7 @@ class PipelineContext {
     * @param body
     * @return
     */
+   @CompileStatic
    Object fromImpl(Map options=[:], Object exts, Closure body) {
        
        // If from is invoked in the form from('a','b',option:'someValue')
@@ -2632,11 +2634,7 @@ class PipelineContext {
        
        exts = exts.grep { it != null }
        
-       def orig = exts
-      
-       exts = Utils.box(exts).collect { (it instanceof PipelineOutput || it instanceof PipelineInput) ? it.toString() : it }
-     
-       List resolvedInputs = resolveInputsMatchingSpecs(exts, orig, (boolean)options.crossBranch, (boolean)options.allowForeign)
+       List resolvedInputs = resolveInputsMatchingSpecs((List)exts, (boolean)options.crossBranch, (boolean)options.allowForeign, true)
        
        def oldInputs = this.@input
        this.@input  = resolvedInputs
@@ -2664,7 +2662,12 @@ class PipelineContext {
     * @return   List of resolved files matching the specification of exts
     */
    @CompileStatic
-   List<PipelineFile> resolveInputsMatchingSpecs(List exts, List orig, boolean crossBranch, boolean allowForeign) {
+   List<PipelineFile> resolveInputsMatchingSpecs(List exts, boolean crossBranch, boolean allowForeign, boolean withCounts) {
+       
+       def orig = exts
+      
+       exts = Utils.box(exts).collect { (it instanceof PipelineOutput || it instanceof PipelineInput) ? it.toString() : it }
+        
        List resolvedInputs
        
        boolean lastCheck = false
@@ -2693,7 +2696,7 @@ class PipelineContext {
            }
   
            // Counts of how many times each extension has been referenced
-           Map<String,Integer> counts = exts.collectEntries { [String.valueOf(it), 0] }
+           Map<String,Integer> counts = withCounts ? exts.collectEntries { [String.valueOf(it), 0] } : null
 
            resolvedInputs = exts.collect { ext ->
                resolveInputsForExtension((String)ext, counts, reverseOutputs, siblingBranchOutputs, crossBranch, allowForeign)
@@ -2756,7 +2759,8 @@ class PipelineContext {
         List result = resolveInputsFromUpstreamBranches(ext, counts, reverseOutputs)
         if(result) {
             log.info "Resolved: $result for $ext"
-            counts[ext]++
+            if(counts)
+                counts[ext]++
             return result
         }
 
@@ -2765,7 +2769,8 @@ class PipelineContext {
                 log.info "Attempt resolution from sibling outputs: " + siblingOutputs
                 result = resolveInputsFromUpstreamBranches(ext, counts, siblingOutputs)
                 if(result) {
-                    counts[ext]++
+                    if(counts)
+                        counts[ext]++
                     return result
                 }
             }
@@ -2775,7 +2780,8 @@ class PipelineContext {
         // in the file system, are not known outputs, AND are older than the start time of the pipeline
         PipelineFile preExistingFile = resolveAsPreExistingFile(ext, crossBranch, allowForeign)
         if(preExistingFile) {
-            counts[ext]++
+            if(counts)
+                counts[ext]++
             return [preExistingFile]
         }
     }
@@ -2830,30 +2836,40 @@ class PipelineContext {
         return reverseOutputs
     }
 
+    /**
+     * Search through upstream outputs to find matches for the given extension
+     * 
+     * @param ext               Extension to search for
+     * @param counts            Optional, if provided, will narrow inputs returned to the index specifed for the given extension
+     * @param reverseOutputs    output stack search
+     * @return  List of outputs matching the given extension specification
+     */
     @CompileStatic
-    private List resolveInputsFromUpstreamBranches(String ext, Map counts, List<List<PipelineFile>> reverseOutputs) {
+    private List resolveInputsFromUpstreamBranches(String ext, Map<String,Integer> counts, List<List<PipelineFile>> reverseOutputs) {
 
         boolean globMatch = ext.indexOf('*')>=0
 
         def matcher = matcherForFileSpec(ext)
 
-        int previousReferences = counts[ext]
+        int previousReferences = counts ? counts[ext] : -1
 
         // Count of how many of this kind of extension have been consumed
         int count = 0
         for(s in reverseOutputs) {
             List outputsFound = s.grep { matcher(it) }
-
-            log.info "Matched : $outputsFound for $ext"
-
             if(outputsFound) {
+                log.info "Matched : $outputsFound for $ext"
                 if(globMatch) {
                     return outputsFound
                 }
                 else
                 if(previousReferences - count < outputsFound.size()) { // try to resolve as extension, but resolving expected input for index
                     log.info("Checking ${s} vs $ext Y")
-                    return [outputsFound[previousReferences - count]]
+
+                    if(counts)
+                        return [outputsFound[previousReferences - count]]
+                    else
+                        return outputsFound
                 }
                 else 
                 if(outputsFound.find { it.path == ext }) { // if we match the whole file name, we do not need to match the index

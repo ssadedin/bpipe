@@ -118,6 +118,13 @@ class PipelineCategory {
         sequentially(list,c)
     }
     
+    static Closure from(Closure recipient, Map options,  String... pattern) {
+        def pc = new ParameterizedClosure(options, pattern as List, recipient)
+        if(closureNames.containsKey(recipient))
+            closureNames[pc] = closureNames[recipient]
+        return pc
+    }
+    
     static Closure from(Closure recipient, Closure... donors) {
         def pc = new ParameterizedClosure(donors as List, recipient)
         if(closureNames.containsKey(recipient))
