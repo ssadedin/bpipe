@@ -304,4 +304,8 @@ class Command implements Serializable {
             return c2
         }       
     }
+    
+    String toString() {
+       "Command $id for stage $name ($stageId) in branch $branch (status=$status)"
+    }
 }
