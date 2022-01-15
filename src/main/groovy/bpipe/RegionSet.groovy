@@ -138,6 +138,12 @@ class RegionSet implements Serializable {
      */
     @CompileStatic
     static RegionSet bed(Map options=[:], String fileName) {
+        if(fileName == null)
+            throw new PipelineError("Provided BED file was null or missing")
+            
+        if(!new File(fileName).exists()) 
+            throw new PipelineError("Provided BED file $fileName could not be found")
+        
         (RegionSet)Utils.time("load $fileName") {
             int padding = 0;
             if(options.padding)

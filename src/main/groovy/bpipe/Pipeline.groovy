@@ -823,6 +823,9 @@ public class Pipeline implements ResourceRequestor {
             
             this.checkRequiredInputs(rawInputFiles)
             
+            if(rawInputFiles && rawInputFiles.any { it.is(null) }) 
+                throw new PipelineError("One or more input files provided to the run method was null. Please check the arguments")
+
             List<PipelineFile> resolvedInputFiles = StorageLayer.resolve(rawInputFiles)
             checkForMissingInputs(resolvedInputFiles)
             
