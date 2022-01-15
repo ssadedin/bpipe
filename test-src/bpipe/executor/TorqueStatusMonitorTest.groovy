@@ -27,7 +27,7 @@ class TorqueStatusMonitorTest {
         
         def state = new TorqueJobState(jobId:"1000", state:CommandStatus.RUNNING)
         
-        tsm.jobs["1000"] = state
+        tsm.jobs['1000'] = state
 
         tsm.updateStatus(output)
         
@@ -48,7 +48,7 @@ class TorqueStatusMonitorTest {
         
         def state = new TorqueJobState(jobId:"1000", state:CommandStatus.RUNNING)
         
-        tsm.jobs["1000"] = state
+        tsm.jobs['1000'] = state
 
         tsm.updateStatuses(output,[])
         
