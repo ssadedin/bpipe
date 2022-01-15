@@ -196,7 +196,7 @@ class PipelineStage {
                     
         EventManager.theInstance.signal(PipelineEvent.STAGE_STARTED, 
                                      "Starting stage $displayName", 
-                                     [stage:this])
+                                     (Map<String,Object>)[stage:this])
                     
         context.initialize(pipeline, stageName)
                 
