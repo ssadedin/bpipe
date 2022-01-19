@@ -382,7 +382,7 @@ display_log() {
     fi
    
     #$THREAD_EXPR .bpipe/logs/$LOG_ID.log | sed -u "$TAIL_PATTERN" |  tail $ROWS_OPT $TAIL_OPT $* 
-    java -Xmx${MAX_JAVA_MEM} -classpath "$CP"  $BPIPEDEBUG -Dbpipe.home="$JVM_BPIPE_HOME" bpipe.Tail9 $ROWS_OPT $TAIL_OPT $COMPLETED_MSG $* $LOG_ID
+    java -Xmx${MAX_JAVA_MEM} -classpath "$CP:$BPIPE_JAR"  $BPIPEDEBUG -Dbpipe.home="$JVM_BPIPE_HOME" bpipe.Tail9 $ROWS_OPT $TAIL_OPT $COMPLETED_MSG $* $LOG_ID
 }
 
 #----------------------------------------------------------
