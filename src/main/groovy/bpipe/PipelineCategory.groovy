@@ -196,18 +196,20 @@ class PipelineCategory {
     }
     
     
+    @CompileStatic
     static Object plus(List l, List other) {
         if(!l.empty && !other.empty && l[0] instanceof Closure && other[0] instanceof Closure) {
             def j = {
                 return it
             }
             Pipeline.currentUnderConstructionPipeline.joiners << j
-            return plus(j, l) + other
+            return plus(plus(j, l), other)
         }
         else
             return org.codehaus.groovy.runtime.DefaultGroovyMethods.plus(l,other)
     }
 	
+    @CompileStatic
     static Object plus(Closure c, Closure other) {
         return plus(c,other,false)
     }

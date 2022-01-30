@@ -370,7 +370,7 @@ class PipelineStage {
 
         this.context.pipelineStages = 
             this.context.pipelineStages[0..-2] + 
-            sourceInputStages + 
+            sourceInputStages.reverse() + 
             [this.context.pipelineStages[-1]]
 
         List<PipelineFile> matchingRawInputs = 
