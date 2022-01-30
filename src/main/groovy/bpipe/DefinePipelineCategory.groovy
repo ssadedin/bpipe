@@ -421,6 +421,10 @@ class DefinePipelineCategory {
     static Object multiply(List objs, Map segments) {
         multiply(objs, segments*.value)
     }
+    
+    static Object multiply(PipelineChannel channel, List segments) {
+        multiply(channel.source.collect { String.valueOf(it) } as Set, segments)
+    }
 
     static Object multiply(List chrs, List segments) {
         multiply("*", segments)

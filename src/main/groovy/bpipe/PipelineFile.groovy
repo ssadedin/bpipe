@@ -33,7 +33,7 @@ class PipelineFile implements Serializable {
     
     StorageLayer storage
     
-    String sourceBranch
+    Branch sourceBranch
     
     protected PipelineFile(String path) {
         assert path != null
@@ -47,9 +47,14 @@ class PipelineFile implements Serializable {
         this.storage = storage
     }
     
+    PipelineFile(String path, StorageLayer storage, Branch sourceBranch) {
+        this(path, storage)
+        this.sourceBranch = sourceBranch
+    }
+
     PipelineFile(String path, StorageLayer storage, String channel) {
         this(path, storage)
-        this.sourceBranch = channel
+        this.sourceBranch = new Branch(name:channel)
     }
     
     

@@ -493,7 +493,10 @@ class PipelineStage {
         log.info "Setting next inputs $nextInputs on stage ${this.hashCode()}, context ${context.hashCode()} in thread ${Thread.currentThread().id}"
         context.nextInputs = nextInputs
        
-        nextInputs*.sourceBranch = this.context.branch.name
+        for(PipelineFile inp in nextInputs) {
+            if(inp.sourceBranch.is(null))
+                inp.sourceBranch = this.context.branch
+        }
     }
     
     /**

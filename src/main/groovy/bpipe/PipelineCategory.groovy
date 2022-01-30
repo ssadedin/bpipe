@@ -349,8 +349,15 @@ class PipelineCategory {
         return rightShiftImplementation
     }
     
-    static Object multiply(List objs, Map segments) {
-        multiply(objs.collect { String.valueOf(it) } as Set, segments*.value, segments*.key)
+    static Object multiply(PipelineChannel channel, List<Closure> segments) {
+        if(channel.files) {
+            Map<String,Object> fileMap = [channel.source, channel.files.collect { Utils.box(it) }].transpose().collectEntries()
+            channel.files.clear()
+            multiply(fileMap, segments, channel)
+        }
+        else {
+            multiply(channel.source.collect { String.valueOf(it) } as Set, segments, null, channel)
+        }
     }
 
     static Object multiply(List objs, List segments) {
@@ -362,15 +369,19 @@ class PipelineCategory {
     }
     
     static Object multiply(Set objs, List segments) {
-        multiply(objs, segments, null)
+        multiply(objs, segments, null, null)
     }
 
     @CompileStatic
-    static Object multiply(Set objs, List<Closure> segments, List channels) {
+    static Object multiply(Set objs, List<Closure> segments, List channels, PipelineChannel pipelineChannel) {
         
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
         
         def multiplyImplementation = { input ->
+            
+            if(pipelineChannel) {
+                log.info "Executing branches in context of pipeline channel $pipelineChannel"
+            }
             
             log.info "multiply on input $input on set " + objs
             
@@ -423,7 +434,7 @@ class PipelineCategory {
                     }
                     
                     log.info "Creating pipeline to run on branch $chr"
-                    Pipeline child = Pipeline.currentRuntimePipeline.get().fork(branchPoint, chr.toString(), forkId)
+                    Pipeline child = Pipeline.currentRuntimePipeline.get().fork(branchPoint, chr.toString(), forkId, pipelineChannel)
                     if(channels) {
                         child.channel = channels[segmentIndex]
                         log.info "Assigned channel $child.channel to $child"
@@ -438,7 +449,9 @@ class PipelineCategory {
                             // If the filterInputs option is set, match input files on the region name
                             List<PipelineFile> childInputs = (List<PipelineFile>)input
                             
-                            child.branch = new Branch()
+                            // Hack: force to initialise variables at runtime in context of thread
+                            child.setBranch(child.branch)
+                            
                             if(chr instanceof Chr) {
                                 childInputs = initChildFromChr(child,chr,childInputs)
                                 if(childInputs == null)
@@ -593,7 +606,8 @@ class PipelineCategory {
         splitOnFiles(pattern,segments,true)
     }
     
-    static Object multiply(Map branches, List segments) {
+    static Object multiply(Map branches, List segments, PipelineChannel pipelineChannel = null) {
+
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
         
         // Ensure the keys and values are normalised to expected structure downstream
@@ -610,7 +624,7 @@ class PipelineCategory {
             // Map filteredBranches = branches.keySet().collectEntries { key -> 
             //   [key, Utils.box(branches[key]).removeAll { !(it in inputs) }]
             //}
-            splitOnMap(input, cleanBranches, segments)
+            splitOnMap(input, cleanBranches, segments, false, false, pipelineChannel)
         }
         
 //        log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
@@ -671,11 +685,12 @@ class PipelineCategory {
      * stage that had an input matching the given split pattern. For that stage, return
      * all the inputs matching the pattern.
      */
+    @CompileStatic
     private static Map locateMostRecentMatch(final Object pattern, final InputSplitter splitter) {
         List allInputs = Pipeline.currentRuntimePipeline.get().stages*.context.collect { it.@input}
         for(def inps in allInputs.reverse()) {
             log.info "Checking input split match on $inps"
-            final Map branches = splitter.split(pattern, inps)
+            final Map branches = splitter.split(String.valueOf(pattern), inps)
             if(!branches.isEmpty()) {
                 log.info "Found input split match for pattern $pattern on $inps"
                 return branches
@@ -685,7 +700,7 @@ class PipelineCategory {
     }
     
     @CompileStatic
-    static Object splitOnMap(def input, Map<String, List> branchMap, List segmentObjs /* Closure or List of Closures */, boolean applyName=false, boolean mergePoint=false) {
+    static Object splitOnMap(def input, Map<String, List> branchMap, List segmentObjs /* Closure or List of Closures */, boolean applyName=false, boolean mergePoint=false, PipelineChannel pipelineChannel=null) {
         
         assert branchMap*.value.every { it instanceof List }
         
@@ -725,7 +740,7 @@ class PipelineCategory {
                     return
  
                 String childName = computeSubBranchName(id, segments, segmentClosure)
-                Pipeline child = parent.fork(branchPoint, childName, forkId)
+                Pipeline child = parent.fork(branchPoint, childName, forkId, pipelineChannel)
                 forkId = child.id
                 currentStage.children << child
                 if(mergePoint)
@@ -868,15 +883,19 @@ class PipelineCategory {
      * 
      *   A -- B -- D -- C -- E -- F
      */
+    // TODO: compile static causes internal compiler errors in eclipse
+    //       need to factor this out more to help narrow down the errors
+    // @CompileStatic
     static List mergeChildStagesToParent(final Pipeline parent, final List<Pipeline> pipelines) {
+
         // Get the output stages without the joiners
-        List<List<PipelineStage>> stagesList = pipelines.collect { c -> c.stages.grep { !it.joiner && !(it in parent.stages) && it.stageName != "Unknown" } }
+        List<List<PipelineStage>> stagesList = getCleanStagesList(parent, pipelines)
         
         int maxLen = stagesList*.size().max()
         log.info "Maximum child stage list length = $maxLen"
         
         // Fill in shorter stages with nulls
-        stagesList = stagesList.collect { it + ([null] * (maxLen - it.size())) }
+        stagesList = (List<List<PipelineStage>>)stagesList.collect { it + ([null] * (maxLen - it.size())) }
         
         log.info "###### Merging results of parallel split in parent branch ${parent.branch?.name} #####"
         
@@ -889,30 +908,7 @@ class PipelineCategory {
                 
             Map<String,List<PipelineStage>> grouped = stagesAtIndex.groupBy { it?.stageName }
             grouped.each { stageName, stages ->
-                  
-                if(!stageName || !stages)
-                    return
-                  
-                if(stages.size()>1)
-                  log.info "Parallel segment $i contains ${stages.size()} identical ${stageName} stages - Merging outputs to single stage"
-                  
-                // Create a merged stage
-                PipelineContext mergedContext = new PipelineContext(null, parent.stages, stages[0].context.pipelineJoiners, stages[0].context.branch)
-                def mergedOutputs = stages.collect { s ->
-                    Utils.box(s.context.@output)
-                }.sum()
-                
-                def mergedNextInputs = stages.collect { s ->
-                    Utils.box(s?.context?.nextInputs)
-                }.sum() 
-                
-                log.info "Merged outputs for $stageName(s) are $mergedOutputs"
-                mergedContext.setRawOutput(mergedOutputs)
-                mergedContext.setNextInputs(mergedNextInputs)
-                  
-                PipelineStage mergedStage = new PipelineStage(mergedContext, stages[0].body)
-                mergedStage.stageName = stages[0].stageName
-                parent.addStage(mergedStage)
+                addMergedParallelStage(i, parent, stages, stageName)
             }
         }
         
@@ -928,26 +924,17 @@ class PipelineCategory {
         PipelineContext mergedContext = 
             new PipelineContext(null, parent.stages, joiners, new Branch(name:'all'))
             
-        List mergedOutputs = finalStages.collect { s ->
-            
-            if(s?.context) {
-                assert s.context.@output.every { it instanceof PipelineFile }
-            }
-            
-            if(s?.context?.nextInputs) {
-                if(!s.context.nextInputs.every { it instanceof PipelineFile }) {
-                    assert false: "Stage $s.stageName output a nexInput that was not a PipelineFile!"
-                }
-            }
-  
-            
+        List<PipelineFile> mergedOutputs = finalStages.collectMany { s ->
             Utils.box(s?.context?.@output) 
-        }.sum().collect { it.normalize() }.unique()
-
+        }
+        .collect { PipelineFile f -> f.normalize() }
+        .unique()
        
-        List mergedNextInputs = finalStages.collect { s ->
+        List<PipelineFile> mergedNextInputs = finalStages.collectMany { s ->
             Utils.box(s?.context?.nextInputs)
-        }.sum().collect { it.normalize() }.unique()
+        }
+        .collect { PipelineFile f -> f.normalize() }
+        .unique()
         
         log.info "Last merged outputs are $mergedOutputs"
         mergedContext.setRawOutput(mergedOutputs)
@@ -968,6 +955,40 @@ class PipelineCategory {
         parent.addStage(mergedStage)
         
         return mergedOutputs
+    }
+
+    @CompileStatic
+    private static addMergedParallelStage(int i, Pipeline parent, List<PipelineStage> stages, String stageName) {
+        if(!stageName || !stages)
+            return
+
+        if(stages.size()>1)
+            log.info "Parallel segment $i contains ${stages.size()} identical ${stageName} stages - Merging outputs to single stage"
+
+        // Create a merged stage
+        // TODO: arbitrarily using the child branch here is dangerous: it could cause other functions to confuse this merged
+        // stage with a real stage that was from that branch and use out-of-branch inputs
+        PipelineContext mergedContext = new PipelineContext(null, parent.stages, stages[0].context.pipelineJoiners, stages[0].context.branch)
+        List<PipelineFile> mergedOutputs = stages.collectMany { s ->
+            Utils.box(s.context.@output)
+        }
+
+        List<PipelineFile> mergedNextInputs = stages.collectMany { s ->
+            Utils.box(s?.context?.nextInputs)
+        }
+
+        log.info "Merged outputs for $stageName(s) are $mergedOutputs"
+        mergedContext.setRawOutput(mergedOutputs)
+        mergedContext.setNextInputs(mergedNextInputs)
+
+        PipelineStage mergedStage = new PipelineStage(mergedContext, stages[0].body)
+        mergedStage.stageName = stages[0].stageName
+        parent.addStage(mergedStage)
+    }
+    
+    @CompileStatic
+    static List<List<PipelineStage>> getCleanStagesList(final Pipeline parent, final List<Pipeline> pipelines) {
+       return (List<List<PipelineStage>>)pipelines.collect { c -> c.stages.grep { PipelineStage s -> !s.joiner && !(s in parent.stages) && s.stageName != "Unknown" } } 
     }
     
     static String summarizeErrors(List<Pipeline> pipelines) {

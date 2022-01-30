@@ -481,7 +481,9 @@ class PipelineInput {
         }
         
         PipelineStage myStage = currentStage
+        
         List<Closure> fromStages = null
+        String priorityBranch = null
         
         if(myStage.body instanceof ParameterizedClosure) {
             
@@ -489,9 +491,15 @@ class PipelineInput {
             if(pc.@inputStages) {
                 fromStages = pc.@inputStages
             }
+            else
+            if(pc.@resolvedBranch && !pc.@patterns) {
+                priorityBranch = pc.@resolvedBranch
+            }
         }
 
+        Branch myBranch = myStage.context.branch
         List reverseOutputs = new ArrayList(reverseStages.size()*2)
+        List<List<PipelineFile>> prioritisedOutputs = []
         for(PipelineStage stage in reverseStages) {
             
             List<List<PipelineFile>> outputsToAdd = []
@@ -511,13 +519,22 @@ class PipelineInput {
                 outputsToAdd = outputsToAdd.collect { inps ->
                     List<PipelineFile> pipelineInps = (List<PipelineFile>)inps
                     List filtered = pipelineInps.grep { PipelineFile pf ->
-                        myStage.context.branch.hasParentWithName(pf.sourceBranch)
+                        myBranch.hasParentWithName(pf.sourceBranch.name)
                     }
                     log.info "Filtered $pipelineInps to $filtered from stage ${stage.hashCode()} based on source branches ${pipelineInps*.sourceBranch}"
                     return filtered
                 }
             }
             
+            // If the branch has been prioritised, move its inputs forward
+            if(priorityBranch) {
+                List<List<List<PipelineFile>>> splitFiles = outputsToAdd*.split { PipelineFile pf ->
+                    pf.sourceBranch?.hasParentWithName(priorityBranch)
+                }
+                
+                outputsToAdd = splitFiles*.getAt(0)
+                prioritisedOutputs.addAll(splitFiles*.getAt(1))
+            }
             reverseOutputs.addAll(outputsToAdd)
         }
         
@@ -536,6 +553,8 @@ class PipelineInput {
   	        reverseOutputs.add(originalInputs)
         }
         
+        reverseOutputs.addAll(0, prioritisedOutputs)
+
         List inputInputs = []
         PipelineInput root = this
         while(root.parent != null) {

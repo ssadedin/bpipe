@@ -47,6 +47,8 @@ class Branch extends Expando implements Serializable {
     
     String dir = "."
     
+    PipelineChannel pipelineChannel
+    
     Branch parent = null
     
     transient Closure dirChangeListener = null
@@ -109,6 +111,15 @@ class Branch extends Expando implements Serializable {
             check = check.parent
         return !check.is(null)
     }
+    
+    @CompileStatic
+    boolean belongsToChannel(final PipelineChannel channel) {
+        Branch check = this
+        while(!check.is(null) && !check.@pipelineChannel.is(channel))
+            check = check.parent
+        return !check.is(null)
+    }
+    
     
     void setProperty(String name, Object value) {
         

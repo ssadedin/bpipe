@@ -92,7 +92,7 @@ public class Pipeline implements ResourceRequestor {
     /**
      * Default imports added to the top of all files executed by Bpipe
      */
-    static final String PIPELINE_IMPORTS = "import static Bpipe.*; import static bpipe.RegionSet.bed; import static bpipe.Pipeline.filetype; import Preserve as preserve; import Intermediate as intermediate; import Accompanies as accompanies; import Produce as produce; import Transform as transform; import Filter as filter;"
+    static final String PIPELINE_IMPORTS = "import static Bpipe.*; import static bpipe.PipelineChannel.*; import static bpipe.RegionSet.bed; import static bpipe.Pipeline.filetype; import Preserve as preserve; import Intermediate as intermediate; import Accompanies as accompanies; import Produce as produce; import Transform as transform; import Filter as filter;"
     
     /**
      * The thread id of the master thread that is running the baseline root
@@ -1102,36 +1102,92 @@ public class Pipeline implements ResourceRequestor {
      * that this pipeline has.  The new pipeline can execute concurrently with this
      * one without interfering with this one's state.
      * <p>
+     * If the fork is created in the context of a PipelineChannel then inputs
+     * from channel will be prioritised over inputs from other branches.
+     * 
      * Note:  the new pipeline is not run by this method; instead you have to
      *        call one of the {@link #run(Closure)} methods on the returned pipeline
      */
     @CompileStatic
-    Pipeline fork(Node branchPoint, String childName, String id = null) {
+    Pipeline fork(Node branchPoint, String childName, String id, PipelineChannel pipelineChannel) {
         
 //        assert branchPoint in this.node.children()
         
         Pipeline p = new Pipeline()
         p.node = new Node(branchPoint, childName, [type:'pipeline',pipeline:p])
-        p.stages = new ArrayList<PipelineStage>(this.stages)
         p.joiners =  this.joiners
         p.aliases = this.aliases
         p.parent = this
         p.childIndex = this.childCount
+        p.branch.@pipelineChannel = pipelineChannel
         
         if(id == null) 
             p.id = this.stages[-1].id + "_" + this.childCount
         else
             p.id = id
             
+        p.stages = new ArrayList<PipelineStage>(this.stages)
+
+        if(pipelineChannel) {
+
+            p.branch.properties[pipelineChannel.name] = childName
+
+            List<PipelineStage> channelStages = createChannelPriorityStages(childName, pipelineChannel)
+            
+            p.stages.addAll(channelStages)
+        }
+
         this.children << p
         ++this.childCount
         return p
+    }
+
+    /**
+     * Search through stages in the history to find those that belong to the given channel.
+     * Where stages belong to the channel, create synthetic output stages that carry their
+     * outputs, filtered on the branch variable associated to the channel.
+     * 
+     * @param branchName
+     * @param pipelineChannel
+     * @return  List of stages created to prioritise the channel inputs over the rest of the 
+     *          inputs that would otherwise be resolved.
+     */
+    @CompileStatic
+    private List<PipelineStage> createChannelPriorityStages(String branchName, PipelineChannel pipelineChannel) {
+        List<PipelineStage> inChannel = this.stages.findAll { stage ->
+            log.info "Checking stage $stage.stageName with branch $stage.context.branch.name for input to channel branch $branchName, properties: " + stage.context.branch.properties
+            return stage.context.branch.belongsToChannel(pipelineChannel)
+        }
+
+        List<PipelineStage> channelStages = []
+        for(PipelineStage s in inChannel) {
+            // It belongs to the channel: therefore we must extract outputs with the
+            // matching source branch to be prioritised
+            List<PipelineFile> outputs = s.context.@output?.findAll { it.sourceBranch.properties[pipelineChannel.name] == branchName  }
+            List<PipelineFile> nextInputs = s.context.nextInputs?.findAll { it.sourceBranch.properties[pipelineChannel.name] == branchName  }
+
+            if(outputs || nextInputs) {
+                Branch matchingBranch = outputs[0]?.sourceBranch?:nextInputs[0].sourceBranch
+
+                PipelineContext mergedContext = new PipelineContext(null, this.stages, s.context.pipelineJoiners, matchingBranch)
+                if(outputs)
+                    mergedContext.setRawOutput(outputs)
+                if(nextInputs)
+                    mergedContext.setNextInputs(nextInputs)
+
+                PipelineStage mergedStage = new PipelineStage(mergedContext, s.body)
+                mergedStage.stageName = s.stageName
+                channelStages.add(mergedStage)
+            }
+        }
+
+        log.info "Adding ${channelStages.size()} matching stages from ${inChannel.size()} in-channel stages due to fork into channel $pipelineChannel"
+        return channelStages
     }
     
     @CompileStatic
     void initBranch(final String childName, final boolean nameApplied) {
         assert !childName.is(null)
-        this.branch = new Branch(name:childName)
         this.branch.@name = childName
         this.nameApplied = nameApplied
     }
