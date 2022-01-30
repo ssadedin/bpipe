@@ -335,7 +335,7 @@ class PipelineStage {
             List<PipelineFile> inps = this.context.resolveInputsMatchingSpecs(patterns, false, false, false)
             if(branchName) {
                 log.info "Filtering list of inputs $inps matched to patterns $patterns  on branch $branchName"
-                inps = inps.findAll { it.sourceBranch == bodyClosure.resolvedBranch }
+                inps = inps.findAll { it.sourceBranch.name == bodyClosure.resolvedBranch }
             }
 
             PipelineInput inp = this.context.getInput()
