@@ -360,16 +360,24 @@ class PipelineCategory {
         }
     }
 
+    @CompileStatic
     static Object multiply(List objs, List segments) {
         multiply(objs.collect { String.valueOf(it) } as Set, segments)
     }
     
+    @CompileStatic
     static Object multiply(String pattern, Closure c) {
         throw new PipelineError("Multiply syntax requires a list of stages")
     }
     
+    @CompileStatic
     static Object multiply(Set objs, List segments) {
         multiply(objs, segments, null, null)
+    }
+    
+    @CompileStatic
+    static Object multiply(List objs, Map<String,Closure> segments) {
+        multiply(objs.collect { String.valueOf(it) } as Set, segments*.value, segments*.key, null)
     }
 
     @CompileStatic
