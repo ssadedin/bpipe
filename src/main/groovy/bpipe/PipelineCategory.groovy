@@ -883,9 +883,7 @@ class PipelineCategory {
      * 
      *   A -- B -- D -- C -- E -- F
      */
-    // TODO: compile static causes internal compiler errors in eclipse
-    //       need to factor this out more to help narrow down the errors
-    // @CompileStatic
+    @CompileStatic
     static List mergeChildStagesToParent(final Pipeline parent, final List<Pipeline> pipelines) {
 
         // Get the output stages without the joiners
@@ -899,7 +897,7 @@ class PipelineCategory {
         
         log.info "###### Merging results of parallel split in parent branch ${parent.branch?.name} #####"
         
-        def transposed = stagesList.transpose()
+        List<List<PipelineStage>> transposed = stagesList.transpose()
         transposed.eachWithIndex { List<PipelineStage> stagesAtIndex, int i ->
             log.info "Grouping stages at index $i ${stagesAtIndex*.stageName} for merging"
             
@@ -915,30 +913,16 @@ class PipelineCategory {
         // Finally add a merged stage that has all the outputs from the last stages
         log.info "There are ${transposed.size()} stages from nested pipelines"
         List<PipelineStage> finalStages = stagesList.collect { List<PipelineStage> stages -> stages.reverse().find { it != null } }
-        log.info "There are ${finalStages} parallel paths in final stage"
+        log.info "There are ${finalStages.size()} parallel paths in final stage"
         
         List<Set> joinersList = finalStages.grep { it != null }.collect { it.context.pipelineJoiners }
         
-        Set joiners = joinersList.sum()
+        Set<Closure> joiners = (Set<Closure>)joinersList.sum()
                                  
         PipelineContext mergedContext = 
             new PipelineContext(null, parent.stages, joiners, new Branch(name:'all'))
             
-        List<PipelineFile> mergedOutputs = finalStages.collectMany { s ->
-            Utils.box(s?.context?.@output) 
-        }
-        .collect { PipelineFile f -> f.normalize() }
-        .unique()
-       
-        List<PipelineFile> mergedNextInputs = finalStages.collectMany { s ->
-            Utils.box(s?.context?.nextInputs)
-        }
-        .collect { PipelineFile f -> f.normalize() }
-        .unique()
-        
-        log.info "Last merged outputs are $mergedOutputs"
-        mergedContext.setRawOutput(mergedOutputs)
-        mergedContext.setNextInputs(mergedNextInputs)
+        List<PipelineFile> mergedOutputs = setFinalStageMergedOutputs(finalStages, mergedContext)
         
         Closure flattenedBody = finalStages.find { it != null }?.body
         if(flattenedBody == null) {
@@ -954,6 +938,26 @@ class PipelineCategory {
         log.info "Merged stage name is $mergedStage.stageName"
         parent.addStage(mergedStage)
         
+        return mergedOutputs
+    }
+
+    @CompileStatic
+    private static List<PipelineFile> setFinalStageMergedOutputs(List<PipelineStage> finalStages, PipelineContext mergedContext) {
+        List<PipelineFile> mergedOutputs = finalStages.collectMany { s ->
+            Utils.box(s?.context?.@output)
+        }
+        .collect { f -> ((PipelineFile)f).normalize() }
+        .unique()
+
+        List<PipelineFile> mergedNextInputs = finalStages.collectMany { s ->
+            Utils.box(s?.context?.nextInputs)
+        }
+        .collect { f -> ((PipelineFile)f).normalize() }
+        .unique()
+
+        log.info "Last merged outputs are $mergedOutputs"
+        mergedContext.setRawOutput(mergedOutputs)
+        mergedContext.setNextInputs(mergedNextInputs)
         return mergedOutputs
     }
 
