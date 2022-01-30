@@ -317,16 +317,25 @@ class PipelineStage {
             return
             
         ParameterizedClosure bodyClosure = (ParameterizedClosure)this.body
-        
+        def branchName = bodyClosure.@options?.branch
+        if(branchName) {
+            if(branchName instanceof Closure) {
+                Closure branchNameFn = branchName
+                def safeClosure = branchNameFn.dehydrate()
+                PipelineDelegate.setDelegateOn(context, safeClosure)
+                safeClosure.setResolveStrategy(Closure.DELEGATE_FIRST)
+                branchName = safeClosure()
+            }
+            bodyClosure.resolvedBranch = branchName
+        }
+
         List patterns = bodyClosure.@patterns
         if(!patterns.is(null)) {
             
             List<PipelineFile> inps = this.context.resolveInputsMatchingSpecs(patterns, false, false, false)
-            
-            String branchName = bodyClosure.@options?.branch
             if(branchName) {
                 log.info "Filtering list of inputs $inps matched to patterns $patterns  on branch $branchName"
-                inps = inps.findAll { it.sourceBranch == branchName }
+                inps = inps.findAll { it.sourceBranch == bodyClosure.resolvedBranch }
             }
 
             PipelineInput inp = this.context.getInput()

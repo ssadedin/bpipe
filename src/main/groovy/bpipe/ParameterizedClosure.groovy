@@ -54,7 +54,7 @@ class ParameterizedClosure extends Closure {
         super(body.owner);
         this.body = body
         
-        if(spec.every { it instanceof Closure}) {
+        if(!spec.isEmpty() && spec.every { it instanceof Closure}) {
             this.inputStages = spec
         }
         else
@@ -88,6 +88,12 @@ class ParameterizedClosure extends Closure {
      * List of input patterns to prioritise inputs by name
      */
     List<String> patterns
+    
+    /**
+     * If a branch was specified in options, it is resolved here during
+     * stage initialisation
+     */
+    String resolvedBranch
     
     /**
      * Options for looking up patterns
