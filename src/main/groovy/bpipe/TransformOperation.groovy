@@ -400,7 +400,7 @@ class TransformOperation {
         String dot = fromPattern.startsWith(".") ?"":"."
 
         Pattern pattern = ~fromPattern
-        Matcher matcher = pattern.matcher(inp.path)
+        Matcher matcher = pattern.matcher(inp.name)
         if(!matcher.find()) 
             assert false : "Pattern $fromPattern did not match input path $inp, but this should not be possible!"
         
@@ -414,10 +414,10 @@ class TransformOperation {
         }
 
         if(fromPattern.startsWith('.') && !toPattern.startsWith('.')) {
-            return inp.newName(inp.path.substring(0, matcher.start()) + replacement)
+            return inp.newName(inp.name.substring(0, matcher.start()) + replacement)
         }
         else {
-            return inp.newName(FastUtils.dotJoin(inp.path.substring(0, matcher.start()), replacement))
+            return inp.newName(FastUtils.dotJoin(inp.name.substring(0, matcher.start()), replacement))
         }
     }
     
