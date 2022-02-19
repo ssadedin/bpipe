@@ -100,6 +100,8 @@ dependencies {
 
     compile ('com.hazelcast:hazelcast-all:2.1.2') { transitive = false }
     
+    compile group: 'com.squareup.okhttp3', name: 'okhttp', version: '4.9.3'
+    
     cloudJar group: 'com.google.cloud', name: 'google-cloud-nio', version: '0.62.0-alpha'
     cloudJar group: 'com.amazonaws', name: 'aws-java-sdk-ec2', version: '1.12.25'
     cloudJar group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.12.25'

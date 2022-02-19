@@ -2,13 +2,22 @@
 
 ## Introduction
 
-Constantly checking a long running pipeline can be frustrating, especially if it fails and you are unaware that it needs attention.  To help with this, Bpipe can send notifications about pipeline events via email or XMPP (instant messaging).
+Constantly checking a long running pipeline can be frustrating, especially if it
+fails and you are unaware that it needs attention.  To help with this, Bpipe can
+send notifications about pipeline events via email or XMPP (instant messaging).
 
 ## Configuration
 
-To use notifications you need to create a Bpipe configuration file called `bpipe.config` in the local directory where the pipeline is running.  In this file, you can specify various ways to receive notifications, and set filters on which notifications you are to receive.    All notifications are configured in a "notifications" block, and each entry therein configures a separate notification.  You can configure as many as you want, as long as each one has a different name.
+To use notifications you need to create a Bpipe configuration file called
+`bpipe.config` in the local directory where the pipeline is running.  In this
+file, you can specify various ways to receive notifications, and set filters on
+which notifications you are to receive.    All notifications are configured in a
+"notifications" block, and each entry therein configures a separate
+notification.  You can configure as many as you want, as long as each one has a
+different name.
 
-*Note*: you can place 'global' configuration for notifications in a file in your home directory called ".bpipeconfig".  These will be shared by all Bpipe pipelines in any directory, but any local configuration will override global configurations.
+*Note*: you can place 'global' configuration for notifications in a file in your home directory called ".bpipeconfig".  These will 
+be shared by all Bpipe pipelines in any directory, but any local configuration will override global configurations.
 
 ### Using Google Services
 
@@ -38,12 +47,15 @@ notifications {
 }
 ```
 
-**Important Note 1** - to use Gmail notifications or SMTP notifications, you must download the [JavaMail](http://www.oracle.com/technetwork/java/javamail-138606.html) package from the Oracle web site and place the `mail.jar` library in the "local-lib" folder inside the Bpipe installation.
 
+**Important Note ** - GMail limits how many emails can be sent per day through its SMTP interface to prevent abuse.  If your pipeline tries to send more than 500 emails or so then you may find your account becomes blocked for a period of time.  Be careful about configuring notifications at a fine grained level (for commands or stages) in highly parallelized pipelines as you may easily cause Bpipe to try to send a hundred more emails in a short period of time which may be flagged as abuse.
 
-**Important Note 2** - GMail limits how many emails can be sent per day through its SMTP interface to prevent abuse.  If your pipeline tries to send more than 500 emails or so then you may find your account becomes blocked for a period of time.  Be careful about configuring notifications at a fine grained level (for commands or stages) in highly parallelized pipelines as you may easily cause Bpipe to try to send a hundred more emails in a short period of time which may be flagged as abuse.
-
-**Security Note** - remember that you are putting real passwords in plain text into these files.   For this reason it is strongly suggested not to use your own, real, accounts for sending these messages unless you are extremely confident in the security of your files. Rather, it is better to create some custom accounts dedicated to your pipelines and have your messages sent by these.
+**Security Note** - remember that you are putting real passwords in plain text
+into these files.   For this reason it is strongly suggested not to use your
+own, real, accounts for sending these messages unless you are extremely
+confident in the security of your files. Rather, it is better to create some
+custom accounts dedicated to your pipelines and have your messages sent by
+these. 
 
 ### Using Generic SMTP
 
@@ -201,7 +213,6 @@ When you send custom notifications, you may wish to configure the corresponding
 notification channel not to receive any ordinary events. This can be done
 by setting the events to be received to be empty:
 
-
 ```
   gmail {
     to="recipient@any.email.com"
@@ -214,6 +225,26 @@ by setting the events to be received to be empty:
 Notifications sent explicitly using the [send](Language/Send) command will still
 be sent. This just disables events from Bpipe itself.
 
+
+## Slack
+
+Bpipe can send messages to slack to notify you about pipeline events.
+
+To configure Slack as a destination for messages, add a `slack` entry in the notifications block:
+
+```groovy
+notifications {                                                         
+    slack {                                                             
+        channel='#bpipe-events'                                           
+        token='xoxb-your token' 
+        events="FINISHED"                                                       
+    }                                                                   
+}                                                                       
+```
+
+Note that you must acquire a token to use from your slack workspace. This would typically be done
+by creating an App for your workspace and then inviting the App to the channel where you want
+messages to appear. You can then find the token in the Slack application settings for the workspace.
 
 ## Error handling
 
