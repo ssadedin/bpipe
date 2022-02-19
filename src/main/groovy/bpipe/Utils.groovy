@@ -1359,7 +1359,6 @@ class Utils {
         
         return cfg.collectEntries { 
             String keyLowered = it.key.toLowerCase()
-            log.info "Sanitize $it"
             [
                 it.key, 
                 secretKeySubstrings.any { keyLowered.contains(it) } ? '******' : it.value
