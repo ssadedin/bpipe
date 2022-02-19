@@ -23,7 +23,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package bpipe
+package bpipe.notification
 
 import java.util.regex.Pattern
 
@@ -36,6 +36,11 @@ import groovy.text.Template
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import org.gitlab4j.api.models.*
+
+import bpipe.FatalMessagingError
+import bpipe.NotificationChannel
+import bpipe.PipelineError
+import bpipe.PipelineEvent
 
 @CompileStatic
 class GitlabFileReference {

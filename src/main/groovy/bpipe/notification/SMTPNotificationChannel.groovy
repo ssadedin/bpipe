@@ -22,7 +22,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
  * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package bpipe
+package bpipe.notification
 
 import groovy.text.SimpleTemplateEngine
 import groovy.text.Template
@@ -39,6 +39,9 @@ import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage
 import javax.mail.internet.MimeMultipart
+
+import bpipe.NotificationChannel
+import bpipe.PipelineEvent
 
 /**
  * Sends notifications using SMTP server

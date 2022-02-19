@@ -1,8 +1,9 @@
-package bpipe
+package bpipe.notification
 
 import org.apache.activemq.ActiveMQConnection
 import org.apache.activemq.ActiveMQConnectionFactory
 
+import bpipe.*
 
 import groovy.util.logging.Log
 import groovy.json.JsonOutput

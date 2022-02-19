@@ -1,9 +1,12 @@
-package bpipe
+package bpipe.notification
 
 import groovy.util.logging.Log
+
 import groovy.json.JsonGenerator
 import groovy.json.JsonOutput
 import groovy.text.Template
+
+import bpipe.*
 
 /**
  * Notification provider that makes REST-style API POSTs

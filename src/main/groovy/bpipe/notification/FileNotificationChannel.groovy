@@ -1,10 +1,12 @@
-package bpipe
+package bpipe.notification
 
 import groovy.json.JsonGenerator
 import groovy.json.JsonOutput
 import groovy.text.Template
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
+
+import bpipe.*
 
 /**
  * A dummy notification channel that just saves files in a "notifications" folder

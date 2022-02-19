@@ -1,9 +1,9 @@
 package bpipe.agent
 
-import bpipe.ActivemqNotificationChannel
 import bpipe.PipelineError
 import bpipe.cmd.BpipeCommand
 import bpipe.cmd.RunPipelineCommand
+import bpipe.notification.ActivemqNotificationChannel
 import bpipe.worx.JMSWorxConnection
 import bpipe.worx.WorxConnection
 import groovy.json.JsonOutput

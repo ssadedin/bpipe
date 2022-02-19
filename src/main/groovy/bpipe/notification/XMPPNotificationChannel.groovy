@@ -22,7 +22,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
  * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package bpipe
+package bpipe.notification
 
 import groovy.text.Template;
 import groovy.util.logging.Log;
@@ -34,6 +34,9 @@ import org.jivesoftware.smack.ConnectionConfiguration;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.packet.Presence;
+
+import bpipe.NotificationChannel
+import bpipe.PipelineEvent
 
 /**
  * Sends notifications by using XMPP 

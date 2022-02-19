@@ -348,7 +348,7 @@ class NotificationManager {
        // For example, "xmpp" =>  bpipe.XMPPNotificationChannel, etc.
        String upperFirst = clazz[0].toUpperCase() + clazz.substring(1)
        Exception ex
-       for(String fullClazz in [clazz, "bpipe."+clazz.toUpperCase()+"NotificationChannel", "bpipe." + clazz, "bpipe."+upperFirst+"NotificationChannel"]) {
+       for(String fullClazz in [clazz, "bpipe.notification."+clazz.toUpperCase()+"NotificationChannel", "bpipe.notification." + clazz, "bpipe.notification."+upperFirst+"NotificationChannel"]) {
            try {
                log.info "Trying class name $fullClazz for notification channel $clazz"
                Class<Map> [] args = [ Map.class ] as Class[]
