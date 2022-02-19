@@ -100,8 +100,11 @@ class SlackNotificationChannel implements NotificationChannel {
         }
         
         if(request == null) {
+            
+            model.subject = subject
 
-            text = template.make(model).toString()
+            if(!text)
+                text = template.make(model).toString()
             
             RequestBody body = RequestBody.create(
                 MediaType.parse("application/json"), Utils.safeJson(channel: channel, text: text));
@@ -123,6 +126,6 @@ class SlackNotificationChannel implements NotificationChannel {
 
     @Override
     public String getDefaultTemplate(String contentType) {
-        "file.template.txt"
+        "slack.template.txt"
     }
 }

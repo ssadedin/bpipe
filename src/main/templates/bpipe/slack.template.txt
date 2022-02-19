@@ -1,0 +1,1 @@
+<%if(pipeline.failed) { %> :x: <% } else { %> :white_check_mark: <% } %> *${description}*: ${full_path} <%if(checks && checks.any { !it.passed }) {%> :warning: *Checks failed:* ${checks.grep { !it.passed }.collect { it.name?:it.stage }.unique().join(', ')} <%}%>

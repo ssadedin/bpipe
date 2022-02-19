@@ -273,13 +273,18 @@ class NotificationManager {
         def engine = new SimpleTemplateEngine()
         detail += [
             date      : (new Date()),
-            full_path : (new File(".").absolutePath),
+            full_path : (new File(".").absoluteFile.canonicalPath),
             event : evt,
             description: desc,
             'send.contentType' : contentType,
-            pipeline : Pipeline.rootPipeline
+            pipeline : Pipeline.rootPipeline,
+            checks: null
         ]
         
+        if(evt == PipelineEvent.FINISHED) {
+            detail.checks = bpipe.Check.loadAll(); 
+        }
+
         def template
         if(templateFile != null) {
             log.info "Generating template from file $templateFile.absolutePath"
