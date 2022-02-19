@@ -39,6 +39,7 @@ import groovy.util.logging.Log
  * @author simon.sadedin@mcri.edu.au
  */
 @Log
+@CompileStatic
 class Forwarder extends TimerTask {
     
     /**

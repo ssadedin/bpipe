@@ -72,6 +72,7 @@ class TorqueStatusMonitor extends TimerTask {
         bpipe.Poller.getInstance().executor.scheduleAtFixedRate(this, 1000, pollIntervalMs, TimeUnit.MILLISECONDS)
     }
     
+    @CompileStatic
     int waitFor(Command command, String jobId) {
         TorqueJobState state = new TorqueJobState(jobId: jobId, state: CommandStatus.UNKNOWN)
         while(true) {
