@@ -26,6 +26,8 @@ package bpipe
 
 import java.util.logging.Level
 
+import bpipe.notification.FileNotificationChannel
+import bpipe.notification.HTTPNotificationChannel
 import bpipe.storage.LocalPipelineFile
 import bpipe.storage.UnknownStoragePipelineFile
 import groovy.json.JsonOutput
