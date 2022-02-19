@@ -341,12 +341,13 @@ class NotificationManager {
      * @param channelCfg
      * @return    {@link NotificationChannel} instance ready to send notifications
      */
+   @CompileStatic
    NotificationChannel createChannel(Map channelCfg) {
        String clazz = channelCfg.type
        
        // Try and be a little bit more flexible with how things are specified
        if(channelCfg.interval && channelCfg.interval instanceof String)
-           channelCfg.interval = Integer.parseInt(channelCfg.interval)
+           channelCfg.interval = Integer.parseInt(channelCfg.interval.toString())
        
        // We try a few different permutations to allow a natural an easy specification
        // of the class name rather than making the user use the fully qualified one.
@@ -358,7 +359,7 @@ class NotificationManager {
                log.info "Trying class name $fullClazz for notification channel $clazz"
                Class<Map> [] args = [ Map.class ] as Class[]
                Constructor c = Class.forName(fullClazz).getConstructor(args)
-               NotificationChannel nc = c.newInstance( [ channelCfg ] as Object[] )
+               NotificationChannel nc = (NotificationChannel)c.newInstance( [ channelCfg ] as Object[] )
                log.info "Successfully created notification channel using class $fullClazz"
                return nc
            }
