@@ -184,12 +184,12 @@ class NotificationManager {
 	 * Send the given notification, subject to constraints on sends that are configured for
 	 * the channel
 	 */
-	void sendNotification(Map cfg, PipelineEvent evt, String desc, Map detail) {
+	void sendNotification(Map<String,Object> cfg, PipelineEvent evt, String desc, Map detail) {
         
-        def sanitisedCfg = cfg.collectEntries { [it.key, (it.key.contains('password') || it.key.contains('token')) ? '******' : it.value] }
-        
+        def sanitisedCfg = Utils.sanitiseConfig(cfg)
+
         log.info "Sending to channel $sanitisedCfg"
-        
+
         Utils.waitWithTimeout(30000) { 
             cfg.containsKey('channel') 
         }.ok {

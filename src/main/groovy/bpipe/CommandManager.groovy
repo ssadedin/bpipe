@@ -119,7 +119,7 @@ class CommandManager {
         // later how much time the command waited in the queue)
         command.createTimeMs = System.currentTimeMillis()
 
-        log.info "Using config $cfg for command"
+        log.info "Using config " + Utils.sanitiseConfig(cfg) + " for command"
         
         OutputLog commandLog = new OutputLog(outputLog, command.id)
 

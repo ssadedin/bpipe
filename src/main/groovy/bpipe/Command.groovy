@@ -147,7 +147,7 @@ class Command implements Serializable {
             defaultConfig.env = Config.userConfig.env
         }
         
-        log.info "Default command properties: $defaultConfig"
+        log.info "Default command properties: " + Utils.sanitiseConfig(defaultConfig)
         
         Map rawCfg = defaultConfig
         

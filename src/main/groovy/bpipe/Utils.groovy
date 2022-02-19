@@ -1351,4 +1351,19 @@ class Utils {
            } as StackTraceElement[]
            return e
     }
+    
+    @CompileStatic 
+    public static Map sanitiseConfig(final Map<String,Object> cfg) {
+        
+        final List<String> secretKeySubstrings = ['password', 'token', 'secret']
+        
+        return cfg.collectEntries { 
+            String keyLowered = it.key.toLowerCase()
+            log.info "Sanitize $it"
+            [
+                it.key, 
+                secretKeySubstrings.any { keyLowered.contains(it) } ? '******' : it.value
+            ] 
+        }
+    }
 }
