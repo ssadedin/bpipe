@@ -249,3 +249,38 @@ The latter version will combine the URL paths from the bpipe.config
 and pipeline command together, which is useful to allow you to specify
 a base URL in the bpipe.config and separate paths in the pipeline for
 different services.
+
+**Send message to Slack**
+
+
+1. set up slack App and add to workspace
+2. create channel '#bpipe-notifications' and invite the slack app to it (eg: by issuing `/invite ...` in the channel
+3. get the token for the App under OAuth Permissions
+
+Add to bpipe.config:
+
+```
+notifications {
+    slack {
+        channel='#bpipe-notifications'
+        token='xoxb-your-token'
+        events=""
+    }
+}
+```
+
+Then in pipeline stage:
+
+```
+
+send text { "Hi *there* from bpipe " + (new Date()) } to 'slack'
+```
+
+**Send file to Slack**
+
+Same setup as for sending a message, but add the file in the `to` properties. The
+file can be an output from your pipeline.
+
+```groovy
+send text { 'See this file for information' } to channel: 'slack', file: output.txt
+```
