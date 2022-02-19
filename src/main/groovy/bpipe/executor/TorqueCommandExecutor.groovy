@@ -106,11 +106,12 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
      * Adds custom cleanup of torque created files and stop any threads forwarding output 
      */
     @Override
+    @CompileStatic
     public void stop() {
         super.stop();
         
-        // Wait here 
-        Thread.sleep(1000)
+        // this is a basic throttle to prevent slamming a server with too many requests at once
+        Thread.sleep((long)Config.userConfig.getOrDefault('torque.stopIntervalMs', 500L))
         
         cleanup()
     }
