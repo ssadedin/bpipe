@@ -140,7 +140,7 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
     @CompileStatic
     void setJobName(String jobName) {
         log.info("Setting job name for $commandId to $jobName")
-        ExecutedProcess result = Utils.executeCommand(["qalter","-N",jobName, this.commandId])
+        ExecutedProcess result = Utils.executeCommand((List<Object>)["qalter","-N",jobName, this.commandId])
         if(result.exitValue != 0) {
             log.warning("Unable to set job name to $jobName for $commandId. Command output: " + result.out)
         }

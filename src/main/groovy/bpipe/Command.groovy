@@ -155,7 +155,7 @@ class Command implements Serializable {
         if(cmdConfig && cmdConfig instanceof Map)  {
             // override properties in default config with those for the
             // specific command
-            rawCfg = defaultConfig + cmdConfig
+            rawCfg = defaultConfig + (Map<String,Object>)cmdConfig
         }
         
         // Make a new map
