@@ -1118,7 +1118,7 @@ class Utils {
     }
     
     /**
-     * Wait until action returns a non-null result, with a timeout
+     * Wait until action returns a non-null, non false result, with a timeout
      * returns an object with ok and timeout methods that accept closure
      * arguments for actions to take.
      * 
