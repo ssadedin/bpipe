@@ -24,9 +24,11 @@
 */
 package bpipe.executor
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import bpipe.Command;
 import bpipe.CommandStatus
+import bpipe.Config
 import bpipe.ExecutedProcess
 import bpipe.ForwardHost;
 import bpipe.Utils
@@ -129,10 +131,12 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
      * these to be considered as result files from jobs so return a mask
      * that screens them out.
      */
+    @CompileStatic
     List<String> getIgnorableOutputs() {
         return [ this.name + '.o.*$', this.name + '.e.*$' ]
     }
     
+    @CompileStatic
     void setJobName(String jobName) {
         log.info("Setting job name for $commandId to $jobName")
         ExecutedProcess result = Utils.executeCommand(["qalter","-N",jobName, this.commandId])
@@ -141,6 +145,7 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
         }
     }
 
+    @CompileStatic
     String toString() {
         "Torque Job [" + super.toString() + "]"
     }

@@ -24,6 +24,7 @@
  */
 package bpipe
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import bpipe.executor.CommandExecutor
 import bpipe.executor.CustomCommandExecutor
@@ -103,6 +104,7 @@ class CommandManager {
      *                  on the resulting command executor
      * @return the {@link CommandExecutor} that is executing the job.
      */
+    @CompileStatic
     Command start(String name, Command command, String configName, List<PipelineFile> inputs, Map resources, boolean deferred, OutputLog outputLog) {
         
         String cmd = command.command
@@ -175,6 +177,7 @@ class CommandManager {
      *          command object supplied) which has an executor 
      *          assigned
      */
+    @CompileStatic
     Command createExecutor(Command cmd, Map cfg, OutputLog outputLog) {
         
         cmd = ExecutorPool.requestExecutor(cmd, cfg, outputLog)

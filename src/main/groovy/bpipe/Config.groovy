@@ -98,7 +98,7 @@ class Config {
     /**
      * Configuration loaded from the local directory
      */
-    public static Map userConfig
+    public static Map<String,Object> userConfig
     
     /**
      * Return an element from the user config (bpipe.config) that is expected to be a List

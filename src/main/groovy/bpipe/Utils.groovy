@@ -1126,7 +1126,7 @@ class Utils {
      * @param action
      * @return
      */
-    static Map waitWithTimeout(long timeoutMs, Closure action) {
+    static Map<String,Closure> waitWithTimeout(long timeoutMs, Closure action) {
         return [
             ok: { okAction ->
                 long startMs = System.currentTimeMillis()
