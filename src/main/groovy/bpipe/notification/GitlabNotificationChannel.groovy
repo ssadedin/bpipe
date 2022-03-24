@@ -37,10 +37,7 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import org.gitlab4j.api.models.*
 
-import bpipe.FatalMessagingError
-import bpipe.NotificationChannel
-import bpipe.PipelineError
-import bpipe.PipelineEvent
+import bpipe.*
 
 @CompileStatic
 class GitlabFileReference {
