@@ -164,7 +164,7 @@ class SMTPNotificationChannel implements NotificationChannel {
 		message.setFrom(new InternetAddress(from));
 		recipients.split(",").collect { it.trim() }.each { message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(it)) }
         
-		message.setSubject(Utils.truncnl(subjectLine, 80));
+		message.setSubject(bpipe.Utils.truncnl(subjectLine, 80));
         
         if(attachment) {
             Multipart multipart = new MimeMultipart();
