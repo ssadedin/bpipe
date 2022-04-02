@@ -386,15 +386,6 @@ display_log() {
 }
 
 #----------------------------------------------------------
-# I am not happy about inheriting a dependency on Python,
-# but I haven't found a reasonable solution for resolving
-# symbolic link on OSX.
-#----------------------------------------------------------
-function python_readlink() {
-    python -c 'from __future__ import print_function;import os,sys; print(os.path.realpath(sys.argv[1]))' "$1"
-}
-
-#----------------------------------------------------------
 # Work out the real full file system path that Bpipe is 
 # installed in (resolving any symbolic links, etc), and set it 
 # in BPIPE_HOME and JVM_BPIPE_HOME
@@ -404,17 +395,11 @@ function set_bpipe_home() {
     # In case readlink is not there we fall back to basename on its
     # own (will break in case of symbolic link)
     # Note: the first test below is necessary for Cygwin
-    if uname | grep -iq cygwin || uname | grep -iq Linux; 
+    if readlink $0 > /dev/null && type readlink > /dev/null 2>&1 ; 
     then
-        if readlink $0 > /dev/null && type readlink > /dev/null 2>&1 ; 
-        then
-            BPIPE_HOME=$(dirname $(readlink -f $0))/..
-        else
-            BPIPE_HOME=`dirname $0`/..
-        fi
-    else # OSX : readlink doesn't work for us here, use Python
-       resolved_link=$(python_readlink "$0")
-       BPIPE_HOME=$(dirname "$resolved_link")/..
+        BPIPE_HOME=$(dirname $(readlink -f $0))/..
+    else
+        BPIPE_HOME=`dirname $0`/..
     fi
 
     # For Cygwin, we need windows compatible version of path for JVM to use
