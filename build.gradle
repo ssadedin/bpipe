@@ -107,7 +107,7 @@ dependencies {
     cloudJar group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.12.25'
     cloudJar group: 'com.upplication', name: 's3fs', version: '2.2.2'
         
-    testCompile group: 'junit', name: 'junit', version: '4.8.2'
+    testImplementation group: 'junit', name: 'junit', version: '4.8.2'
 }
 
 compileGroovy {
@@ -129,6 +129,8 @@ if(!new File("local-lib").listFiles().find { it.name =~ /gridgain.*.jar/ }) {
 }
 
 jar {
+
+    duplicatesStrategy 'include'
 
     def cloudJars = configurations.cloudJar*.name
     def coreJars = configurations.compile*.name
@@ -172,6 +174,8 @@ task cloudjar(type:ShadowJar) {
 
 task stage(dependsOn: [jar,cloudjar]) {
   doLast {
+
+      println "The staging directory is $STAGE"
   
       ant.mkdir(dir: STAGE)
       ant.mkdir(dir: "$STAGE/bin")
@@ -180,6 +184,8 @@ task stage(dependsOn: [jar,cloudjar]) {
       ant.copy(todir: "$STAGE/bin") {
         ant.fileset(dir: 'bin', includes: "**")
       }
+      println "The file to stage bpipe to is: " + (new File(STAGE+'/bin/bpipe')).absolutePath
+
       new File(STAGE+'/bin/bpipe').text =
               new File("bin/bpipe").text.replaceAll("VERSION=0.0.0","VERSION=$VERSION").replaceAll("BUILDDATE=0","BUILDDATE="+String.valueOf(System.currentTimeMillis()))
     
