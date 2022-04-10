@@ -33,7 +33,11 @@ class PipelineFile implements Serializable {
     
     StorageLayer storage
     
-    Branch sourceBranch
+	/**
+	 * Legacy : string
+	 * Current versions : Branch
+	 */
+    private def sourceBranch
     
     protected PipelineFile(String path) {
         assert path != null
@@ -59,7 +63,7 @@ class PipelineFile implements Serializable {
     
     
     PipelineFile newName(String newName) {
-        return new PipelineFile(newName, storage, sourceBranch)
+        return new PipelineFile(newName, storage, (Branch)sourceBranch)
     }
     
     boolean exists() {
@@ -77,11 +81,11 @@ class PipelineFile implements Serializable {
     }
     
     PipelineFile normalize() {
-        new PipelineFile(toPath().normalize().toString(), storage, sourceBranch)
+        new PipelineFile(toPath().normalize().toString(), storage, (Branch)sourceBranch)
     }
     
     PipelineFile div(String subDir) {
-        new PipelineFile(this.path + '/' + subDir, storage, sourceBranch)
+        new PipelineFile(this.path + '/' + subDir, storage, (Branch)sourceBranch)
     }
     
     boolean isDirectory() {
@@ -176,4 +180,25 @@ class PipelineFile implements Serializable {
         else
             return "{bpipe:$storage.name://${this.toString()}}"
     }
+	
+	private void readObject(ObjectInputStream aInputStream) throws ClassNotFoundException, IOException {
+		aInputStream.defaultReadObject()
+
+		if(this.@sourceBranch instanceof String) {
+			log.info "Converting legacy source branch to string form"
+			this.@sourceBranch = new Branch(name: (String)this.@sourceBranch)
+		}
+	}
+
+	
+	@CompileStatic
+	Branch getSourceBranch() {
+		return (Branch)this.@sourceBranch
+	}
+	
+	@CompileStatic
+	void setSourceBranch(def value) {
+		this.@sourceBranch = (Branch)value
+	}
+	
 }
