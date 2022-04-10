@@ -10,7 +10,7 @@ class AboutDetails {
     String title
 }
 
-class BpipeScriptBase extends Script {
+class BpipeScriptBase extends groovy.lang.Script {
     
     void requires(Map requirements) { }
     
@@ -114,5 +114,9 @@ class BpipeScriptBase extends Script {
     public Object run() { return null; }
 
     public Object run(List<String> files, Closure c) { }
+	
+	public String getThreads() { }
+
+	public String getMemory() { }
 
 }
