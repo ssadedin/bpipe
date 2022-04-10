@@ -39,10 +39,10 @@ class SingularityContainerWrapper implements CommandProcessor {
         command.shell = 
             [
                 "singularity",
-                "run",
+                "exec",
                 "-B", Runner.runDirectory,
                 "--pwd", bpipe.Runner.runDirectory,
-            ] + extraVolumes + [imagePath, 'bash', '-e']
+            ] + extraVolumes + [imagePath, '/bin/sh', '-e']
             
        log.info "Singularity command prefix: " + command.shell.join(' ')
     }

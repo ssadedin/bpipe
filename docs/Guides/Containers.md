@@ -78,6 +78,35 @@ container {
 }
 ```
 
+## Container Entry Points
+
+An important aspect of containers relates to how the command is actually run inside the container.
+The most common way to build containers is to have a container encapsulate a specific command, 
+such that `docker run <image>` effectively substitutes for running the same command locally.
+
+This approach, however, is difficult to incorporate into a pipeline without injecting container
+specific logic into the commands themselves, because Bpipe cannot know which part of the command
+you have specified should be replaced by the `docker run`.
+
+To make it easier to generalise pipelines, by default, Bpipe *does not* use the default
+entry point provided by containers, and instead, configures the runtime to execute
+the explicit command that you provide.
+
+A result of this is that if your container provides a complex or custom entrypoint that is necessary
+for commands to work, you may need to trigger this yourself. For example,
+if the target executable is not in the default path provided by the container environment,
+you might need to resolve the absolute path of the executable and supply that in your pipeline
+script.
+
+For docker containers, you can add two configuration parameters to your container if you 
+need to customise this:
+
+- entryPoint : a String specifying the entry point to use. use "default" to cause
+  bpipe to use the default entrypoint specified by the container
+- command : a String or list of strings specifying the shell command used to launch
+            commands within containers. By default, Bpipe launches commands by
+            passing them to `/bin/sh -e`.
+
 ### Image References
 
 The image property fo the configuration is passed directly to the container runtime. This means

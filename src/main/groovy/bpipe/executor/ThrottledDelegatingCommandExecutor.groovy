@@ -177,7 +177,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         log.info "Container type for command $cmd.id is $containerType"
         if(containerType) {
             if(containerType == "docker") {
-                log.info "Configuring command with singularity shell wrapper for command $cmd.id"
+                log.info "Configuring command with docker shell wrapper for command $cmd.id"
                 processors << new DockerContainerWrapper()
             }
             else
