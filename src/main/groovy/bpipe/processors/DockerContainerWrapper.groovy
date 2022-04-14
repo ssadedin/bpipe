@@ -33,7 +33,7 @@ class DockerContainerWrapper implements CommandProcessor {
 			entryPointArg = []
 		}
 		else {
-			 entryPointArg = entryPoint ? ["--entrypoint", entryPoint] : ["--entrypoint", "/bin/env"]
+			 entryPointArg = entryPoint ? ["--entrypoint", entryPoint] : ["--entrypoint", "/usr/bin/env"]
 		}
 
         command.shell = 
