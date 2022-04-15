@@ -40,3 +40,5 @@ site
 tests/*/notifications
 .bpipe.tmp-*
 .bpipe.*.run.pid
+/eclipse-build/
+gradle-lib
