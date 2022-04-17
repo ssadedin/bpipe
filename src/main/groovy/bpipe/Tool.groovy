@@ -495,8 +495,9 @@ local({r <- getOption("repos")
        options(repos=r)
 })
 
-source("https://bioconductor.org/biocLite.R")
-biocLite("$name", suppressUpdates=TRUE, ask=FALSE)
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("$name")
 !
 """
         if(exitCode != 0) {
