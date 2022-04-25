@@ -28,6 +28,7 @@ package bpipe
 import java.io.BufferedReader;
 
 import bpipe.executor.CommandExecutor
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log;;
 
 /**
@@ -71,7 +72,7 @@ class Tail {
             System.exit(0)
         }
         
-        Utils.configureSimpleLogging(".bpipe/bpipe.log")
+        Utils.configureSimpleLogging(".bpipe/bpipe.tail." + System.currentTimeMillis() + ".log")
         if(opts.v)
             Utils.configureVerboseLogging()
         
@@ -250,12 +251,13 @@ class Tail {
         println ""
     }
     
-    static void showTail(File logFile, int lines, String threadId, def opts) {
+    @CompileStatic
+    static void showTail(File logFile, int lines, String threadId, OptionAccessor opts) {
         
-        if(opts.x) {
+        if(opts['x']) {
             println ""
             println "MSG: vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"
-            println "MSG:     NOTE: Pipeline completed as process $opts.x.  Trailing lines follow."
+            println "MSG:     NOTE: Pipeline completed as process ${opts['x']}  Trailing lines follow."
             println "MSG:     Use bpipe log -n <lines> to see more lines"
             println "MSG: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
             println ""
@@ -264,7 +266,7 @@ class Tail {
         int countSkip = 0
         BufferedReader r 
         try {
-          int backwardsBytes = lines*250
+          long backwardsBytes = lines*250
           List buffer = []
           boolean first = true
           while(buffer.size()<lines) {
@@ -276,7 +278,7 @@ class Tail {
             
             r = new BufferedReader(new FileReader(logFile))
             
-            int skipLength = logFile.length() - backwardsBytes
+            long skipLength = logFile.length() - backwardsBytes
             if(skipLength>0) {
               r.skip(skipLength)
             }
@@ -318,7 +320,7 @@ class Tail {
           
           buffer.each { println(it) }
           
-          if(!opts.f)
+          if(!opts['f'])
               System.exit(0)
           
           while(true) {
