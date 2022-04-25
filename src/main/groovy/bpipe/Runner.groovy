@@ -533,6 +533,9 @@ class Runner {
         if(opts['a']) {
             new ArchiveCommand(["-d", (String)opts['a']]).run(System.out)
         }
+        
+        if(Pipeline.rootPipeline.failed)
+            exit(1)
    }
    
     static void configureRunCli(CliBuilder cli) {
