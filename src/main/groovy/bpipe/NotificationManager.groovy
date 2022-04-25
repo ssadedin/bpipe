@@ -203,7 +203,7 @@ class NotificationManager {
         
         NotificationChannel channel = cfg.channel
 		
-		long intervalMs = cfg.interval?:0
+		long intervalMs = cfg.getOrDefault('interval',0)
 		
 		String category = cfg.type + "." + evt.name()
 		long lastNotificationTimeMs = sendTimestamps[category]?:0
