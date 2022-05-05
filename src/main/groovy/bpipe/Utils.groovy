@@ -1101,8 +1101,7 @@ class Utils {
         }
         
         out.println indent + header
-        out.println indent + ("-" * header.size())
-        
+        out.println indent + headers.collect { hd -> '-' * columnWidths[hd] }.join("-|-")
         rows.each { row ->
             int i=0
             headers.each { hd -> 
