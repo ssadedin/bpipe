@@ -83,9 +83,9 @@ abstract class Agent extends TimerTask {
     String outputMode = 'both'
     
     Agent(ConfigObject cfg) {
-        if(cfg.containsKey('allow'))
-            allowed = cfg.allow
-        this.outputMode = cfg.getOrDefault('outputMode', 'both')
+        if(cfg?.containsKey('allow'))
+            allowed = cfg?.allow
+        this.outputMode = cfg?.getOrDefault('outputMode', null)?:'both'
     }
     
     abstract WorxConnection createConnection() 
