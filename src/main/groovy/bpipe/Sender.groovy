@@ -154,6 +154,8 @@ class Sender {
               return outFile.text
         }
         
+        log.info "Sending report $reportName based on outFile $outFile"
+        
         return this    
     }
     
@@ -196,8 +198,10 @@ class Sender {
         }
        
         // Don't send anything if the pipeline stage was just being probed
-        if(ctx.probeMode)
+        if(ctx.probeMode) {
+            log.info "Send in stage $ctx.stageName executed in probe mode"
             return
+        }
             
         this.details = extraDetails.collectEntries { it }
         
