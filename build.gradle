@@ -1,6 +1,5 @@
-
 plugins {
-  id 'com.github.johnrengelman.shadow' version '4.0.2'
+  id 'com.github.johnrengelman.shadow' version '7.1.2'
 }
 
 apply plugin: 'eclipse'
@@ -25,10 +24,12 @@ sourceSets {
     }
 }
 
+/*
 configurations {
     compile
     cloudJar
 }
+*/
 
 
 repositories {
@@ -49,70 +50,72 @@ dependencies {
     if(GROOVY_VERSION.startsWith('2.4')) {
         
         // Grab the groovy-all jar which contains everything
-        compile group: 'org.codehaus.groovy', name: 'groovy-all', version: '2.4.8'
+        implementation group: 'org.codehaus.groovy', name: 'groovy-all', version: '2.4.8'
         
         // Override with json from 2.5.6 because we want new features from the json
         // module to allow json customisation
-        compile files(fileTree(dir:'groovy-lib', includes:['groovy-json-2.5.6.jar']))
-//        compile group: 'org.codehaus.groovy', name: 'groovy-json', version: '2.5.6'
+        implementation files(fileTree(dir:'groovy-lib', includes:['groovy-json-2.5.13.jar']))
     }
     else {
-        compile files(fileTree(dir:'groovy-lib', includes:['*.jar']))
+        implementation group: 'org.codehaus.groovy', name: 'groovy-all', version: GROOVY_VERSION
+        implementation group: 'org.codehaus.groovy', name: 'groovy-dateutil', version: GROOVY_VERSION
+        implementation group: 'org.codehaus.groovy', name: 'groovy-datetime', version: GROOVY_VERSION
+        implementation group: 'org.codehaus.groovy', name: 'groovy-json', version: GROOVY_VERSION
+        implementation group: 'org.codehaus.groovy', name: 'groovy-sql', version: GROOVY_VERSION
     }
 
-    compile files(fileTree(dir:'local-lib', includes:['*.jar']))
+    implementation files(fileTree(dir:'local-lib', includes:['*.jar']))
 
-    compile 'org.codehaus.gpars:gpars:1.2.1'
+    implementation 'org.codehaus.gpars:gpars:1.2.1'
 
     // ivy allows Grape to be used inside Bpipe pipelines
-    compile group: 'org.apache.ivy', name: 'ivy', version: '2.4.0'
-
+    implementation group: 'org.apache.ivy', name: 'ivy', version: '2.4.0'
 
     // In case GridGain ever revive their Maven repo ...
-    // compile ('org.gridgain:gridgain:4.0.2c') { transitive = false }
+    // implementation ('org.gridgain:gridgain:4.0.2c') { transitive = false }
 
-    compile ('javax.mail:mail:1.4.5')
+    implementation ('javax.mail:mail:1.4.5')
 
     // Batik
-    compile 'org.apache.xmlgraphics:batik-util:1.7@jar'
-    compile 'org.apache.xmlgraphics:batik-css:1.7@jar'
-    compile 'org.apache.xmlgraphics:batik-dom:1.7'
-    compile 'org.apache.xmlgraphics:batik-svg-dom:1.7@jar'
-    compile 'org.apache.xmlgraphics:batik-svggen:1.7@jar'
-    compile 'org.apache.xmlgraphics:batik-awt-util:1.7@jar'
-    compile group: 'org.fusesource.jansi', name: 'jansi', version: '1.16'
+    implementation 'org.apache.xmlgraphics:batik-util:1.7@jar'
+    implementation 'org.apache.xmlgraphics:batik-css:1.7@jar'
+    implementation 'org.apache.xmlgraphics:batik-dom:1.7'
+    implementation 'org.apache.xmlgraphics:batik-svg-dom:1.7@jar'
+    implementation 'org.apache.xmlgraphics:batik-svggen:1.7@jar'
+    implementation 'org.apache.xmlgraphics:batik-awt-util:1.7@jar'
+    implementation group: 'org.fusesource.jansi', name: 'jansi', version: '1.16'
 
 
-    compile group: 'org.apache.activemq', name: 'activemq-client', version: '5.14.5'
+    implementation group: 'org.apache.activemq', name: 'activemq-client', version: '5.14.5'
 
-    compile group: 'org.glassfish.jersey.core', name: 'jersey-client', version: '2.25.1'
-    compile group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.25.1'
+    implementation group: 'org.glassfish.jersey.core', name: 'jersey-client', version: '2.25.1'
+    implementation group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.25.1'
 
-    compile group: 'com.fasterxml.jackson.jaxrs', name: 'jackson-jaxrs-json-provider', version: '2.9.1'
-    compile group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.0' // needed for gitlab4j
-    compile(group: 'org.gitlab4j', name: 'gitlab4j-api', version: '4.14.30') { transitive = false } 
+    implementation group: 'com.fasterxml.jackson.jaxrs', name: 'jackson-jaxrs-json-provider', version: '2.9.1'
+    implementation group: 'javax.ws.rs', name: 'javax.ws.rs-api', version: '2.0' // needed for gitlab4j
+    implementation(group: 'org.gitlab4j', name: 'gitlab4j-api', version: '4.14.30') { transitive = false } 
 
-    compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.0'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.0'
 
-    compile group: 'org.json', name: 'json', version: '20180813'
+    implementation group: 'org.json', name: 'json', version: '20180813'
     
-    compile group: 'jline', name: 'jline', version: '2.14.6'
+    implementation group: 'jline', name: 'jline', version: '2.14.6'
 
-    compile ('com.hazelcast:hazelcast-all:2.1.2') { transitive = false }
+    implementation ('com.hazelcast:hazelcast-all:2.1.2') { transitive = false }
     
-    compile group: 'com.squareup.okhttp3', name: 'okhttp', version: '4.9.3'
+    implementation group: 'com.squareup.okhttp3', name: 'okhttp', version: '4.9.3'
     
-    cloudJar group: 'com.google.cloud', name: 'google-cloud-nio', version: '0.62.0-alpha'
-    cloudJar group: 'com.amazonaws', name: 'aws-java-sdk-ec2', version: '1.12.25'
-    cloudJar group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.12.25'
-    cloudJar group: 'com.upplication', name: 's3fs', version: '2.2.2'
+    implementation group: 'com.google.cloud', name: 'google-cloud-nio', version: '0.62.0-alpha'
+    implementation group: 'com.amazonaws', name: 'aws-java-sdk-ec2', version: '1.12.25'
+    implementation group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.12.25'
+    implementation group: 'com.upplication', name: 's3fs', version: '2.2.2'
         
-    testImplementation group: 'junit', name: 'junit', version: '4.8.2'
+//    testImplementation group: 'junit', name: 'junit', version: '4.8.2'
 }
 
-compileGroovy {
-    classpath = (configurations.compile + configurations.cloudJar)
-}
+//compileGroovy {
+//    classpath = (configurations.compile + configurations.cloudJar)
+//}
 
 // Check for presence of GridGain library - if not available, exclude the
 // source files that depend on it
@@ -128,16 +131,64 @@ if(!new File("local-lib").listFiles().find { it.name =~ /gridgain.*.jar/ }) {
     } } }
 }
 
+import com.github.jengelman.gradle.plugins.shadow.transformers.*
+@groovy.transform.CompileStatic
+@CacheableTransformer
+class FixedGroovyExtensionModuleTransformer extends GroovyExtensionModuleTransformer {
+
+	private static final String GROOVY_EXTENSION_MODULE_DESCRIPTOR_PATH =
+			"META-INF/groovy/org.codehaus.groovy.runtime.ExtensionModule"
+
+	private final Properties module = new Properties()
+
+	@Override
+	boolean canTransformResource(FileTreeElement element) {
+		return element.relativePath.pathString == GROOVY_EXTENSION_MODULE_DESCRIPTOR_PATH
+	}
+
+	private handle(String key, String value, Closure mergeValue) {
+		def existingValue = module.getProperty(key)
+		if (existingValue) {
+			mergeValue(existingValue)
+		} else {
+			module.setProperty(key, value)
+		}
+	}
+
+	@Override
+	boolean hasTransformedResource() {
+		return module.size() > 0
+	}
+
+	@Override
+	void modifyOutputStream(shadow.org.apache.tools.zip.ZipOutputStream os, boolean preserveFileTimestamps) {
+		shadow.org.apache.tools.zip.ZipEntry entry = new shadow.org.apache.tools.zip.ZipEntry(GROOVY_EXTENSION_MODULE_DESCRIPTOR_PATH)
+		entry.time = TransformerContext.getEntryTimestamp(preserveFileTimestamps, entry.time)
+		os.putNextEntry(entry)
+		module.store(os, null)
+		os.closeEntry()
+	}
+}
+
+shadowJar {
+	transform(FixedGroovyExtensionModuleTransformer)
+//	minimize {
+//		dependency('org.codehaus.groovy:.*:.*')
+//	}
+}
+
+/*
 jar {
 
     duplicatesStrategy 'include'
+	
 
     def cloudJars = configurations.cloudJar*.name
     def coreJars = configurations.compile*.name
     def cloudOnly = cloudJars - coreJars
     
-    // println "The cloud exclusive jars are: " + cloudOnly.join(',') + "\n"
-
+    println "The cloud exclusive jars are: \n\n" + configurations.cloudJar.grep { (it.name in cloudOnly) }.join('\n') + "\n"
+	
     from configurations.compile.grep {
         !(it.name in cloudOnly) &&
         !(it.name in ["mail.jar"]) && 
@@ -147,6 +198,7 @@ jar {
         !it.name.startsWith("xml-apis") &&
         !it.name.startsWith("slf4j-jdk14")
     }.collect {
+//		println it
         // println "main: " + it.name
         it.isDirectory() ? it : zipTree(it)
     }
@@ -157,22 +209,43 @@ jar {
 //        details.relativePath.pathString.startsWith('jersey') // ||
 //        details.relativePath.pathString.startsWith('org/slf4j')
     }
+	
+//	mergeGroovyExtensionModules()
 }
+*/
+
+import java.nio.file.Files
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-task cloudjar(type:ShadowJar) {
+//task cloudjar(type:ShadowJar) {
+//
+//    archiveName='bpipe-cloud.jar'
+//    
+//    classifier='all'
+//	
+//    from configurations.cloudJar.each {
+//		println it
+//	}
+//	
+//    
+//    configurations = [project.configurations.cloudJar]
+//    
+//    mergeServiceFiles()
+//}
 
-    archiveName='bpipe-cloud.jar'
+task bpipeJar(type: Jar) {
     
-    classifier='all'
-    
-    configurations = [project.configurations.cloudJar]
-    
-    mergeServiceFiles()
+    from 'build/classes/groovy/main'
+
+    archiveFileName='bpipe-only.jar'
+
+    duplicatesStrategy 'include'
 }
 
-task stage(dependsOn: [jar,cloudjar]) {
+task stage(dependsOn: [bpipeJar, shadowJar /*,cloudjar*/]) {
   doLast {
 
       println "The staging directory is $STAGE"
@@ -193,7 +266,8 @@ task stage(dependsOn: [jar,cloudjar]) {
         // do not distribute mail.jar due to license
         ant.fileset(dir: 'local-lib', includes: "*.jar",
             excludes: "slf4j-*,mail.jar,gridgain-*.jar,hazelcast-*.jar,batik*.jar,commons-cli*.jar,jgraphx.jar,xml-*.jar,gpars*.jar,jsr*.jar,extra166y*.jar,groovy-all-*.jar,google-*.jar")
-        ant.fileset(dir: 'build/libs', includes: "bpipe.jar,bpipe-cloud.jar")
+//        ant.fileset(dir: 'build/libs', includes: "bpipe.jar,bpipe-cloud.jar")
+        ant.fileset(dir: 'build/libs', includes: "bpipe-all.jar")
       }
       
       ant.copy(todir: "$STAGE/lib/slf4j") {
@@ -217,6 +291,8 @@ task stage(dependsOn: [jar,cloudjar]) {
       }
   }
 }
+
+
 
 task dist(dependsOn: stage)  {
   doLast {

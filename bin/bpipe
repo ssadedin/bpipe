@@ -281,19 +281,22 @@ get_classpath() {
     LIB="local-lib"
   fi
   
-  BPIPE_JAR="$BPIPE_HOME/lib/bpipe.jar"
-  if [ -e "$BPIPE_HOME/build/libs/bpipe.jar" ];
+  BPIPE_JAR="$BPIPE_HOME/lib/bpipe-all.jar"
+  if [ -e "$BPIPE_HOME/build/libs/bpipe-all.jar" ];
+  then
+        BPIPE_JAR="$BPIPE_HOME/eclipse-build:$BPIPE_HOME/build/libs/bpipe-all.jar"
+  elif [ -e "$BPIPE_HOME/build/libs/bpipe.jar" ];
   then
         BPIPE_JAR="$BPIPE_HOME/eclipse-build:$BPIPE_HOME/build/libs/bpipe.jar"
   fi
 
-  CP="$BPIPE_HOME"/$LIB/*:$HOME/bpipes/extra-lib.jar:"$BPIPE_HOME"/lib/bpipe-cloud.jar:
+  CP="$BPIPE_HOME"/$LIB/*:$HOME/bpipes/extra-lib.jar:
 
   # In case we are running in place in the bpipe project root, we pre-empt any other 
   # bpipe classes with those from the build directory and the eclipse compile path
   if [ -e $BPIPE_HOME/build/classes/main ] || [ -e $BPIPE_HOME/eclipse-build ];
   then
-    CP="$BPIPE_HOME/eclipse-build:$BPIPE_HOME/build/classes/main:$CP:$BPIPE_HOME/build/libs/bpipe.jar:"$BPIPE_HOME"/build/libs/bpipe-cloud.jar"
+    CP="$BPIPE_HOME/eclipse-build:$BPIPE_HOME/build/classes/main:$CP:$BPIPE_HOME/build/libs/bpipe-all.jar"
   fi
 
   # Support for Cygwin: convert the class path to windows format 
@@ -697,7 +700,7 @@ LAUNCH_CMD='
              -Dbpipe.version='$VERSION' \
              -Dbpipe.builddate='$BUILDDATE' \
                  org.codehaus.groovy.tools.GroovyStarter \
-                    --classpath "'"$BPIPE_JAR:$BPIPE_HOME/build/libs/bpipe-cloud.jar:$BPIPE_HOME/lib/bpipe-cloud.jar:$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*"'" \
+                    --classpath "'"$BPIPE_JAR:$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*"'" \
                     --main bpipe.Runner9 '$TESTMODE' '$BPIPE_ARGS' '$LOG_CAPTURE' 
 '
 
