@@ -123,15 +123,22 @@ class Utils {
         
         List<Path> inputPaths = toPaths(inputs)
         
+        // Some pipeline stages don't expect any outputs
+        // Fixing issue 44 - https://code.google.com/p/bpipe/issues/detail?id=44
+        if( !outputsToCheck) {
+            log.info "Returning up to date because no outputs to check"
+            return []
+        }
+        
         // Remove any directories appearing as inputs - their timestamps change whenever
         // any file in the dir changes        
         inputPaths = inputPaths.grep { Path p -> !Files.isDirectory(p) }
-        
-        // Some pipeline stages don't expect any outputs
-        // Fixing issue 44 - https://code.google.com/p/bpipe/issues/detail?id=44
-        if( !outputsToCheck || !inputPaths )
-            return []
 
+        if(!inputPaths) {
+            // If there are no inputs then the outputs are up to date just because they exist
+            return toPaths(outputsToCheck.grep { PipelineFile o ->  !o.exists() })
+        }
+       
         TreeMap inputFileTimestamps = new TreeMap()
         for(Path inputPath in inputPaths) {
             // NOTE: it doesn't actually matter if two have the same 
@@ -145,8 +152,8 @@ class Utils {
                 inputFileTimestamps[0L] = inputPath 
         }
         
-        final long maxInputTimestamp = (long)(inputFileTimestamps.lastKey()?:0L)
-        final long minInputTimestamp = (long)(inputFileTimestamps.firstKey()?:0L)
+        final long maxInputTimestamp = inputFileTimestamps ? (long)(inputFileTimestamps.lastKey()?:0L) : 0L
+        final long minInputTimestamp = inputFileTimestamps ? (long)(inputFileTimestamps.firstKey()?:0L) : 0L
         
         final boolean logTimestamps = inputPaths.size()*outputsToCheck.size() < 5000 // 5k lines in the log from 1 loop is too much
 
