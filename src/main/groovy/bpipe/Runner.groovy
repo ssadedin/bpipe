@@ -534,7 +534,7 @@ class Runner {
             new ArchiveCommand(["-d", (String)opts['a']]).run(System.out)
         }
         
-        if(Pipeline.rootPipeline.failed)
+        if(Pipeline.rootPipeline?.failed)
             exit(1)
    }
    
