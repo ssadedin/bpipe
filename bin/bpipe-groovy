@@ -35,11 +35,6 @@ then
     shift
 fi
 
-for i in "$@";
-do
-    echo "arg: [$i]" ; 
-done
-
 #set -f
 
 $JAVA $JAVA_OPTS -noverify -cp $CPFLAG groovy.ui.GroovyMain "$@"
