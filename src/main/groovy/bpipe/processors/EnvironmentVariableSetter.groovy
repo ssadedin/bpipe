@@ -16,7 +16,7 @@ class EnvironmentVariableSetter implements CommandProcessor {
             return
         }
 
-        if(configEnv instanceof ConfigObject) {
+        if(configEnv instanceof Map) {
             command.command = 
                 configEnv.collect { "export $it.key='$it.value'" }.join('; ')  +
                 '; ' +

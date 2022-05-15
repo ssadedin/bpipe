@@ -144,7 +144,9 @@ class Command implements Serializable {
         
         // allow nested config for env
         if(Config.userConfig.containsKey('env')) {
-            defaultConfig.env = Config.userConfig.env
+            ConfigObject envCfg = (ConfigObject)Config.userConfig.env
+            // Have to convert to plain Map because ConfigObject is not Serializeable
+            defaultConfig.env = envCfg.collectEntries { [it.key, it.value] } 
         }
         
         log.info "Default command properties: " + Utils.sanitiseConfig(defaultConfig)
