@@ -1021,8 +1021,8 @@ public class Pipeline implements ResourceRequestor {
                             start(new Date(cmd.startTimeMs).format(DATE_FORMAT))
                             end(new Date(cmd.stopTimeMs).format(DATE_FORMAT))
                             resources {
-                                procs cmd.processedConfig.procs
-                                memory cmd.processedConfig.memory
+                                procs cmd.rawProcessedConfig?.procs
+                                memory cmd.rawProcessedConfig?.memory
                             }
                             exitCode(cmd.exitCode)
                         }

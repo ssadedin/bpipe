@@ -216,6 +216,14 @@ class Command implements Serializable {
         return this.cfg
     }
     
+    /**
+     * @return the processed config which may be null if it was not initialised yet
+     */
+    @CompileStatic
+    Map getRawProcessedConfig() {
+        return this.cfg
+    }
+     
     Map setRawProcessedConfig(Map config) {
         this.cfg = config
     }
