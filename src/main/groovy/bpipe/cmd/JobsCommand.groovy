@@ -37,12 +37,45 @@ import bpipe.ExecutorFactory
 import bpipe.ExecutorPool
 import bpipe.PooledExecutor
 import bpipe.Utils
+import groovy.time.TimeCategory
+import groovy.time.TimeDuration
 import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;
+import groovyx.gpars.GParsPool
 
 import static org.fusesource.jansi.Ansi.*
 import static org.fusesource.jansi.Ansi.Color.*
 import org.fusesource.jansi.AnsiConsole
+
+/**
+ * Information about a Bpipe Job
+ * 
+ * @author simon.sadedin
+ */
+class JobInfo {
+
+    String jobDate
+    
+    String pid
+    
+    File jobDir
+    
+    Date startTime
+    
+    Date finishTime
+    
+    String commandName
+    
+    String runningState 
+    
+    TimeDuration getTimeSpan() {
+        return finishTime && startTime ?  TimeCategory.minus(finishTime, startTime) : null
+    }
+    
+    List toList() {
+        return [ jobDate, pid, jobDir, getTimeSpan(), commandName, runningState ]
+    }
+}
 
 /**
  * Prints out a list of running Bpipe pipelines
@@ -89,15 +122,16 @@ class JobsCommand extends BpipeCommand {
         
         // There's no need to query completed jobs repeatedly, so we 
         // just do that at the start
-        List<List> completedJobs = getJobs(completedDir,maxAgeMs, false)
+        
+        List<JobInfo> completedJobs = getJobs(completedDir,maxAgeMs, false)
         
         while(true) {
             
-            List<List> jobRows = getJobs(jobsDir, Long.MAX_VALUE)
+            List<JobInfo> jobRows = getJobs(jobsDir, Long.MAX_VALUE)
             
             jobRows.addAll(completedJobs)
             
-            jobRows.sort { row -> -row[3][0].time }
+            jobRows.sort { row -> -row.startTime.time }
             
             if(opts.watch) {
                 print(ansi().eraseScreen().cursor(0, 0))
@@ -115,10 +149,9 @@ class JobsCommand extends BpipeCommand {
                     println "\nNo currently running jobs\n"
             }
             else {
-                Utils.table(["Date", "PID", "Directory", "Run Time", "Stage","State"], jobRows, format: [
-                    "Run Time": "timespan"
-                ], render: [
-                    "State": { val, width -> 
+                Utils.table(["Date", "PID", "Directory", "Run Time", "Stage","State"], jobRows*.toList(), 
+                render: [
+                    "State": { String val, width -> 
                         if(val.trim() == "Running")  { 
                             print(ansi().fg(GREEN).toString());
                             print(val.padRight(width)); 
@@ -139,52 +172,65 @@ class JobsCommand extends BpipeCommand {
         
         AnsiConsole.systemUninstall()
     }
-    
-    public List<List> getJobs(File jobsDir, long maxAgeMs, boolean checkRunning=true) {
+
+    public List<JobInfo> getJobs(File jobsDir, long maxAgeMs, boolean checkRunning=true) {
         
         File homeDir = new File(System.properties["user.home"])
         File bpipeDbDir = new File(homeDir, ".bpipedb")
         File completedDir = new File(bpipeDbDir, "completed") 
         Date now = new Date()
-        
-       jobsDir.listFiles().collect { jobFile ->
-           
-            if(!jobFile.canonicalFile.exists()) {
-                jobFile.delete()
-                return null
-            } 
-            
-            List<String> lines = jobFile.text.readLines()
-            List<String> jobInfo = lines[0].tokenize(":")*.trim()
-            
-            File jobDir = jobFile.canonicalFile.parentFile.parentFile.parentFile
-            
-            String pid = jobFile.name
-            
-            if(now.time - maxAgeMs < jobFile.lastModified()) {
-                
-                boolean isRunning = checkRunning && Utils.isProcessRunning(pid)
-                Command cmd = isRunning ? getLastCommand(jobDir) : null
-                
-                
-                long finishTimeMs = isRunning ? now.time : new File(jobDir,".bpipe/results/${pid}.xml")?.lastModified() 
+       
+        GParsPool.withPool(4) { 
+            return jobsDir.listFiles().collectParallel { File jobFile ->
                
-                return [
-                    new Date(jobFile.lastModified()).format('YYYY-MM-dd'),
-                    pid, 
-                    jobDir,
-                    finishTimeMs > 0 ? [new Date(jobFile.lastModified()), new Date(finishTimeMs)] : null,
-                    cmd ? cmd.name : "",
-                    isRunning ? "Running" : "Finished"
-                ]
-                
-                if(checkRunning && !isRunning) {
-                    // Remove the symbolic link
-                    jobFile.renameTo(new File(completedDir,jobFile.name))
+                if(!jobFile.exists()) {
+                    jobFile.delete()
                     return null
+                } 
+                
+                if(now.time - maxAgeMs < jobFile.lastModified()) {
+
+                    JobInfo jobInfo = readJobInfo(now, jobFile, checkRunning)
+        
+                    if(checkRunning && jobInfo.runningState != "Running") {
+                        // Remove the symbolic link
+                        jobFile.renameTo(new File(completedDir,jobFile.name))
+                        return null
+                    }        
+                    return jobInfo
                 }
-            }
-        }.grep { it != null && it[3] != null } 
+            }.grep { it != null && it.timeSpan != null } 
+            
+        }
+    }
+    
+    /**
+     * 
+     * @param jobFile
+     * @return
+     */
+    JobInfo readJobInfo(Date now, final File jobFile, boolean checkRunning) {
+
+        String pid = jobFile.name
+
+        boolean isRunning = checkRunning && Utils.isProcessRunning(pid)
+        
+        File jobDir = jobFile.canonicalFile.parentFile.parentFile.parentFile
+
+        Command cmd = isRunning ? getLastCommand(jobDir) : null
+        
+        
+        long finishTimeMs = isRunning ? now.time : new File(jobDir,".bpipe/results/${pid}.xml")?.lastModified() 
+       
+        return new JobInfo(
+            jobDate: new Date(jobFile.lastModified()).format('YYYY-MM-dd'),
+            pid: pid, 
+            jobDir: jobDir,
+            startTime: new Date(jobFile.lastModified()),
+            finishTime: finishTimeMs ? new Date(finishTimeMs) : null,
+            commandName: cmd?.name,
+            runningState:  isRunning ? "Running" : "Finished"
+        )
     }
     
     Command getLastCommand(File jobDir) {

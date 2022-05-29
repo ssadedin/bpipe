@@ -27,7 +27,7 @@ package bpipe
 import groovy.json.JsonGenerator
 import groovy.json.JsonOutput
 import groovy.time.TimeCategory;
-
+import groovy.time.TimeDuration
 import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;
 import groovy.xml.XmlUtil;
@@ -1060,7 +1060,13 @@ class Utils {
         Map formatters = options.get('format',[:])
         headers.each { h ->
             if(!formatters[h])
-                formatters[h] = { String.valueOf(it) }
+                formatters[h] = { 
+                    if(it instanceof TimeDuration) {
+                        return it.toString().replaceAll(TRIM_SECONDS, '').replaceAll(TRIM_ZEROS,' seconds')                       
+                    }
+                    else
+                        return it == null ? "" : String.valueOf(it) 
+                }
             else 
             if(formatters[h] instanceof Closure) {
                 // just let it be - it will be called and expected to return the value
