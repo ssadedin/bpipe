@@ -239,7 +239,13 @@ class Command implements Serializable {
             if(statusEnum != this.status) {
                 
                 if((statusEnum == CommandStatus.RUNNING) ||
-                   ((this.status == CommandStatus.WAITING || this.status == CommandStatus.QUEUEING) && (statusEnum==CommandStatus.COMPLETE))) {
+                   ((this.status == null || status == CommandStatus.WAITING || this.status == CommandStatus.QUEUEING) && (statusEnum==CommandStatus.COMPLETE || statusEnum==CommandStatus.EXITING))) {
+                    this.startTimeMs = System.currentTimeMillis()
+                }
+                else
+                // If we did not set start time but the command is transitioning to an exit state, set it now
+                // I think this happens when the command executes so quickly that there is no poll of any state before it runs and finishes
+                if((this.status == CommandStatus.UNKNOWN && this.startTimeMs) < 0 && (statusEnum==CommandStatus.COMPLETE || statusEnum==CommandStatus.EXITING)) {
                     this.startTimeMs = System.currentTimeMillis()
                 }
             }

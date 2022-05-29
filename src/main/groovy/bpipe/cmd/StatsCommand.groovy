@@ -95,9 +95,16 @@ class StatsCommand extends BpipeCommand {
             (dom.endDateTime.text()?toDate(dom.endDateTime).time:nowMs) - toDate(dom.startDateTime).time 
         }.sum()
         
+        String successMessage = "Succeeded"
+        if(doms.any { it.endDateTime.size() == 0 }) {
+            successMessage = "Running"
+        }
+
+        String overallStatus = (doms.every { it.succeeded.text() == "true"} ? successMessage : "Failed")
+        
         String runTime = formatTimeSpan(totalTimeMs)
         out.println ""
-        out.println(" " + (" Pipeline " + (doms.every { it.succeeded.text() == "true"} ? "Succeeded" : "Failed")).center(Config.config.columns-2,"="))
+        out.println(" " + " Pipeline $overallStatus ".center(Config.config.columns-2,"="))
         out.println(("| Started: " + doms[0].startDateTime.text()).padRight(Config.config.columns-1) + "|")
         out.println(("| Ended: " + doms[-1].endDateTime.text()).padRight(Config.config.columns-1) + "|")
         out.println(("| Run Time: " + runTime).padRight(Config.config.columns-1) + "|")
@@ -114,14 +121,17 @@ class StatsCommand extends BpipeCommand {
                 cmd.exitCode.text() == "0"
             }
             
-            List<Long> times = succeeded.collect { cmd ->  
+            List<Long> times = succeeded.grep { cmd ->
+                // Bug where start times not initialised can have caused historical entries to have this
+                !cmd.start.text().startsWith('1970')
+            }.collect { cmd ->  
                 long startTimeMs = toDate(cmd.start).time 
                 startTimeMs == 0 ? 0 : toDate(cmd.end).time - startTimeMs
             }
             
             double mean = times.isEmpty() ? 0 : times.sum() / times.size()
             
-            [
+            return [
              stage, 
              cmds.size(), 
              formatTimeSpan(times.min()?.toLong()),
