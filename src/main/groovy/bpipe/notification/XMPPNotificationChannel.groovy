@@ -35,8 +35,7 @@ import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.packet.Presence;
 
-import bpipe.NotificationChannel
-import bpipe.PipelineEvent
+import bpipe.*
 
 /**
  * Sends notifications by using XMPP 
