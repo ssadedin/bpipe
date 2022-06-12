@@ -231,7 +231,7 @@ class Tail {
             println "Stopped ".padRight(leftWidth) + " : " + stopTime?:'Unknown'
             println "Exit Code ".padRight(leftWidth) + " : " + cmd.exitCode
             println "Config: " 
-            Utils.table(["Name","Value"], cmd.processedConfig.collect { k,v -> [k,v] }, indent:leftWidth)
+            Utils.table(["Name","Value"], Utils.sanitiseConfig(cmd.processedConfig).collect { k,v -> [k,v] }, indent:leftWidth)
             
             println "\nOutput ".padRight(leftWidth) + " : "
             println ""
