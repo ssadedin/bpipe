@@ -35,6 +35,11 @@ BUILDDATE=0
 # Pattern used to parse log files when tailing
 TAIL_PATTERN='s/\[[*.0-9a-zA-Z_-]*\(\.\{0,1\}[0-9]*\)\{1,\}\]'$'\t//g' 
 
+if [ "$1" == "--debug" ];
+then
+  BPIPEDEBUG="-Xdebug -Xrunjdwp:transport=dt_socket,address=8010,server=y,suspend=y"
+  shift
+fi
 
 #----------------------------------------------------------
 # Print a timing message (for debug)
