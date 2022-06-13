@@ -14,6 +14,7 @@ import bpipe.Config
 import bpipe.Pipeline
 import bpipe.PipelineContext;
 import bpipe.ResourceUnit;
+import bpipe.Utils
 import bpipe.processors.DockerContainerWrapper
 import bpipe.processors.EnvironmentVariableSetter
 import bpipe.processors.MemoryLimitReplacer
@@ -142,7 +143,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         if(commandExecutor instanceof LocalCommandExecutor)
             throw new bpipe.PipelineTestAbort(msg)
         else {
-            throw new bpipe.PipelineTestAbort("$msg\n\n                using $commandExecutor with config $cfg")
+            throw new bpipe.PipelineTestAbort("$msg\n\n                using $commandExecutor with config " + Utils.sanitiseConfig(cfg))
         }
     }
 
