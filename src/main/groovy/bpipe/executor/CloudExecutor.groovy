@@ -28,6 +28,7 @@ import java.util.List
 import java.util.Map
 import java.util.concurrent.Semaphore
 import bpipe.Command
+import bpipe.CommandDependency
 import bpipe.CommandStatus
 import bpipe.ExecutedProcess
 import bpipe.PipelineFile
@@ -106,8 +107,15 @@ abstract class CloudExecutor implements PersistentExecutor {
         this.project = cfg.getOrDefault('project',null)
         
         if(this.instanceId == null) {
-            log.info "Cloud executor is not connected to running instance: acquiring instance"
-            this.acquireInstance(cfg, image, cmd.id)
+            if(cfg.containsKey('instanceId')) {
+                this.instanceId = cfg.instanceId
+                log.info "Connecting to existing cloud instance $instanceId for command $cmd.id"
+                this.connectInstance(cfg)
+            }
+            else {
+                log.info "Cloud executor is not connected to running instance via $cfg: acquiring instance"
+                this.acquireInstance(cfg, image, cmd.id)
+            }
         }
         else 
             this.acquiring = false
@@ -120,6 +128,12 @@ abstract class CloudExecutor implements PersistentExecutor {
         this.waitForSSHAccess()
        
         this.mountStorage(cfg)
+        
+        // Provision dependencies
+        for(CommandDependency dep : cmd.dependencies) {
+            log.info("Executing dependency $dep for command $cmd.id")
+            dep.provision(this)
+        }
         
         this.transferFiles(cfg, cmd.inputs)
         
@@ -157,12 +171,14 @@ abstract class CloudExecutor implements PersistentExecutor {
 
     abstract void acquireInstance(Map config, String image, String id)
     
+    abstract void connectInstance(Map config)
+    
     /**
      * Implementation specific method to execute a raw command over SSH
      * <p>
      * The implementation <em>must</em> throw an exception if the SSH command fails.
      */
-    abstract ExecutedProcess ssh(String cmd, Closure builder=null)
+    abstract ExecutedProcess ssh(Map options=[:], String cmd, Closure builder=null)
 
     abstract void transferTo(List<PipelineFile> files)
 
@@ -216,6 +232,8 @@ abstract class CloudExecutor implements PersistentExecutor {
     
     @Override
     void cleanup() {
+        if(!command?.processedConfig)
+            return
         if(!command.processedConfig.getOrDefault('transfer', false))
             return
          if(transferredFrom)
@@ -227,7 +245,7 @@ abstract class CloudExecutor implements PersistentExecutor {
     }
     
     boolean canSSH() {
-        ssh('true')
+        ssh(timeout:5, 'true')
         
         return true // if we could not SSH, the command would have thrown
     }

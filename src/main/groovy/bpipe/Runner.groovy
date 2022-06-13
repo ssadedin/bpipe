@@ -67,6 +67,9 @@ class Runner {
     
     final static String canonicalRunDirectory = new File(runDirectory).canonicalPath
     
+    // Populated just prior to launch
+    static String scriptDirectory = null
+    
     final static BpipeParamsBinding binding = new BpipeParamsBinding()
     
     static List<Command> runningCommands = null
@@ -337,6 +340,8 @@ class Runner {
         // needs to come first
         Config.config.script = opt.arguments()[0]
         
+        scriptDirectory = new File((String)Config.config.script).canonicalFile.parentFile.path     
+
         Config.config.pguid = Utils.sha1(canonicalRunDirectory +'$'+Config.config.pid+'$'+Config.config.script) 
 
         log.info "=================== GUID=${Config.config.pguid} PID=$pid (${Config.config.pid}) =============="
@@ -796,7 +801,7 @@ class Runner {
     /**
      * Bpipe home, set as system property by Bpipe runner script prior to launching
      */
-    static String BPIPE_HOME = System.getProperty("bpipe.home")?.asType(File)?.absolutePath?:new File(".").absolutePath
+    static String BPIPE_HOME = System.getProperty("bpipe.home")?.asType(File)?.canonicalPath?:new File(".").canonicalPath
     
     /**
      * Perform essential cleanup when Bpipe process ends.

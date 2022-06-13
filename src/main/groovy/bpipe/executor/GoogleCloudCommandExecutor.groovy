@@ -188,7 +188,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
             
     }
 
-    ExecutedProcess ssh(String cmd, Closure builder=null) {
+    ExecutedProcess ssh(Map options, String cmd, Closure builder=null) {
         
         String sdkHome = getSDKHome()
         
@@ -396,5 +396,10 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
     @Override
     public void transferFrom(Map config, List<PipelineFile> fileList) {
         throw new UnsupportedOperationException()
+    }
+
+    @Override
+    public void connectInstance(Map config) {
+        assert false : 'GoogleCloudCommandExecutor does not support connection to running instances'
     }
 }

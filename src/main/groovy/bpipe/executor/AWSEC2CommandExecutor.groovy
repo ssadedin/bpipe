@@ -26,6 +26,7 @@ package bpipe.executor
 
 import bpipe.Command
 import bpipe.CommandStatus
+import bpipe.Config
 import bpipe.ExecutedProcess
 import bpipe.ForwardHost
 import bpipe.PipelineError
@@ -59,13 +60,15 @@ import groovy.transform.ToString
 
 import static com.amazonaws.services.ec2.model.ResourceType.Instance
 
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.concurrent.Semaphore
 import java.util.logging.Logger
 
 /**
  * An executor that runs commands by starting AWS EC2 images
  */
-@ToString(includeNames=true)
+@ToString(includeNames=true, excludes=['launchLock','runningCommand','remoteErrorPath','exitFile'])
 @Mixin(ForwardHost)
 class AWSEC2CommandExecutor extends CloudExecutor {
     
@@ -112,6 +115,11 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     transient List<Process> logsProcesses
     
     boolean autoShutdown = true
+    
+    /**
+     * Mounted storage associated with this executor or null if no storage associated
+     */
+    StorageLayer storage
     
     public AWSEC2CommandExecutor() {
         super()
@@ -236,55 +244,69 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         return null;
     }
     
+    @CompileStatic
     protected void createClient(Map config) {
         
-        if(!config.containsKey('accessKey')) { 
-            if(System.getenv('AWS_ACCESS_KEY_ID'))
-                config.accessKey = System.getenv('AWS_ACCESS_KEY_ID')
-            else
-                throw new Exception('AWSEC2 executor requires the accessKey configuration setting')
-        }
-            
-        if(!config.containsKey('accessSecret'))  {
-            if(System.getenv('AWS_SECRET_ACCESS_KEY'))
-                config.accessSecret = System.getenv('AWS_SECRET_ACCESS_KEY')
-            else
-                throw new Exception('AWSEC2 executor requires the accessSecret configuration setting')
-        }
-            
-        if(!config.containsKey('keypair')) 
-            throw new Exception('AWSEC2 executor requires the keypair configuration setting. Please set this to the path to the PEM file to allow SSH access to your instances')            
-            
-        if(!config.containsKey('user')) 
-            throw new Exception('AWSEC2 executor requires the user configuration setting. Please set this to the id of the user that should be used for SSH commands in your image')            
-            
-        if(!config.containsKey('region')) 
-            throw new Exception('AWSEC2 executor requires the region configuration setting. Please set this to the region in which you would like your instances to launch.')            
-              
+        validateConfig(config)
+             
         this.keypair = config.keypair
         this.user = config.user
              
         AWSCredentials credentials = new BasicAWSCredentials(
-            config.accessKey,
-            config.accessSecret
+            (String)config.accessKey,
+            (String)config.accessSecret
         );
         
         ec2 = AmazonEC2ClientBuilder
             .standard()
             .withCredentials(new AWSStaticCredentialsProvider(credentials))
-//            .withRegion(Regions.AP_SOUTHEAST_2)
-            .withRegion(Regions.fromName(config.region))
+            .withRegion(Regions.fromName((String)config.region))
             .build();        
         
           
         s3client = AmazonS3ClientBuilder
                 .standard()
                 .withCredentials(new AWSStaticCredentialsProvider(credentials))
-                .withRegion(Regions.AP_SOUTHEAST_2) // TODO: FIX
-                .withRegion(Regions.fromName(config.region))
+                .withRegion(Regions.fromName((String)config.region))
                 .build();
-        
     }
+
+    /**
+     * Check that the config contains all required keys and where optional sources of information
+     * are available (eg: environment variables) apply these to the config object.
+     * 
+     * @param config    config object to validate
+     */
+    private void validateConfig(Map config) {
+        if(!config.containsKey('accessKey')) {
+            if(Config.userConfig.containsKey('accessKey'))
+                config.accessKey = Config.userConfig.accessKey
+            else
+                if(System.getenv('AWS_ACCESS_KEY_ID'))
+                    config.accessKey = System.getenv('AWS_ACCESS_KEY_ID')
+                else
+                    throw new Exception('AWSEC2 executor requires the accessKey configuration setting')
+        }
+
+        if(!config.containsKey('accessSecret'))  {
+            if(Config.userConfig.containsKey('accessSecret'))
+                config.accessSecret = Config.userConfig.accessSecret
+            else
+                if(System.getenv('AWS_SECRET_ACCESS_KEY'))
+                    config.accessSecret = System.getenv('AWS_SECRET_ACCESS_KEY')
+                else
+                    throw new Exception('AWSEC2 executor requires the accessSecret configuration setting')
+        }
+
+        if(!config.containsKey('keypair'))
+            throw new Exception('AWSEC2 executor requires the keypair configuration setting. Please set this to the path to the PEM file to allow SSH access to your instances')
+
+        if(!config.containsKey('user'))
+            throw new Exception('AWSEC2 executor requires the user configuration setting. Please set this to the id of the user that should be used for SSH commands in your image')
+
+        if(!config.containsKey('region')) 
+            throw new Exception('AWSEC2 executor requires the region configuration setting. Please set this to the region in which you would like your instances to launch.')            
+     }
     
     @CompileStatic
     @Override
@@ -322,12 +344,25 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         log.info "Instance $instanceId started with host name $hostname"
     }
     
+    void connectInstance(Map config) {
+
+        this.autoShutdown = config.getOrDefault('autoShutdown', this.autoShutdown)
+        
+        createClient(config)
+
+        DescribeInstancesResult dir = describeInstance()
+        if(dir.reservations.isEmpty())
+            throw new PipelineError("Pre-specified EC2 instance $instanceId is not available / has no reservations in your EC2 account")
+
+        assert this.instanceId
+        this.hostname = queryHostName()
+        log.info "Resolved hostname $hostname for instance $instanceId"
+    }
+    
     @CompileStatic
     protected String queryHostName() {
         String hostname = Utils.withRetries(8) {
-            DescribeInstancesRequest request = new DescribeInstancesRequest();
-            request.withInstanceIds(instanceId);
-            DescribeInstancesResult result = ec2.describeInstances(request);
+            DescribeInstancesResult result = describeInstance();
             for(Reservation reservations : result.getReservations()) {
                 Instance instance = reservations.instances.find { it.instanceId == instanceId }
                 if(instance.publicDnsName) {
@@ -344,7 +379,14 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             
         return hostname
     }
-    
+
+    @CompileStatic
+    private DescribeInstancesResult describeInstance() {
+        DescribeInstancesRequest request = new DescribeInstancesRequest();
+        request.withInstanceIds(instanceId);
+        DescribeInstancesResult result = ec2.describeInstances(request)
+        return result
+    }
 
     @Override
     public void startCommand(Command command, Appendable outputLog, Appendable errorLog) {
@@ -436,11 +478,13 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     }
 
     @Override
-    public ExecutedProcess ssh(String cmd, Closure builder=null) {
+    public ExecutedProcess ssh(Map options, String cmd, Closure builder=null) {
         
         assert hostname != null && hostname != ""
         
-        List<String> sshCommand = ["ssh","-oStrictHostKeyChecking=no", "-i", keypair, user + '@' +hostname,cmd]*.toString()
+        List timeoutOption = options?.timeout ? ["-oConnectTimeout=10"] : []
+        
+        List<String> sshCommand = ["ssh","-oStrictHostKeyChecking=no", *timeoutOption, "-i", keypair, user + '@' +hostname,cmd]*.toString()
         
         return Utils.executeCommand(sshCommand, throwOnError: true)        
     }
@@ -453,7 +497,10 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         
         Map<String,List<PipelineFile>> dirGroups = fileList.groupBy { it.toPath().toFile().absoluteFile.parentFile.absolutePath }
         
-        List<String> outputDirs = (List<String>)command.outputs.groupBy { it.toPath().toFile().absoluteFile.parentFile.absolutePath  }*.key
+        List<String> outputDirs = (List<String>)command.outputs.groupBy {  PipelineFile output ->
+            Path outputPath = output.toPath()
+            outputPath.toAbsolutePath().parent.toString()
+        }*.key
         
         List<String> allDirs = (dirGroups*.key + outputDirs).unique()
         
@@ -462,7 +509,8 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         
         dirGroups.each { dir, dirFiles ->
             log.info "Transfer $dirFiles to $hostname ..."
-            List sshCommand = ["scp","-oStrictHostKeyChecking=no", "-i", keypair,*dirFiles*.toString(), user + '@' +hostname+':'+dir]*.toString()
+//            List sshCommand = ["scp","-oStrictHostKeyChecking=no", "-i", keypair,*dirFiles*.toString(), user + '@' +hostname+':'+dir]*.toString()
+            List sshCommand = ["rsync", "-r", "-e", "ssh -oStrictHostKeyChecking=no -i $keypair", *dirFiles*.toString(), user + '@' +hostname+':'+dir]*.toString()
             Utils.executeCommand((List<Object>)sshCommand, throwOnError: true)        
         }
     }
@@ -472,7 +520,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     public void transferFrom(Map config, List<PipelineFile> fileList) {
         assert hostname != null && hostname != ""
         
-        Map<String,List<PipelineFile>> dirGroups = fileList.groupBy { it.toPath().toFile().absoluteFile.parentFile.absolutePath }
+        Map<String,List<PipelineFile>> dirGroups = fileList.groupBy { it.toPath().toAbsolutePath().parent.toString() }
 
         dirGroups.each { dir, dirFiles ->
             log.info "Transfer $dirFiles from $hostname ..."
@@ -497,7 +545,13 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         
         log.info "Executing mount command for storage $storage: $mountCommand"
         
-        this.ssh(mountCommand)
-    }
+        ExecutedProcess p = this.ssh(mountCommand)
+        
+        log.info("Output from ssh mount command:  $p.out")
+        log.info("Error output from ssh mount command: $p.err")
 
+        // TODO: idea here is that certain things (eg: file transfer) need to behave differently depending
+        // if storage is mounted or not
+        this.storage = storage
+    }
 }

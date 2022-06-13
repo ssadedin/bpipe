@@ -1942,12 +1942,12 @@ class PipelineContext {
      * @see #async(Closure, String)
      */
     @CompileStatic
-    void exec(String cmd, boolean joinNewLines, String config=null) {
-        execImpl(cmd, joinNewLines, config)
+    void exec(String cmd, boolean joinNewLines, String config=null, List<CommandDependency> dependencies=null) {
+        execImpl(cmd, joinNewLines, config, dependencies)
     }
     
     @CompileStatic
-    Command execImpl(String cmd, boolean joinNewLines, String config=null) {
+    Command execImpl(String cmd, boolean joinNewLines, String config=null, List<CommandDependency> dependencies=null) {
         
       log.info "Tracking outputs referenced=[$referencedOutputs] inferred=[$inferredOutputs] for command $cmd" 
       
@@ -1958,7 +1958,7 @@ class PipelineContext {
       // Reset referenced outputs so they can be re-evaluated for next command independently of this one
       this.referencedOutputs = []
       
-      Command c = async(cmd, joinNewLines, config)
+      Command c = async(cmd, joinNewLines, config, false, dependencies)
       
       for(String o in commandReferencedOutputs)
           pathToCommandId[o] = c.id
@@ -2116,7 +2116,7 @@ class PipelineContext {
         
         String extraGroovyClasspath=""
         if(groovyExe==internalGroovy) {
-            extraGroovyClasspath = "export EXTRA_GROOVY_CLASSPATH=\"$libs:$Runner.BPIPE_HOME/libs/bpipe.jar:$Runner.BPIPE_HOME/build/libs/bpipe.jar\""
+            extraGroovyClasspath = "export EXTRA_GROOVY_CLASSPATH=\"$libs:$Runner.BPIPE_HOME/libs/bpipe-all.jar:$Runner.BPIPE_HOME/build/libs/bpipe-all.jar\""
         }
         
         String cmd = """
@@ -2132,12 +2132,7 @@ class PipelineContext {
         JAVA_OPTS='$javaOpts' $groovyExe $cp -e "\$GROOVY_CMD"
         """.stripIndent()
         
-        if(opts.config) {
-            exec(cmd, false, opts.config)    
-        }
-        else {
-            exec(cmd, false)    
-        }
+        exec(cmd, false, opts.config?:null, [new BpipeGroovyRunnerDependency()])
     } 
     
     /**
@@ -2321,7 +2316,7 @@ class PipelineContext {
      * @param deferred      If true, the command will not actually be started until
      *                      the waitFor() method is called
      */
-    Command async(String cmd, boolean joinNewLines=true, String configName = null, boolean deferred=false) {
+    Command async(String cmd, boolean joinNewLines=true, String configName = null, boolean deferred=false, List<CommandDependency> dependencies=null) {
         
       if(configName == null)
           configName = this.defaultConfig
@@ -2336,7 +2331,7 @@ class PipelineContext {
       // note - set the command here, so that it can be used to resolve
       // the right configuration. However we set it again below
       // after we have resolved the right thread / procs value
-      Command command = new Command(command:joined, configName:configName)
+      Command command = new Command(command:joined, configName:configName, dependencies: dependencies)
       
       this.inferUsedProcs(command)
 
@@ -3048,10 +3043,10 @@ class PipelineContext {
     void forwardImpl(List values) {
         
        StorageLayer storage = this.@input.find { !(it instanceof UnknownStoragePipelineFile) }?.storage
-        
+       
        // Note: filtering out null because some of the tests do fowrard(null) - 
        // but not sure if that should actually be valid?
-       this.nextInputs = values.flatten().grep { it != null }.collect { inp ->
+       this.nextInputs = values.flatten().unique().grep { it != null }.collect { inp ->
            
            // TODO - CLOUD - what would forwarding an output do?
            if(inp instanceof MultiPipelineInput) {
@@ -3093,10 +3088,6 @@ class PipelineContext {
                return inp.resolvedValue
            }
            else
-           if((inp instanceof CharSequence) && (storage != null)) {
-               return new PipelineFile(inp.toString(),storage)
-           }
-           else
            if(inp instanceof PipelineFile) {
                return inp
            }
@@ -3108,7 +3099,13 @@ class PipelineContext {
            if((inp instanceof File) && ((File)inp).exists()) {
                return new LocalPipelineFile(inp.path)
            }
-           else
+           else 
+           if((inp instanceof CharSequence) && (storage != null)) {
+               List resolvedValues = StorageLayer.resolve([inp])       
+               
+               println "Resolve storage value $inp as ${resolvedValues[0]}"
+               return resolvedValues[0]
+           }
            if((inp instanceof Path) && Files.exists((Path)inp)) {
                return new LocalPipelineFile(((Path)inp).toFile().path)
            }

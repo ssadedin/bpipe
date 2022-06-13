@@ -117,6 +117,8 @@ class Command implements Serializable {
     List<String> shell 
     
     File dir
+    
+    transient List<CommandDependency> dependencies
 
     @CompileStatic
     Map getConfig(List<PipelineFile> inputs) {
