@@ -97,10 +97,8 @@ abstract class StorageLayer implements Serializable {
                 "The value ${name} (${name?.class?.name})was supplied as storage, but could not be found in your configuration.\n\n" + 
                 "Please add a filesystems entry to your bpipe.config file with an entry for ${name}")
             
-        String storageType = storageConfig.getOrDefault('type', null)
-        if(!storageType)
-            throw new bpipe.PipelineError("The filesystem configuration for $name does not specify the type of storage. Please specify a type configuration element for this filesystem")
-            
+        String storageType = storageConfig.getOrDefault('type', name)
+           
         storageType = storageType[0].toUpperCase() + storageType[1..-1]
         String className = "bpipe.storage." + storageType + "StorageLayer"
         
@@ -108,6 +106,11 @@ abstract class StorageLayer implements Serializable {
         StorageLayer result = (StorageLayer)Class.forName(className).newInstance()
         result.name = name 
         
+        for(key in ['accessKey','accessSecret','region']) {
+            if(result.hasProperty(key) && Config.userConfig.containsKey(key))
+                result[key] = Config.userConfig[key]
+        }
+
         for(kvp in storageConfig) {
             if(result.hasProperty(kvp.key))
                 result[kvp.key] = storageConfig[kvp.key]
@@ -127,7 +130,7 @@ abstract class StorageLayer implements Serializable {
     }
     
     /**
-     * For each raw input path, resolve it to the first configured storage where the
+     * For each raw path, resolve it to the first configured storage where the
      * path exists. If no configured storage has the value, returnes an UnknownStoragePipelineFile
      * instance for that path.
      * <p>
@@ -139,23 +142,29 @@ abstract class StorageLayer implements Serializable {
      * @return  a list of {@link PipelineFile} objects, one for each raw input
      */
     @CompileStatic
-    static List<PipelineFile> resolve(List rawInputs) {
+    static List<PipelineFile> resolve(List paths) {
         
-        if(rawInputs.every { it instanceof PipelineFile }) 
-            return rawInputs
+        if(paths.every { it instanceof PipelineFile }) 
+            return paths
         
-        List<String> storageNames = (((Map<String,Object>)Config.userConfig.getOrDefault('filesystems',[:]))*.key + ['local'])
-        List storages = storageNames.collect { String storageType -> StorageLayer.create(storageType) }
-        return rawInputs.collect { filePathOrString ->
+        final List storages = storageNames.collect { String storageType -> StorageLayer.create(storageType) }
+
+        return paths.collect { filePathOrString ->
             if(filePathOrString instanceof PipelineFile)
                 return (PipelineFile)filePathOrString
                 
             String filePath = (String)filePathOrString
                 
             StorageLayer layerWithFile = storages.find {  s ->
-                boolean result =  s.exists(filePath) 
-                log.info "Check $filePath in storage $s: $result"
-                return result
+                try {
+                    boolean result =  s.exists(filePath) 
+                    log.info "Check $filePath in storage $s: $result"
+                    return result
+                }
+                catch(Exception e) {
+                    log.info "Storage system $s returned error resolving $filePath ($e)"
+                    return false
+                }
             }
             if(layerWithFile) {
                 log.info "Input $filePath resolved to storage type $layerWithFile"
@@ -166,5 +175,8 @@ abstract class StorageLayer implements Serializable {
         }
     }
 
-    
+    @Memoized
+    static List<String> getStorageNames() {
+        return (['local'] + ((Map<String,Object>)Config.userConfig.getOrDefault('filesystems',[:]))*.key)
+    }
 }
