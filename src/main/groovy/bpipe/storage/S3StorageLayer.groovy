@@ -93,7 +93,7 @@ class S3StorageLayer extends StorageLayer {
         """
             mkdir -p ~/.aws
 
-            mkdir work
+            mkdir -p work
 
             echo '
             [default]
@@ -103,7 +103,7 @@ class S3StorageLayer extends StorageLayer {
 
            mkdir $workDirectory
 
-            s3fs $bucket $workDirectory
+           (findmnt --source s3fs --target work > /dev/null) || s3fs $bucket $workDirectory
         """
     }
 }
