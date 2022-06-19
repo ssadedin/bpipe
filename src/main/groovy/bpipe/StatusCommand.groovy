@@ -126,9 +126,10 @@ class StatusCommand extends BpipeCommand {
         Date now = new Date()
         
         commands.eachWithIndex { cmd, i -> 
+            String commandStatus = cmd.status?.name() ?: "UNKNOWN"
             out.println Utils.indent("${i+1}.".padRight(6) + "$cmd.name (Command $cmd.id)")
             out.println Utils.indent("      " + cmd.executor.statusMessage())
-            out.println Utils.indent("      " + cmd.status.name() + " for " + TimeCategory.minus(now,new Date(cmd.createTimeMs)))
+            out.println Utils.indent("      " + commandStatus + " for " + TimeCategory.minus(now,new Date(cmd.createTimeMs)))
             out.println ""
         }
     }
