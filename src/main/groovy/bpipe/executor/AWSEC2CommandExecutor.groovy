@@ -476,6 +476,12 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     String getExitFile() {
        ".bpipe/aws/${commandId}.exit"
     }
+    
+    @Override
+    public ExecutedProcess ssh(String cmd, Closure builder=null) {
+        ssh([:], cmd, builder)
+    }
+ 
 
     @Override
     public ExecutedProcess ssh(Map options, String cmd, Closure builder=null) {
