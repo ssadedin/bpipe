@@ -159,9 +159,18 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         if(command.@cfg.beforeRun != null) {
             ((Closure)command.@cfg.beforeRun)(cmd.@cfg)
         }
+        
+        createOutputDirectories(cmd)
 
         command.allocated = true
         command.createTimeMs = System.currentTimeMillis()
+    }
+    
+    private createOutputDirectories(Command cmd) {
+        List<Path> dirs = cmd.outputs.collect { it.toPath().parent }
+        for(Path dir in dirs) {
+            Files.createDirectories(dir)
+        }
     }
 
     private runProcessors(Command cmd) {

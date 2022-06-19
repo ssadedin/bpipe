@@ -77,8 +77,10 @@ class OutputDirectoryWatcher extends Thread {
     
     OutputDirectoryWatcher(Path directory) {
         this.directory = directory
-        if(!Files.exists(directory))
-            directory.toFile().mkdirs()
+        if(!Files.exists(directory)) {
+            Files.createDirectories(directory)
+//            directory.toFile().mkdirs()
+        }
             
         if(!Config.userConfig.getOrDefault('usePollerFileWatcher', false)) {
             this.watcher = FileSystems.getDefault().newWatchService();
@@ -200,7 +202,7 @@ class OutputDirectoryWatcher extends Thread {
         
         try {
             if(!Files.exists(this.directory) && mkdir)
-                this.directory.toFile().mkdirs()
+                Files.createDirectories(directory)
 
             this.watchKey =
                     this.directory.register(watcher, [ENTRY_CREATE, ENTRY_MODIFY] as WatchEvent.Kind[],  com.sun.nio.file.SensitivityWatchEventModifier.HIGH)
