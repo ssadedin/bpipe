@@ -1949,6 +1949,9 @@ class PipelineContext {
     @CompileStatic
     Command execImpl(String cmd, boolean joinNewLines, String config=null, List<CommandDependency> dependencies=null) {
         
+     if(cmd.trim().isEmpty())
+         throw new PipelineError("Command provided in stage $stageName was empty")
+        
       log.info "Tracking outputs referenced=[$referencedOutputs] inferred=[$inferredOutputs] for command $cmd" 
       
       this.referencedOutputs += inferredOutputs
