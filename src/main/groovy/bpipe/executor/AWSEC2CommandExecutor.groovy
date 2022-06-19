@@ -430,9 +430,9 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             cd $commandWorkDir || { echo "Unable to change to expected working directory: $workingDirectory > /dev/stderr"; exit 1; }
 
             nohup bash  <<'BPIPEEOF' > \$HOMEDIR/${remoteOutputPath} 2> \$HOMEDIR/${remoteErrorPath} &
-
-            $command.command
-
+        """.stripIndent() +
+            command.command.stripIndent() +
+        """
             echo \$? > \$HOMEDIR/${exitFile}
 
             BPIPEEOF
