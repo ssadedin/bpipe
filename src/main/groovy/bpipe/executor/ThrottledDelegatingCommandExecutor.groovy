@@ -14,6 +14,7 @@ import bpipe.Config
 import bpipe.Pipeline
 import bpipe.PipelineContext;
 import bpipe.ResourceUnit;
+import bpipe.Runner
 import bpipe.Utils
 import bpipe.processors.DockerContainerWrapper
 import bpipe.processors.EnvironmentVariableSetter
@@ -24,6 +25,7 @@ import bpipe.processors.ThreadAllocationReplacer
 import bpipe.storage.StorageLayer
 import bpipe.RescheduleResult
 import bpipe.PipelineError
+import bpipe.PipelinePausedException
 import bpipe.RegionValue
 
 /**
@@ -125,6 +127,11 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
             if(cfg.containsKey('jobLaunchSeparationMs')) {
                 Thread.sleep((int)cfg.jobLaunchSeparationMs)
             }
+            
+            if(Runner.isPaused()) {
+                throw new PipelinePausedException()
+            }
+             
             commandExecutor.start(cfg, this.command, outputLog, errorLog)
         }
         finally {
