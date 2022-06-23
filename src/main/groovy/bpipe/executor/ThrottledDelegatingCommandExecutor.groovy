@@ -173,10 +173,12 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         command.createTimeMs = System.currentTimeMillis()
     }
     
+    @CompileStatic
     private createOutputDirectories(Command cmd) {
         List<Path> dirs = cmd.outputs.collect { it.toPath().parent }
         for(Path dir in dirs) {
-            Files.createDirectories(dir)
+            if(dir != null)
+                Files.createDirectories(dir)
         }
     }
 
