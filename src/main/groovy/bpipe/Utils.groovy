@@ -892,6 +892,21 @@ class Utils {
         parentLog.addHandler(fh)
     }
     
+    /**
+     * Set up simple logging to work in a sane way
+     * 
+     * @param path
+     * @return
+     */
+    public static configureTestLogging() {
+        def parentLog = Logger.getLogger("bpipe.Runner").parent
+        parentLog.getHandlers().each { parentLog.removeHandler(it) }
+        ConsoleHandler console = new ConsoleHandler()
+        console.setFormatter(new BpipeLogFormatter())
+        console.setLevel(Level.INFO)
+        parentLog.addHandler(console)
+   }
+
    public static void configureVerboseLogging() {
         ConsoleHandler console = new ConsoleHandler()
         console.setFormatter(new BpipeLogFormatter())

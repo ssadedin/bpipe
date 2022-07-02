@@ -35,6 +35,7 @@ class TransformOperationTest {
     
     @BeforeClass
     static void setConfig() {
+        Utils.configureTestLogging()
         Config.userConfig = new ConfigObject()
         Config.userConfig.storage = 'local'
         System.setProperty('bpipe.home', new File('.').absolutePath)
