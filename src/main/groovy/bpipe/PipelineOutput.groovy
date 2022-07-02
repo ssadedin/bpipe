@@ -186,15 +186,20 @@ class PipelineOutput {
             String firstOutput = Utils.first(output)
             String replaceOutput = null
             
-            if(firstOutput == null && overrideOutputs) 
+            if(firstOutput == null && overrideOutputs)  {
+
+                String usedExtension = overrideOutputs.collect { it.tokenize('.').takeRight(extraSegments.size()).join('.') }.join(', ')
+
                 throw new PipelineError(
                     """
+                    
                     A filter, transform or produce was specified, but an output was referenced using 
                     extension ${extraSegments.join(',')} that is not compatible with those outputs.
                     
-                    The files available for reference are $overrideOutputs
-                    
-                    """.stripIndent())
+                    The file extension specified in the command was: ${extraSegments.join(',')}
+
+                    The file(s) referenced were: $overrideOutputs (ending with ${usedExtension})""".stripIndent())
+            }
             
             // If $output is referenced without extension, we may have to reset the outputs 
             // if the output is based on an alternative input to the default one that was set
