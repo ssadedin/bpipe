@@ -27,6 +27,7 @@ package bpipe.notification
 
 import java.util.regex.Pattern
 
+
 import org.gitlab4j.api.GitLabApi
 import org.gitlab4j.api.IssuesApi
 import org.gitlab4j.api.NotesApi
@@ -145,8 +146,6 @@ class GitlabNotificationChannel implements NotificationChannel {
 	}
     
     boolean updateExistingIssue(Map issueDetails) {
-        
-        IssuesApi issuesApi = gitlab.issuesApi
         
         Map<String,String> params = [
             scope: 'all',
