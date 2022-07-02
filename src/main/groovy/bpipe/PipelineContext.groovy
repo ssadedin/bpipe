@@ -1365,7 +1365,7 @@ class PipelineContext {
         try {
             try {
                 PipelineDelegate.setDelegateOn(this, body)
-                log.info("Probing command using inputs ${this.@input}")
+                log.info("Probing command using ${Utils.logBig(this.@input,'inputs')}")
                 List oldInferredOutputs = (List) this.allInferredOutputs.clone()
                 Exception probeError = null
                 try {
@@ -1521,7 +1521,10 @@ class PipelineContext {
                 DirtyFileManager.instance.add(this.output)
                 
                 PipelineDelegate.setDelegateOn(this, body)
-                log.info("Producing " + this.@output + " from inputs ${this.@input} (output dir=$outputDirectory)")
+                if(this.@input?.size()<20)
+                    log.info("Producing " + this.@output + " from inputs ${this.@input} (output dir=$outputDirectory)")
+                else
+                    log.info("Producing " + this.@output + " from ${this.@input.size()} inputs starting with ${this.@input?.take(20)}... (output dir=$outputDirectory)")
                 body()
             }
             
@@ -2354,7 +2357,7 @@ class PipelineContext {
       def actualResolvedInputs = 
           convertToPipelineFiles(command, Utils.box(this.@inputWrapper?.resolvedInputs) + internalInputs).collect { aliases[it] }
 
-      log.info "Checking actual resolved inputs $actualResolvedInputs"
+      log.info "Checking actual resolved inputs ${Utils.logBig(actualResolvedInputs,'inputs')}"
 
       associateCommandId(command, checkOutputs)
      

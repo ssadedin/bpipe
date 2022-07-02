@@ -200,7 +200,10 @@ class PipelineStage {
                     
         context.initialize(pipeline, stageName)
                 
-        log.info("Stage $displayName : INPUT=${context.@input} OUTPUT=${context.defaultOutput}")
+        if(!context.@input || context.@input.size()<20)
+            log.info("Stage $displayName : INPUT=${context.@input} OUTPUT=${context.defaultOutput}")
+        else
+            log.info("Stage $displayName : ${context.@input.size()} INPUTS starting with ${context.@input.take(10)}} OUTPUT=${context.defaultOutput?.take(10)}}")
     }
     
     

@@ -1377,4 +1377,12 @@ class Utils {
             ] 
         }
     }
+    
+    @CompileStatic
+    public static logBig(List values, final String type) {
+        if(values.size()<20)
+            return type + ' ' + values.toString()
+
+        return "${values.size()} $type starting with [${values.take(10).join(',')}, ...}]"
+    }
 }

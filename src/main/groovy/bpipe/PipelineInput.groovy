@@ -325,7 +325,11 @@ class PipelineInput {
 	        if(missingExts && failIfNotFound)
 	            throw new InputMissingError("Unable to locate one or more specified inputs from pipeline with the following extension(s):\n\n" + missingExts*.padLeft(15," ").join("\n"))
 	            
-			log.info "Found files with exts $exts : $filesWithExts"
+            if(filesWithExts.size()<20)
+                log.info "Found files with exts $exts : $filesWithExts"
+            else
+                log.info "Found ${filesWithExts.size()} files with exts $exts : starting with ${filesWithExts.take(10)} ..."
+
 	        return (List<PipelineFile>)filesWithExts.flatten().unique()
         }
     }
@@ -549,7 +553,12 @@ class PipelineInput {
         // Consider not just the actual inputs to the stage, but also the *original* unmodified inputs
         if(stages[0].originalInputs) {
             List originalInputs = LocalPipelineFile.from(Utils.box(stages[0].originalInputs) as List)
-            log.info "Supplementing with original outputs: " + originalInputs
+
+            if(originalInputs.size()<20)
+                log.info "Supplementing with original outputs: " + originalInputs
+            else
+                log.info "Supplementing with ${originalInputs.size()} original outputs"
+
   	        reverseOutputs.add(originalInputs)
         }
         

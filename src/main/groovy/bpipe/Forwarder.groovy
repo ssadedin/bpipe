@@ -216,7 +216,8 @@ class Forwarder extends TimerTask {
         // most recent newline here
         String content = new String(buffer,0,count)
         
-        log.info "Read " + count + " chars from $p starting with " + Utils.truncnl((String)content.take(30),25)
+        // This gets extremely verbose when there is a lot of output
+        // log.info "Read " + count + " chars from $p starting with " + Utils.truncnl((String)content.take(30),25)
         
         Appendable dest = fileDestinations[p]
         dest.append(content)

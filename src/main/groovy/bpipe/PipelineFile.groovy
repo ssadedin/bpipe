@@ -126,7 +126,7 @@ class PipelineFile implements Serializable {
     
     boolean isMissing(OutputMetaData p, String type) {
                 
-        log.info "Checking file " + this.path + " in storage " + this.storage
+//        log.info "Checking file " + this.path + " in storage " + this.storage
         
         if(this.exists())
             return false // not missing

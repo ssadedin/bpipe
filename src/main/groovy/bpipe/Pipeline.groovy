@@ -652,7 +652,13 @@ public class Pipeline implements ResourceRequestor {
             
             PipelineStage currentStage = new PipelineStage(rootContext, s)
             currentStage.synthetic = true
-            log.info "Running segment with inputs $inputs"
+            
+            if(inputs && (inputs instanceof List) && inputs.size()>20) {
+                log.info "Running segment with ${inputs.size()} inputs starting with ${inputs.take(10)} ..."
+            }
+            else
+                log.info "Running segment with inputs $inputs"
+
             this.addStage(currentStage)
             
             List<PipelineFile> inputCopy = Utils.resolveToDefaultStorage(inputs)
