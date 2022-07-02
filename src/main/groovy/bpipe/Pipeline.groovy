@@ -688,9 +688,9 @@ public class Pipeline implements ResourceRequestor {
                 
                 if(!e.summary) {
                     if(e.ctx && e.ctx.stageName != "Unknown")
-                        System.println "ERROR: stage $e.ctx.stageName failed: $e.message \n"
+                        System.println "\nERROR: stage $e.ctx.stageName failed: $e.message \n"
                     else
-                        System.println "ERROR: $e.message \n" 
+                        System.println "\nERROR: $e.message \n" 
                 }
                         
                 failed = true
