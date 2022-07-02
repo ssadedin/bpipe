@@ -24,7 +24,6 @@
  */
 package bpipe
 
-import java.security.cert.CertPath
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 
@@ -154,7 +153,7 @@ class TransformOperation {
         // Expanded list of to patterns : there will be one for each input resolved
         // (so if one pattern matches 2 inputs, it appears twice).
         List<String> expandedToPatterns = []
-         for(List<String> toFromPair in (List<List<String>>)[toPatterns,exts].transpose()) {
+        for(List<String> toFromPair in (List<List<String>>)[toPatterns,exts].transpose()) {
             
             String toPattern = toFromPair[0]
             String fromPattern = toFromPair[1]
@@ -165,6 +164,7 @@ class TransformOperation {
                 
             PipelineInput input = new PipelineInput(originalFiles, this.ctx.pipelineStages, this.ctx.aliases)
             List<PipelineFile> filesResolved = input.resolveInputsEndingWithPatterns([fromPattern + '$'], [fromPattern])
+
             if(wildcardExts[extensionIndex]) {
                 
                 this.files.addAll(filesResolved)
