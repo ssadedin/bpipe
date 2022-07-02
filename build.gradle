@@ -171,6 +171,9 @@ class FixedGroovyExtensionModuleTransformer extends GroovyExtensionModuleTransfo
 
 shadowJar {
 	transform(FixedGroovyExtensionModuleTransformer)
+    
+    exclude '*slf4j-*'
+    
 //	minimize {
 //		dependency('org.codehaus.groovy:.*:.*')
 //	}
@@ -270,9 +273,8 @@ task stage(dependsOn: [bpipeJar, shadowJar /*,cloudjar*/]) {
       }
       
       ant.copy(todir: "$STAGE/lib/slf4j") {
-        ant.fileset(dir: 'local-lib/slf4j', includes: "slf4j-jdk14*.jar")
+        ant.fileset(dir: 'local-lib/slf4j', includes: "*.jar")
       }
-      
     
       ["templates","html"].each { type ->
           ant.mkdir(dir: "$STAGE/$type")
