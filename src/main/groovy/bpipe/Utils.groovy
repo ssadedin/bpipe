@@ -1276,11 +1276,24 @@ class Utils {
     }
     
 
+    /**
+     * Attempts to execute an action up to <code>maxRetries</code> times, with
+     * exponential backoff.
+     * 
+     * Exponentional backoff is based on an initial time of 1 second for the first
+     * retry and then doubling each time, with the exception that a minimum 
+     * (backoffBaseTime) is applied for the first step.
+     * 
+     * @param options
+     * @param maxRetries
+     * @param action
+     * @return
+     */
     @CompileStatic
     static Object withRetries(Map options=[:], int maxRetries, Closure action) {
        int count = 0
        long sleepTimeMs = 1000
-       long backoffBaseTime = 10000
+       long backoffBaseTime = 5000
        if(options.backoffBaseTime)
            backoffBaseTime = (long)options.backoffBaseTime
            
@@ -1291,11 +1304,12 @@ class Utils {
             catch(Exception e) {
                 if(count > maxRetries)
                     throw e
+
+                if(options.message != null)
+                    log.info "Try $count of $maxRetries ($options.message, $e) ..."
+                else
+                    log.info "Try $count of $maxRetries ($e) ..."
             }
-            if(options.message != null)
-                log.info "Try $count of $maxRetries ($options.message) ..."
-            else
-                log.info "Try $count of $maxRetries ..."
             Thread.sleep(sleepTimeMs)
             ++count
             sleepTimeMs = Math.max(backoffBaseTime,sleepTimeMs*2)
