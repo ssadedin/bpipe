@@ -136,13 +136,13 @@ class Check {
     /**
      * Return true if this check is up-to-date with respect to the given inputs
      */
-    boolean isUpToDate(List<PipelineFile> inputs) {
+    boolean isUpToDate(List<PipelineFile> inputs, List<PipelineFile> outputs) {
        File checkFile = getFile(stage, name, branchHash)
        if(!checkFile.exists()) {
            return false
        }
        
-       if(Dependencies.instance.getOutOfDate([new LocalPipelineFile(checkFile.absolutePath)], inputs)) {
+       if(Dependencies.instance.getOutOfDate([new LocalPipelineFile(checkFile.absolutePath),*outputs], inputs)) {
            return false
        }
        

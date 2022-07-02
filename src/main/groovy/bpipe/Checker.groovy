@@ -80,23 +80,20 @@ class Checker {
         check.pguid = Config.config.pguid
         check.script = Config.config.script
         
+        List<PipelineFile> outputs = runCheckClosure(true)
+
         List inputs = Utils.box(ctx.@input) + ctx.resolvedInputs
-        if(!inputs.isEmpty() && check.isUpToDate(inputs)) { // If inputs were referenced, use those to determine if check is up to date
+        if(!inputs.isEmpty() && check.isUpToDate(inputs, outputs)) { // If inputs were referenced, use those to determine if check is up to date
             log.info "Check ${check.toString()} was already executed and is up to date with inputs $inputs"
             log.info "Cached result of ${check} was Passed: ${check.passed} Overridden: ${check.override}"
-
-            // Still need to execute the check closure as this causes outputs to be resolved
-            // which is required for eg: bpipe retry type re-execution
-            runCheckClosure(true)
         }
         else
-        if(ctx.executedOutputs.isEmpty() && check.isUpToDate(inputs)) { // No inputs? then we execute the check only IF a command ran
+        if(ctx.executedOutputs.isEmpty() && check.isUpToDate(inputs,outputs)) { // No inputs? then we execute the check only IF a command ran
             log.info "Check ${check.toString()} was already executed and there are no inputs, and the stage did not execute any commands"
-            runCheckClosure(true)
         }
         else {
             log.info "Check ${check.toString()} was not already executed or not up to date with inputs $inputs"
-            this.executeCheck(check)
+            this.executeCheck(check,outputs)
         }
             
         // Execute result of check
@@ -118,13 +115,14 @@ class Checker {
      * 
      * @param check     the Check to execute
      */
-    void executeCheck(Check check) {
+    @CompileStatic
+    void executeCheck(Check check, List<PipelineFile> outputs) {
         
         PipelineStage pipelineStage = ctx.getCurrentStage()
 
         try { // Check either had not executed, or was not up-to-date
             
-            EventManager.instance.signal(PipelineEvent.CHECK_EXECUTED, 
+            EventManager.theInstance.signal(PipelineEvent.CHECK_EXECUTED, 
                  "Executing check $check.name", 
                  check.getEventDetails(pipelineStage))
   
@@ -133,7 +131,7 @@ class Checker {
             check.passed = true
 			check.state = 'pass'
             
-            EventManager.instance.signal(PipelineEvent.CHECK_SUCCEEDED, 
+            EventManager.theInstance.signal(PipelineEvent.CHECK_SUCCEEDED, 
                 "Check ${check.name? /'$check.name'/:''} for stage $pipelineStage.displayName passed", 
                 check.getEventDetails(pipelineStage)
             ) 
@@ -147,21 +145,42 @@ class Checker {
             check.passed = false
 			check.state = 'review'
             check.save()
-            EventManager.instance.signal(PipelineEvent.CHECK_FAILED, 
+            
+            EventManager.theInstance.signal(PipelineEvent.CHECK_FAILED, 
                 "Check ${check.name? /'$check.name'/:''} for stage $pipelineStage.displayName failed", 
                 check.getEventDetails(pipelineStage)
             )             
+            
+            if(outputs.any { !it.exists() })
+                throw new PipelineError(
+                  """
+
+                  Check '$name' in stage $ctx.stageName failed, and also failed to create one or more required outputs:
+
+                  ${outputs.join(", ")}
+
+                  Due to the missing output, the otherwise clause was not executed and the pipeline was aborted.
+                  """.stripIndent(), ctx
+                )
+        }
+        catch(PipelineTestAbort e) {
+            throw e
+        }
+        catch(Exception e) {
+            log.info "Check failed with non-command exception ($e)"
+            e.printStackTrace()
+            throw e
         }
     }
     
     /**
-     * Run the closure for the check
+     * Run the closure for the check, returning any outputs that were inferred
      * <p>
      * Note: the closure throws an exception if the check fails. If no exception
      * is thrown, the check passed.
      */
     @CompileStatic
-    void runCheckClosure(boolean probeMode) {
+    List<PipelineFile> runCheckClosure(boolean probeMode) {
         
         check.executed = new Date()
             
@@ -173,6 +192,7 @@ class Checker {
 		ctx.internalInputs = Utils.box(ctx.@output)
         boolean oldProbeMode = this.ctx.probeMode
         this.ctx.probeMode = probeMode
+        List<String> previousOutputs = (List<String>)ctx.allInferredOutputs.collect()
 		try {
             checkClosure()
 		}
@@ -184,6 +204,7 @@ class Checker {
 			ctx.internalInputs = []
             ctx.probeMode = oldProbeMode
 		}
+        return ctx.resolvePipelineFiles(ctx.allInferredOutputs - previousOutputs)
     }
     
     /**
