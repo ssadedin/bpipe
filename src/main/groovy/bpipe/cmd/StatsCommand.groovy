@@ -69,7 +69,7 @@ class StatsCommand extends BpipeCommand {
             resultFiles = [getResultFile(pid)]
         }
         
-        Closure toDate = { value ->
+        Closure<Date> toDate = { value ->
             Date.parse('yyyy-MM-dd HH:mm:ss', value.text())
         }
         
@@ -110,6 +110,10 @@ class StatsCommand extends BpipeCommand {
         out.println(("| Run Time: " + runTime).padRight(Config.config.columns-1) + "|")
         out.println (" " + "="*(Config.config.columns-2))
         out.println ""
+        
+        long pipelineStartTimeMs =  toDate(doms[0].startDateTime).time
+        long pipelineEndTimeMs =  doms[-1].endDateTime.text() ? toDate(doms[-1].endDateTime).time : System.currentTimeMillis()
+        long pipelineTotalMs = pipelineEndTimeMs - pipelineStartTimeMs
 
         List<List> stats = doms.collect { dom ->dom.commands.command }.sum().groupBy {  cmdNode ->
             cmdNode.stage.text()
@@ -121,26 +125,58 @@ class StatsCommand extends BpipeCommand {
                 cmd.exitCode.text() == "0"
             }
             
-            List<Long> times = succeeded.grep { cmd ->
+            List valid = succeeded.grep { cmd ->
                 // Bug where start times not initialised can have caused historical entries to have this
                 !cmd.start.text().startsWith('1970')
-            }.collect { cmd ->  
+            }
+            
+            List<Long> times = valid.collect { cmd ->  
                 long startTimeMs = toDate(cmd.start).time 
                 startTimeMs == 0 ? 0 : toDate(cmd.end).time - startTimeMs
             }
+
+            
+            long minStart = valid.collect { cmd -> toDate(cmd.start).time  }.min() - pipelineStartTimeMs
+            long maxEnd = valid.collect { cmd ->  
+                long startTimeMs = toDate(cmd.start).time;
+                return  startTimeMs == 0 ? 0 : toDate(cmd.end).time
+            }.max() - pipelineStartTimeMs 
             
             double mean = times.isEmpty() ? 0 : times.sum() / times.size()
+            int timingWidth = 60
+
+            Closure formatTiming = { 
+                
+                String bar 
+                int barWidth = (int)(timingWidth * ((maxEnd-minStart) / pipelineTotalMs))
+                if(barWidth <=0)
+                    barWidth = 1
+                if(barWidth == 1) {
+                    bar = "H"
+                }
+                else
+                if(barWidth == 2) {
+                    bar = "├┤"
+                }
+                else  {
+                    bar = '├' + '─'*(barWidth-2) + '┤'
+                }
+                
+                (" ") * (int)(timingWidth * (minStart / pipelineTotalMs)) + bar
+            }
+            
             
             return [
              stage, 
              cmds.size(), 
              formatTimeSpan(times.min()?.toLong()),
              formatTimeSpan(mean), formatTimeSpan(times.max()), 
-             ((times.sum()?:0) / 1000.0).toLong()
+             ((times.sum()?:0) / 1000.0).toLong(),
+             formatTiming()
             ]
         }
         
-        Utils.table(["Stage","Count","Min","Mean","Max", "Weight"], stats, indent:1)
+        Utils.table(["Stage","Count","Min","Mean","Max", "Weight","Timing"], stats, indent:1)
         
         out.println ""
     }
