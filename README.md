@@ -4,7 +4,7 @@ Welcome to Bpipe  ![Tests](https://github.com/ssadedin/bpipe/actions/workflows/c
 Bpipe provides a platform for running big bioinformatics jobs that consist of a series of processing stages - known as 'pipelines'.
 
 * September 2021 - New! [Bpipe 0.9.11](https://github.com/ssadedin/bpipe/releases/tag/0.9.11) released!
-* [Documentation](http://docs.bpipe.org)
+* [Documentation](https://docs.bpipe.org)
 * [Mailing List](https://groups.google.com/forum/#!forum/bpipe-discuss) (Google Group)
 
 Bpipe has been published in [Bioinformatics](http://bioinformatics.oxfordjournals.org/content/early/2012/04/11/bioinformatics.bts167.abstract)! If you use Bpipe, please cite:
