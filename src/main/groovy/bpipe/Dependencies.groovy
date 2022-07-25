@@ -311,7 +311,8 @@ class Dependencies {
      * about it such that it can be reliably loaded by this same stage
      * if the pipeline is re-executed.
      */
-    synchronized void saveOutputs(PipelineStage stage, Map<String,Long> timestamps, List<String> inputs) {
+	@CompileStatic
+    synchronized void saveOutputs(final PipelineStage stage, final Map<String,Long> timestamps, final List<String> inputs) {
 
         PipelineContext context = stage.context
         
@@ -359,10 +360,12 @@ class Dependencies {
         }
     }
     
+	@CompileStatic
     int numberOfGeneratedOutputs() {
         return this.outputFilesGenerated.size();
     }
     
+	@CompileStatic
     void saveOutputMetaData(OutputMetaData p) {
         flushOutputGraphCache()
         p.save()
@@ -791,21 +794,21 @@ class Dependencies {
      * @return
      */
     List<OutputMetaData> scanOutputFolder() {
-        int concurrency = Config.userConfig.getOrDefault('outputScanConcurrency',5)
+        int concurrency = (int)Config.userConfig.getOrDefault('outputScanConcurrency',5)
         List result = []
         Utils.time("Output folder scan (concurrency=$concurrency)") {
             
             List<File> files = 
-               new File(OutputMetaData.OUTPUT_METADATA_DIR)
+               (List)new File(OutputMetaData.OUTPUT_METADATA_DIR)
                    .listFiles()
-                   .grep { isOutputMetaFile(it)  } 
+                   .findAll { isOutputMetaFile(it)  } 
                                 
             if(files.isEmpty())
                 return files
                     
             GParsPool.withPool(concurrency) { 
-                result.addAll(files.collectParallel { 
-                    OutputMetaData.fromFile(it)
+                result.addAll(files.collectParallel { File f ->
+                    OutputMetaData.fromFile(f)
                 }.grep { it != null }.sort { it.timestamp })
             }
         }
@@ -846,6 +849,7 @@ class Dependencies {
         return result
     }
     
+	@CompileStatic
     public withOutputGraph(Closure c) {
         this.outputGraphLock.readLock().lock()
         try {

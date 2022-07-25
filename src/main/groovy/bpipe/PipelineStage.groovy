@@ -36,37 +36,6 @@ import java.util.regex.Pattern
 
 import bpipe.storage.LocalPipelineFile
 
-class PipelineBodyCategory {
-    
-    private static final Pattern PREFIX_PATTERN = ~'\\.[^\\.]*?$'
-    
-	static String getPrefix(String value) {
-		return value.replaceAll(PREFIX_PATTERN, '')
-	}
-    
-    static int indexOf(String value, RegionValue other) {
-        value.indexOf(other.toString())
-    }
-    
-    /*
-    static Object getProperty(Integer n, String name) {
-        if(name == "threads") {
-            return new ResourceUnit(amount:n as Integer, key: "threads")
-        }
-        else
-        if(name == "GB") {
-            return new ResourceUnit(amount: n * 1024 as Integer)
-        }
-        else
-        if(name == "MB") {
-            return new ResourceUnit(amount: n as Integer)
-        }
-        else
-            return null
-    }
-    */
-}
-
 /**
  * Encapsulates a Pipeline stage including its body (a closure to run)
  * and all the metadata about it (its name, status, inputs, outputs, etc.).
@@ -460,10 +429,10 @@ class PipelineStage {
         }
     }
     
+	@CompileStatic
     List runWrappedBody() {
-        use(PipelineBodyCategory) {
-            return Utils.box(body(context.@input)) as List
-        }
+		final result = body.call(context.@input)
+		return Utils.box(result)
     }
     
     @CompileStatic

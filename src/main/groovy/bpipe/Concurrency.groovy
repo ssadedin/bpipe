@@ -217,11 +217,12 @@ class Concurrency {
      * 
      * @param runnables
      */
+	@CompileStatic
     void execute(List<Runnable> runnables, int tier=0) {
         
         synchronized(this.pools) {
             while(this.pools.size()<=tier) {
-                this.pools.add(initPool(Config.config.maxThreads+1))
+                this.pools.add(initPool((int)Config.config.maxThreads+1))
             }
         }
         
@@ -300,6 +301,7 @@ class Concurrency {
     * Called by parallel paths before they begin execution: enforces overall concurrency by blocking
     * the thread before it can start work. (ie. this method may block).
     */
+   @CompileStatic
    void acquire(ResourceUnit resourceUnit) {
         Semaphore resource
         synchronized(resourceAllocations) {
@@ -364,6 +366,7 @@ class Concurrency {
     *                       estimate current available resources.
     * @return               the actual amount of resources allocated
     */
+    @CompileStatic
     private int negotiateDynamicResources(ResourceUnit resourceUnit, Semaphore resource) {
         int amount = resourceUnit.amount
         long startTimeMs = System.currentTimeMillis()
@@ -376,9 +379,9 @@ class Concurrency {
             //
             // If we are the last, it is our job to distribute the resources
             // and then signal the others to continue
-            int numBidders = registeredResourceRequestors.count { it.bidding }
+            int numBidders = (int)registeredResourceRequestors.count { it.bidding }
             
-            int auctionThreshold = Math.min(numBidders, Config.config.maxThreads-1)
+            int auctionThreshold = Math.min(numBidders, (int)Config.config.maxThreads-1)
             
             log.info "There are ${registeredResourceRequestors.size()} registered bidders with $numBidders currently bidding, will distribute resources at $auctionThreshold"
 
@@ -410,9 +413,10 @@ class Concurrency {
      * @param startTimeMs
      * @return  true if an auction was held
      */
+	@CompileStatic
     boolean tryAuction(Semaphore resource, long startTimeMs) {
-        int maxThreads = Config.config.maxThreads
-        int numBidders = registeredResourceRequestors.count { it.bidding }
+        int maxThreads = (int)Config.config.maxThreads
+        int numBidders = (int)registeredResourceRequestors.count { it.bidding }
         int auctionThreshold = Math.min(numBidders, maxThreads)
         
         if(resourceRequests.size() >= auctionThreshold) { 
@@ -444,6 +448,7 @@ class Concurrency {
      * NOTE: thread safety oon this code relies on it only being accessed by a thread that 
      *       holds a monitor on the resourceRequests list.
      */
+	 @CompileStatic
      void allocateResources(Semaphore resource) {
        
        // Start by trying to allocate the minimum resources to everyone, if possible
@@ -458,13 +463,20 @@ class Concurrency {
        }
        
        log.info "First pass allocations are " + resourceRequests*.allocated*.amount
+	   
+	   def maxPerCommandThreadsValue = Config.userConfig.max_per_command_threads
+	   int maxPerCommandThreads
+	   if(maxPerCommandThreadsValue instanceof String)
+		   maxPerCommandThreads = maxPerCommandThreadsValue.toInteger()
+	   else
+		   maxPerCommandThreads = (int)maxPerCommandThreadsValue
        
        // Then divide up the remainder of the free resources to the ones that are unlimited
-       int freeResources = resource.availablePermits() - (resourceRequests.sum { it.allocated.amount }?:0)
-       List<ResourceRequestor> unlimitedRequestors = resourceRequests.grep { it.resource.amount == ResourceUnit.UNLIMITED || it.resource.maxAmount }
+       int freeResources = resource.availablePermits() - (int)(resourceRequests.sum { it.allocated.amount }?:0)
+       List<ResourceRequest> unlimitedRequestors = resourceRequests.findAll { it.resource.amount == ResourceUnit.UNLIMITED || it.resource.maxAmount }
        if(freeResources > 0 && unlimitedRequestors) {
            
-           int perRequestorAmount = Math.floor(freeResources / unlimitedRequestors.size())
+           int perRequestorAmount = (int)Math.floor((double)(freeResources / unlimitedRequestors.size()))
            
            log.info "Dividing up $freeResources free resource permits among ${unlimitedRequestors.size()} requestors = $perRequestorAmount"
            
@@ -475,7 +487,7 @@ class Concurrency {
                    // Note: default value for max_per_command_threads is set in the default bpipe.config,
                    // so unless the user explicitly overrode it, it will always be non-null
                    if(Config.userConfig.max_per_command_threads != null) {
-                       myMax = Config.userConfig.max_per_command_threads.toInteger()
+                       myMax = maxPerCommandThreads
                    }
                    else
                        myMax = 0
@@ -510,6 +522,7 @@ class Concurrency {
        resourceRequests.clear()
    }
    
+   @CompileStatic
    void release(ResourceUnit resourceUnit) {
         Semaphore resource
         synchronized(resourceAllocations) {
