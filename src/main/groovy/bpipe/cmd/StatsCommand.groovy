@@ -136,7 +136,8 @@ class StatsCommand extends BpipeCommand {
             }
 
             
-            long minStart = valid.collect { cmd -> toDate(cmd.start).time  }.min() - pipelineStartTimeMs
+            long minStart = valid.collect { cmd -> toDate(cmd.start).time  }.min()
+            long minStartRel = minStart != null ?  minStart - pipelineStartTimeMs : -1
             long maxEnd = valid.collect { cmd ->  
                 long startTimeMs = toDate(cmd.start).time;
                 return  startTimeMs == 0 ? 0 : toDate(cmd.end).time
@@ -146,9 +147,11 @@ class StatsCommand extends BpipeCommand {
             int timingWidth = 60
 
             Closure formatTiming = { 
-                
+                if(minStartRel<0)
+                    return ''
+
                 String bar 
-                int barWidth = (int)(timingWidth * ((maxEnd-minStart) / pipelineTotalMs))
+                int barWidth = (int)(timingWidth * ((maxEnd-minStartRel) / pipelineTotalMs))
                 if(barWidth <=0)
                     barWidth = 1
                 if(barWidth == 1) {
@@ -162,7 +165,7 @@ class StatsCommand extends BpipeCommand {
                     bar = '├' + '─'*(barWidth-2) + '┤'
                 }
                 
-                (" ") * (int)(timingWidth * (minStart / pipelineTotalMs)) + bar
+                (" ") * (int)(timingWidth * (minStartRel / pipelineTotalMs)) + bar
             }
             
             
