@@ -91,7 +91,7 @@ dependencies {
     implementation group: 'org.glassfish.jersey.core', name: 'jersey-client', version: '2.25.1'
     implementation group: 'org.glassfish.jersey.media', name: 'jersey-media-multipart', version: '2.25.1'
 
-    implementation group: 'com.fasterxml.jackson.jaxrs', name: 'jackson-jaxrs-json-provider', version: '2.13.3'
+    implementation group: 'com.fasterxml.jackson.jaxrs', name: 'jackson-jaxrs-json-provider', version: '2.13.1'
     implementation(group: 'org.gitlab4j', name: 'gitlab4j-api', version: '4.14.30') { transitive = false } 
 
     implementation group: 'org.json', name: 'json', version: '20180813'
