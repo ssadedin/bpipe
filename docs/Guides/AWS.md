@@ -5,8 +5,6 @@
 Bpipe supports running jobs on Amazon WebServices Elastic Compute Cloud (EC2) infrastructure.
 This section describes how to setup Bpipe to launch jobs using your AWS account.
 
-_Note_: Cloud support is still under development, and should be considered beta functionality.
-
 ## Configuration
 
 To run jobs on EC2, you should configure a number of settings in your `bpipe.config` file. Follow the 
@@ -27,20 +25,32 @@ storage='S3'
 
 filesystems {
     S3 {
-        type='S3'
         bucket='<name of bucket to use as work directory>'
-        accessKey = '<your access key>'
-        accessSecret = '<your secret access key>'
     }
 }
 ```
 
-NOTE: in the current implementation, it is necessary to redundantly specify the access key and secret
-for both the storage and the executor.
+### Security Groups
 
-NOTE2: the name of the key pair is expected to match the file name it is stored in, absent the `.pem`
-extension. For example, if you call the file `my_secret_key.pem` then Bpipe expects the key is
-called in AWS `my_secret_key`.
+Bpipe interacts with EC2 instances almost entirely using SSH connections. As such, it is important
+that you ensure that instances created are assigned a security group that enables SSH
+connectivity (that is, access on port 22). A convenient way to do this is to create a 
+group with inbound rules:
+
+- Type SSH
+- Protocol TCP
+- Port range 22
+- Source 0.0.0.0/0  (or specify your port range)
+
+You can then specify this security group in your `bpipe.config` file for all cloud access.
+
+### Key Pairs
+
+It is expected that you have already created and downloaded a key pair to allow
+SSH access. Bpipe follows a convention that the name of the key pair is expected to match 
+the file name it is stored in, absent the `.pem` extension. For example, if you call the 
+file `my_secret_key.pem` then Bpipe expects the key is called in AWS `my_secret_key`. This
+convention avoids you having to specify both the name of the key pair and its path.
 
 ## Preparing an image
 
@@ -67,6 +77,23 @@ bpipe run pipeline.groovy file1.txt file2.txt ...
 
 Note that in this example, file1.txt and file2.txt do not exist locally, they are expected to
 exist in the S3 bucket you have configured above.
+
+
+## Using pre-existing instances
+
+You may wish to use an instance that is already in existence to launch your jobs. You can achieve
+this by specifying an instance id in your configuration (in `bpipe.config`):
+
+```
+instanceId='<the instance id>'
+autoShutdown=false
+```
+
+This approach is especially useful during development because you do not have to wait for the
+instance to start up, and Bpipe will use it straight away.  Note that in this scenario
+you will usually want to turn off automatic shutdown by setting the `autoShutdown` flag. If you
+do not specify this, Bpipe will shut down the instance when it is finished, even though it
+did not start the instance itself.
 
 
 
