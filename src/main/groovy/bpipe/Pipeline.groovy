@@ -666,6 +666,10 @@ public class Pipeline implements ResourceRequestor {
             currentStage.context.@input = inputCopy
             currentStage.context.branchInputs = inputCopy
             
+            String.metaClass.getPrefix = {
+                PipelineCategory.getPrefix(delegate)
+            }          
+            
             try {
                 currentStage.run()
                 log.info "Pipeline segment ${this.branch} in thread ${Thread.currentThread().id} has finished normally"
