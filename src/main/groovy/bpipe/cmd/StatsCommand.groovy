@@ -130,13 +130,17 @@ class StatsCommand extends BpipeCommand {
                 !cmd.start.text().startsWith('1970')
             }
             
+            if(valid.isEmpty()) {
+                return null
+            }
+
             List<Long> times = valid.collect { cmd ->  
                 long startTimeMs = toDate(cmd.start).time 
                 startTimeMs == 0 ? 0 : toDate(cmd.end).time - startTimeMs
             }
-
             
-            long minStart = valid.collect { cmd -> toDate(cmd.start).time  }.min()
+            List<Long> startTimes = valid.collect { cmd -> def t = toDate(cmd.start).time; return t;  }
+            long minStart = startTimes.min()
             long minStartRel = minStart != null ?  minStart - pipelineStartTimeMs : -1
             long maxEnd = valid.collect { cmd ->  
                 long startTimeMs = toDate(cmd.start).time;
@@ -178,6 +182,7 @@ class StatsCommand extends BpipeCommand {
              formatTiming()
             ]
         }
+        .grep { it != null }
         
         Utils.table(["Stage","Count","Min","Mean","Max", "Weight","Timing"], stats, indent:1)
         
