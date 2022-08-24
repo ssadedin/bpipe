@@ -129,7 +129,7 @@ class Checker {
             runCheckClosure(ctx.probeMode)
             
             check.passed = true
-			check.state = 'pass'
+            check.state = 'pass'
             
             EventManager.theInstance.signal(PipelineEvent.CHECK_SUCCEEDED, 
                 "Check ${check.name? /'$check.name'/:''} for stage $pipelineStage.displayName passed", 
@@ -143,7 +143,7 @@ class Checker {
         catch(CommandFailedException e) {
             log.info "Check $check was executed and failed ($e)"
             check.passed = false
-			check.state = 'review'
+            check.state = 'review'
             check.save()
             
             EventManager.theInstance.signal(PipelineEvent.CHECK_FAILED, 
@@ -186,24 +186,24 @@ class Checker {
             
         File checkFile = check.getFile(check.stage, check.name, check.branchHash)
         log.info "Executing check: $check with status in file: $checkFile"
-		
+        
         List oldOutputs = ctx.@output
-		ctx.internalOutputs = ctx.resolvePipelineFiles([checkFile.path])
-		ctx.internalInputs = Utils.box(ctx.@output)
+        ctx.internalOutputs = ctx.resolvePipelineFiles([checkFile.path])
+        ctx.internalInputs = Utils.box(ctx.@output)
         boolean oldProbeMode = this.ctx.probeMode
         this.ctx.probeMode = probeMode
         List<String> previousOutputs = (List<String>)ctx.allInferredOutputs.collect()
-		try {
+        try {
             checkClosure()
-		}
-		finally {
+        }
+        finally {
             // A check can modify the outputs even if it doesn't reference any
             // Make sure it doesn't affect what gets passed on to next stage
             ctx.setRawOutput(oldOutputs)
-			ctx.internalOutputs = []
-			ctx.internalInputs = []
+            ctx.internalOutputs = []
+            ctx.internalInputs = []
             ctx.probeMode = oldProbeMode
-		}
+        }
         return ctx.resolvePipelineFiles(ctx.allInferredOutputs - previousOutputs)
     }
     
