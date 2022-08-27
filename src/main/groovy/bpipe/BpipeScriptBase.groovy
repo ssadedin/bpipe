@@ -110,7 +110,6 @@ class BpipeScriptBase extends groovy.lang.Script {
     void forward(String... files) {}
     void forward(List<String> files) {}
 
-    @Override
     public Object run() { return null; }
 
     public Object run(List<String> files, Closure c) { }
