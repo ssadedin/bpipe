@@ -80,7 +80,17 @@ class Checker {
         check.pguid = Config.config.pguid
         check.script = Config.config.script
         
-        List<PipelineFile> outputs = runCheckClosure(true)
+        def pipeline = Pipeline.currentRuntimePipeline.get()
+        boolean applyName = this.ctx.applyName
+        boolean nameApplied = pipeline.nameApplied
+        List<PipelineFile> outputs 
+        try {
+            outputs = runCheckClosure(true)
+        }
+        finally {
+            this.ctx.applyName = applyName
+            pipeline.nameApplied = nameApplied
+        }
 
         List inputs = Utils.box(ctx.@input) + ctx.resolvedInputs
         if(!inputs.isEmpty() && check.isUpToDate(inputs, outputs)) { // If inputs were referenced, use those to determine if check is up to date
