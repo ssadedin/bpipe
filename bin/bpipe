@@ -469,7 +469,6 @@ elif [ "$COMMAND" == "cleanup" ] || \
          [ "$COMMAND" == "autoarchive" ] || \
          [ "$COMMAND" == "stats" ] || \
          [ "$COMMAND" == "install" ] || \
-         [ "$COMMAND" == "diagram" ] || \
          [ "$COMMAND" == "diagrameditor" ]  || \
          [ "$COMMAND" == "jobs" ]  || \
          [ "$COMMAND" == "documentation" ];
@@ -613,6 +612,11 @@ then
     shift 1
     COMMAND="run"
     MODEFLAG="-Dbpipe.mode=resume"
+elif [ "$COMMAND" == "diagram" ];
+then
+    shift 1
+    COMMAND="diagram"
+    MODEFLAG="-Dbpipe.mode=diagram"
 elif [ "$COMMAND" == "execute" ];
 then
     shift 1
