@@ -1688,9 +1688,8 @@ public class Pipeline implements ResourceRequestor {
                
         // Now make a graph
         // println "Found stages " + DefinePipelineCategory.stages
-        Graph g = new Graph(structure.root)
         if(editor) {
-            g.display()
+            new Graph(structure.root).display()
         }
         else {
             
@@ -1698,7 +1697,10 @@ public class Pipeline implements ResourceRequestor {
             
             String outputExtension = opts.f ? "."+opts.f : ".png"
             String outputFileName = fileName+outputExtension
-            println "Creating diagram $outputFileName"
+
+            log.info "Creating diagram $outputFileName"
+            System.err.println "\nCreating diagram $outputFileName\n"
+
             if(opts.f == "json")  {
 //                use(NodeListCategory) {
 //                    new File(outputFileName).text = root.toJson()
@@ -1711,10 +1713,10 @@ public class Pipeline implements ResourceRequestor {
             }
             else
             if(opts.f == "svg") 
-                g.renderSVG(outputFileName)
+                new Graph(structure.root).renderSVG(outputFileName)
             else
             if(opts.f == "png" || !opts.f) 
-                g.renderPNG(outputFileName)
+                new Graph(structure.root).renderPNG(outputFileName)
             else
                 throw new PipelineError("Output format of ${opts.f} is not recognized / supported")
         } 
