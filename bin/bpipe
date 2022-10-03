@@ -617,6 +617,7 @@ then
     shift 1
     COMMAND="diagram"
     MODEFLAG="-Dbpipe.mode=diagram"
+    HEADLESS_FLAG="-Djava.awt.headless=false"
 elif [ "$COMMAND" == "execute" ];
 then
     shift 1
@@ -700,11 +701,12 @@ else
     BPIPEDEBUG_FLAGS=""
 fi
 
+HEADLESS_FLAG=${HEADLESS_FLAG:--Djava.awt.headless=true}
+
 LAUNCH_CMD='
    printf $$ > .bpipe.'$LAUNCHER_PID'.run.pid &
    exec java -Xmx'${MAX_JAVA_MEM}' \
-             -Djava.awt.headless=true \
-             -noverify \
+             '${HEADLESS_FLAG}' -noverify \
              -classpath "'"$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*:$CP"'" '$BPIPEDEBUG_FLAGS' '$MODEFLAG' \
              -Dbpipe.pid='$LAUNCHER_PID' \
              -Dbpipe.home='"$JVM_BPIPE_HOME"' \
