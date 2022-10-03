@@ -289,6 +289,7 @@ class Runner {
                 println "\n" + " Pipeline in Progress ".center(100,"=") + "\n"
                 println "${new Date()}: Bpipe is locked due to another running pipeline in process ${otherPid}."
                 println "${new Date()}: This instance will wait until the other Bpipe process completes before proceeding"
+                println "${new Date()}: You can stop this instance from waiting by killing it using:  kill ${pid}"
                 println "${new Date()}: Waiting for lock ...\n"
                 lockChannel.lock()
                 println "${new Date()}: Lock acquired. Continuing ... \n"
