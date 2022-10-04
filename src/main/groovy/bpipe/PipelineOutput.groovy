@@ -194,11 +194,13 @@ class PipelineOutput {
                     """
                     
                     A filter, transform or produce was specified, but an output was referenced using 
-                    extension ${extraSegments.join(',')} that is not compatible with those outputs.
+                    extension ${extraSegments.join('.')} that is not compatible with those outputs.
                     
-                    The file extension specified in the command was: ${extraSegments.join(',')}
+                    The file extension specified in the command was: ${extraSegments.join('.')}
 
-                    The file(s) referenced were: $overrideOutputs (ending with ${usedExtension})""".stripIndent())
+                    The files expected to be referenced were:\n\n${overrideOutputs.collect { "                       - " + it + "\n" }.join("")}
+
+                    """.stripIndent())
             }
             
             // If $output is referenced without extension, we may have to reset the outputs 
