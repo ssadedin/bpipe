@@ -47,8 +47,8 @@ Bpipe.run {
 Note that in this case the last stage `nice_to_see_you` won't execute until all of the preceding stages executing in parallel have finished.   It will receive **all** the outputs combined from both the "blue + world" and "red + mars" stages as input.
 
 You can also nest parallel tasks if you wish:
-```groovy 
 
+```groovy 
 Bpipe.run {
   hello + [ blue + world, red + [mars,venus] ] + nice_to_see_you
 }
@@ -58,7 +58,9 @@ In this case the `mars` and `venus` stages will execute simultaneously, but only
 
 ## Parallelizing Based on Chromosome
 
-In bioinformatics it is often possible to run operations simultaneously across multiple chromosomes.  Bpipe makes this easy to achieve using a special syntax as follows:
+In bioinformatics it is often possible to run operations simultaneously across multiple chromosomes.  Bpipe makes this easy 
+to achieve using a special syntax as follows:
+
 ```groovy 
 
 Bpipe.run {
@@ -86,7 +88,8 @@ This would run 12 parallel stages, passing 'chr1' through to 'chr10' and 'chrX' 
 
 _Note_: Bpipe also makes available the `$region` variable. If no genome is declared (see below) Bpipe will emit a region in the form:
 `chrN:0-0` for statements inside the pipeline. Many tools accept this as meaning to include the entire chromosome. However if you declare a genome
-(see below) then Bpipe will omit a region that includes the entire chromosome with the correct range for that chromosome.
+(see below) then Bpipe will emit a region that includes the entire chromosome with the correct 
+range for that chromosome.
 
 ### Alternative Genomes
 
@@ -121,7 +124,7 @@ If you want to process a whole "genome" you can declare the genome using the `ge
 available as a set of regions. However if you want to process a subset of the genome (eg. a set of exome capture regions),
 then you can load a custom BED file:
 
-```
+```groovy
 my_regions = bed("/some/path/to/a/bed/file.bed")
 ```
 
@@ -136,7 +139,7 @@ hg19.partition(1000000) * [ stage1 + stage2 ]
 
 To process custom regions it is exactly the same:
 
-```
+```groovy
 my_regions.partition(1000000) * [ stage1 + stage2 ]
 ```
 
@@ -144,7 +147,7 @@ my_regions.partition(1000000) * [ stage1 + stage2 ]
 
 To split regions into a specific number of parts, use the split command:
 
-```
+```groovy
 hg19.split(40) * [ stage1 + stage2 ]
 ```
 
@@ -160,11 +163,17 @@ the required granularity cannot be achieved to within a 2:1 ratio between result
 
 **Branch Names**
 
-When you split or partition a set of regions, Bpipe assigns a branch name to each parallel path automatically.
+When you split or partition a set of regions, and parallelise over them using Bpipe's branch
+syntax (eg: the `*` operator), Bpipe assigns a branch name to each parallel path automatically:
 
  - if the region is a whole chromosome / contig, the branch name is the name of the chromosome / contig
  - otherwise, Bpipe calculates the sha1 hash of the regions and assigns the first 8 characters as the 
    branch name
+
+Note that when Bpipe parallelises over branches in general, the output files within the branch will
+automatically have the id of the branch inserted. This ensures that parallel branches do not try to
+write the same file. In the case where sub-chromosomal regions are parallelised, this results in
+files containing sha1 fragments to distinguish their names.
 
 **Accessing Regions**
 
