@@ -196,10 +196,15 @@ class DirtyFileManager {
     }
     
     List<String> getUncleanFilePaths() {
-        (getUncleanManifests().collect {
-                ((File)it).readLines()*.trim().grep { it }
+        return getUncleanManifests().collectMany { File f ->
+              def lines = f.readLines()
+              def result = 
+                  lines.collect { it.trim() }
+                       .grep { it }
+                       .collect { it.toString() }
+              
+              return result
         }
-        .sum()?:[]) as List<String>
     }
     
     
