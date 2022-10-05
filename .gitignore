@@ -42,3 +42,6 @@ tests/*/notifications
 .bpipe.*.run.pid
 /eclipse-build/
 gradle-lib
+
+tests/huge_parallel/*.hello
+tmp
