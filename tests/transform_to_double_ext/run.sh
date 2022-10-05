@@ -10,7 +10,7 @@ bpipe run test_fail.groovy test.bam > test2.out
 
 notexists test.median.txt 
 
-grep -q "foo,txt that is not compatible with those outputs"  test2.out || err "Did not see expected error message"
+grep -q "extension foo.txt that is not compatible with those outputs"  test2.out || err "Did not see expected error message"
 
 true
 
