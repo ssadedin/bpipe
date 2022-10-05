@@ -1414,4 +1414,15 @@ class Utils {
 
         return "${values.size()} $type starting with [${values.take(10).join(',')}, ...}]"
     }
+    
+    @CompileStatic
+    public static String getHostName() {
+        try {
+            return InetAddress.localHost.hostName
+        }
+        catch(Throwable t) {
+            log.warning("Unable to determine hostname: defaulting to localhost ($t)")
+            return "localhost"
+        }
+    }
 }

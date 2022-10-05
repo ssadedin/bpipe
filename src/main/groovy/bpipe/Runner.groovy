@@ -119,7 +119,7 @@ class Runner {
      */
     static boolean normalShutdown = true
     
-    final static String HOSTNAME = InetAddress.localHost.hostName
+    final static String HOSTNAME = Utils.getHostName()
     
     public static final File PAUSE_FLAG_FILE = new File(".bpipe/pause")
 
