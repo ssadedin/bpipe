@@ -17,7 +17,7 @@ killtree() {
     # of ps
     if uname | grep -q Darwin;
     then
-        pids=`ps -o pid,ppid | grep '^[0-9]' | grep ' '$ppid | cut -f 1 -d ' '`
+        pids=`ps -o pid,ppid | grep '^ \?[0-9]' | awk '{ if($2 == "'$ppid'") print $1; }'`
     elif uname | grep -iq cygwin;
     then
         pids=`ps -f  | awk '{ if(NR>1) print  $2 " " $3 }' | grep ' '$ppid | cut -f 1 -d ' '`
