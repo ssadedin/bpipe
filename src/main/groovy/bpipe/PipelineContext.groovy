@@ -2970,6 +2970,25 @@ class PipelineContext {
                 log.info("Allowing $pathValue from alternative branch due to explicit crossBranch flag provided")
                 return new PipelineFile(pathValue, defaultStorage)
             }
+            else
+            if(!OutputFileRegistry.theInstance.outputFiles.containsKey(pathValue)) {
+                throw new PipelineError(
+                    """
+                    Path $pathValue referenced via 'from' was created by a prior execution of a 
+                    pipeline in this directory. However, this file is not resolvable via any accessible 
+                    pipeline branches in the current pipeline. 
+
+                    Please check that your pipeline code correctly references this file. You may be running
+                    an updated pipeline in this directory since the original version was run.
+
+                    File timestamp: $props.timestamp
+
+                    Pipeline run time: ${Runner.startTimeMs}
+
+                    """.stripIndent()
+                )
+                
+            }
             else {
 
                 log.info "File $pathValue resolved existing file that is a known output but NOT from branch $branch"
@@ -2992,7 +3011,7 @@ class PipelineContext {
 
                    $pathValue 
 
-               Due to the risk that an unexpected file from outside your pipeline may be resolved.
+               This could mean an unexpected file from outside your pipeline was resolved.
                If this file is expected, please ensure it is marked as an output of your pipeline
                by adding it to a 'produce' statement, referencing it as an output variable or similar.
           """)

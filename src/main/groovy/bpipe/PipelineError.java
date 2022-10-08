@@ -69,6 +69,9 @@ public class PipelineError extends RuntimeException {
 
     public PipelineError(Throwable arg0) {
         super(arg0);
+        if(arg0 instanceof PipelineError) {
+            this.ctx = ((PipelineError) arg0).ctx;
+        }
     }
 
     public PipelineError(String description, PipelineContext ctx) {

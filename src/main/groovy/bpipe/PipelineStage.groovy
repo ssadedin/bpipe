@@ -256,14 +256,16 @@ class PipelineStage {
             }
         }
         
-//        log.info "Checking files: " + context.rawOutput.collect { String.valueOf(it) + " ( " + it.storage.class.name + ")" }.join(",")
         try {
-             Dependencies.theInstance.checkFiles(context.rawOutput, pipeline.aliases, "output", "in stage ${displayName}")
+            try {
+                Dependencies.theInstance.checkFiles(context.rawOutput, pipeline.aliases, "output", "in stage ${displayName}")
             }
             catch(PipelineError e) {
                 e.ctx = this.context
                 throw e
             }
+            
+            OutputFileRegistry.theInstance.register(context, context.rawOutput);
  
             if(!joiner) {
                  EventManager.theInstance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", (Map<String,Object>)[stage:this])            
