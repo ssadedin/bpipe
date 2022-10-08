@@ -221,7 +221,7 @@ class Dependencies {
             }
             
             if(missing) {
-                throwMissingError(missing, type, extraDescription)
+                throwMissingError(filesToCheck, missing, type, extraDescription)
             }
         }
         finally {
@@ -229,7 +229,7 @@ class Dependencies {
         }
     }
 
-    private void throwMissingError(List missing, String type, String extraDescription) {
+    private void throwMissingError(List<PipelineFile> allExpected, List<PipelineFile> missing, String type, String extraDescription) {
         PipelineFile firstMissing = missing[0]
 
         String storageDescription = ""
@@ -237,7 +237,7 @@ class Dependencies {
             storageDescription = " (storage type " + firstMissing.storage + ")"
         }
 
-        throw new PipelineError("Expected $type file ${firstMissing} ${storageDescription} $extraDescription could not be found")
+        throw new PipelineError("Of ${allExpected.size()} $type file(s) expected, ${missing.size()} were not found. Missing files included:\n\n${missing.collect { ' - ' + it + '\n'}.join('')}\n${storageDescription} $extraDescription")
     }
 
     private List checkParallel(List filesToCheck, List missing, Closure checkInput) {
