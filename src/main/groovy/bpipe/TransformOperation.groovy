@@ -233,6 +233,10 @@ class TransformOperation {
         }
         else 
             ctx.produceImpl(outFiles, body)
+            
+        if(ctx.allInferredOutputs.size() < outFiles.size()) {
+            System.err.println "WARNING: Stage $ctx.stageName specified a transform with ${outFiles.size()} output files but only referred to ${ctx.allInferredOutputs.size()} actual outputs in the executed command"
+        }
     }
 
     /**
