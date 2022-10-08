@@ -29,12 +29,12 @@ class OutputFileRegistry {
      * @param toRegister
      */
     @CompileStatic
-    void register(final PipelineContext context, final List<PipelineFile> toRegister) {
+    void register(final PipelineContext context, final List<PipelineFile> toRegister, boolean failIfDuplicates) {
         if(toRegister == null || toRegister.isEmpty())
             return
             
         List<PipelineFile> alreadyRegistered = toRegister.findAll { it.path in outputFiles }
-        if(alreadyRegistered) {
+        if(alreadyRegistered && failIfDuplicates) {
             throw new PipelineError(
                 """
                     Pipeline stage $context.stageName attempted to create one or more files that were already created in another pipeline stage:

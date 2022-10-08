@@ -265,7 +265,7 @@ class PipelineStage {
                 throw e
             }
             
-            OutputFileRegistry.theInstance.register(context, context.rawOutput);
+            OutputFileRegistry.theInstance.register(context, context.rawOutput, !context.hasDuplicatedOutputs);
  
             if(!joiner) {
                  EventManager.theInstance.signal(PipelineEvent.STAGE_COMPLETED, "Finished stage $displayName", (Map<String,Object>)[stage:this])            

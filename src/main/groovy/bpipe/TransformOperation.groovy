@@ -387,7 +387,17 @@ class TransformOperation {
         if(ctx.inboundBranches) {
             for(Branch branch in ctx.inboundBranches) {
                 log.info "Excise inbound merging branch reference $branch.name in $ctx.stageName due to merge point"
-                txed = txed.newName(txed.path.replace('.' + branch.name + '.','.merge.'))
+                String branchPart = '.' + branch.name + '.'
+                if(txed.path.contains(branchPart)) {
+                    txed = txed.newName(txed.path.replace(branchPart,'.merge.'))
+                    break
+                }
+            }
+            
+            if(txed.name == inp.name) {
+                // In scenarios where the merge operator is used but the inner stages in the parallel branches are skipped 
+                // we can legitimately end up with duplicate outputs. 
+                ctx.hasDuplicatedOutputs = true
             }
         }
         else {
