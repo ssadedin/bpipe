@@ -295,6 +295,14 @@ class PipelineContext {
     */
    public List<PipelineFile> executedOutputs = []
    
+   /**
+    * Set to true in specific circumstances when duplicate outputs are knowingly produced
+    * 
+    * In most circumstances these would be treated as an error, so this flag allows downstream
+    * to avoid flagging an error.
+    */
+   public boolean hasDuplicatedOutputs = false
+   
     /**
      * Set the default inputs and outputs for this context according to the current
      * state of the given pipeline, and our stage name.
