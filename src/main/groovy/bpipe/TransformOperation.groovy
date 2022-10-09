@@ -73,6 +73,14 @@ class TransformOperation {
     List<PipelineFile> files
     
     /**
+     * List of files for prioritisation in resolution within the pipeline stage
+     * <p>
+     * This is needed because the prioritisation may still need to account for files that
+     * were not resolved for transformation
+     */
+    List<PipelineFile> resolutionFiles = []
+    
+    /**
      * The pipeline context for which this transform operation is occurring.
      */
     PipelineContext ctx
@@ -163,6 +171,7 @@ class TransformOperation {
                 pattern += '$'
                 
             PipelineInput input = new PipelineInput(originalFiles, this.ctx.pipelineStages, this.ctx.aliases)
+            input.resolutionStack = this.ctx.resolutionInputs
             List<PipelineFile> filesResolved = input.resolveInputsEndingWithPatterns([fromPattern + '$'], [fromPattern])
 
             if(wildcardExts[extensionIndex]) {

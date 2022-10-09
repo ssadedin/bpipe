@@ -1016,6 +1016,9 @@ class PipelineContext {
        if(!inputWrapper || inputWrapper instanceof MultiPipelineInput) {
            inputWrapper = new PipelineInput(this.@input, pipelineStages, this.aliases)
            this.allUsedInputWrappers[0] = inputWrapper
+           if(this.resolutionInputs) {
+               inputWrapper.resolutionStack = this.resolutionInputs
+           }
        }
        inputWrapper.currentFilter = currentFilter    
        return inputWrapper
@@ -2613,6 +2616,11 @@ class PipelineContext {
         else
             this.outputLog.buffer "$date MSG:  $m"
     }
+    
+    /**
+     * Inputs to add to resolution stack for nested contexts
+     */
+    List<List<PipelineFile>> resolutionInputs = []
    
    /**
     * Executes the given body with 'input' defined to be the
@@ -2653,17 +2661,24 @@ class PipelineContext {
        
        List resolvedInputs = resolveInputsMatchingSpecs((List)exts, (boolean)options.crossBranch, (boolean)options.allowForeign, true)
        
+       resolutionInputs.add(resolvedInputs)      
+
        def oldInputs = this.@input
        this.@input  = resolvedInputs
        
        this.getInput().resolvedInputs.addAll(resolvedInputs)
       
-       def result = withInputs(resolvedInputs,body)
-       if(body != null)
-           return this.nextInputs
-       else
-           return this // Allows chaining of the next command
-   }
+       try {
+           def result = withInputs(resolvedInputs,body)
+           if(body != null)
+               return this.nextInputs
+           else
+               return this // Allows chaining of the next command
+        } 
+        finally {
+            resolutionInputs.removeLast()
+        }
+    }
    
    /**
     * Attempt to resolve an input for each extension specified in exts by searching upstream in the

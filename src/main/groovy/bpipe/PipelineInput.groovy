@@ -109,6 +109,11 @@ class PipelineInput {
      * Set of aliases to use in mapping file names
      */
     Aliases aliases
+    
+    /**
+     * Inputs for prioritisation in resolving files
+     */
+    List<List<PipelineFile>> resolutionStack = []
 
     PipelineInput(List<PipelineFile> input, List<PipelineStage> stages, Aliases aliases) {
         this.stages = stages;
@@ -453,8 +458,8 @@ class PipelineInput {
         childInp.extensionPrefix = this.extensionPrefix ? this.extensionPrefix+"."+name : name
         childInp.defaultValueIndex = defaultValueIndex
         childInp.parentError = ime
+        childInp.resolutionStack = this.resolutionStack
         return childInp;
-        
      }
     
     /**
@@ -502,7 +507,7 @@ class PipelineInput {
         }
 
         Branch myBranch = myStage.context.branch
-        List reverseOutputs = new ArrayList(reverseStages.size()*2)
+        List<List<PipelineFile>> reverseOutputs = new ArrayList(reverseStages.size()*2)
         List<List<PipelineFile>> prioritisedOutputs = []
         for(PipelineStage stage in reverseStages) {
             
@@ -546,12 +551,15 @@ class PipelineInput {
         // Add a final stage that represents the original inputs (bit of a hack)
         // You can think of it as the initial inputs being the output of some previous stage
         // that we know nothing about
-        List previousInputs = LocalPipelineFile.from(Utils.box(stages[0].context.rawInput) as List)
+        List<PipelineFile> previousInputs = (List<PipelineFile>)LocalPipelineFile.from(Utils.box(stages[0].context.rawInput) as List)
+
         log.info "Supplementing with outputs from previous inputs: " + previousInputs
+
         reverseOutputs.add(previousInputs)
             
         // Consider not just the actual inputs to the stage, but also the *original* unmodified inputs
         if(stages[0].originalInputs) {
+
             List originalInputs = LocalPipelineFile.from(Utils.box(stages[0].originalInputs) as List)
 
             if(originalInputs.size()<20)
@@ -559,7 +567,7 @@ class PipelineInput {
             else
                 log.info "Supplementing with ${originalInputs.size()} original outputs"
 
-  	        reverseOutputs.add(originalInputs)
+  	        reverseOutputs.add((List<PipelineFile>)originalInputs)
         }
         
         reverseOutputs.addAll(0, prioritisedOutputs)
@@ -572,13 +580,21 @@ class PipelineInput {
         }
         inputInputs << root.input
         
+        
+        for(inps in resolutionStack.reverse()) {
+           if(inps) {
+               log.info "Add input from resolutionStack resolution chain: " + inps
+               reverseOutputs.add(0,(List<PipelineFile>)inps) 
+           }
+        }
+        
         // Add an initial stage that prioritises the inputs provided to or resolved
         // by this PipelineInput already. This way if the from() spec is used and matches 
         // then it will go with those rather than searching backwards for a previous match
         for(inps in inputInputs.reverse()) {
            if(inps) {
                log.info "Add input from PipelineInput resolution chain: " + inps
-               reverseOutputs.add(0,inps) 
+               reverseOutputs.add(0,(List<PipelineFile>)inps) 
            }
         }
             
