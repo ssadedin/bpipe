@@ -2963,10 +2963,12 @@ class PipelineContext {
     private checkForMissingInputs(orig, List exts, List resolvedInputs) {
         List missingInputs = resolvedInputs.findIndexValues { it == null }
         if(missingInputs) {
+            String branchHierarchy = branch.hierarchy()
+            String branchInfo = branchHierarchy ? "\n\nIn branch:\n\n" + branchHierarchy : ""
             if(exts.size()>1)
-                throw new InputMissingError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with $orig\nMost likely missing extensions: ${exts[missingInputs]}")
+                throw new InputMissingError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with $orig\n\nMost likely missing extensions: ${exts[missingInputs]}$branchHierarchy")
             else
-                throw new InputMissingError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with $orig")
+                throw new InputMissingError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with ${orig}$branchHierarchy")
         }
     }
    

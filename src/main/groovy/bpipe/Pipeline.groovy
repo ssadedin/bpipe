@@ -902,8 +902,14 @@ public class Pipeline implements ResourceRequestor {
         return '\n' + failExceptions.collect { e ->
             if(e instanceof PipelineError && ((PipelineError)e).ctx) {
                 PipelineError pe = (PipelineError)e
-                String branchPart = pe.ctx?.branch?.name ? " ($pe.ctx.branch.name) " : ""
-                return "In stage ${pe.ctx?.stageName}$branchPart: " + pe.message
+                String branchPart = pe.ctx?.branch?.firstNonTrivialName ? " ($pe.ctx.branch.firstNonTrivialName) " : ""
+                String stageName = pe.ctx?.stageName
+                if(stageName && stageName != "Unknown") {
+                    return "In stage ${pe.ctx?.stageName}$branchPart: " + pe.message
+                }
+                else {
+                    return pe.message
+                }
             }
             else 
                 return e.message

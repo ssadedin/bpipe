@@ -85,11 +85,9 @@ class Branch extends Expando implements Serializable {
      */
     @CompileStatic
     String getFirstNonTrivialName() {
-        Branch parent = null;
-        
-        String sanitisedPipelineName = name?.replaceAll(REMOVE_TRAILING_DOT_SECTIONS_PATTERN,'');
+        String sanitisedPipelineName = getSanitisedName();
        
-        if(sanitisedPipelineName && !sanitisedPipelineName.isNumber())
+        if(sanitisedPipelineName && !sanitisedPipelineName.isNumber() && (sanitisedPipelineName != "all"))
             return sanitisedPipelineName
             
         if(parent == null)
@@ -120,6 +118,19 @@ class Branch extends Expando implements Serializable {
         return !check.is(null)
     }
     
+    String hierarchy() {
+        List<Branch> steps = [this]
+        Branch step = this
+        while(step.parent != null) {
+            steps.add(step.parent)
+            step = step.parent
+        }
+        
+        int stepIndex = 0
+        return steps.findAll { it.name != 'all' && !it.sanitisedName.isNumber() }
+                    .collect { ("\t" * (stepIndex++)) + it.name }
+                    .join('\n')
+    }
     
     void setProperty(String name, Object value) {
         
@@ -142,5 +153,9 @@ class Branch extends Expando implements Serializable {
             }
             super.setProperty(name,value)
         }
+    }
+    
+    String getSanitisedName() {
+        return name?.replaceAll(REMOVE_TRAILING_DOT_SECTIONS_PATTERN,'')       
     }
 }

@@ -1023,12 +1023,23 @@ class Utils {
         int width = Config.config.columns
         
         return errors.collect {  PipelineError e ->
-            String branch = e.ctx?.branch?.name
+            
+//            String branchHierarchy = e?.ctx?.branch?.hierarchy()?:""
+//            String branchInfo = branchHierarchy ? "\n\nIn branch:\n\n" + branchHierarchy : ""
+//
+            String branch = e.ctx?.branch?.firstNonTrivialName
             if(branch != null && branch != "all") {
                 branch = " ( $branch ) "
             }
             
-            (e.ctx ? " $e.ctx.stageName $branch " : "").center(width,"-") + "\n\n" + e.message + "\n"
+            String result = (e.ctx ? " $e.ctx.stageName $branch " : "").center(width,"-") + "\n\n" + e.message + "\n"
+            
+//            if(branchHierarchy) {
+//                result = result + "\n$branchInfo\n"
+//            }
+            
+            return result
+
         }.join("\n") + "\n" + ("-" * width)
         
         
