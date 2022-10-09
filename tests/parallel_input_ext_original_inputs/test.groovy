@@ -1,6 +1,6 @@
 
 annotate_test = {
-    produce("hello.txt") {
+    produce("hello.${branch}.txt") {
         exec "touch $output1"
     }
 }
