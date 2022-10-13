@@ -72,7 +72,7 @@ launch_in_foreground() {
     shift 1
     exec java $EXTRA_BPIPE_JVM_OPTS \
              -noverify \
-              -classpath "$CP:$BPIPE_JAR" \
+              -classpath "$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*:$CP:$BPIPE_JAR" \
               $BPIPEDEBUG \
               -Dbpipe.home="$JVM_BPIPE_HOME" \
               -Dbpipe.mode=$LAUNCH_MODE \
