@@ -1,96 +1,102 @@
 site_name: Bpipe
 repo_url: https://github.com/ssadedin/bpipe
-theme: bootstrap
-pages:
-- ['index.md', 'Welcome!']
-- ['Overview/Introduction.md','Overview','Introduction']
-- ['Overview/ComparisonToWorkflowTools.md','Overview','Comparison To Workflow Tools']
-- ['Overview/InstallInstructions.md','Overview','Install Instructions']
-- ['Language/About.md','Language','About']
-- ['Language/Check.md','Language','Check']
-- ['Language/Chr.md','Language','Chr']
-- ['Language/CleanupStatement.md','Language','Cleanup']
-- ['Language/Config.md','Language','Config']
-- ['Language/Debug.md','Language','Debug']
-- ['Language/Directories.md','Language','Directories']
-- ['Language/Doc.md','Language','Doc']
-- ['Language/Exec.md','Language','Exec']
-- ['Language/Fail.md','Language','Fail']
-- ['Language/File.md','Language','File']
-- ['Language/Filter.md','Language','Filter']
-- ['Language/Forward.md','Language','Forward']
-- ['Language/From.md','Language','From']
-- ['Language/Glob.md','Language','Glob']
-- ['Language/Grep.md','Language','Grep']
-- ['Language/Load.md','Language','Load']
-- ['Language/MergePoints.md','Language','Merge Point Operator']
-- ['Language/Multi.md','Language','Multi']
-- ['Language/Output.md','Language','Output']
-- ['Language/Options.md','Language','Options']
-- ['Language/Prefix.md','Language','Prefix']
-- ['Language/Produce.md','Language','Produce']
-- ['Language/R.md','Language','R']
-- ['Language/Segments.md','Language','Segments']
-- ['Language/Send.md','Language','Send']
-- ['Language/Succeed.md','Language','Succeed']
-- ['Language/Transform.md','Language','Transform']
-- ['Language/Using.md','Language','Using']
-- ['Language/PreserveInPipeline.md','Language','Preserve in pipeline']
-- ['Language/requires.md','Language','requires']
-- ['Language/uses.md','Language','uses']
-- ['Language/var.md','Language','var']
-- ['Commands/Commands.md','Commands','Using the bpipe command']
-- ['Commands/cleanup.md','Commands','cleanup']
-- ['Commands/execute.md','Commands','execute']
-- ['Commands/history.md','Commands','history']
-- ['Commands/jobs.md','Commands','jobs']
-- ['Commands/log.md','Commands','log']
-- ['Commands/preserve.md','Commands','preserve']
-- ['Commands/query.md','Commands','query']
-- ['Commands/retry.md','Commands','retry']
-- ['Commands/run.md','Commands','run']
-- ['Commands/status.md','Commands','status']
-- ['Commands/stop.md','Commands','stop']
-- ['Commands/test.md','Commands','test']
-- ['Tutorials/Hello,World.md','Tutorials','Hello, World']
-- ['Tutorials/ExampleWithInputsAndOutputs.md','Tutorials','Example With Inputs And Outputs']
-- ['Tutorials/RealPipelineTutorial.md','Tutorials','Real Pipeline Tutorial']
-- ['Guides/Configuration.md','Guides','Configuration Support']
-- ['Guides/Variables.md','Guides','Variables']
-- ['Guides/ParallelTasks.md','Guides','Parallel Tasks']
-- ['Guides/BranchVariables.md','Guides','Branch Variables']
-- ['Guides/ExtensionSyntax.md','Guides','Extension Syntax']
-- ['Guides/Logging.md','Guides','Logging']
-- ['Guides/Modules.md','Guides','Modules']
-- ['Guides/Notifications.md','Guides','Notifications']
-- ['Guides/Regions.md','Guides','Working with Genomic Regions']
-- ['Guides/Reports.md','Guides','Reports']
-- ['Guides/ResourceManagers.md','Guides','Resource Managers']
-- ['Guides/ToolVersionDatabase.md','Guides','Tool Version Database']
-- ['Guides/Trash.md','Guides','Trash']
-- ['Guides/DevelopmentSetup.md','Guides','Development Setup']
-- ['Guides/DocumentationStyle.md','Guides','Documentation Style']
-- ['Guides/ImplementingAResourceManager.md','Guides','Implementing A Resource Manager']
-- ['Guides/Troubleshooting.md','Guides','Troubleshooting']
-- ['Guides/PipelineEvents.md','Guides','Listening for Pipeline Events']
-- ['Guides/AdvancedSettings.md','Guides','Advanced Settings']
-- ['Guides/ExtendingClassPath.md','Guides','Adding to Class Path']
-- ['Guides/PreallocatedJobs.md','Guides','Pre-allocating Resources for Jobs']
-- ['Guides/Gitlab.md','Guides','Integration with Gitlab']
-- ['Guides/JMS.md','Guides','Integration with JMS / Queuing Systems']
-- ['Guides/AWS.md','Guides','Using Bpipe with Amazon Web Services (AWS/EC2)']
-- ['Guides/GoogleCloud.md','Guides','Using Bpipe with Google Cloud (GCS)']
-- ['Guides/Containers.md','Guides','Running Commands in Containers']
-- ['Examples/PairedEndAlignment.md','Examples','Paired End Alignment']
-- ['Examples/RNASeqCorset.md','Examples','RNA Seq Corset']
-- ['Examples/WGSVariantCalling.md','Examples','WGS Variant Calling']
-- ['Releases/0.9.11.md','Releases','0.9.11 (latest)']
-- ['Releases/0.9.10.md','Releases','0.9.10']
-- ['Releases/0.9.9.9.md','Releases','0.9.9.9']
-- ['Releases/0.9.9.8.md','Releases','0.9.9.8']
-- ['Releases/0.9.9.7.md','Releases','0.9.9.7']
-- ['Releases/0.9.9.6.md','Releases','0.9.9.6']
-- ['Releases/0.9.9.5.md','Releases','0.9.9.5']
-- ['Releases/0.9.9.4.md','Releases','0.9.9.4']
-- ['Releases/0.9.9.3.md','Releases','0.9.9.3']
-#markdown_extensions: [gfm]
+theme: readthedocs
+extra_css: [extra.css]
+nav:
+- Overview:
+  - Introduction: Overview/Introduction.md
+  - Comparison To Workflow Tools: Overview/ComparisonToWorkflowTools.md
+  - Install Instructions: Overview/InstallInstructions.md
+- Language:
+  - About: Language/About.md
+  - Check: Language/Check.md
+  - Chr: Language/Chr.md
+  - Cleanup: Language/CleanupStatement.md
+  - Config: Language/Config.md
+  - Debug: Language/Debug.md
+  - Directories: Language/Directories.md
+  - Doc: Language/Doc.md
+  - Exec: Language/Exec.md
+  - Fail: Language/Fail.md
+  - File: Language/File.md
+  - Filter: Language/Filter.md
+  - Forward: Language/Forward.md
+  - From: Language/From.md
+  - Glob: Language/Glob.md
+  - Grep: Language/Grep.md
+  - Load: Language/Load.md
+  - Merge Point Operator: Language/MergePoints.md
+  - Multi: Language/Multi.md
+  - Output: Language/Output.md
+  - Options: Language/Options.md
+  - Prefix: Language/Prefix.md
+  - Produce: Language/Produce.md
+  - R: Language/R.md
+  - Segments: Language/Segments.md
+  - Send: Language/Send.md
+  - Succeed: Language/Succeed.md
+  - Transform: Language/Transform.md
+  - Using: Language/Using.md
+  - Preserve in pipeline: Language/PreserveInPipeline.md
+  - requires: Language/requires.md
+  - uses: Language/uses.md
+  - var: Language/var.md
+- Commands:
+  - Using the bpipe command: Commands/Commands.md
+  - cleanup: Commands/cleanup.md
+  - execute: Commands/execute.md
+  - history: Commands/history.md
+  - jobs: Commands/jobs.md
+  - log: Commands/log.md
+  - preserve: Commands/preserve.md
+  - query: Commands/query.md
+  - retry: Commands/retry.md
+  - run: Commands/run.md
+  - status: Commands/status.md
+  - stop: Commands/stop.md
+  - test: Commands/test.md
+- Tutorials:
+  - Hello, World: Tutorials/Hello,World.md
+  - Example With Inputs And Outputs: Tutorials/ExampleWithInputsAndOutputs.md
+  - Real Pipeline Tutorial: Tutorials/RealPipelineTutorial.md
+- Guides:
+  - Configuration Support: Guides/Configuration.md
+  - Variables: Guides/Variables.md
+  - Parallel Tasks: Guides/ParallelTasks.md
+  - Branch Variables: Guides/BranchVariables.md
+  - Extension Syntax: Guides/ExtensionSyntax.md
+  - Logging: Guides/Logging.md
+  - Modules: Guides/Modules.md
+  - Notifications: Guides/Notifications.md
+  - Working with Genomic Regions: Guides/Regions.md
+  - Reports: Guides/Reports.md
+  - Resource Managers: Guides/ResourceManagers.md
+  - Tool Version Database: Guides/ToolVersionDatabase.md
+  - Trash: Guides/Trash.md
+  - Development Setup: Guides/DevelopmentSetup.md
+  - Documentation Style: Guides/DocumentationStyle.md
+  - Implementing A Resource Manager: Guides/ImplementingAResourceManager.md
+  - Troubleshooting: Guides/Troubleshooting.md
+  - Listening for Pipeline Events: Guides/PipelineEvents.md
+  - Advanced Settings: Guides/AdvancedSettings.md
+  - Adding to Class Path: Guides/ExtendingClassPath.md
+  - Pre-allocating Resources for Jobs: Guides/PreallocatedJobs.md
+  - Integration with Gitlab: Guides/Gitlab.md
+  - Integration with JMS / Queuing Systems: Guides/JMS.md
+  - Using Bpipe with Amazon Web Services (AWS/EC2): Guides/AWS.md
+  - Using Bpipe with Google Cloud (GCS): Guides/GoogleCloud.md
+  - Running Commands in Containers: Guides/Containers.md
+- Examples:
+  - Paired End Alignment: Examples/PairedEndAlignment.md
+  - RNA Seq Corset: Examples/RNASeqCorset.md
+  - WGS Variant Calling: Examples/WGSVariantCalling.md
+- Releases:
+  - 0.9.11 (latest): Releases/0.9.11.md
+  - 0.9.10: Releases/0.9.10.md
+  - 0.9.9.9: Releases/0.9.9.9.md
+  - 0.9.9.8: Releases/0.9.9.8.md
+  - 0.9.9.7: Releases/0.9.9.7.md
+  - 0.9.9.6: Releases/0.9.9.6.md
+  - 0.9.9.5: Releases/0.9.9.5.md
+  - 0.9.9.4: Releases/0.9.9.4.md
+  - 0.9.9.3: Releases/0.9.9.3.md
