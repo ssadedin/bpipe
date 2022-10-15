@@ -32,6 +32,12 @@ class AWSEC2CommandExecutorTest {
 
     @Test
     public void 'test acquire instance'() {
+        
+        if(config.keypair == null) {
+            println "Skip because key is null: please set system properties to run this test"
+            return
+        }
+        
         def awse = new AWSEC2CommandExecutor()
         
         awse.acquireInstance(config,'ami-0acb51609b44c296b',"1234")
@@ -46,6 +52,12 @@ class AWSEC2CommandExecutorTest {
     
     @Test
     public void 'test start command'() {
+        
+        if(config.keypair == null) {
+            println "Skip because key is null: please set system properties to run this test"
+            return
+        }
+         
         def awse = new AWSEC2CommandExecutor()
         
         Command cmd = new Command(id:CommandId.newId(),command:'pwd', rawProcessedConfig:[:])

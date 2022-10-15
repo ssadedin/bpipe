@@ -394,7 +394,9 @@ class OutputMetaData implements Serializable {
     }
     
     String toString() {
-        outputPath +  " <= " + this.inputs.join(",")
+//        def minTimestamp = [this.timestamp, *this.inputs*.timestamp]
+
+        outputPath +  " ($timestamp) <= " + this.inputs.join(',')
     }
     
     @CompileStatic

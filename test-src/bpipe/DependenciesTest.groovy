@@ -38,6 +38,7 @@ class DependenciesTest {
         }
 
         a.outputPath = name
+        a.canonicalPath = new File(name).canonicalPath
         a.cleaned = false
 
         if(!(input instanceof List))
@@ -69,19 +70,19 @@ class DependenciesTest {
 
        println result.dump()
 
-       assert result.children[1].values*.inputs.flatten() == ['input1.txt']
+       assert result.children[0].values*.inputs.flatten() == ['input1.txt']
 
-       assert result.children[1].children.size() == 2
+       assert result.children[0].children.size() == 2
 
        def bEntry = result.entryFor(new File("b.txt"))
 
        assert bEntry != null
-       assert bEntry.parents.contains(result)
+       assert bEntry.parents[0].parents.contains(result)
        assert bEntry.children.isEmpty()
 
        def cEntry = result.entryFor(new File("c.txt"))
        def dEntry = result.entryFor(new File("d.txt"))
-       assert cEntry.parents.contains(result)
+       assert cEntry.parents[0].parents.contains(result)
        assert cEntry.children.contains( dEntry )
     }
 
@@ -128,7 +129,7 @@ class DependenciesTest {
     @Test
     void testEmptyGraph() {
        def result = Dependencies.instance.computeOutputGraph([])
-       assert result.values.isEmpty()
+       assert !result.values || result.values.isEmpty()
        assert result.children.isEmpty()
     }
 

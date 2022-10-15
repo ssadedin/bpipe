@@ -184,7 +184,7 @@ class BpipeParamsBinding extends Binding {
             return null
         }
 
-        if( value == null ) {
+        if( value == null || value == "" ) {
             value = true
         }
         else {

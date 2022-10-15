@@ -144,7 +144,7 @@ class PipelineInput {
     String toString() {
         try {
             PipelineFile resolvedValue = getResolvedValue()
-            PipelineFile resolvedFile =  this.aliases[resolvedValue]
+            PipelineFile resolvedFile = this.aliases[resolvedValue]
             return resolvedFile.renderToCommand()
         }
         catch(InputMissingError missing) {
@@ -513,14 +513,14 @@ class PipelineInput {
             
             List<List<PipelineFile>> outputsToAdd = []
             if(stage.context.nextInputs != null) {
-                log.info "nextInputs are $stage.context.nextInputs" 
+                log.fine "nextInputs are $stage.context.nextInputs" 
                 List nextInputs = Utils.box(stage.context.nextInputs) as List
                 outputsToAdd.add(nextInputs)
             }
             
             List outputs = Utils.box(stage.context.@output)  as List
             if(!outputs.isEmpty()) {
-                log.info "Outputs in search from $stage.stageName $outputs"            
+                log.fine "Outputs in search from $stage.stageName $outputs"            
                 outputsToAdd.add(outputs)
             }
            

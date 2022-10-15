@@ -11,9 +11,9 @@ class ForwarderTest {
     void testForward() {
         File f = new File("test.src.out")
         File outFile = new File("test.out")
-        def forwarder = new Forwarder(f, new FileOutputStream(outFile))
+        def forwarder = new Forwarder(f, new FileOutputStream(outFile).newWriter())
 
-        forwarder.forward(f, new FileOutputStream(outFile))
+        forwarder.forward(f, new FileOutputStream(outFile).newWriter())
         // forwarder.forward(new File("test.src.out"),System.out)
 
         Timer timer = new Timer()

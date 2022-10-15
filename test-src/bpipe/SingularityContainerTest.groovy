@@ -2,6 +2,7 @@ package bpipe
 
 import static org.junit.Assert.*
 
+import org.junit.Before
 import org.junit.Test
 
 import bpipe.processors.SingularityContainerWrapper
@@ -22,6 +23,11 @@ class SingularityContainerTest {
             image:'my_test_image'
             ] 
         ]
+        
+    @Before
+    void setup() {
+        Config.config.script = 'test.groovy'
+    }
 
     @Test
     public void 'containerised shell contains essential components'() {
@@ -31,7 +37,7 @@ class SingularityContainerTest {
         
         assert command.shell[0] == 'singularity'
         assert command.shell.findIndexOf { it == '-B' }  > 0
-        assert command.shell[-2] == 'my_test_image'
+        assert command.shell[-3].path == 'my_test_image'
     }
 
     @Test
@@ -40,12 +46,13 @@ class SingularityContainerTest {
         Config.userConfig = [ filesystems : [
             teststorage: [ type: 'bind', base: '/tmp/foo']
         ]]
+        
         command.rawProcessedConfig = config + [container:config.container+[storage:'teststorage']]
         scw.transform(command, [])
         
         assert command.shell[0] == 'singularity'
         assert command.shell.findIndexOf { it == '-B' }  > 0
-        assert command.shell[-2] == 'my_test_image'
+        assert command.shell[-3].path == 'my_test_image'
         
         def binds = command.shell.findIndexValues { it == '-B' }.collect { command.shell[it+1] }
         assert binds.size() == 2
