@@ -10,7 +10,7 @@ class DependenciesTest {
     OutputMetaData a,b,c,d
 
     static {
-        Runner.initializeLogging("tests")
+//        Runner.initializeLogging("tests")
     }
 
     @Before
