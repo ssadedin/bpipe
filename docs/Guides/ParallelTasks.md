@@ -1,4 +1,4 @@
-# Running Pipeline Stages in Parallel
+## Running Pipeline Stages in Parallel
 
 A frequent need in Bioinformatics pipelines is to execute several tasks at the same time.  There are two main cases where you want to do this:
 
@@ -182,7 +182,7 @@ needed as a BED file, using `$region.bed`.
 
 **Merging Results**
 
-See the [merge points operator](../Language/MergePoints) to understand specific support that Bpipe provides for 
+See the [merge points operator](Language/MergePoints) to understand specific support that Bpipe provides for 
 merging the outputs from parallel segments.
 
 ## Executing Multiple Stages Simultaneously on Different Data
@@ -281,7 +281,7 @@ In this example the `align` stage will run three times in parallel and the files
 
 Sometimes you know in advance exactly how many threads you wish to use with a command. In that case, it makes sense
 to specify it using the `procs` attribute in a configuration, or to specify it directly in the pipeline stage
-with the [Uses](uses) clause.
+with the [Uses](Language/uses) clause.
 
 Other times, however, you want to be more flexible, and allow resources to be assigned more dynamically. This means
 that if more compute power is available, you can take advantage of it, and when less is available, your pipeline can

@@ -1,4 +1,4 @@
-# Merge points
+## Merge points
 
 ## Synopsis
 

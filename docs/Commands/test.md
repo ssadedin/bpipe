@@ -1,4 +1,4 @@
-# The test command
+## The test command
 
 ## Synopsis
 

@@ -1,4 +1,4 @@
-# The grep statement
+## The grep statement
 
 ### Synopsis
 

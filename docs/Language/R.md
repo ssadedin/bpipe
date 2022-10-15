@@ -1,4 +1,4 @@
-# Executing Inline R Code
+## Executing Inline R Code
 
 
 ### Synopsis

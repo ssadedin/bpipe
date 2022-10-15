@@ -1,4 +1,4 @@
-# Using Bpipe with Google Cloud
+## Using Bpipe with Google Cloud
 
 ## Introduction
 

@@ -1,5 +1,4 @@
-
-# The cleanup statement
+## The cleanup statement
 
 ### Synopsis
     

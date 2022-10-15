@@ -1,4 +1,4 @@
-# Variables in Bpipe
+## Variables in Bpipe
 
 Bpipe supports variables inside Bpipe scripts.  In Bpipe there are two kinds of variables: 
 
@@ -23,7 +23,7 @@ flexible pipelines.
 
 ### =Extension Syntax for Input and Output Variables=
 
-Bpipe provides a special syntax for easily referencing inputs and outpus with specific file extensions. See [ExtensionSyntax](Language/ExtensionSyntax) for more information.
+Bpipe provides a special syntax for easily referencing inputs and outpus with specific file extensions. See [ExtensionSyntax](Guides/ExtensionSyntax) for more information.
 
 **Multiple Inputs**
 

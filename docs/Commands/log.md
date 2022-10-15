@@ -1,4 +1,4 @@
-# The log command
+## The log command
 
 ## Synopsis
 

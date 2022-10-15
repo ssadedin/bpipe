@@ -1,4 +1,4 @@
-# The jobs command
+## The jobs command
 
 
 ## Synopsis

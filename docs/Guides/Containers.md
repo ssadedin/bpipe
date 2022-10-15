@@ -1,4 +1,4 @@
-# Docker and Singularity Support
+## Docker and Singularity Support
 
 ## Introduction
 

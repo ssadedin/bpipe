@@ -1,4 +1,4 @@
-# Modularizing Bpipe Scripts
+## Modularizing Bpipe Scripts
 
 An important aspect of Bpipe is making your pipelines maintainable and reuseable.  In order to achieve this it is greatly beneficial to put commonly used pipeline stages in a place where you can reuse them rather than copying them between pipeline files.   Bpipe makes it very easy to share a definition of a pipeline stage across multiple pipelines.
 

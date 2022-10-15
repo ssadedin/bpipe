@@ -1,6 +1,6 @@
 site_name: Bpipe
 repo_url: https://github.com/ssadedin/bpipe
-theme: readthedocs
+theme: mkdocs
 extra_css: [extra.css]
 nav:
 - Overview:

@@ -1,4 +1,4 @@
-# Filenames
+## Filenames
 
 All documentation should be in Markdown, and with an `.md` extension
 
@@ -16,7 +16,7 @@ is extracted to a filename, submenu, title format such as
 -['DocumentationStyle.md','Documentation','Documentation Style']
 ```
 
-# Testing / Building Documentation
+## Testing / Building Documentation
 
 The documentation is built using mkdocs. After installing mkdocs, a local 
 server can be started to view the documentation using the following command

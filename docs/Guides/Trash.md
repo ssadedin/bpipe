@@ -1,4 +1,4 @@
-# The Trash Folder
+## The Trash Folder
 
 ## The Trash Folder
 

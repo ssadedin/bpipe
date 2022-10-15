@@ -1,4 +1,4 @@
-# The history command
+## The history command
 
 ## Synopsis
 

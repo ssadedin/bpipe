@@ -1,4 +1,4 @@
-# The uses statement
+## The uses statement
 
 ### Synopsis
 

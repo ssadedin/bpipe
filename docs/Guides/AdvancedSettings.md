@@ -1,4 +1,4 @@
-# Advanced Settings and Variables
+## Advanced Settings and Variables
 
 ## Introduction
 

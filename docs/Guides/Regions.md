@@ -1,4 +1,4 @@
-# Working with Genomic Regions
+## Working with Genomic Regions
 
 ## Genomic Regions
 

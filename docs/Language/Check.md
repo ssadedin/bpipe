@@ -1,4 +1,4 @@
-# The check statement
+## The check statement
 
 ### Synopsis
 

@@ -1,4 +1,4 @@
-# Using Custom Classes by Extending the Bpipe ClassPath
+## Using Custom Classes by Extending the Bpipe ClassPath
 
 One of the great things about Bpipe is that under the covers you have
 access to the whole JVM ecosystem to add libraries for use in your

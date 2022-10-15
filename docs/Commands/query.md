@@ -1,4 +1,4 @@
-# The query command
+## The query command
 
 ## Synopsis
 

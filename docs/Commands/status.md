@@ -1,4 +1,4 @@
-# The status command
+## The status command
 
 ## Synopsis
 

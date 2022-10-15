@@ -1,4 +1,4 @@
-# Using Bpipe with Cluster Resource Management Systems
+## Using Bpipe with Cluster Resource Management Systems
 
 In some environments commands cannot be issued directly but must be queued and
 run in a managed environment that controls how long they can run for and what
@@ -83,7 +83,7 @@ For more complicated cases you can override the configuration using a completely
     exec "time (bwa aln test.fastq > test.sai)","bwa"
 ```
 
-The bpipe [multi](../Language/Multi/) statement uses a slightly different syntax to specify a configuration for each command
+The bpipe [multi](Language/Multi/) statement uses a slightly different syntax to specify a configuration for each command
 where for each command the configuration name is placed first and the command follows after colon (groovy Map syntax):
 ```groovy
     multi small_bwa: "bwa aln -t $threads small.fastq > test.small.sai",

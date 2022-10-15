@@ -1,4 +1,4 @@
-# The forward instruction
+### The alias instruction
 
 ### Synopsis
 

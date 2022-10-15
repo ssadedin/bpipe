@@ -1,4 +1,4 @@
-# How Bpipe handles inputs and outputs
+## How Bpipe handles inputs and outputs
 
 The whole point of a pipeline is to take some existing data you have, do some work on it and produce some outputs.  This example will expand the GettingStarted tutorial to add inputs and outputs.
 

@@ -1,4 +1,4 @@
-# Hooking into Pipeline Events
+## Hooking into Pipeline Events
 
 More advanced users of Bpipe may wish to write more general handlers for
 events that occur during the pipeline execution. Internally, many functions of

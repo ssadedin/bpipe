@@ -1,4 +1,4 @@
-Bpipe without any arguments will output a summary of the valid commands.
+#Bpipe without any arguments will output a summary of the valid commands.
 
 ```
 Bpipe Version 0.9.8.6   Built on Wed Oct 22 16:06:17 EST 2014

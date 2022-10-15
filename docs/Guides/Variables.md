@@ -1,6 +1,4 @@
-[comment]: <> ( vim: ts=20 expandtab tw=100 spell nocindent nosmartindent filetype=Markdown)
-
-# Variables in Bpipe
+## Variables in Bpipe
 
 Bpipe supports variables inside Bpipe scripts.  In Bpipe there are two kinds of variables: 
 
@@ -26,7 +24,7 @@ The input and output variables are how Bpipe automatically connects tasks togeth
 ### Extension Syntax for Input and Output Variables
 
 Bpipe provides a special syntax for easily referencing inputs and outputs with
-specific file extensions. See [ExtensionSyntax](Language/ExtensionSyntax) for
+specific file extensions. See [ExtensionSyntax](Guides/ExtensionSyntax) for
 more information.
 
 **Multiple Inputs**
@@ -61,7 +59,7 @@ join together.  To do this:
   following stage only accepts a single input then its input will be the primary
   output of the previous stage.
 
-- Use of [ExtensionSyntax](../Language/ExtensionSyntax) will filter the inputs to 
+- Use of [ExtensionSyntax](Guides/ExtensionSyntax) will filter the inputs to 
   include only those of a particular type. For example, `$inputs.bam` will evaluate
   to all files with extension '.bam', and `$input1.bam` will find the first BAM file 
   output by an upstream stage.

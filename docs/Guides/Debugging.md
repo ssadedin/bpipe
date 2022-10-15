@@ -1,6 +1,6 @@
 [comment]: <> ( vim: ts=20 expandtab tw=100 spell nocindent nosmartindent filetype=Markdown)
 
-# Debugging Bpipe Scripts
+## Debugging Bpipe Scripts
 
 This section describes strategies and techniques for working out why your
 pipelines are not behaving as you expect.

@@ -1,4 +1,4 @@
-# The Segment Statement
+## The Segment Statement
 
     
     segment_name = segment {

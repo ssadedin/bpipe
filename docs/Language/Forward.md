@@ -1,4 +1,4 @@
-# The forward instruction
+## The forward instruction
 
 ### Synopsis
 

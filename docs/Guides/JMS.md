@@ -1,11 +1,11 @@
-# JMS Integration
+## JMS Integration
 
 Bpipe supports some integration with JMS, currently through ActiveMQ.
 
 This support comes in the form of both inbound and outbound messages:
 
  - Pipelines can be configured to run on receipt of an inbound message
- - Messages can be sent by the [Send Command](../Language/Send/) command.
+ - Messages can be sent by the [Send Command](Language/Send) command.
 
 ## The Bpipe Agent
 
@@ -43,7 +43,7 @@ the bpipe command to execute. The format is a JSON payload with the following el
             <argument 1>
             <argument 2>,
             ....
-        ] 
+        ],
         "directory": <directory to run command in>
     }
 ```
@@ -58,9 +58,9 @@ An example of a run command could look like this:
         "command": "run",
         "arguments": [
             "test.groovy", 
-            "test.txt"
+            "test.txt",
             "test2.txt"
-        ] 
+        ] ,
         "directory": "/home/user/test_pipelines"
     }
 ```

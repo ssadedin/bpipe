@@ -1,4 +1,4 @@
-# How to set up an environment to develop or debug Bpipe
+## How to set up an environment to develop or debug Bpipe
 
 ## Helping Out
 
@@ -65,5 +65,5 @@ Improving Bpipe's documentation is one of the easiest ways to help. Even small
 improvements such as clarifications, grammar fixes, or addition of examples are
 very much appreciated.
 
-See [DocumentationStyle](/Guides/DocumentationStyle) for information about how to 
+See [DocumentationStyle](Guides/DocumentationStyle) for information about how to 
 edit and test your documentation changes.

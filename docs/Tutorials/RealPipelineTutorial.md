@@ -1,4 +1,4 @@
-# Example of real Bioinformatics Pipeline
+## Example of real Bioinformatics Pipeline
 
 ## Starting from a Shell Script
 
@@ -91,14 +91,13 @@ bpipe run pipeline.txt
 ```
 
 If the pipeline works you will get some output like so:
-```groovy 
+```
 
-### ==============================================================================================
+==============================================================================================
+|                                 Starting Pipeline at 2011-10-06                            |
+==============================================================================================
 
-|                                 Starting Pipeline at 2011-10-06                                  |
-### ==============================================================================================
-
-### ======================================== Stage align =========================================
+======================================== Stage align =========================================
 
 [17bp reads: max_diff = 2
 [bwa_aln](bwa_aln]) 38bp reads: max_diff = 3
@@ -173,7 +172,7 @@ _You might notice the index stage has a "forward input" statement at the end. Th
 
 ### Step 4 - Name Outputs
 
-Our script has one deficiency: the names of the output files are not very satisfactory because they do not have the conventional file extensions. For example, the sam file will be called `s_1.txt.align`.  This happens because we did not give Bpipe any information about what kind of file comes out of the *align* stage.  To make things work more naturally we can give Bpipe some hints about how to name things, by adding [file extensions](Language/ExtensionSyntax) to the `$input` and `$output` variables:
+Our script has one deficiency: the names of the output files are not very satisfactory because they do not have the conventional file extensions. For example, the sam file will be called `s_1.txt.align`.  This happens because we did not give Bpipe any information about what kind of file comes out of the *align* stage.  To make things work more naturally we can give Bpipe some hints about how to name things, by adding [file extensions](Guides/ExtensionSyntax) to the `$input` and `$output` variables:
 ```groovy 
 
 PICARD_HOME="/usr/local/picard-tools/"

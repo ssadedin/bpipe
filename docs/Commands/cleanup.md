@@ -1,4 +1,4 @@
-# The cleanup command
+## The cleanup command
 
 ## Synopsis
 
@@ -17,7 +17,7 @@ are not needed after a pipeline is finished running.
 Intermediate files are files that are not final outputs ie. that are used as
 inputs in the pipeline for creating other outputs, and which have not been
 explicitly marked by the user as 'preserved' using the
-[preserve](Commands/preserve) command or annotation. Since these files are
+[preserve](/Commands/preserve/) command or annotation. Since these files are
 often not needed once the final result has been computed and are merely
 computational results that can be recreated from the inputs, it often makes
 sense to remove them. The cleanup command computes which files are

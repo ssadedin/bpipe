@@ -1,4 +1,4 @@
-# Extension syntax for referencing input and output variables
+## Extension syntax for referencing input and output variables
 
 ## Introduction
 

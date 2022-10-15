@@ -1,4 +1,4 @@
-# The run command
+## The run command
 
 ## Synopsis
 

@@ -1,4 +1,4 @@
-# Notifications in Bpipe
+## Notifications in Bpipe
 
 ## Introduction
 

@@ -1,4 +1,4 @@
-# The Output Function
+## The Output Function
 
     
     output(<file name>)

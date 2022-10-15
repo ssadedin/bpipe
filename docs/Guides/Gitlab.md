@@ -1,6 +1,4 @@
-[comment]: <> ( vim: ts=20 expandtab tw=100 spell nocindent nosmartindent filetype=Markdown)
-
-# Gitlab Integration
+## Gitlab Integration
 
 Bpipe supports integration with Gitlab, which enables you to create 
 issues and add notes to them as part of your Bpipe pipeline.

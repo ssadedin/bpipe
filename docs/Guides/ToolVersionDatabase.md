@@ -1,4 +1,4 @@
-# How Bpipe Probes for Versions of Tools Used
+## How Bpipe Probes for Versions of Tools Used
 
 ## Tool Versioning
 

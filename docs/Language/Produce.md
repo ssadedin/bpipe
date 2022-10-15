@@ -1,4 +1,4 @@
-# The Produce Statement
+## The Produce Statement
 
     
     
@@ -14,13 +14,13 @@ The *produce* statement declares a block of statements that will be executed
 "transactional" means that all the statements either succeed together or
 fail together so that outputs are either fully created, or none are created
 (in reality, some outputs may be created but Bpipe will move such outputs
-to the [trash folder](/Guides/Trash).  Although you do not need to use *produce*
+to the [trash folder](Guides/Trash).  Although you do not need to use *produce*
 to use Bpipe, using *produce* adds robustness and clarity to your Bpipe
 scripts by making explicit the outputs that are created from a particular
 pipeline stage. This causes the following behavior:
 
 - If a statement in the enclosed block fails or is interrupted, the specified outputs will be 
-  "cleaned up", ie. moved to the [trash folder](/Guides/Trash)
+  "cleaned up", ie. moved to the [trash folder](Guides/Trash)
 - The implicit variable 'output' will be defined as the specified value(s), allowing it to be 
   used in the enclosing block. Derivative implicit variables based on file extensions appended
   to the output variable will also resolve to the output.
@@ -31,7 +31,7 @@ pipeline stage. This causes the following behavior:
   not be executed. Note that the block itself may be executed, since Bpipe may evaluate it to
   probe for any references to inputs or outputs not declared in the `produce` section.
 
-*Note*:  in most cases it will make more sense to use the convenience wrappers [filter](Filter) or [transform](Transform) rather than using *produce* directly as these statements will automatically determine an appropriate file name for the output based on the file name of the input.
+*Note*:  in most cases it will make more sense to use the convenience wrappers [filter](Language/Filter) or [transform](Language/Transform) rather than using *produce* directly as these statements will automatically determine an appropriate file name for the output based on the file name of the input.
 
 
 A wildcard pattern can also be provided as input to `produce`.  In such a case, the `$output` variable is not assigned a value, but after the `produce` block executes, the file system is scanned for files matching the wild card pattern and any files found that were not present before running the command are treated as outputs of the block.

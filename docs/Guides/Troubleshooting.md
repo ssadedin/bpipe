@@ -1,4 +1,4 @@
-# Getting Help
+## Getting Help
 
 - Find help at: https://groups.google.com/forum/#!forum/bpipe-discuss
 - Log issues on GitHub: https://github.com/ssadedin/bpipe/issues

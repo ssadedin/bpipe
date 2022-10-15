@@ -1,4 +1,4 @@
-# The Var Statement
+## The Var Statement
 
     
     var < variable name > : <default value>

@@ -1,4 +1,4 @@
-# How to implement an adapter script to support a Resource Manager
+## How to implement an adapter script to support a Resource Manager
 
 ### Implementing a Resource Manager
 

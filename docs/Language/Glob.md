@@ -1,4 +1,4 @@
-# The glob function
+## The glob function
 
 ### Synopsis
 

@@ -1,4 +1,4 @@
-# Branch Variables
+## Branch Variables
 
 A common need is to communicate information between disparate parts of your pipeline. Often this information is scoped to the context of a particular branch or segment of your pipeline. Bpipe supports this by the use of "branch variables".
 

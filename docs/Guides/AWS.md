@@ -1,4 +1,4 @@
-# Using Bpipe with Amazon Web Services Elastic Compute Cloud (EC2)
+## Using Bpipe with Amazon Web Services Elastic Compute Cloud (EC2)
 
 ## Introduction
 

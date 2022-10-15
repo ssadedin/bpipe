@@ -1,4 +1,4 @@
-# How Bpipe Logs Information
+## How Bpipe Logs Information
 
 An important benefit of Bpipe is that it automatically keeps logs of all your pipeline runs so that you can later go back and verify exactly what happened when you need to reproduce your results or understand how a result was generated.  This section documents the kinds of logs that Bpipe keeps and what information is stored in them.
 

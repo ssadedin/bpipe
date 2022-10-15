@@ -1,4 +1,4 @@
-# The stop command
+### The stop command
 
 ## Synopsis
 

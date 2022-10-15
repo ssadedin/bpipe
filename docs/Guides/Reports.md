@@ -1,4 +1,4 @@
-# Creating HTML Reports
+## Creating HTML Reports
 
 While Bpipe's logging is quite comprehensive, it is not usually something you can easily show to your boss or your non-technical collaborators. To address this need, Bpipe can generate reports in HTML format.  These reports by default show just run information - which stages executed, the files that were used as input and output, and the time window during which each stage ran.  Just this information can be useful, however you can add much more information to the report by annotating your pipeline with documentation and by supplementing the Bpipe tool database with information about the tools you use.  This section describes how to achieve this.
 

@@ -1,4 +1,4 @@
-# Directory Convenience Function
+## Directory Convenience Function
 
 Sometimes a command you want requires not the name of an output file, but the name of the directory in which that file resides. This can cause a bit of confusion to Bpipe, because the real output is the file, but what you reference in your command is the directory.
 

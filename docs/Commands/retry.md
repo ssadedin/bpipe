@@ -1,4 +1,4 @@
-# The retry command
+## The retry command
 
 ## Synopsis
 
