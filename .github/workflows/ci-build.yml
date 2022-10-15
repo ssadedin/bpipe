@@ -18,5 +18,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install groovy
       - name: Build with Gradle
         run: ./gradlew dist -x test
-      - name: Execute tests
+      - name: Run Unit Tests
+        run: ./gradlew test
+      - name: Execute Functional Tests
         run: cd tests && ./run.sh          
