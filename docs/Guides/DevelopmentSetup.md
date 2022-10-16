@@ -18,7 +18,7 @@ While to run Bpipe you need only a Java Runtine Environment installed, to build 
     git clone https://github.com/ssadedin/bpipe
 ```
 
-1. Download and install the [Java JDK](http://www.oracle.com/technetwork/java/javase/downloads/index-jsp-138363.html), add it to your PATH
+1. Download and install a Java 1.8 SDK, add it to your PATH. A useful way to do this, especially if you have to manage multiple Java versions is to use [SDKMan](https://sdkman.io)
 
 Once you have these dependencies, you can go to the top directory that you cloned and type:
 ```groovy 
@@ -65,5 +65,5 @@ Improving Bpipe's documentation is one of the easiest ways to help. Even small
 improvements such as clarifications, grammar fixes, or addition of examples are
 very much appreciated.
 
-See [DocumentationStyle](Guides/DocumentationStyle) for information about how to 
+See [DocumentationStyle](/Guides/DocumentationStyle) for information about how to 
 edit and test your documentation changes.

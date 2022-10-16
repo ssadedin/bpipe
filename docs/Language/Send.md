@@ -32,13 +32,13 @@ specifies a literal text string that is used as the message directly. Note that
 the text string *must* appear within curly braces. It will be lazily evaluated
 just prior to sending. The `html` option allows creation of HTML content
 programmatically. The body of the closure (that is, inside the curly braces) is
-passed a [Groovy MarkupBuilder](http://groovy.codehaus.org/Creating+XML+using+Groovy's+MarkupBuilder).
+passed a [Groovy MarkupBuilder](https://blog.mrhaki.com/2009/10/groovy-goodness-creating-xml-with.html).
 This can be used to create HTML that forms the body of an HTML email. 
 
 The next form allows specification of a template. The template should end with
 an extension appropriate to the content type (for example, to send an HTML
 email, make sure the template ends with ".html").  The template file is
-processed as a [Groovy Template](http://groovy.codehaus.org/Groovy+Templates)
+processed as a [Groovy Template](https://docs.groovy-lang.org/docs/next/html/documentation/template-engines.html#_simpletemplateengine)
 which allows references to variables using the normal `$` syntax, `${variable}`
 form as well as complete Groovy programmatic logic within `<% %>`  and `<%= %>`
 blocks.
@@ -49,7 +49,7 @@ which is encoded to JSON and then sent as the body of the message.
 
 *Note*: a common scenario is to terminate a branch of a pipeline due to a
 failure or exceptional situation and to send a status message about that. To
-make this convenient, the [succeed](Language/Succeed) and [fail](Language/Fail)
+make this convenient, the [succeed](/Language/Succeed) and [fail](/Language/Fail)
 commands can accept the same syntax as `send`, but also have the effect of
 terminating the execution of the current pipeline branch with a
 corresponding status message.

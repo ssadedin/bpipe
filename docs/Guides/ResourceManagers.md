@@ -5,7 +5,7 @@ run in a managed environment that controls how long they can run for and what
 resources (memory, CPU, storage space, etc) they can use.  Bpipe supports
 integration with third-party Resource Manager software to run commands that are
 part of your pipeline in this kind of environment.  Out of the box Bpipe
-supports  [Torque PBS](http://www.adaptivecomputing.com/products/torque.php),
+supports  [Torque PBS](https://adaptivecomputing.com/cherry-services/torque-resource-manager/),
 Sun / Oracle Grid Engine, and Platform LSF.  Others can be integrated if you
 implement a simple adapter shell script that can relay commands between Bpipe
 and the resource manager software.
@@ -13,6 +13,7 @@ and the resource manager software.
 ## Using a Resource Manager
 
 To make Bpipe use a Resource Manager to execute commands, you make a small file in the local directory (the same place as your pipeline script) called "bpipe.config".   In this script you can place a single line that names the resource manager - for example:
+
 ```groovy 
     executor="torque"
 ```
@@ -43,7 +44,7 @@ Alternatively, you can also specify the walltime as a simple integer number of s
 walltime=12600
 ```
 
-Finally, as a slightly more advanced option, you can specify the wall time as a n executable statement that returns the number of seconds.   The statement receives an array of [File](http://groovy.codehaus.org/groovy-jdk/java/io/File.html) objects that you can use to compute how large the walltime should be. For example:
+Finally, as a slightly more advanced option, you can specify the wall time as a n executable statement that returns the number of seconds.   The statement receives an array of [File](https://docs.groovy-lang.org/latest/html/groovy-jdk/java/io/File.html) objects that you can use to compute how large the walltime should be. For example:
 ```groovy 
 
 walltime={ files -> files.size() ** 12600 }  // 3.5 hours for each file
@@ -83,7 +84,7 @@ For more complicated cases you can override the configuration using a completely
     exec "time (bwa aln test.fastq > test.sai)","bwa"
 ```
 
-The bpipe [multi](Language/Multi/) statement uses a slightly different syntax to specify a configuration for each command
+The bpipe [multi](/Language/Multi/) statement uses a slightly different syntax to specify a configuration for each command
 where for each command the configuration name is placed first and the command follows after colon (groovy Map syntax):
 ```groovy
     multi small_bwa: "bwa aln -t $threads small.fastq > test.small.sai",

@@ -205,8 +205,8 @@ you can then script your tests to check for the expected content in the notifica
 
 You may wish to send out notifications explicitly as part of your pipeline,
 rather than relying on Bpipe to do it in response to pipeline events. This
-is possible via the [send](Language/Send), [succeed](Language/Succeed) and
-[fail](Language/Fail) commands. See documentation on these commands for
+is possible via the [send](/Language/Send), [succeed](/Language/Succeed) and
+[fail](/Language/Fail) commands. See documentation on these commands for
 more information.
 
 When you send custom notifications, you may wish to configure the corresponding
@@ -222,7 +222,7 @@ by setting the events to be received to be empty:
   }
 ```
 
-Notifications sent explicitly using the [send](Language/Send) command will still
+Notifications sent explicitly using the [send](/Language/Send) command will still
 be sent. This just disables events from Bpipe itself.
 
 

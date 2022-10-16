@@ -3,7 +3,6 @@
 ### Synopsis
 
 ```    
-
 1.    check {
          < statements to validate results >
       } 
@@ -11,7 +10,6 @@
 2.    check(<check name>) {
          < statements to validate results >
       } 
-
 
 3.    check {
          < statements to validate results >
@@ -24,8 +22,6 @@
       } otherwise {
           <statements to execute on failure >
       }
-
-
 ```
     
 
@@ -49,8 +45,8 @@ The state is remembered by files that are created in the `.bpipe/checks`
 directory in the pipeline directory. Effectively, the created check file is
 treated as an implicit output of the `check` clause.
 
-A convenient use of `check` is in conjunction with [succeed](Language/Succeed),
-[fail](Language/Fail) and [send](Language/Send) commands.
+A convenient use of `check` is in conjunction with [succeed](/Language/Succeed),
+[fail](/Language/Fail) and [send](/Language/Send) commands.
 
 *Note*:  a check does not have to result in aborting of the pipeline.  You may
 choose to do nothing in the otherwise clause of the check (it must still exist
@@ -66,17 +62,17 @@ placed on the same line as the preceding curly bracket of the `check` clause.
 
 **Check that there are 38 lines in the output file**
 
+```groovy
 check {
     exec """
         [ ` wc -l $output` -eq 38 ]
     """
 }
-
+```
 
 **Check that output file is non-zero length and fail the whole pipeline if it is not**
 
 ```groovy 
-
   check {
         exec "[ -s $output ]"
   } otherwise {
@@ -87,7 +83,6 @@ check {
 **Check that output file is non-zero length and terminate only this branch if it is not**
 
 ```groovy 
-
   check {
         exec "[ -s $output ]"
   } otherwise {
@@ -98,7 +93,6 @@ check {
 **Check that output file is non-zero length and notify by email if it is not**
 
 ```groovy 
-
   check {
         exec "[ -s $output ]"
   } otherwise {

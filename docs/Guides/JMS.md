@@ -5,7 +5,7 @@ Bpipe supports some integration with JMS, currently through ActiveMQ.
 This support comes in the form of both inbound and outbound messages:
 
  - Pipelines can be configured to run on receipt of an inbound message
- - Messages can be sent by the [Send Command](Language/Send) command.
+ - Messages can be sent by the [Send Command](/Language/Send) command.
 
 ## The Bpipe Agent
 

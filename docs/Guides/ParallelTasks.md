@@ -182,7 +182,7 @@ needed as a BED file, using `$region.bed`.
 
 **Merging Results**
 
-See the [merge points operator](Language/MergePoints) to understand specific support that Bpipe provides for 
+See the [merge points operator](/Language/MergePoints) to understand specific support that Bpipe provides for 
 merging the outputs from parallel segments.
 
 ## Executing Multiple Stages Simultaneously on Different Data

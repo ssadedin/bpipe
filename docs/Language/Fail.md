@@ -19,9 +19,9 @@ Causes the current branch of the pipeline to terminate explicitly with a failure
 
 In the most simple form, a short message is provided as a string. The longer forms allow a notification or report to be generated as a result of the success.
 
-While using `fail` as a stand alone construct is possible, the primary use case is to embed it inside the otherwise clause of a [check](Language/Check) command, which ensures that Bpipe remembers the status and output of the check performed.
+While using `fail` as a stand alone construct is possible, the primary use case is to embed it inside the otherwise clause of a [check](/Language/Check) command, which ensures that Bpipe remembers the status and output of the check performed.
 
-*Note*: see the [send](Language/Send) command for more information and examples about the variants of this command that send notifications and reports.
+*Note*: see the [send](/Language/Send) command for more information and examples about the variants of this command that send notifications and reports.
 
 ### Examples
 

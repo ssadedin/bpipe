@@ -1,5 +1,6 @@
 site_name: Bpipe
 repo_url: https://github.com/ssadedin/bpipe
+logo: icon.png
 theme: 
     name: mkdocs
     highlightjs: true
@@ -61,7 +62,7 @@ nav:
   - stop: Commands/stop.md
   - test: Commands/test.md
 - Tutorials:
-  - Hello, World: Tutorials/Hello,World.md
+  - Hello, World: Tutorials/Hello-World.md
   - Example With Inputs And Outputs: Tutorials/ExampleWithInputsAndOutputs.md
   - Real Pipeline Tutorial: Tutorials/RealPipelineTutorial.md
 - Guides:

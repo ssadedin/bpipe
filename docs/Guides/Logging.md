@@ -25,7 +25,7 @@ cp ./test.csv ./test.xml
 
 Although Bpipe fully evaluates variables in the commands you run, you may still have ambiguity about which exact programs executed and their versions.  Bpipe understands how to extract version information from a predefined set of programs that are commonly used.  When Bpipe is able to extract this information it is logged in the HTML report. 
 
-You can extend this yourself by putting the tools you use into the [Tool Version Database](Guides/ToolVersionDatabase).
+You can extend this yourself by putting the tools you use into the [Tool Version Database](/Guides/ToolVersionDatabase).
 
 ## Output logs
 

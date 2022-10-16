@@ -15,14 +15,14 @@
     
 ### Behavior
 
-Transform is a wrapper for [produce](Language/Produce) where the name of the
+Transform is a wrapper for [produce](/Language/Produce) where the name of the
 output or outputs is automatically deduced from the name of the input(s) by modifying the
 file extension.   For example, if you have a command that converts 
 a CSV file called *foo*.csv to an XML file, you can easily declare a section of your script
 to output *foo*.xml using a transform with the name 'xml'.
 
 The output(s) that are automatically deduced by *transform* will inherit all
-the behavior implied by the [produce](Language/Produce) statement.
+the behavior implied by the [produce](/Language/Produce) statement.
 
 Since version 0.9.8.4, transform has offered an extended form that allows you
 to do more than just replace the file extension. This form uses two parts,

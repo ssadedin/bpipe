@@ -32,7 +32,7 @@ The job runs in the background, detached from the current terminal (via nohup), 
 
 The `-n` option limits concurrency that Bpipe itself initiates, however Bpipe will not prevent tasks that it launches from using concurrency themselves. So if your commands themselves are spawning child processes or are multithreaded then you will need to account for that by supplying a smaller number to the -n option if you wish to have an absolute limit on processes or number of cores used.
 
-The `-m` and `-l` options add limits that can be controlled by [uses](Language/uses) blocks that are declared inside pipeline stages. Note that they don't impose any actual constraint on the memory used by tasks that run. They only control concurrency within [uses](Language/uses) blocks that declare resources.
+The `-m` and `-l` options add limits that can be controlled by [uses](/Language/uses) blocks that are declared inside pipeline stages. Note that they don't impose any actual constraint on the memory used by tasks that run. They only control concurrency within [uses](/Language/uses) blocks that declare resources.
 
 The `-u` option causes Bpipe to run until it first encounters the given pipeline stage(s) and then stop. The stages can be specified as a 
 comma separated list. This is useful particularly in development if you want to test a pipeline up to a certain point but don't want it to then 
@@ -40,14 +40,13 @@ go on to run the rest of the commands.
 
 Often it is desirable to make pipelines customizable by exposing variables that the user running the pipeline can set externally. This can be achieved using the -p flag in the form -p `<name>=<value>`. Multiple -p flags can be provided to specify multiple parameters. Parameters may be read from a file with one value per line by specifying a argument starting with '@' followed by the file name. For example, 
 
-```groovy 
-
+```
 bpipe run @params.txt pipeline.groovy
 ```
 
 The file params.txt should have one option per line, for example:
-```groovy 
 
+```groovy 
 -p foo=bar
 -p baz=fubar
 ```

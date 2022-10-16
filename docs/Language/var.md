@@ -9,7 +9,7 @@ Bpipe version 0.9.8.1
 
 ### Behavior
 
-Define a variable with a default value, that can be overridden with a [Using](Language/Using) construct, or by passing a value on the command line (--param option).
+Define a variable with a default value, that can be overridden with a [Using](/Language/Using) construct, or by passing a value on the command line (--param option).
 
 ### Examples
 

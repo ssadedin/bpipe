@@ -8,7 +8,7 @@
 
 ### Behavior
 
-The *exec* statement runs the command specified as an argument using a bash shell in a managed fashion.  The command is specified using a string which may be in double quotes, single quotes or triple quotes.  [Variables](Guides/Variables) will be evaluated and expanded even when surrounded by single quotes.  Single quotes inside double quotes are passed through to the underlying shell and thus can be used to pass values that may contain spaces.  
+The *exec* statement runs the command specified as an argument using a bash shell in a managed fashion.  The command is specified using a string which may be in double quotes, single quotes or triple quotes.  [Variables](/Guides/Variables) will be evaluated and expanded even when surrounded by single quotes.  Single quotes inside double quotes are passed through to the underlying shell and thus can be used to pass values that may contain spaces.  
 
 The *exec* statement blocks until the specified command returns.  See the [async](/Language/Async) statement for an alternative that launches the process in the background and returns immediately.
 

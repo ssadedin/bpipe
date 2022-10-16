@@ -10,7 +10,7 @@
 
 ### Behavior
 
-A *using* instruction causes variables to be defined inside a pipeline stage as part of pipeline construction.  It is only valid inside a Bpipe *run* or [segment](Language/Segments) clause.  The *using* instruction is useful to pass parameters or configuration attributes to pipeline stages to allow them to work differently for different pipelines.
+A *using* instruction causes variables to be defined inside a pipeline stage as part of pipeline construction.  It is only valid inside a Bpipe *run* or [segment](/Language/Segments) clause.  The *using* instruction is useful to pass parameters or configuration attributes to pipeline stages to allow them to work differently for different pipelines.
 
 ### Examples
 

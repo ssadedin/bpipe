@@ -11,28 +11,30 @@ To demonstrate how inputs and outputs work, we need a file to be an input to you
 ```
 
 Now we have an *input* to our script, we can modify our script to use that input.  Edit your file from the GettingStarted example and change it to look like the code below:
-```groovy 
 
+```groovy 
 hello = {
   exec "echo Hello | cat - $input > $output"
 }
+
 world = {
   exec "echo World | cat $input - > $output"
 }
+
 run { hello + world }
 ```
 
 To run this example you need to supply the input file as an argument, like so:
-```groovy 
 
+```groovy 
 bpipe run helloworld.pipe test.txt
 ```
 
 ## Explanation
 
 In this example you can see that our commands still look like normal shell commands that you might have executed at the command line, however there are two conspicuous additions that look like shell variables:  $input and $output.  These variables are defined for you *implicitly* by Bpipe before each pipeline stage is run.  They automatically tell you where the input is coming from and where the output should be going.  You *could*, of course, hard code the file names into your commands, but then your pipeline would depend on those file names and you would not be able to "plug and play" with your pipeline stages to connect them in different ways.  Since you aren't specifying the output file you might wonder where the actual output went.  Bpipe uses a systematic naming convention for files so that they are reliably the same for any given pipeline configuration but reliably different if you change the pipeline.  To achieve this, Bpipe builds file names by naming them according to all the pipeline stages through which the file has "passed", starting with the input file as a base.  In this case, Bpipe will have called your output as follows:
-```groovy 
 
+```text
 test.txt.hello.world
 ```
 
@@ -42,19 +44,20 @@ Bpipe created this file name by starting with the input file and then adding the
 
 Bpipe offers a quick and simple way to specify file types for input and output files: adding the extension of the type of file to the $input and $output variables.  For example, you can tell Bpipe that the files in the above pipeline are text files like so:
 ```groovy 
-
 hello = {
   exec "echo Hello | cat - $input.txt > $output.txt"
 }
+
 world = {
   exec "echo World | cat $input.txt - > $output.txt"
 }
+
 run { hello + world }
 ```
 
 This pipeline works similarly to the previous one, but has two advantages: Bpipe is now checking that the input file is a text file; if you try to run it on a file with some other extension then you'll get an error.  Also, Bpipe now knows that the output files should end in ".txt" because you indicated that by writing `$output.txt`.  So now our output files look like this:
-```groovy 
 
+```text
 test.txt
 test.hello.txt
 test.hello.world.txt
@@ -73,12 +76,13 @@ This convention is part of how Bpipe helps to ensure you are never confused abou
 ## Annotating Pipeline Stage Types
 
 While the above pipeline works we can make it just a little better by giving Bpipe a few small hints about what each stage in the pipeline is doing.  To do this, we can add some *annotations* to the pipeline stages as follows:
-```groovy 
 
+```groovy 
 @Filter("hello")
 hello = {
   exec "echo Hello | cat - $input > $output"
 }
+
 @Filter("world")
 world = {
   exec "echo World | cat $input - > $output"
