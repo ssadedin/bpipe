@@ -1,8 +1,6 @@
 ## The multi statement
 
 ### Synopsis
-
-    
     
       multi <command>,<command>...
     
@@ -20,6 +18,10 @@
 0.9.8+ 
 
 ### Behavior
+
+**NOTE**: the `multi` statement is now deprecated as other mechanisms for achieving 
+parallel execution are better alternatives in nearly all scenarios. `multi` has unexpected
+behaviour in some situations and should be used with caution.
 
 The *multi* statement executes multiple commands in parallel and waits for them all to finish. If any of the commands fail the whole pipeline stage fails, and all the failures are reported.
 
