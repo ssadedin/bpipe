@@ -2348,7 +2348,7 @@ class PipelineContext {
       // note - set the command here, so that it can be used to resolve
       // the right configuration. However we set it again below
       // after we have resolved the right thread / procs value
-      Command command = new Command(command:joined, configName:configName, dependencies: dependencies)
+      Command command = new Command(name: this.stageName, command:joined, configName:configName, dependencies: dependencies)
       
       this.inferUsedProcs(command)
 

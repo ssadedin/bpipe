@@ -155,10 +155,15 @@ class Command implements Serializable {
         
         Map rawCfg = defaultConfig
         
+        def stageConfig = (ConfigObject)(Config.userConfig.containsKey("stages")?Config.userConfig.stages[name]:null)
+        if(stageConfig && stageConfig instanceof Map)  {
+            // override properties in default config with those for the specific stage
+            rawCfg = defaultConfig + (Map<String,Object>)stageConfig
+        }
+ 
         def cmdConfig = (ConfigObject)(Config.userConfig.containsKey("commands")?Config.userConfig.commands[configName]:null)
         if(cmdConfig && cmdConfig instanceof Map)  {
-            // override properties in default config with those for the
-            // specific command
+            // override properties in default config with those for the specific command
             rawCfg = defaultConfig + (Map<String,Object>)cmdConfig
         }
         
