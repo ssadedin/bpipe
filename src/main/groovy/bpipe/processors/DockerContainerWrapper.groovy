@@ -27,6 +27,8 @@ class DockerContainerWrapper implements CommandProcessor {
 		
 		List<String> dockerCommand = [config.getOrDefault('command', ['/bin/sh','-e'])].flatten()
 
+		List<String> dockerRunOptions = Config.listValue(config, 'options') ?: ['--rm']
+
 		String entryPoint = config.getOrDefault('entryPoint', null)
 		List<String> entryPointArg
 		if(entryPoint == "default") {
@@ -40,6 +42,7 @@ class DockerContainerWrapper implements CommandProcessor {
             [
                 "docker",
                 "run",
+				*dockerRunOptions,
 				*entryPointArg,
                 "-w", Runner.runDirectory, 
                 "-v", "$Runner.runDirectory:$Runner.runDirectory",
