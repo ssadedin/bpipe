@@ -243,7 +243,8 @@ class InputSplitterTest {
         def matches = ("_foo_bar_" =~ pattern.pattern)
         assert matches[0][1] == "foo"
         assert matches[0][2] == "bar"
-	}	
+	}
+	
 
 	@Test
 	public void testNoStar() {
@@ -261,7 +262,8 @@ class InputSplitterTest {
         assert matches[0][1] == "cat"
         assert matches[0][2] == "foo"
         assert matches[0][3] == "bar"
-	}
+	}
+
 	@Test
 	public void testTwoStarTrailingUnderscore() {
         def pattern =  splitter.convertPattern("*_%_*_") 
