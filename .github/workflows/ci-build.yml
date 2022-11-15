@@ -4,13 +4,21 @@ on: [push]
 
 jobs:
   build:
-    runs-on: groovy:3.0.10-jdk11
+    runs-on: ubuntu-latest
     timeout-minutes: 90
 
     steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 8
+        uses: actions/setup-java@v2
+        with:
+          java-version: '8'
+          distribution: 'adopt'
+      - name: Install groovy
+        run: sudo apt-get update && sudo apt-get install groovy
       - name: Build with Gradle
         run: ./gradlew dist -x test
-        #      - name: Run Unit Tests
-        #run: ./gradlew test
+      - name: Run Unit Tests
+        run: ./gradlew test
       - name: Execute Functional Tests
         run: cd tests && ./run.sh          
