@@ -164,6 +164,8 @@ function clean_job_files() {
     fi
 
     rm -f .bpipe/prompt_input_files.*
+
+    find .bpipe/logs -maxdepth 0 -empty -exec rm -rf .bpipe \;
 }
 
 #----------------------------------------------------------
