@@ -68,7 +68,7 @@ import java.util.logging.Logger
 /**
  * An executor that runs commands by starting AWS EC2 images
  */
-@ToString(includeNames=true, excludes=['launchLock','runningCommand','remoteErrorPath','exitFile'])
+@ToString(includeNames=true, excludes=['runningCommand','remoteErrorPath','exitFile'])
 @Mixin(ForwardHost)
 class AWSEC2CommandExecutor extends CloudExecutor {
     
