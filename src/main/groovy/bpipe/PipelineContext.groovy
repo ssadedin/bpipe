@@ -2002,7 +2002,7 @@ class PipelineContext {
             
         log.info "Command $c.id in branch $branch failed with exit code $c.exitCode"
         
-        throw new CommandFailedException("Command in stage $stageName failed with exit status = $c.exitCode : \n\n$c.command", this, c)
+        throw new CommandFailedException("Command $c.id in stage $stageName failed with exit status = $c.exitCode : \n\n$c.command", this, c)
       }
       
       if(!this.probeMode)
