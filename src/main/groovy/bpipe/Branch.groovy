@@ -42,7 +42,6 @@ class Branch extends Expando implements Serializable {
     
     public static final long serialVersionUID = 0L
     
-    @Delegate
     String name = ""
     
     String dir = "."
