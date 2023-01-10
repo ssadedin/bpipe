@@ -164,7 +164,7 @@ class Command implements Serializable {
         def cmdConfig = (ConfigObject)(Config.userConfig.containsKey("commands")?Config.userConfig.commands[configName]:null)
         if(cmdConfig && cmdConfig instanceof Map)  {
             // override properties in default config with those for the specific command
-            rawCfg = defaultConfig + (Map<String,Object>)cmdConfig
+            rawCfg = rawCfg + (Map<String,Object>)cmdConfig
         }
         
         // Make a new map
