@@ -277,6 +277,45 @@ run { branches * [ align ] }
 
 In this example the `align` stage will run three times in parallel and the files specified for each branch will be explicitly provided to it. Of course, in normal usage this technique would not be best applied by specifying them statically, but rather for when you want to read the information from a file or database or other source and construct the branch => file mapping from that.
 
+### Splitting Dynamically on Arbitrary Metadata
+
+A particular challenge occurs when your parallelisation is dynamically data driven. When this manifests
+as a parallel path per file or groups of files, you can usually use an input splitting pattern (see above)
+to create the parallel branches dynamically.
+
+If, however, you find you need parallelisation that is not driven by files (or groups of them), you can
+use a pipeline stage to define downstream splitting strategy by utilising the `forwardSplit(...)` command.
+
+In this context, you pass a Map to the function where:
+
+- keys are the branch names
+- values are _metadata_ that is accessible on the branches via a `metadata` property
+
+Consider the following example:
+
+```groovy
+hello = {
+    forwardSplit([ a: 'mars', b: 'jupiter' ])
+}
+
+world = {
+    exec """
+        echo "hello $branch.metadata from branch $branch.name"
+    """
+}
+
+run {  hello * [ world ] }
+```
+
+This example will create two branches, names `a` and `b`. These will then have metadata `mars` and `jupiter`. The 
+metadata can be any type of object or data structure you create yourself in Groovy. Bpipe will not attempt to resolve
+it as a file. This way you can split to create arbitrary branches with metadata for downstream processing 
+as required.
+
+NOTE: Unlike other branch properties, metadata is not inherited by child branches. If you would like it to be available
+in grand child and lower branches then you must manually set properties on the child `branch` object yourself 
+inside the child branches.
+
 ### Allocating Threads to Commands
 
 Sometimes you know in advance exactly how many threads you wish to use with a command. In that case, it makes sense
