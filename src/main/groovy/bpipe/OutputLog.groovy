@@ -48,6 +48,7 @@ import groovy.util.logging.Log;
  * @author Simon
  */
 @Log
+@CompileStatic
 class OutputLog implements Appendable {
     
     /**
