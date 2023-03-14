@@ -24,6 +24,7 @@
  */
 package bpipe
  
+import java.awt.Color
 import java.nio.file.Files
 
 import java.nio.file.Path
@@ -37,6 +38,9 @@ import org.codehaus.groovy.tools.shell.Groovysh
 import org.codehaus.groovy.tools.shell.IO
 import groovy.transform.CompileStatic
 import groovy.transform.Memoized
+
+import static org.fusesource.jansi.Ansi.*
+import static org.fusesource.jansi.Ansi.Color.*
 
 import bpipe.executor.ProbeCommandExecutor
 import bpipe.storage.LocalFileSystemStorageLayer
@@ -329,6 +333,18 @@ class PipelineContext {
         branch.dirChangeListener = { String dirName ->
             outputTo(dirName)
         }
+        
+        this.hasDuplicatedOutputs = false
+        this.inferredOutputs = []
+        this.allInferredOutputs = []
+        this.allResolvedInputs = []
+        this.internalOutputs = []
+        this.pendingGlobOutputs = []
+        this.allUsedInputWrappers = [:]
+        this.probeMode = false        
+        this.referencedOutputs = []
+        this.trackedOutputs = [:]
+        this.nextInputs = []
     }
     
     @CompileStatic
@@ -1960,6 +1976,8 @@ class PipelineContext {
         execImpl(cmd, joinNewLines, config, dependencies)
     }
     
+    final static Object devRetryLock = new Object()
+    
     @CompileStatic
     Command execImpl(String cmd, boolean joinNewLines, String config=null, List<CommandDependency> dependencies=null) {
         
@@ -1975,20 +1993,88 @@ class PipelineContext {
       // Reset referenced outputs so they can be re-evaluated for next command independently of this one
       this.referencedOutputs = []
       
-      Command c = async(cmd, joinNewLines, config, false, dependencies)
+      Command c 
       
-      for(String o in commandReferencedOutputs)
-          pathToCommandId[o] = c.id
-      
-      Map configObject = c.getConfig(this.@input)
-      c.outputs = commandReferencedOutputs.collect { String o ->
-          
-//          assert c.processedConfig != null
-          new PipelineFile(o, resolveStorageFor(o, configObject))
-      }
-      assert c.outputs.every { it instanceof PipelineFile }
+      while(true) {
+          try {
+              c = async(cmd, joinNewLines, config, false, dependencies)
+              
+              for(String o in commandReferencedOutputs)
+                  pathToCommandId[o] = c.id
+              
+              Map configObject = c.getConfig(this.@input)
+              c.outputs = commandReferencedOutputs.collect { String o ->
+                  new PipelineFile(o, resolveStorageFor(o, configObject))
+              }
+              assert c.outputs.every { it instanceof PipelineFile }
      
-      c.exitCode = c.executor.waitFor()
+              c.exitCode = c.executor.waitFor()
+
+              break
+          }
+          catch(PipelineDevRetry e) {
+              
+              synchronized(devRetryLock) {
+                  
+                  Thread.sleep(100)
+//                   print "\033[?1049h"
+                  
+                  log.info "Retrying command in stage $stageName due to dev retry thrown"
+                  
+                    println "${ansi().bold()} ====> ${new Date()} Dev Mode : " + stageName + ansi().boldOff() + "\n"
+                    
+                    println "${ansi().bold()}Direct Inputs: ${ansi().boldOff()}\n"
+
+                   this.@input.each { inp ->
+                        println "- $inp"
+                    }
+                    if(this.@input.size()>0)
+                        println ""
+
+                   Collection<Map.Entry> props = this.branch.properties.grep { Map.Entry entry -> entry.key != 'region' && entry.value } 
+                   
+                   String branchDesc = branch.hierarchy('/').trim().replaceAll('/$','')
+                   
+                   if(branchDesc || props)
+                       println "${ansi().bold()}Branch ${props ? 'Variables for branch' : ''}: ${branchDesc} ${ansi().boldOff()}\n"
+
+                   props.each { Map.Entry entry ->
+                       println "- $entry.key : $entry.value"
+                    }
+                    if(props)
+                        println ""
+                    
+                    String prettyCmd = cmd
+                    log.info "Replacing direct inputs using: " + getResolvedInputs()
+                    getResolvedInputs().each { inp ->
+                        prettyCmd = prettyCmd.replaceAll(inp.toString(), "${ansi().fgBrightMagenta()}$inp${ansi().fgDefault()}")
+                    }
+
+                    commandReferencedOutputs.each { outPath ->
+                        prettyCmd = prettyCmd.replaceAll(outPath, "${ansi().fgRed()}$outPath${ansi().fgDefault()}")
+                    }
+                    
+                    // __bpipe_lazy_resource_threads__
+                    String threadsMsg = ''
+                    if(prettyCmd.contains('__bpipe_lazy_resource_threads__')) {
+                        prettyCmd = prettyCmd.replaceAll('__bpipe_lazy_resource_threads__', "${ansi().fgGreen()}\\\${threads}${ansi().fgDefault()}")
+                        threadsMsg = "${ansi().bold()}Note:${ansi().boldOff()} ${ansi().fgGreen()}\${threads}${ansi().fgDefault()} will be assigned at runtime based on available concurrency"
+                    }
+
+                    String msg = branch.name ? "Stage $stageName in branch $branch.name would execute:\n\n        $prettyCmd" : "Would execute $prettyCmd"
+                    
+                    println msg
+                    
+                    println threadsMsg
+
+                    println "\n${ansi().fgBlue()}Waiting for changes or <enter> to continue ....${ansi().fgDefault()}\n"
+                    
+
+                    throw e
+                }
+          }
+      }
+
       if(c.stopTimeMs <= 0)
           c.stopTimeMs = System.currentTimeMillis()
           
@@ -2411,7 +2497,7 @@ class PipelineContext {
  
           this.executedOutputs.addAll(command.getOutputs())
       }
-      catch(PipelineTestAbort exPta) {
+      catch(PipelineTestAbort|PipelineDevRetry exPta) {
           exPta.missingOutputs = outOfDateOutputs
           throw exPta
       }

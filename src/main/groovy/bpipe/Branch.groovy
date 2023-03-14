@@ -50,6 +50,11 @@ class Branch extends Expando implements Serializable {
     
     Branch parent = null
     
+    /**
+     * Branch level metadata - not inherited
+     */
+    Object metadata
+    
     transient Closure dirChangeListener = null
     
     Branch getTop() { // Causes compile to fail :-(
@@ -117,7 +122,7 @@ class Branch extends Expando implements Serializable {
         return !check.is(null)
     }
     
-    String hierarchy() {
+    String hierarchy(String joiner='\n') {
         List<Branch> steps = [this]
         Branch step = this
         while(step.parent != null) {
@@ -128,7 +133,7 @@ class Branch extends Expando implements Serializable {
         int stepIndex = 0
         return steps.findAll { it.name != 'all' && !it.sanitisedName.isNumber() }
                     .collect { ("\t" * (stepIndex++)) + it.name }
-                    .join('\n')
+                    .join(joiner)
     }
     
     void setProperty(String name, Object value) {

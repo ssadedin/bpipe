@@ -34,6 +34,9 @@ import java.util.logging.Logger;
 
 import org.apache.commons.cli.Option
 import org.codehaus.groovy.runtime.StackTraceUtils;
+import org.fusesource.jansi.AnsiConsole
+import static org.fusesource.jansi.Ansi.*
+import static org.fusesource.jansi.Ansi.Color.*
 
 import bpipe.agent.AgentRunner
 import bpipe.cmd.ArchiveCommand
@@ -128,6 +131,13 @@ class Runner {
     public static boolean touchMode = false
     
     public static boolean testMode = false
+
+    public static boolean devMode = false
+    
+    /**
+     * Stages where devMode has been suppressed due to dev interaction
+     */
+    public static Set<String> devSkip = [] as Set
     
     public static boolean cleanupRequired = false
     
@@ -294,7 +304,14 @@ class Runner {
                 lockChannel.lock()
                 println "${new Date()}: Lock acquired. Continuing ... \n"
             }
-            
+                
+            if(mode == "dev") {
+                devMode = true 
+                def t = new Thread(ConsolePoller.instance)
+                t.setDaemon(true)
+                t.start()
+            }
+
             if(mode == "retry" || mode == "resume" || mode == "remake") {
                
                 if(mode == "resume")
@@ -481,6 +498,16 @@ class Runner {
         
         if(opts['t'])
             testMode = true
+            
+        if(opts['D'])
+            devMode = true
+
+         if(opts['dev']) {
+            System.setProperty('jansi.mode', 'force')
+            AnsiConsole.systemInstall();
+            println "\n" + " ( ${ansi().fgGreen()}Running in Dev mode for Stage ${ansi().fgBlue()}${opts['dev']}${ansi().fgDefault()} ) ".center((int)Config.config.columns, "=") + "\n"
+            Config.config.devAt = ((String)opts['dev']).split(",")
+        }
 
         initThreads*.join(20000)
         
@@ -676,6 +703,11 @@ class Runner {
         // This property is stored as a file by the hosting bash script
         String ourPid = System.getProperty("bpipe.pid")
         if(ourPid) {
+            
+            // Dev mode launches in foreground
+            if(System.getProperty("bpipe.mode") == "dev")
+                return ourPid
+            
             File pidFile = new File(".bpipe/launch/${ourPid}")
             int count = 0
             while(true) {
@@ -825,10 +857,16 @@ class Runner {
         // way we have a chance to detect when Bpipe dies through an abnormal 
         // mechanism.
         if(!normalShutdown) {
+            
+            if(devMode) {
+                System.err.println "\nExiting dev mode to terminal\n"
+                return
+            }
+            
             if(new File(".bpipe/stopped/$pid").exists())
                 System.err.println "MSG: Bpipe stopped by stop command: " + new Date()
             else
-                System.err.println "ERROR: Abnormal termination - check bpipe and operating system has enough memory!"
+                System.err.println "ERROR: Abnormal termination - check bpipe and operating system has enough memory! (mode = $Config.config.mode)"
             System.err.flush()
         }
             
@@ -960,6 +998,7 @@ class Runner {
         
         String commandLine = null
         boolean testMode = false
+        boolean devMode = false
         if(!args) {
             commandLine = historyLines[-1]
         }
@@ -969,6 +1008,12 @@ class Runner {
                 args.remove(0)
             }
             
+            if(args[0] == "dev") {
+                devMode = true
+                new Thread(ConsolePoller.instance).start()
+                args.remove(0)
+            }
+
             if(args) {
                 if(args[0].isInteger()) {
                   commandLine = historyLines.reverse().find { it.startsWith(args[0] + "\t") }
@@ -998,9 +1043,16 @@ class Runner {
             throw new PipelineError("Internal error: failed to understand format of command from history:\n\n$commandLine\n")
             
         args = Utils.splitShellArgs(parsed[0][2]) 
+        
+        if(testMode)
+            args = ["-t"] + args
+
+        if(devMode)
+            args = ["-D"] + args
+
         def command = parsed[0][1]
         
-        return [ command,  testMode ? ["-t"] + args : args]
+        return [ command,  args]
     }
     
     /**

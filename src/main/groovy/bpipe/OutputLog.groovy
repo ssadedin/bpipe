@@ -104,6 +104,11 @@ class OutputLog implements Appendable {
     
 //    @CompileStatic
     void bufferLine(String line) {
+        
+        // In dev mode, no output log at all, just print raw output
+        if(Runner.devMode)
+            buffer.append(line+NEWLINE)
+        else
         if(commandId) {
             String branchId = branch ?: "0"
             buffer.append("[${branchId}.${commandId}]\t"+ line+NEWLINE)
@@ -129,8 +134,6 @@ class OutputLog implements Appendable {
     @Override
     public Appendable append(char arg0) throws IOException {
         throw new UnsupportedOperationException("Buffering individual characters is not supported")
-        buffer(arg0)
-        this.flush();
         return this;
     }
 

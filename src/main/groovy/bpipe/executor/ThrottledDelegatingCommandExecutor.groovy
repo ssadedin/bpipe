@@ -1,18 +1,21 @@
 package bpipe.executor
 
 import groovy.transform.CompileStatic
+
 import groovy.util.logging.Log;
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.Semaphore
 import java.util.regex.Matcher
 import java.util.regex.Pattern
+
 import bpipe.Command;
 import bpipe.CommandProcessor
 import bpipe.Concurrency;
 import bpipe.Config
 import bpipe.Pipeline
 import bpipe.PipelineContext;
+import bpipe.PipelineDevRetry
 import bpipe.ResourceUnit;
 import bpipe.Runner
 import bpipe.Utils
@@ -112,6 +115,15 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
     @CompileStatic
     void doStart(Map cfg, Command cmd) {
         
+        if(cmd.name in Config.config.devAt || bpipe.Runner.devMode) {
+            
+            if(cmd.name in Runner.devSkip) {
+                log.info("Skipping dev of command $cmd.id ($cmd.name) because it is in the dev skip list")
+            }
+            else
+                enterDevLoop(cfg,cmd)
+        }
+
         prepareCommand(cmd)
 
         Pipeline pipeline = bpipe.Pipeline.currentRuntimePipeline.get()
@@ -340,4 +352,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         this.commandExecutor.cleanup()
     }
     
+    static synchronized void enterDevLoop(Map cfg, Command cmd) {
+        throw new PipelineDevRetry("Dev retry for $cmd.name")
+    }
 }

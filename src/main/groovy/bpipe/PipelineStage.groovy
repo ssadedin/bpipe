@@ -175,7 +175,10 @@ class PipelineStage {
             log.info("Stage $displayName : ${context.@input.size()} INPUTS starting with ${context.@input.take(10)}} OUTPUT=${context.defaultOutput?.take(10)}}")
     }
     
-    
+    def originalNameApplied
+    def originalDefaultOutput 
+    List originalOutput 
+
     /**
      * Executes the pipeline stage body, wrapping it with logic and instrumentation
      * to manage the pipeline. 
@@ -195,6 +198,8 @@ class PipelineStage {
         
         def pipeline = Pipeline.currentRuntimePipeline.get()
         
+        originalNameApplied = pipeline.nameApplied
+        
         Dependencies.theInstance.checkFiles(context.rawInput, pipeline.aliases)
         
         copyContextBindingsToBody()
@@ -209,11 +214,22 @@ class PipelineStage {
                 initializeStage(pipeline)
             }   
                 
+            originalDefaultOutput = context.@defaultOutput
+            originalOutput = (List)context.@output?.collect { it }
+            
             if(stageName in Config.config.breakAt)
                 Config.config.breakTriggered = true
                 
             // Execute the actual body of the pipeline stage
-            runBody()
+            while(true) {
+                try {
+                    runBody()
+                    break
+                }
+                catch(PipelineDevRetry e) {
+                    waitForDevInteraction()
+                }
+            }
                     
             succeeded = true
             if(!joiner) {
@@ -562,6 +578,49 @@ class PipelineStage {
     }
     
     /**
+     * A dev break has been triggered and a dump of dev information will 
+     */
+    void waitForDevInteraction() {
+        def pipeline = Pipeline.currentRuntimePipeline.get()
+        def devResponseFile = new File('.bpipe/dev_continue')
+        devResponseFile.text = ''
+        Thread.sleep(1200) 
+        
+        List<File> pathsToCheck = Pipeline.allLoadedPaths.collect { new File((String)it) } + [devResponseFile]
+        log.info "Checking paths :" + pathsToCheck
+        String modifiedPath = Utils.waitForModified(pathsToCheck)
+        
+        try {
+            if(modifiedPath == null || modifiedPath == devResponseFile.absolutePath) {
+                log.info("Received indication of dev continue response for $stageName")
+                Config.config.devAt = ((List)Config.config.devAt).grep { it != stageName }
+//                bpipe.Runner.devMode = false
+                log.info "After removing, dev stages are now: " + Config.config.devAt
+                Runner.devSkip << stageName 
+            }
+            else {
+                Pipeline.allLoadedPaths.remove(modifiedPath)
+                Runner.binding.readOnly = false
+                GroovyShell shell = Pipeline.load(modifiedPath, false)
+                Runner.binding.readOnly = true
+                Pipeline.allLoadedPaths.add(modifiedPath)
+                this.body = (Closure)shell.getVariable(stageName)
+                log.info "Reloaded $stageName from $modifiedPath"
+                log.info "Retrying due to dev retry"
+            }
+            
+            pipeline.nameApplied = originalNameApplied
+            context.@defaultOutput = originalDefaultOutput
+            context.@output = originalOutput
+            initializeStage(pipeline)
+        }
+        finally {
+            devResponseFile.delete()
+        }
+    }
+    
+    
+    /**
      * Cleanup output files (ie. move them to trash folder).
      * 
      * @param keepFiles    Files that should not be removed
@@ -609,8 +668,11 @@ class PipelineStage {
     
     @CompileStatic
     private String calculateDisplayName(Pipeline pipeline) {
-       if(pipeline.branch) {
-           return stageName + " ("  + pipeline.branch.getFirstNonTrivialName() + ")"
+       if(pipeline.branch.name) {
+           String branchName = pipeline.branch.getFirstNonTrivialName()
+           if(!branchName)
+               branchName = pipeline.branch.name
+           return stageName + " ("  + branchName + ")"
        }
        else {
            return stageName 

@@ -103,7 +103,7 @@ public class Pipeline implements ResourceRequestor {
     /**
      * The top level pipeline at the root of the pipeline hierarchy
      */
-    static Pipeline rootPipeline
+    public static Pipeline rootPipeline
     
     /**
      * A map of script file names to internal Groovy class names. This is needed
@@ -1230,7 +1230,7 @@ public class Pipeline implements ResourceRequestor {
         }
     }
     
-    static Set allLoadedPaths = new HashSet()
+    static Set<String> allLoadedPaths = new HashSet()
     
     static List<File> currentLoadingPaths = Collections.synchronizedList([])
     
@@ -1360,7 +1360,8 @@ public class Pipeline implements ResourceRequestor {
      * Include pipeline stages from the specified path into the pipeline
      * @param path
      */
-    static synchronized void load(String path) {
+    static synchronized GroovyShell load(String path, boolean allowRuntime=true) {
+           
         File f = new File(path)
         if(!Utils.fileExists(f)) {
             // Attempt to resolve the file relative to the main script location if
@@ -1378,11 +1379,12 @@ public class Pipeline implements ResourceRequestor {
         if(!f.exists()) 
             throw new PipelineError("A script, requested to be loaded from file '$path', could not be accessed.")
             
-        if(currentRuntimePipeline.get()) {
+        GroovyShell shell
+        if(currentRuntimePipeline.get() && allowRuntime) {
             Pipeline pipeline = currentRuntimePipeline.get()
             Binding binding = new Binding()
             binding.variables = Runner.binding.variables.clone()
-            def shell = new GroovyShell(binding)
+            shell = new GroovyShell(binding)
             
             // Note: do not cache - different branches may need to load the same file
             // which caching would prevent
@@ -1393,11 +1395,12 @@ public class Pipeline implements ResourceRequestor {
             }
         }
         else  {
-            def shell = new GroovyShell(Runner.binding)
+            shell = new GroovyShell(Runner.binding)
             loadExternalStagesFromPaths(shell, [f])
         }
-            
+
         loadedPaths << f
+        return shell
     }
     
     /**
