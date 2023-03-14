@@ -1436,4 +1436,16 @@ class Utils {
             return "localhost"
         }
     }
+    
+    public static String waitForModified(List<File> paths) {
+        if(paths.isEmpty())
+            return
+        double lastModifiedMs = paths*.lastModified().max()
+        while(paths*.lastModified().max() <= lastModifiedMs) {
+            Thread.sleep(500)        
+            if(ConsolePoller.instance.poll() != null)
+                return null
+        }
+        return paths.find { it.lastModified() > lastModifiedMs }.absolutePath
+    }
 }
