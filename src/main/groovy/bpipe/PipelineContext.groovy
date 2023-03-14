@@ -307,6 +307,8 @@ class PipelineContext {
     */
    public boolean hasDuplicatedOutputs = false
    
+   def splits = null
+   
     /**
      * Set the default inputs and outputs for this context according to the current
      * state of the given pipeline, and our stage name.
@@ -2785,7 +2787,7 @@ class PipelineContext {
        def orig = exts
       
        exts = Utils.box(exts).collect { (it instanceof PipelineOutput || it instanceof PipelineInput) ? it.toString() : it }
-        
+
        List resolvedInputs
        
        boolean lastCheck = false
@@ -3054,7 +3056,7 @@ class PipelineContext {
             if(exts.size()>1)
                 throw new InputMissingError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with $orig\n\nMost likely missing extensions: ${exts[missingInputs]}$branchHierarchy")
             else
-                throw new InputMissingError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with ${orig}$branchHierarchy")
+                throw new InputMissingError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with ${orig}\n\n$branchHierarchy")
         }
     }
    
@@ -3701,6 +3703,11 @@ class PipelineContext {
     @Memoized
     StorageLayer getDefaultStorage() {
         StorageLayer.getDefaultStorage()
+    }
+    
+    
+    void forwardSplit(def splitValue) {
+        this.splits = splitValue
     }
     
     
