@@ -458,7 +458,7 @@ class Dependencies {
             }
         }
         
-        List<String> internalNodeFileNames = internalNodes*.outputFile*.name*.toString()
+        List<String> internalNodeFileNames = internalNodes*.outputFile*.path*.toString()
         List<String> accompanyingOutputFileNames = []
         
         // Add any "accompanying" outputs for the outputs that would be cleaned up
@@ -794,7 +794,7 @@ class Dependencies {
      * @return
      */
     List<OutputMetaData> scanOutputFolder() {
-        int concurrency = (int)Config.userConfig.getOrDefault('outputScanConcurrency',5)
+        int concurrency = (int)(Config.userConfig?.getOrDefault('outputScanConcurrency',5)?:5)
         List result = []
         Utils.time("Output folder scan (concurrency=$concurrency)") {
             
