@@ -2018,35 +2018,15 @@ class PipelineContext {
               
               synchronized(devRetryLock) {
                   
-                  Thread.sleep(100)
+                    Thread.sleep(100)
 //                   print "\033[?1049h"
                   
-                  log.info "Retrying command in stage $stageName due to dev retry thrown"
+                    log.info "Retrying command in stage $stageName due to dev retry thrown"
                   
-                    println "${ansi().bold()} ====> ${new Date()} Dev Mode : " + stageName + ansi().boldOff() + "\n"
-                    
-                    println "${ansi().bold()}Direct Inputs: ${ansi().boldOff()}\n"
-
-                   this.@input.each { inp ->
-                        println "- $inp"
-                    }
-                    if(this.@input.size()>0)
-                        println ""
-
-                   Collection<Map.Entry> props = this.branch.properties.grep { Map.Entry entry -> entry.key != 'region' && entry.value } 
-                   
-                   String branchDesc = branch.hierarchy('/').trim().replaceAll('/$','')
-                   
-                   if(branchDesc || props)
-                       println "${ansi().bold()}Branch ${props ? 'Variables for branch' : ''}: ${branchDesc} ${ansi().boldOff()}\n"
-
-                   props.each { Map.Entry entry ->
-                       println "- $entry.key : $entry.value"
-                    }
-                    if(props)
-                        println ""
-                    
+                    printDevContextInfo()
+                  
                     String prettyCmd = cmd
+
                     log.info "Replacing direct inputs using: " + getResolvedInputs()
                     getResolvedInputs().each { inp ->
                         prettyCmd = prettyCmd.replaceAll(inp.toString(), "${ansi().fgBrightMagenta()}$inp${ansi().fgDefault()}")
@@ -3713,6 +3693,32 @@ class PipelineContext {
     
     void setRawInput(List<PipelineFile> rawInput) {
         this.@input = rawInput
+    }
+    
+    void printDevContextInfo() {
+
+        println "\n${ansi().bold()} ====> ${new Date()} Dev Mode : " + stageName + ansi().boldOff() + "\n"
+        
+        println "${ansi().bold()}Direct Inputs: ${ansi().boldOff()}\n"
+
+       this.@input.each { inp ->
+            println "- $inp"
+        }
+        if(this.@input.size()>0)
+            println ""
+
+       Collection<Map.Entry> props = this.branch.properties.grep { Map.Entry entry -> entry.key != 'region' && entry.value } 
+       
+       String branchDesc = branch.hierarchy('/').trim().replaceAll('/$','')
+       
+       if(branchDesc || props)
+           println "${ansi().bold()}Branch ${props ? 'Variables for branch' : ''}: ${branchDesc} ${ansi().boldOff()}\n"
+
+       props.each { Map.Entry entry ->
+           println "- $entry.key : $entry.value"
+        }
+        if(props)
+            println ""
     }
 }
 

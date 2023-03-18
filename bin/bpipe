@@ -609,7 +609,13 @@ then
     shift 1
     COMMAND="run"
     MODEFLAG="-Dbpipe.mode=touch" 
-elif [ "$COMMAND" == "resume" ];
+elif [ "$COMMAND" == "dev" ];
+then
+    shift 1
+    COMMAND="run"
+    MODEFLAG="-Dbpipe.mode=dev"
+    LAUNCH_IN_FOREGROUND=true 
+elif [ "$COMMAND" == "diagram" ];
 then
     shift 1
     COMMAND="run"
@@ -689,7 +695,8 @@ set -f
 
 if $LAUNCH_IN_FOREGROUND ;
 then
-    LOG_CAPTURE="2>&1 | tee .bpipe/logs/\$\$.log"
+    true
+    #LOG_CAPTURE="2>&1 | tee .bpipe/logs/\$\$.log"
 else
     LOG_CAPTURE='> .bpipe/logs/$$.log 2>&1'
 fi
