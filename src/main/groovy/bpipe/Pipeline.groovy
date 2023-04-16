@@ -930,9 +930,9 @@ public class Pipeline implements ResourceRequestor {
 
         if(failed) {
             println failureMessage
-            println()
-            println "Use 'bpipe errors' to see output from failed commands."
-            println()
+            if(!Runner.testMode) {
+                println "\nUse 'bpipe errors' to see output from failed commands.\n"
+            }
         }
 
         if(rootContext)
