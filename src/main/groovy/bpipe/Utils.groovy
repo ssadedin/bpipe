@@ -285,12 +285,21 @@ class Utils {
         return (obj != null) && (obj instanceof Collection || ((obj.class != null) && obj.class.isArray()))
     }
     
+    @CompileStatic
+    static <T> List<T> box(Collection<T> outputs) {
+        return boxImpl((Object)outputs)
+    }
+    
     /**
      * Normalize a single input and array into a collection, 
      * return existing collections as is
      */
     @CompileStatic
-    static List box(Object outputs) {
+    static <T> List<T> box(Object outputs) {
+        boxImpl(outputs)
+    }
+
+    static <T> List<T> boxImpl(Object outputs) {
         
         if(outputs == null)
             return []

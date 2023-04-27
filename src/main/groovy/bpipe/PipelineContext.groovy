@@ -792,9 +792,11 @@ class PipelineContext {
         } 
         
        if(replaced)  {
-           this.setRawOutput(Utils.box(this.@output).collect { 
+           List boxedValue = Utils.<PipelineFile>box(this.@output).collect { 
                if(it.path == replaced) { replacedOutputs.add(replaced) ; return o } else { return it } 
-           })
+           }
+
+           this.setRawOutput(boxedValue)
        }
    }
    
