@@ -30,6 +30,8 @@ import groovy.util.logging.Log;
 import groovyx.gpars.GParsPool
 import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
+import groovy.transform.stc.ClosureParams
+import groovy.transform.stc.SimpleType
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -850,7 +852,7 @@ class Dependencies {
     }
     
 	@CompileStatic
-    public withOutputGraph(Closure c) {
+    public withOutputGraph(@ClosureParams(value=SimpleType, options=['bpipe.GraphEntry']) Closure c) {
         this.outputGraphLock.readLock().lock()
         try {
             c(this.outputGraph) 
