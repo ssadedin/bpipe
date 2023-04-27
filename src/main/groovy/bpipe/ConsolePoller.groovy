@@ -16,6 +16,9 @@ class ConsolePoller implements Runnable {
     List<String> buffer = Collections.synchronizedList([])
     
     void run() {
+        if(System.console()== null)
+            throw new IllegalStateException("Unable to access system console. Please ensure you are running Bpipe in a proper terminal")
+
         while(true) {
             String line = System.console().readLine()
             buffer << line
