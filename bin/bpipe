@@ -732,8 +732,6 @@ $SHOWDEBUG && {
 
 if $LAUNCH_IN_FOREGROUND ;
 then
-    echo "Launching in foreground due to debug flag set"
-    
     bash -o pipefail -c "$LAUNCH_CMD" 
 
     exit_code=$?
