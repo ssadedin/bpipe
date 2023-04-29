@@ -310,6 +310,9 @@ class Runner {
                 def t = new Thread(ConsolePoller.instance)
                 t.setDaemon(true)
                 t.start()
+                
+                if(!arguments)
+                    mode = "retry"
             }
 
             if(mode == "retry" || mode == "resume" || mode == "remake") {
@@ -1047,10 +1050,9 @@ class Runner {
         if(testMode)
             args = ["-t"] + args
 
-        if(devMode)
-            args = ["-D"] + args
-
         def command = parsed[0][1]
+        if(command == "dev")
+            command = "run"
         
         return [ command,  args]
     }
