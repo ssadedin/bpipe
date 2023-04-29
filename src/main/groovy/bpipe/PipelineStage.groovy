@@ -274,6 +274,8 @@ class PipelineStage {
         
         try {
             try {
+                context.finaliseOutputs()              
+
                 Dependencies.theInstance.checkFiles(context.rawOutput, pipeline.aliases, "output", "in stage ${displayName}")
             }
             catch(PipelineError e) {
@@ -562,7 +564,19 @@ class PipelineStage {
         // set outputs
         if(!context.nextInputs && this.context.rawOutput != null) {
             log.info("Inferring nextInputs from explicit output as ${context.rawOutput}")
-            context.nextInputs = this.context.rawOutput
+            if(!context.optionalOutputs.isEmpty()) {
+                // Only forward optional outputs if actually there
+                context.nextInputs = context.rawOutput.grep { PipelineFile f ->
+                    if(f.path in context.optionalOutputs) {
+                        println "setting next input for $f based on whether it exists"
+                        return f.exists()
+                    }
+                    else
+                        return true
+                }
+            }
+            else
+                context.nextInputs = this.context.rawOutput
         }
         else {
             log.info "Inputs are NOT being inferred from context.output (context.nextInputs=$context.nextInputs)"

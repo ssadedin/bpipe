@@ -27,6 +27,8 @@ package bpipe
 
 import bpipe.storage.UnknownStoragePipelineFile
 import groovy.transform.CompileStatic;
+import groovy.transform.stc.ClosureParams
+import groovy.transform.stc.SimpleType
 import groovy.util.logging.Log
 
 import java.util.regex.Pattern
@@ -123,6 +125,8 @@ class PipelineOutput {
     
     boolean multiple = false
     
+    private boolean required = true
+
     /**
      * Create a pipeline output wrapper
      * 
@@ -169,7 +173,7 @@ class PipelineOutput {
                 }
 
                 if(this.outputChangeListener && o != null)
-                    this.outputChangeListener(o,replaceOutput)
+                    this.outputChangeListener(o,replaceOutput, this.required)
             }
 
             return boxed.collect { Utils.cleanPath(it) }.join(" ")
@@ -179,7 +183,7 @@ class PipelineOutput {
             // Value set by parent, and we have not resolved
             // any different value ourselves
             if(stringValue != null) {
-                this.outputChangeListener(stringValue, null)
+                this.outputChangeListener.call(stringValue, null, this.required)
                 return Utils.cleanPath(stringValue)
             }
             
@@ -214,7 +218,7 @@ class PipelineOutput {
             }
             
             if(this.outputChangeListener && firstOutput != null)
-              this.outputChangeListener(firstOutput,replaceOutput)
+              this.outputChangeListener(firstOutput,replaceOutput, this.required)
               
             return Utils.cleanPath(firstOutput)
         }
@@ -265,7 +269,7 @@ class PipelineOutput {
                     // thinks it should exist when it doesn't
                     // see produce_to_dir_no_output_ref test
                     if(it != defaultOutput && it != null)
-                        this.outputChangeListener(it,null)
+                        this.outputChangeListener(it,null, this.required)
                 }
             }
         }
@@ -273,7 +277,7 @@ class PipelineOutput {
             parentDir = new File(Config.config.defaultOutputDirectory)
             if(baseOutput) {
                 if(this.outputChangeListener && (baseOutput != defaultOutput))
-                    this.outputChangeListener(baseOutput,null)
+                    this.outputChangeListener(baseOutput,null, this.required)
             }
         }
         
@@ -300,22 +304,29 @@ class PipelineOutput {
     @CompileStatic
     def propertyMissing(String name) {
         
-       // When "produce", "transform" or "filter" is used, they specify
-       // the outputs,  so the output extension acts as a selector from
-       // those rather than a synthesis of a new name
+        if(name == 'optional') {
+            this.required = false
+            return this
+        }
+        else {
         
-       FileNameMappingResult mappedPath = mapper.mapFileName(this.extraSegments + [name])
-       
-       this.outputUsed = this.createChildOutput(mappedPath.path, name)
+           // When "produce", "transform" or "filter" is used, they specify
+           // the outputs,  so the output extension acts as a selector from
+           // those rather than a synthesis of a new name
+            
+           FileNameMappingResult mappedPath = mapper.mapFileName(this.extraSegments + [name])
            
-       if(this.outputChangeListener != null && mappedPath.path != null && mappedPath.replaced) {
-            this.outputChangeListener.call(mappedPath.path,mappedPath.replaced)
-       }
-       
-//       if(mappedPath.path == null) 
-//           throw new PipelineError("Unable to compute an appropriate output path based on file extension $name")
-        
-       return outputUsed
+           this.outputUsed = this.createChildOutput(mappedPath.path, name)
+               
+           if(this.outputChangeListener != null && mappedPath.path != null && mappedPath.replaced) {
+                this.outputChangeListener.call(mappedPath.path,mappedPath.replaced, this.required)
+           }
+           
+    //       if(mappedPath.path == null) 
+    //           throw new PipelineError("Unable to compute an appropriate output path based on file extension $name")
+            
+           return outputUsed
+        }
     }
     
     @CompileStatic
@@ -338,6 +349,11 @@ class PipelineOutput {
         po.stringValue = result
         po.extraSegments = this.extraSegments + [extraSegment]
         po.parentOutput = this
+        
+        // extending an output with another property means the optional 
+        // status would not apply because it is not ending with optional any more
+        this.required = false
+
         return po
     }
     
@@ -354,7 +370,7 @@ class PipelineOutput {
     String getPrefix() {
         this.outputUsed = String.valueOf(Utils.first(output))
         if(this.outputChangeListener != null) 
-            this.outputChangeListener(this.outputUsed,null)
+            this.outputChangeListener(this.outputUsed,null,this.required)
         return PipelineCategory.getPrefix(this.outputUsed);
     } 
     
