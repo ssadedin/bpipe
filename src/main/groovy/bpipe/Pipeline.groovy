@@ -434,6 +434,7 @@ public class Pipeline implements ResourceRequestor {
      * In practice this is used for parallezing pipelines based on chromosome.
      * See {@link PipelineCategory#multiply(java.util.Set, java.util.List)}
      */
+    //    @CompileStatic - causes compile error with gradle, groovy 3.0.10
     static Set<Chr> chr(Object... objs) {
         
         // Default configuration
@@ -442,27 +443,27 @@ public class Pipeline implements ResourceRequestor {
         // If a configuration is passed then override the default config with that
         // Note: the Map will always be first because Groovy enforces that
         if(objs && objs[0] instanceof Map) {
-            cfg += objs[0]
+            cfg += (Map)objs[0]
             objs = objs[1..-1]
         }
         
         if(!objs) 
             throw new PipelineError("Attempt to parallelize by chromosome is missing required argument for which chromosomes to parallelize over")
-        
+            
         Set<Chr> result = [] as Set
         for(Object o in objs) {
             
             if(o instanceof Closure) 
                 o = o()
             
-            if(o instanceof Range) {
+            if(o instanceof Range || o instanceof List || o instanceof Set) {
                 for(r in o) {
-                    result << new Chr(defaultGenomeChrPrefix+r, cfg)
+                    result << new Chr(addPrefix(String.valueOf(r)), cfg)
                 }
             }
             else 
             if(o instanceof String || o instanceof Integer) {
-                result << new Chr(defaultGenomeChrPrefix+o, cfg)
+                result << new Chr(addPrefix(String.valueOf(o)), cfg)
             }
         }
         
@@ -481,6 +482,14 @@ public class Pipeline implements ResourceRequestor {
         }
         
         return result
+    }
+    
+    @CompileStatic
+    static String addPrefix(String chr) {
+        if(chr.startsWith(defaultGenomeChrPrefix))
+            return chr
+        else
+            return defaultGenomeChrPrefix + chr
     }
     
     /**
