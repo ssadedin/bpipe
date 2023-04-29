@@ -235,8 +235,8 @@ class PipelineCategory {
             currentStage.context.setInput(input1)
             currentStage.run()
             
-            log.info "Checking that outputs ${currentStage.context.@output} exist"
-            Dependencies.theInstance.checkFiles(currentStage.context.@output, pipeline.aliases)
+//            log.info "Checking that outputs ${currentStage.context.@output} exist"
+//            Dependencies.theInstance.checkFiles(currentStage.context.@output, pipeline.aliases)
                     
             // If the stage did not return any outputs then we assume
             // that the inputs to the next stage are the same as the inputs
