@@ -129,6 +129,15 @@ class Command implements Serializable {
         assert this.inputs == null
         
         this.inputs = inputs
+        
+        Map cfg = getConfig(this.configName, name, command, inputs)
+        
+        this.cfg = cfg
+        
+        return cfg
+    }
+
+    static Map getConfig(String configName, String name, String command, List<PipelineFile> inputs) {
 
         // How to run the job?  look in user config
         if(!configName && (command != null)) // preallocated executors use a null command
@@ -168,7 +177,7 @@ class Command implements Serializable {
         }
         
         // Make a new map
-        this.cfg = new HashMap(rawCfg)
+        Map cfg = new HashMap(rawCfg)
         
         // Resolve inputs to files
         List<Path> fileInputs = (List<Path>)(inputs == null ? [] : inputs.collect { it.toPath() })

@@ -2032,13 +2032,14 @@ class PipelineContext {
       Command c 
       
       while(true) {
+          Map configObject 
           try {
               c = async(cmd, joinNewLines, config, false, dependencies)
               
               for(String o in commandReferencedOutputs)
                   pathToCommandId[o] = c.id
               
-              Map configObject = c.getConfig(this.@input)
+              configObject = c.getConfig(this.@input)
               c.outputs = commandReferencedOutputs.collect { String o ->
                   new PipelineFile(o, resolveStorageFor(o, configObject))
               }
@@ -2079,9 +2080,19 @@ class PipelineContext {
 
                     String msg = branch.name ? "Stage $stageName in branch $branch.name would execute:\n\n        $prettyCmd" : "Would execute $prettyCmd"
                     
+                    configObject = Command.getConfig(config, stageName, cmd, this.@input)
+                    String containerMsg
+                    if(configObject?.containsKey('container')) {
+                        ConfigObject container = configObject['container']
+                        containerMsg = "Will execute in container: " + container
+                    }
+                    
                     println msg
                     
                     println threadsMsg
+                    
+                    if(containerMsg)
+                        println containerMsg
 
                     println "\n${ansi().fgBlue()}Waiting for changes or <enter> to continue ....${ansi().fgDefault()}\n"
                     
@@ -2455,7 +2466,7 @@ class PipelineContext {
       this.inferUsedProcs(command)
 
       // Inferred outputs are outputs that are picked up through the user's use of 
-      // $ouput.<ext> form in their commands. These are intercepted at string evaluation time
+      // $output.<ext> form in their commands. These are intercepted at string evaluation time
       // (prior to the async or exec command entry) and set as inferredOutputs until
       // the command is executed, and then we reset them
       List unconvertedOutputs = (this.inferredOutputs + this.referencedOutputs + this.internalOutputs + this.pendingGlobOutputs).unique()
