@@ -157,7 +157,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
      * Throw an exception indicating the pipeline is aborting due to user initiated break
      */
     private void triggerBreak(Command cmd, Map cfg) {
-        String msg = command.branch.name ? "Stage $command.name in branch $command.branch.name would execute:\n\n        $cmd.command" : "Would execute $cmd.command"
+        String msg = command.branch.name ? "Stage $command.name in branch $command.branch.name would execute:\n\n        $cmd.command" : "State $command.name would execute:\n\n        $cmd.command"
         this.releaseAll()
         if(commandExecutor instanceof LocalCommandExecutor)
             throw new bpipe.PipelineTestAbort(msg)
