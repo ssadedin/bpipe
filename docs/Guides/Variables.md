@@ -166,12 +166,16 @@ tasks:
   }
 ```
 
-**NOTE 1**: it is important to understand that variables defined in this way have global scope
+**NOTE 1**: it is important to understand that variables defined in this way have global scope.
 and are also modifiable. This becomes important if you have parallel stages in your pipeline.
 Modifications to such variables, therefore, can result in race conditions, deadlocks and all 
-the usual ills that befall multithreaded programming. For this reason, it is strongly recommended 
+the usual ills that befall multithreaded programming. Bpipe will prevent reassignment of
+such a global variable once the pipeline starts running. However, the properties and contents
+of any data structure referenced may still be modifiable. It is strongly recommended 
 that you treat any such variables as constants which you assign once and then reference as read only
-variables in the remainder of your script.
+variables in the remainder of your script. If you do modify them, it is your responsiblity to
+implement thread safety for these variables (for example, using a Java/Groovy `synchronized` 
+block).
 
 **NOTE 2**: explicit variables can be assigned inside your own pipeline stages. However in current 
 Bpipe they are assigned to the _global_ environment. Thus even though you may assign a variable
@@ -195,6 +199,9 @@ prefix it with 'branch.':
   }
 ``` 
 
+Bpipe will allow new global variables to be assigned inside a pipeline stage,
+but then will treat them as unmodifiable, so you will receive an error if you attempt
+to modify the variable after it was assigned.
 
 ### Variable Evaluation
 
