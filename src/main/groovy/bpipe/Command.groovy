@@ -137,6 +137,7 @@ class Command implements Serializable {
         return cfg
     }
 
+    @CompileStatic
     static Map getConfig(String configName, String name, String command, List<PipelineFile> inputs) {
 
         // How to run the job?  look in user config
@@ -244,7 +245,7 @@ class Command implements Serializable {
         this.cfg = config
     }
     
-    private String formatWalltime(def walltime) {
+    private static String formatWalltime(def walltime) {
        // Treat as integer, convert to string
        walltime = walltime.toInteger()
        int hours = (int)Math.floor(walltime / 3600)
