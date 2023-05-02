@@ -818,7 +818,8 @@ class PipelineContext {
         } 
         
         if(!required) {
-            this.optionalOutputs.addAll(Utils.box(o)*.toString())
+            List boxed = Utils.boxImpl(o) // groovy 2.5.13 can't resolve Utils.box(Object) directly
+            this.optionalOutputs.addAll(boxed*.toString())
         }
         
        if(replaced)  {
