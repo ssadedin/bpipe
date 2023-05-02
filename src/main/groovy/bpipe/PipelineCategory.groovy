@@ -404,7 +404,7 @@ class PipelineCategory {
             Dependencies.theInstance.checkFiles(nextInputs, runtimePipeline.aliases)
             
             // Ensure the keys and values are normalised to expected structure downstream
-            Map<String,List> cleanBranches = segments.collectEntries { e ->
+            Map<String,List> cleanBranches = (Map<String,List>) segments.collectEntries { e ->
                 [String.valueOf(e.key),  inputs]
             }
 
@@ -903,7 +903,7 @@ class PipelineCategory {
 
     @CompileStatic
     private static Map<String,Closure> convertSegmentLists(Map<String,Object> segmentObjs) {
-        Map<String, Closure> segments = segmentObjs.collectEntries { Map.Entry e ->
+        Map<String, Closure> segments = (Map<String, Closure>)segmentObjs.collectEntries { Map.Entry e ->
             def convertedValue =  e.value
             if(e.value instanceof List) {
                 convertedValue = multiply("*", (List)e.value)
