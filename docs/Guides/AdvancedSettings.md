@@ -45,6 +45,24 @@ jobs to launch this will make your whole pipeline take 9000 seconds to get start
 need to balance the value of this setting against the capabilities and robustness of the
 system the jobs are running on.
 
+### File Watcher Setting
+
+By default Bpipe uses [inotify](https://en.wikipedia.org/wiki/Inotify) to allow it to be
+advised of file system updates efficiently. This minimises the load Bpipe itself puts on 
+the file system since it does not need to explicitly check to know when files are updated.
+
+Unfortunately inotify has per-user limits which can mean for large or complex pipelines,
+or if you run very many pipeline at once, you may receive errors about the inotify limit
+being exceeded.
+
+If this happens, you can fall back Bpipe using manual file scanning to monitor file timestamps
+instead, by setting in the `bpipe.config` file:
+
+```
+usePollerFileWatcher=true
+```
+
+
 ### Post Command Hook
 
 If you want to run something every single time after each command finishes, you can set it as 
