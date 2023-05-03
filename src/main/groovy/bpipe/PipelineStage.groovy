@@ -568,7 +568,6 @@ class PipelineStage {
                 // Only forward optional outputs if actually there
                 context.nextInputs = context.rawOutput.grep { PipelineFile f ->
                     if(f.path in context.optionalOutputs) {
-                        println "setting next input for $f based on whether it exists"
                         return f.exists()
                     }
                     else
