@@ -6,7 +6,7 @@ Welcome to Bpipe  ![Tests](https://github.com/ssadedin/bpipe/actions/workflows/c
 Bpipe provides a platform for running data analytic workgflows that consist of a series of processing stages - known as 'pipelines'. Bpipe has special features to help with
 specific challenges in Bioinformatics and computational biology.
 
-* September 2021 - New! [Bpipe 0.9.11](https://github.com/ssadedin/bpipe/releases/tag/0.9.11) released!
+* May 2023 - New! [Bpipe 0.9.12](https://github.com/ssadedin/bpipe/releases/tag/0.9.12) released!
 * [Documentation](https://docs.bpipe.org)
 * [Mailing List](https://groups.google.com/forum/#!forum/bpipe-discuss) (Google Group)
 
