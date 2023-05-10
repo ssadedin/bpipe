@@ -68,6 +68,28 @@ Now Bpipe will do the opposite: if you reference `$regions` it will parse the BE
 space-concatenated string of regions to use with command line tools that require that, while giving you back
 the BED file if you reference `$regions.bed`.
 
+## Optional Regions
+
+You might have some cases where pipeline stages or whole pipelines are designed to optionally
+target a specific region or to alternatively analyse all regions. In this case, you need
+to be able to only pass an argument to limit regions of analysis when the user has
+actually chosen to limit the regions.
+
+For this you can utilise the `regions.isEmpty()` function. When no regions have been specified,
+this will return true and you can avoid providing the flag with some code like the example below
+in your pipeline stage:
+
+```groovy
+hello = {
+
+  def regionFlag = region.isEmpty() ? "" :  "-r $region"
+
+  exec """
+      your_command  -r $regionFlag $input.bam > $output.bam
+  """
+}
+```
+
 ## Parallelizing Over Genomic Regions
 
 A very common technique in processing genomic data is to operate on 
