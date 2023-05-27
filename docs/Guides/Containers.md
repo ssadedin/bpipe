@@ -175,3 +175,24 @@ containers {
 
 When configured this way, Bpipe will add the required instructions to bind the paths into your
 container.
+
+
+## Specifying Platform
+
+If you want to use a container for a different platform than would be selected by default,
+when using docker you can add a `platform` attribute to the container configuration.
+
+For example, to use the `delly` container image for amd64 on Apple Silicon:
+
+```groovy
+    delly {
+        type='docker'
+        image='dellytools/delly'
+        platform='linux/amd64'
+        shell='/bin/sh'
+       }
+   }
+```
+
+Note that it is also required to specify the shell as `/bin/sh` as the container does not include
+`bash`.

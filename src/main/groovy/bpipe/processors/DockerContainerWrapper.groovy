@@ -66,12 +66,18 @@ class DockerContainerWrapper implements CommandProcessor {
 		else {
 			 entryPointArg = entryPoint ? ["--entrypoint", entryPoint] : ["--entrypoint", "/usr/bin/env"]
 		}
+        
+        List<String> platformArg = []
+        if(config.containsKey('platform')) {
+            platformArg = ["--platform", config.platform]
+        }
 
         command.shell = 
             [
                 "docker",
                 "run",
-				*entryPointArg,
+                *platformArg,
+                *entryPointArg,
                 "-w", Runner.runDirectory, 
                 "-v", "$Runner.runDirectory:$Runner.runDirectory",
 				*extraVolumes,
