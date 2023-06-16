@@ -273,8 +273,15 @@ class JMSAgent extends Agent {
         this.session = connection.createSession(false,
              acknowledgeMode == 'read' ? Session.AUTO_ACKNOWLEDGE  : ActiveMQSession.INDIVIDUAL_ACKNOWLEDGE)
         this.queue = session.createQueue((String)config.commandQueue)
-        this.consumer = session.createConsumer(queue)
-        
+
+        if (config.containsKey('messageSelector')) {
+            log.info("Creating consumer for queue=${queue.queueName} with messageSelector=${config.messageSelector}")
+            this.consumer = session.createConsumer(queue, (String)config.messageSelector)
+        } else {
+            log.info("Creating consumer for queue=${queue.queueName}")
+            this.consumer = session.createConsumer(queue)
+        }
+
         log.info "Connected to ActiveMQ $config.commandQueue @ $config.brokerURL"
     }
 
