@@ -524,6 +524,9 @@ class Runner {
         script.setBinding(binding)
         // set the pipeline arguments
         script.setProperty("args", pipelineArgs);
+        
+        // If there are hooks in the hooks folder, run those
+        executeHooks()
 
         // RUN it
         try {
@@ -838,6 +841,8 @@ class Runner {
      * Bpipe home, set as system property by Bpipe runner script prior to launching
      */
     static String BPIPE_HOME = System.getProperty("bpipe.home")?.asType(File)?.canonicalPath?:new File(".").canonicalPath
+
+    public static final File HOOKS_DIRECTORY = new File(".bpipe/hooks")
     
     /**
      * Perform essential cleanup when Bpipe process ends.
@@ -961,7 +966,21 @@ class Runner {
     static void runAgent(def args) {
         bpipe.agent.AgentRunner.main(args)
     }
-    
+
+    /**
+     * Look for files in the hooks directory and execute each one to enable them to attach
+     * event listeners to enable functionality they care about.
+     */
+    static void executeHooks() {
+        List<File> hookFiles = HOOKS_DIRECTORY.listFiles().findAll { it.name.endsWith('.groovy') }.sort { it.name }
+
+        GroovyShell shell = new GroovyShell()
+        
+        hookFiles.each { File hookFile ->
+            shell.run(hookFile, [])
+        }
+    }
+
     /**
      * Parse the arguments from the retry command to see if the user has 
      * specified a job or test mode, then find the relevant command

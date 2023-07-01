@@ -1,11 +1,15 @@
 package bpipe.agent
 
+import bpipe.Pipeline
 import bpipe.PipelineError
+import bpipe.Sender
+import bpipe.Utils
 import bpipe.cmd.BpipeCommand
 import bpipe.cmd.RunPipelineCommand
 import bpipe.notification.ActivemqNotificationChannel
 import bpipe.worx.JMSWorxConnection
 import bpipe.worx.WorxConnection
+import groovy.json.JsonBuilder
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import groovy.transform.CompileStatic
@@ -53,6 +57,9 @@ class JMSAgent extends Agent {
         this.acknowledgeMode = config.getOrDefault('acknowledgeMode', 'run')
     }
     
+    /**
+     * Main loop. Accepts messages and hands off for processing
+     */
     void run() {
         
         log.info "Acknowledge mode is $acknowledgeMode"
@@ -159,34 +166,103 @@ class JMSAgent extends Agent {
             acknowledgeRun(message)
         }
         
-        if(message.getJMSReplyTo() || message.getStringProperty('reply-to') || message.getStringProperty('replyTo')) {
+        String replyToValue = message.getJMSReplyTo()?:message.getStringProperty('reply-to')?:message.getStringProperty('replyTo')
+        if(replyToValue) {
+
             log.info "ReplyTo set on message: will send message when complete"
-            runner.completionListener = { Map result ->
-                log.info "Sending reply for command $commandAttributes.id"
-                
-                BpipeCommand command = runner.command
-                
-                log.info "Loading checks from $command.dir "
-                        
-                def checks = bpipe.Check.loadAll(new File(command.dir, '.bpipe/checks'))
-        
-                Map<String,Object> resultDetails = (Map<String,Object>)[
-                        command: commandAttributes,
-                        result: result + [ 
-                            checks:  checks.collect { [name: it.name, stage: it.stage, branch: it.branch, message: it.message, passed: it.passed] }
-                        ]
-                ]
-                
-                if(command instanceof RunPipelineCommand) {
-                    String runDir = ((RunPipelineCommand)command).runDirectory?.canonicalPath
-                    resultDetails['directory'] = runDir
+            
+            // Write out the completion listener
+            BpipeCommand command = runner.command
+            if(command instanceof RunPipelineCommand) {
+                if(config.getOrDefault('replyMode', 'hook') == 'hook') {
+                    setupHookReply(commandAttributes, replyToValue, command, message)
                 }
-                sendReply(message, JsonOutput.prettyPrint(JsonOutput.toJson(resultDetails)))
+                else {
+                    setupDirectReply(commandAttributes, (RunPipelineCommand)command, message, runner)
+                }
             }
         }
         
         if(this.singleShot)
             stopRequested=true
+    }
+    
+    /**
+     * 
+     * Write a hook into the Bpipe directory for the pipeline so that it
+     * sends an agent reply on shutdown.
+     * <p>
+     * This method of reply causes the reply message to be sent by the actual
+     * Bpipe pipeline instance when the pipeline finishes. This ensures that
+     * the reply is sent even if the instance is retried manually.
+     */
+    private void setupHookReply(Map commandAttributes, String replyToValue, RunPipelineCommand command, Message message) {
+        command.onDirectoryConfigured = { File dir ->
+            File hooksDir = new File(dir, ".bpipe/hooks")
+            hooksDir.mkdir()
+            Map configValue = [
+                correlationID : message.JMSCorrelationID,
+                * : config,
+                replyQueue: replyToValue,
+                response: [
+                    replyTo: message.JMSMessageID,
+                    command: commandAttributes,
+                    directory: dir.toString()
+                ]
+            ]
+
+            File agentHook = new File(hooksDir, 'agent_hook.groovy')
+
+            log.info("Writing hook for replyTo to $agentHook.absolutePath")
+
+            agentHook.text =
+            """
+                import groovy.json.*
+                bpipe.EventManager.getInstance().addListener(bpipe.PipelineEvent.SHUTDOWN) { type, desc, details ->
+                    String configValue = '${JsonOutput.toJson(configValue)}'
+                    Map config = new JsonSlurper().parseText(configValue)
+                    bpipe.agent.JMSAgent.sendAgentReply(config)
+                }
+            """.stripIndent()
+        }
+    }
+
+    /**
+     * Set up a callback after the command completes to send the reply directly to the
+     * reply queue directly within this agent.
+     * <p>
+     * This is a legacy method of reply, because it cannot guarantee that a reply 
+     * will be sent eventually if the pipeline fails and is restarted.
+     */
+    private void setupDirectReply(Map commandAttributes, RunPipelineCommand command, Message message, AgentCommandRunner runner) {
+        log.info "Using direct replies"
+        runner.completionListener = { Map result ->
+            log.info "Sending reply for command $commandAttributes.id"
+
+
+            Map checkDetails = getCheckDetails(command.dir)
+            Map<String,Object> resultDetails = (Map<String,Object>)[
+                command: commandAttributes,
+                result: result + checkDetails
+            ]
+
+            if(command instanceof RunPipelineCommand) {
+                String runDir = ((RunPipelineCommand)command).runDirectory?.canonicalPath
+                resultDetails['directory'] = runDir
+            }
+            sendReply(message, JsonOutput.prettyPrint(JsonOutput.toJson(resultDetails)))
+        }
+    }
+    
+    /**
+     * Load the checks from the file system and format into appropriate object for return in reply
+     */
+    static Map getCheckDetails(String dir) {
+        log.info "Loading checks from $dir "
+        def checks = bpipe.Check.loadAll(new File(dir, '.bpipe/checks'))
+        return [ 
+            checks:  checks.collect { [name: it.name, stage: it.stage, branch: it.branch, message: it.message, passed: it.passed] }
+        ]        
     }
     
     void acknowledgeRun(Message msg) {
@@ -218,6 +294,66 @@ class JMSAgent extends Agent {
             
         log.info "Sending reply to $dest"
         producer.send(response)
+    }
+    
+    /**
+     * Designed to be called from within a Bpipe pipeline callback context such that 
+     * a reply can be sent in response to an Agent invoked run with a replyTo header.
+     * 
+     * @param replyConfig   values determining JMS connection properties to use in 
+     *                      sending the reply.
+     */
+    static void sendAgentReply(Map replyConfig) {
+        
+        Pipeline pipeline = Pipeline.rootPipeline
+        Map checks = getCheckDetails(bpipe.Runner.runDirectory)
+        Map suppDetails = [
+            result:[
+                command: ((Map)replyConfig.command)?.id,
+                status: pipeline.failed ? "failed" : "ok",
+                *:checks 
+            ]
+        ]
+        
+        log.info("Supp details are: " + suppDetails)
+
+        def responseJSON = ((Map)replyConfig.response) + suppDetails
+        
+        log.info("response JSON to send upstream: " + responseJSON)
+
+        String formattedResponse = new JsonBuilder(responseJSON).toPrettyString()
+
+         // Determine if a "sent file" exists for this send
+        String sentFilePath = 'agent.' + replyConfig.replyQueue + '.' + Utils.sha1((String)("${replyConfig.brokerURL}:$replyConfig.replyQueue\n$formattedResponse"))
+        File sentFile = new File(Sender.SENT_FOLDER, sentFilePath)
+        if(sentFile.exists()) {
+            log.info "Not sending agent reply because sent file $sentFile.absolutePath already exists"
+            return
+        }
+        
+        def connection = bpipe.notification.ActivemqNotificationChannel.createActiveMQConnection(replyConfig)
+        try {
+            def session = connection.createSession(false,Session.AUTO_ACKNOWLEDGE)
+            
+            log.info("Sending agent reply message to $replyConfig.replyQueue (sent file $sentFile.absolutePath does not exist)")
+            def dest = session.createQueue((String)replyConfig.replyQueue)
+       
+            TextMessage response = session.createTextMessage(formattedResponse)
+            MessageProducer producer = session.createProducer(dest)
+            if(replyConfig.containsKey('correlationID'))
+                response.JMSCorrelationID = replyConfig.correlationID
+            
+            producer.send(response)
+            log.info "Sent response to $replyConfig.replyQueue"
+            
+            if(!Sender.SENT_FOLDER.exists())
+                Sender.SENT_FOLDER.mkdirs()
+                
+            sentFile.text = formattedResponse
+        }
+        finally {
+            connection.close()
+        }
     }
     
     String formatPingResponse() {
