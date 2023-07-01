@@ -39,7 +39,7 @@ you can get:
   * **Job Management** - know what jobs are running, start, stop, manage whole workflows with simple commands
   * **Easy Parallelism** - split jobs into many pieces and run them all in parallel whether on a cluster, cloud or locally. Separate configuration of parallelism from the definition of the tasks.
   * **Audit Trail** - keeps a journal of exactly which commands executed, when and what their inputs and outputs were.
-  * **Integration with Compute Providers ** - pure Bpipe scripts can run unchanged whether locally, on
+  * **Integration with Compute Providers** - pure Bpipe scripts can run unchanged whether locally, on
   your server, or in cloud or traditional HPC back ends such as Torque, SLURM GridEngine or others.
   * **Deep Integretation Options** - Bpipe integrates well with other systems: receive alerts to tell you when your pipeline finishes or even as each stage completes, call REST APIs, send messages to queueing systems and easily use any type of integration available within the Java ecosystem.
   * See how Bpipe compares to [similar tools](https://docs.bpipe.org/Overview/ComparisonToWorkflowTools/)
