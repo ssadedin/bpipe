@@ -1,3 +1,45 @@
+=========== Changes for Bpipe Version 0.9.12 ============
+
+   - FEATURE: add display of cores into stats table 
+    
+   - FEATURE: support for Groovoy 3.0 and JDK11+
+
+   - FEATURE: experimental 'dev' mode - use `bpipe dev`
+     to enter test mode that highlights
+     input and outputs in commands, hot updates with changes
+     and shows branch/command context
+     
+   - FEAUTRE: support for optional outputs via .optional pseudo
+     extension 
+
+   - FEATURE: named branches - use multiply syntax with 
+     groovy Map literal as alternative to list, to create named 
+     parallel branches
+
+   - FEATURE: dynamic splits. Use `forwardSplit(...)` to create
+     pipeline branches that are dynamically determined by result
+     of a previous stage. (see [docs](https://docs.bpipe.org/Guides/ParallelTasks/#splitting-dynamically-on-arbitrary-metadata))
+
+   - FEATURE: Command configuration can now be done based on stage name rather
+     than command name. This significantly relieves the need to add dedicated
+     config names to commands in order to adjust their configuration.
+     
+   - FIX: Slurm executor polling not operating correctly
+     
+   - FIX: Don't create stray empty .bpipe folders
+     
+   - FIX: Autoarchive leaving behind empty dirs on some file systems 
+
+   - DEPRECATED: the Multi command is no deprecated as there are no scenarios where
+     this is preferred over paralleising using branching structures
+     
+   - FIX: wrong input may be used in from(multiple) transform() to() construct 
+
+   - FEATURE: duplicate output files are now explicitly detected and warned about
+
+   - FEATURE: enhanced warnings and messages when transform / produce / filter
+     do not create expected files
+
 =========== Changes for Bpipe Version 0.9.11 ============
 
    - FEATURE: support for required attribute on notification 

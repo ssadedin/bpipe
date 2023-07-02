@@ -129,6 +129,11 @@ class RegionSet implements Serializable {
         }.flatten() as Set
     }
     
+    @CompileStatic
+    static RegionSet bed(Map options=[:], File fileName) {
+        bed(options, fileName.absolutePath)
+    }
+
     /**
      * Return a region set resolved from a BED file
      * 

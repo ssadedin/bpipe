@@ -285,12 +285,21 @@ class Utils {
         return (obj != null) && (obj instanceof Collection || ((obj.class != null) && obj.class.isArray()))
     }
     
+    @CompileStatic
+    static <T> List<T> box(Collection<T> outputs) {
+        return boxImpl((Object)outputs)
+    }
+    
     /**
      * Normalize a single input and array into a collection, 
      * return existing collections as is
      */
     @CompileStatic
-    static List box(Object outputs) {
+    static <T> List<T> box(Object outputs) {
+        boxImpl(outputs)
+    }
+
+    static <T> List<T> boxImpl(Object outputs) {
         
         if(outputs == null)
             return []
@@ -1399,8 +1408,11 @@ class Utils {
     public static Throwable sanitizeForDisplay(Throwable e) {
            e = StackTraceUtils.deepSanitize(e)
            e.stackTrace = e.stackTrace.grep { StackTraceElement el ->
-               !el.className.startsWith('bpipe.')
+               !el.className.startsWith('jdk.internal.reflect.')
            } as StackTraceElement[]
+//           e.stackTrace = e.stackTrace.grep { StackTraceElement el ->
+//               !el.className.startsWith('bpipe.')
+//           } as StackTraceElement[]
            return e
     }
     
@@ -1435,5 +1447,17 @@ class Utils {
             log.warning("Unable to determine hostname: defaulting to localhost ($t)")
             return "localhost"
         }
+    }
+    
+    public static String waitForModified(List<File> paths) {
+        if(paths.isEmpty())
+            return
+        double lastModifiedMs = paths*.lastModified().max()
+        while(paths*.lastModified().max() <= lastModifiedMs) {
+            Thread.sleep(500)        
+            if(ConsolePoller.instance.poll() != null)
+                return null
+        }
+        return paths.find { it.lastModified() > lastModifiedMs }.absolutePath
     }
 }

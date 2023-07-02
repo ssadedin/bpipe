@@ -418,12 +418,20 @@ class DefinePipelineCategory {
         multiply("*", segments)
     }
     
+    static Object multiply(Closure branchingDeterminant, List<Closure> targets) {
+        multiply("*", targets)
+    }
+    
     static Object multiply(List objs, Map segments) {
         multiply(objs, segments*.value)
     }
     
     static Object multiply(PipelineChannel channel, List segments) {
         multiply(channel.source.collect { String.valueOf(it) } as Set, segments)
+    }
+
+    static Object plus(Closure c, Map segments) {
+        multiply("*", segments*.value)
     }
 
     static Object multiply(List chrs, List segments) {

@@ -129,6 +129,16 @@ class Command implements Serializable {
         assert this.inputs == null
         
         this.inputs = inputs
+        
+        Map cfg = getConfig(this.configName, name, command, inputs)
+        
+        this.cfg = cfg
+        
+        return cfg
+    }
+
+    @CompileStatic
+    static Map getConfig(String configName, String name, String command, List<PipelineFile> inputs) {
 
         // How to run the job?  look in user config
         if(!configName && (command != null)) // preallocated executors use a null command
@@ -164,11 +174,11 @@ class Command implements Serializable {
         def cmdConfig = (ConfigObject)(Config.userConfig.containsKey("commands")?Config.userConfig.commands[configName]:null)
         if(cmdConfig && cmdConfig instanceof Map)  {
             // override properties in default config with those for the specific command
-            rawCfg = defaultConfig + (Map<String,Object>)cmdConfig
+            rawCfg = rawCfg + (Map<String,Object>)cmdConfig
         }
         
         // Make a new map
-        this.cfg = new HashMap(rawCfg)
+        Map cfg = new HashMap(rawCfg)
         
         // Resolve inputs to files
         List<Path> fileInputs = (List<Path>)(inputs == null ? [] : inputs.collect { it.toPath() })
@@ -235,7 +245,7 @@ class Command implements Serializable {
         this.cfg = config
     }
     
-    private String formatWalltime(def walltime) {
+    private static String formatWalltime(def walltime) {
        // Treat as integer, convert to string
        walltime = walltime.toInteger()
        int hours = (int)Math.floor(walltime / 3600)

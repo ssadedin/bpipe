@@ -172,19 +172,21 @@ class StatsCommand extends BpipeCommand {
                 (" ") * (int)(timingWidth * (minStartRel / pipelineTotalMs)) + bar
             }
             
+            def cores = valid.collect { cmd -> cmd.resources?.procs }.find { it }?: "-" 
             
             return [
              stage, 
              cmds.size(), 
              formatTimeSpan(times.min()?.toLong()),
              formatTimeSpan(mean), formatTimeSpan(times.max()), 
+             cores,
              ((times.sum()?:0) / 1000.0).toLong(),
              formatTiming()
             ]
         }
         .grep { it != null }
         
-        Utils.table(["Stage","Count","Min","Mean","Max", "Weight","Timing"], stats, indent:1)
+        Utils.table(["Stage","Count","Min","Mean","Max", "Cores","Weight","Timing"], stats, indent:1)
         
         out.println ""
     }

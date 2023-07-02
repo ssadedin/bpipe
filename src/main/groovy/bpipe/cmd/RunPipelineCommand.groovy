@@ -39,6 +39,8 @@ class RunPipelineCommand extends BpipeCommand {
     
     File runDirectory 
     
+    Closure onDirectoryConfigured
+    
     public RunPipelineCommand(List<String> args) {
         super("run", args);
     }
@@ -57,6 +59,10 @@ class RunPipelineCommand extends BpipeCommand {
         
         if(!dirFile.exists())
             throw new IllegalArgumentException("Unable to create directory requested for pipeline run $dir.")
+            
+        if(this.onDirectoryConfigured!=null) {
+            this.onDirectoryConfigured(dirFile)
+        }
         
         log.info "Running with arguments: " + args + " in directory " + dirFile;
         

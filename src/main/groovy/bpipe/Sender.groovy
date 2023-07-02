@@ -30,10 +30,14 @@ import bpipe.notification.FileNotificationChannel
 import bpipe.notification.HTTPNotificationChannel
 import bpipe.storage.LocalPipelineFile
 import bpipe.storage.UnknownStoragePipelineFile
+import groovy.json.JsonBuilder
 import groovy.json.JsonOutput
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 import groovy.xml.MarkupBuilder
+
+import static org.fusesource.jansi.Ansi.*
+import static org.fusesource.jansi.Ansi.Color.*
 
 /**
  * Sends information to a recipient via a communication channel
@@ -256,7 +260,16 @@ class Sender {
            }
        }
        
-       if(Runner.testMode) {
+       if(bpipe.Runner.devMode) {
+
+            if(ctx.stageName in Runner.devSkip) {
+                log.info("Skipping dev of send ($ctx.stageName) because it is in the dev skip list")
+            }
+            else
+                enterDevLoop(cfgName, channelCfg, extraDetails)
+        }
+
+        if(Runner.testMode) {
            throwTestAbort(cfgName, extraDetails)
        }
        else
@@ -366,6 +379,39 @@ class Sender {
         }
 
         throw new PipelineTestAbort(msg)
+    }
+    
+    private void enterDevLoop(String configName, ConfigObject config, Map extraDetails) {
+        
+        if(!config || config.isEmpty())
+            config = NotificationManager.theInstance.cfg.notifications[configName]
+            
+        def cfgs = NotificationManager.theInstance.cfg
+        
+        this.ctx.printDevContextInfo()
+        
+        def prettyContent = content
+
+        ctx.getResolvedInputs().each { inp ->
+            prettyContent = prettyContent.replaceAll(inp.toString(), "${ansi().fgBrightMagenta()}$inp${ansi().fgDefault()}")
+        }
+        
+        println "Would send: \n\n$prettyContent\n\nto channel $configName:\n"
+        
+        def allDetails = (config?:[:]) + details + extraDetails
+        allDetails.remove('password')
+        allDetails.remove('name')
+        allDetails.remove('channel')
+        allDetails.remove('EVENTS')
+        allDetails.remove('events')
+        allDetails.remove('subject')
+        
+        Utils.table(['Property', 'Value'], [allDetails*.key, allDetails*.value].transpose(), indent:4)
+        
+        println "\n${ansi().fgBlue()}Waiting for changes or <enter> to continue ....${ansi().fgDefault()}\n"
+         
+        
+        throw new PipelineDevRetry("Dev ertry of Send config $configName")
     }
     
     /**

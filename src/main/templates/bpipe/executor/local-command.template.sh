@@ -12,8 +12,10 @@ module load ${config.modules}
 
 echo \$\$ > ${CMD_PID_FILE}
 
-cat ${CMD_FILENAME} | $SETSID bash -e 
+CMD_SHELL=bash
+(command -v bash  > /dev/null) || CMD_SHELL=sh
 
+cat ${CMD_FILENAME} | $SETSID \$CMD_SHELL -e 
 
 result=\$?
 echo -n \$result > $jobDir/${CMD_EXIT_FILENAME}.tmp

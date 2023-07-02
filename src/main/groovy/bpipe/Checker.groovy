@@ -199,7 +199,7 @@ class Checker {
         
         List oldOutputs = ctx.@output
         ctx.internalOutputs = ctx.resolvePipelineFiles([checkFile.path])
-        ctx.internalInputs = Utils.box(ctx.@output)
+        ctx.internalInputs = Utils.box(ctx.@output)*.toString()
         boolean oldProbeMode = this.ctx.probeMode
         this.ctx.probeMode = probeMode
         List<String> previousOutputs = (List<String>)ctx.allInferredOutputs.collect()

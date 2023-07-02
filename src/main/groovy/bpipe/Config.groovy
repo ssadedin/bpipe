@@ -72,6 +72,9 @@ class Config {
         // Stages where the pipeline should break at (set with -u on command line)
         breakAt: [],
         
+        // Stages where pipeline will enter dev mode
+        devAt: [],
+        
         // Whether a break has been triggered
         breakTriggered : false,
 		

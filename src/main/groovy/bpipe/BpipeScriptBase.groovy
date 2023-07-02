@@ -18,11 +18,19 @@ class BpipeScriptBase extends groovy.lang.Script {
 
     void doc(String details) {}
 
+    void title(String details) {}
+
     void doc(Map details) {}
     
     void load(String path) { }
     
     void run(Closure c) { }
+    
+    RegionSet bed(String path) { }
+
+    RegionSet bed(File path) { }
+    
+    RegionSet chr(Object... chrs) { }
     
     void config( @DelegatesTo(ConfigObject) Closure c) { }
 

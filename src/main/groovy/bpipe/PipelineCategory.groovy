@@ -235,8 +235,8 @@ class PipelineCategory {
             currentStage.context.setInput(input1)
             currentStage.run()
             
-            log.info "Checking that outputs ${currentStage.context.@output} exist"
-            Dependencies.theInstance.checkFiles(currentStage.context.@output, pipeline.aliases)
+//            log.info "Checking that outputs ${currentStage.context.@output} exist"
+//            Dependencies.theInstance.checkFiles(currentStage.context.@output, pipeline.aliases)
                     
             // If the stage did not return any outputs then we assume
             // that the inputs to the next stage are the same as the inputs
@@ -375,6 +375,44 @@ class PipelineCategory {
     @CompileStatic
     static Object multiply(Set objs, List segments) {
         multiply(objs, segments, null, null)
+    }
+    
+    @CompileStatic
+    static Object plus(Closure c, Map<String,Closure> segments) {
+
+        Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
+        
+       
+        def multiplyImplementation = { input ->
+            
+            def inputs = Utils.box(input)
+            
+            Pipeline runtimePipeline = Pipeline.currentRuntimePipeline.get()
+            def currentStage = new PipelineStage(runtimePipeline.createContext(), c)
+            runtimePipeline.addStage(currentStage)
+            currentStage.context.setInput(input)
+            currentStage.run()
+            Dependencies.theInstance.checkFiles(currentStage.context.@output, runtimePipeline.aliases)
+                    
+            // If the stage did not return any outputs then we assume
+            // that the inputs to the next stage are the same as the inputs
+            // to the previous stage
+            def nextInputs = currentStage.context.nextInputs
+            if(nextInputs == null)
+                nextInputs = currentStage.context.@input
+                
+            Dependencies.theInstance.checkFiles(nextInputs, runtimePipeline.aliases)
+            
+            // Ensure the keys and values are normalised to expected structure downstream
+            Map<String,List> cleanBranches = (Map<String,List>) segments.collectEntries { e ->
+                [String.valueOf(e.key),  inputs]
+            }
+
+            splitOnMap(nextInputs, ['*' : inputs], (Map<String,Object>)segments, false, false, null)
+        }
+//        log.info "Joiners for pipeline " + pipeline.hashCode() + " = " + pipeline.joiners
+        pipeline.joiners << multiplyImplementation
+        return multiplyImplementation
     }
     
     @CompileStatic
@@ -616,6 +654,76 @@ class PipelineCategory {
         splitOnFiles(pattern,segments,true)
     }
     
+    static Object multiply(Closure branchingDeterminant, List<Closure> targets) {
+        
+
+        def multiplyImplementation = { input1 ->
+            
+            Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
+
+            PipelineStage currentStage = new PipelineStage(pipeline.createContext(), branchingDeterminant)
+            pipeline.addStage(currentStage)
+            currentStage.context.setInput(input1)
+            currentStage.run()
+            
+            if(!currentStage.context.splits)
+                throw new PipelineError("Stage $currentStage.stageName was configured as a splitting stage but did not call forwardSplit to set the downstream split values")
+            
+            // Ensure the keys and values are normalised to expected structure downstream
+            Map<String,List> cleanBranches = currentStage.context.splits.collectEntries { Map.Entry e ->
+                [String.valueOf(e.key),  e.value]
+            }
+
+            def nextInputs = currentStage.context.nextInputs
+            log.info "Next inputs from stage = $nextInputs"
+            if(nextInputs == null) {
+                nextInputs = currentStage.context.@input
+            }
+            
+            // Convert any segments that have been passed as lists to compiled closure form
+            List<Closure> segments = convertSegmentLists(targets)
+            
+            final PipelineStage forkStage = new PipelineStage(pipeline.createContext(), {})
+            final Pipeline parent = Pipeline.currentRuntimePipeline.get()
+            parent.addStage(forkStage)
+            forkStage.context.setInput(nextInputs)
+            parent.childCount = 0
+                
+            log.info "Created pipeline stage ${forkStage.hashCode()} for parallel block"
+            
+            // Now we have all our branches, make a 
+            // separate pipeline for each one, and for each parallel stage
+            List<Pipeline> childPipelines = []
+            List<Runnable> threads = []
+            Node branchPoint = parent.addBranchPoint("split")
+            for(Closure segmentClosure in segments) {
+                log.info "Processing segment ${segmentClosure.hashCode()}"
+                
+                // See note in multiply(Set objs, List segments) for details on the purpose of forkId
+                String forkId = null
+                cleanBranches.each { id, metadata ->
+                        
+                    log.info "Creating pipeline to run parallel segment $id with metadata $metadata. Branch filter = ${Config.config.branchFilter}"
+                       
+                    if(isBranchFiltered(id))
+                        return
+     
+                    String childName = computeSubBranchName(id, segments, segmentClosure)
+                    Pipeline child = parent.fork(branchPoint, childName, forkId, null)
+                    child.branch.metadata = metadata
+                    forkId = child.id
+                    forkStage.children << child
+                    threads << new BranchRunner(parent, child, [], childName, segmentClosure, true)
+                    childPipelines << child
+                }
+            }
+            return runAndWaitFor(forkStage, childPipelines, threads)            
+        }
+        
+        Pipeline.currentUnderConstructionPipeline.joiners << multiplyImplementation
+        return multiplyImplementation 
+    }
+    
     static Object multiply(Map branches, List segments, PipelineChannel pipelineChannel = null) {
 
         Pipeline pipeline = Pipeline.currentUnderConstructionPipeline
@@ -709,8 +817,18 @@ class PipelineCategory {
         return [:]
     }
     
-    @CompileStatic
     static Object splitOnMap(def input, Map<String, List> branchMap, List segmentObjs /* Closure or List of Closures */, boolean applyName=false, boolean mergePoint=false, PipelineChannel pipelineChannel=null) {
+        
+        // Treat map * [ stage1, stage2 ] as 
+        // map * [ 1: stage1, 2: stage2 ]
+
+        def segmentObjMap = segmentObjs.indexed().collectEntries { [it.key.toString(), it.value]}
+        
+        splitOnMap(input, branchMap, segmentObjMap, applyName, mergePoint, pipelineChannel)
+    }
+
+    @CompileStatic
+    static Object splitOnMap(def input, Map<String, List> branchMap, Map<String,Object> segmentMap /* Closure or List of Closures */, boolean applyName=false, boolean mergePoint=false, PipelineChannel pipelineChannel=null) {
         
         assert branchMap*.value.every { it instanceof List }
         
@@ -721,7 +839,7 @@ class PipelineCategory {
         Pipeline pipeline = Pipeline.currentRuntimePipeline.get() ?: Pipeline.currentUnderConstructionPipeline
         
         // Convert any segments that have been passed as lists to compiled closure form
-        List<Closure> segments = convertSegmentLists(segmentObjs)
+        Map<String,Closure> segments = convertSegmentLists(segmentMap)
         
         final PipelineStage currentStage = new PipelineStage(pipeline.createContext(), {})
         final Pipeline parent = Pipeline.currentRuntimePipeline.get()
@@ -737,7 +855,10 @@ class PipelineCategory {
         List<Pipeline> childPipelines = []
         List<Runnable> threads = []
 		Node branchPoint = parent.addBranchPoint("split")
-        for(Closure segmentClosure in segments) {
+        for(Map.Entry<String, Closure> segmentEntry in segments) {
+            
+            Closure segmentClosure = segmentEntry.value
+
             log.info "Processing segment ${segmentClosure.hashCode()}"
             
             // See note in multiply(Set objs, List segments) for details on the purpose of forkId
@@ -749,7 +870,14 @@ class PipelineCategory {
 				if(isBranchFiltered(id))
                     return
  
-                String childName = computeSubBranchName(id, segments, segmentClosure)
+                List<String> nameParts = []
+                if(id != '*' && id != 'all')
+                    nameParts << id
+                if(segmentMap.size()>1 || nameParts.isEmpty())
+                    nameParts << segmentEntry.key
+
+                String childName = nameParts.join('_')
+
                 Pipeline child = parent.fork(branchPoint, childName, forkId, pipelineChannel)
                 forkId = child.id
                 currentStage.children << child
@@ -769,6 +897,19 @@ class PipelineCategory {
             }
             else
                 return it
+        }
+        return segments
+    }
+
+    @CompileStatic
+    private static Map<String,Closure> convertSegmentLists(Map<String,Object> segmentObjs) {
+        Map<String, Closure> segments = (Map<String, Closure>)segmentObjs.collectEntries { Map.Entry e ->
+            def convertedValue =  e.value
+            if(e.value instanceof List) {
+                convertedValue = multiply("*", (List)e.value)
+            }
+
+            return [ e.key, convertedValue ]
         }
         return segments
     }

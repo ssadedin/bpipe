@@ -85,6 +85,47 @@ exec """
 This will run `some_command` by itself if no CSV file is in the inputs, but if the CSV file is
 available, it will run `some_command --foo <CSV file>`.
 
+**Optional Outputs**
+
+Sometimes an output may only be produced under certain circumstances. This behaviour can be
+difficult to deal with in pipelines where you wish to execute deterministic outcomes
+with strong checking to ensure correctness, since absence of an output does not by itself
+imply a failure of the process to produce it. Nonetheless, there are occasions where this 
+is necessary.
+
+Bpipe allows you to specify that an output
+is optional by suffixing the `$output` variable with `.optional`. When this 
+occurs, Bpipe adds the following behaviour to treatment of the associated command and
+output file:
+
+- it will not be considered an error if the file is not created
+- if the command associated with the output executes successfully,
+  Bpipe will create a metadata properties file indicating this happened
+  (stored in `.bpipe/outputs`)
+- if the metadata file exists, commands such as `bpipe retry` etc will
+  behave as if the output had been created (so will not re-execute)
+- downstream commands that reference the output as an input will not see the output
+  if it does not exist. This may result in an error stating the input is missing if
+  it is referenced and no available input can be found.
+
+In general, it is better to avoid optional outputs when it is possible to do so. One 
+technique that can be helpful is to always create a second output alongside the 
+optional one so that there is always an artefact on the file system to 
+verify that the command executed. For example, a useful mechanism can be to 
+pipe the output from the command into `tee` with an output file that 
+actually captures the output for later reference (even though this will also
+be in the bpipe log). For example:
+
+```bash
+set -o pipefail
+
+some_command -o $ouptut.tsv.optional 2>&1 | tee $output.txt
+
+```
+
+Note: the `pipefail` here is essential as otherwise the pipe will mask an exit status indicating
+an error occurred from the original command.
+
 
 ### Explicit Variables
 

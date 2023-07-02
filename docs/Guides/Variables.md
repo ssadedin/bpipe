@@ -64,6 +64,87 @@ join together.  To do this:
   to all files with extension '.bam', and `$input1.bam` will find the first BAM file 
   output by an upstream stage.
 
+
+**Optional Inputs**
+
+Sometimes an input might be provided optionally. In that case, you want to use it if it exists,
+or possibly use some other value if it doesn't.
+
+The default behavior of Bpipe is that if you reference an input and it can't be resolved, this
+generates a pipeline error and aborts the pipeline. However you can flag an input as optional
+by adding `optional` directly after the input reference. For example:
+
+```
+hello = {
+    exec """
+        echo "The file $input.txt.optional is optional"
+    """
+}
+```
+
+The expression `$input.optional` evaluates to blank if the input isn't available. This makes it
+possible to use it with Groovy expressions:
+
+```
+def actualInput = input.txt.optional?:input.csv
+```
+
+However a common scenario is that you want to pass an input with a flag to a command, but only
+if the input was provided. This can be accomplished by adding `.flag` after the `optional` in the 
+input reference:
+
+
+```
+exec """
+   some_command ${input.csv.optional.flag('--foo')}
+"""
+```
+
+This will run `some_command` by itself if no CSV file is in the inputs, but if the CSV file is
+available, it will run `some_command --foo <CSV file>`.
+
+**Optional Outputs**
+
+Sometimes an output may only be produced under certain circumstances. This behaviour can be
+difficult to deal with in pipelines where you wish to execute deterministic outcomes
+with strong checking to ensure correctness, since absence of an output does not by itself
+imply a failure of the process to produce it. Nonetheless, there are occasions where this 
+is necessary.
+
+Bpipe allows you to specify that an output
+is optional by suffixing the `$output` variable with `.optional`. When this 
+occurs, Bpipe adds the following behaviour to treatment of the associated command and
+output file:
+
+- it will not be considered an error if the file is not created
+- if the command associated with the output executes successfully,
+  Bpipe will create a metadata properties file indicating this happened
+  (stored in `.bpipe/outputs`)
+- if the metadata file exists, commands such as `bpipe retry` etc will
+  behave as if the output had been created (so will not re-execute)
+- downstream commands that reference the output as an input will not see the output
+  if it does not exist. This may result in an error stating the input is missing if
+  it is referenced and no available input can be found.
+
+In general, it is better to avoid optional outputs when it is possible to do so. One 
+technique that can be helpful is to always create a second output alongside the 
+optional one so that there is always an artefact on the file system to 
+verify that the command executed. For example, a useful mechanism can be to 
+pipe the output from the command into `tee` with an output file that 
+actually captures the output for later reference (even though this will also
+be in the bpipe log). For example:
+
+```bash
+set -o pipefail
+
+some_command -o $ouptut.tsv.optional 2>&1 | tee $output.txt
+
+```
+
+Note: the `pipefail` here is essential as otherwise the pipe will mask an exit status indicating
+an error occurred from the original command.
+
+
 ### Explicit Variables
 
 Explicit variables are ones you define yourself.  These variables are created
@@ -85,12 +166,16 @@ tasks:
   }
 ```
 
-**NOTE 1**: it is important to understand that variables defined in this way have global scope
+**NOTE 1**: it is important to understand that variables defined in this way have global scope.
 and are also modifiable. This becomes important if you have parallel stages in your pipeline.
 Modifications to such variables, therefore, can result in race conditions, deadlocks and all 
-the usual ills that befall multithreaded programming. For this reason, it is strongly recommended 
+the usual ills that befall multithreaded programming. Bpipe will prevent reassignment of
+such a global variable once the pipeline starts running. However, the properties and contents
+of any data structure referenced may still be modifiable. It is strongly recommended 
 that you treat any such variables as constants which you assign once and then reference as read only
-variables in the remainder of your script.
+variables in the remainder of your script. If you do modify them, it is your responsiblity to
+implement thread safety for these variables (for example, using a Java/Groovy `synchronized` 
+block).
 
 **NOTE 2**: explicit variables can be assigned inside your own pipeline stages. However in current 
 Bpipe they are assigned to the _global_ environment. Thus even though you may assign a variable
@@ -114,6 +199,9 @@ prefix it with 'branch.':
   }
 ``` 
 
+Bpipe will allow new global variables to be assigned inside a pipeline stage,
+but then will treat them as unmodifiable, so you will receive an error if you attempt
+to modify the variable after it was assigned.
 
 ### Variable Evaluation
 

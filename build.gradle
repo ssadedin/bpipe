@@ -59,6 +59,7 @@ dependencies {
     else {
         implementation group: 'org.codehaus.groovy', name: 'groovy-all', version: GROOVY_VERSION
         implementation group: 'org.codehaus.groovy', name: 'groovy-dateutil', version: GROOVY_VERSION
+        implementation group: 'org.codehaus.groovy', name: 'groovy-cli-commons', version: GROOVY_VERSION
         implementation group: 'org.codehaus.groovy', name: 'groovy-datetime', version: GROOVY_VERSION
         implementation group: 'org.codehaus.groovy', name: 'groovy-json', version: GROOVY_VERSION
         implementation group: 'org.codehaus.groovy', name: 'groovy-sql', version: GROOVY_VERSION

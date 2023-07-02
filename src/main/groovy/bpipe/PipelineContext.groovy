@@ -24,6 +24,7 @@
  */
 package bpipe
  
+import java.awt.Color
 import java.nio.file.Files
 
 import java.nio.file.Path
@@ -37,6 +38,9 @@ import org.codehaus.groovy.tools.shell.Groovysh
 import org.codehaus.groovy.tools.shell.IO
 import groovy.transform.CompileStatic
 import groovy.transform.Memoized
+
+import static org.fusesource.jansi.Ansi.*
+import static org.fusesource.jansi.Ansi.Color.*
 
 import bpipe.executor.ProbeCommandExecutor
 import bpipe.storage.LocalFileSystemStorageLayer
@@ -223,6 +227,12 @@ class PipelineContext {
    List<PipelineFile> pendingGlobOutputs = []
    
    /**
+    * Outputs that are flagged as optional by the user, eg: using the <code>optional</code> 
+    * pseudo file extension
+    */
+   List<String> optionalOutputs = []
+
+   /**
     * A list of outputs that are to be marked as preserved.
     * These will not be deleted automatically by user initiated
     * cleanup operations (see {@link Dependencies#cleanup(java.util.List)}
@@ -303,6 +313,8 @@ class PipelineContext {
     */
    public boolean hasDuplicatedOutputs = false
    
+   def splits = null
+   
     /**
      * Set the default inputs and outputs for this context according to the current
      * state of the given pipeline, and our stage name.
@@ -329,6 +341,18 @@ class PipelineContext {
         branch.dirChangeListener = { String dirName ->
             outputTo(dirName)
         }
+        
+        this.hasDuplicatedOutputs = false
+        this.inferredOutputs = []
+        this.allInferredOutputs = []
+        this.allResolvedInputs = []
+        this.internalOutputs = []
+        this.pendingGlobOutputs = []
+        this.allUsedInputWrappers = new TreeMap()
+        this.probeMode = false        
+        this.referencedOutputs = []
+        this.trackedOutputs = [:]
+        this.nextInputs = []
     }
     
     @CompileStatic
@@ -685,7 +709,7 @@ class PipelineContext {
                                    (List<Object>)resolver.overrideOutputs,
                                    inboundBranches,
                                    mapper,
-                                   { o,replaced -> onNewOutputReferenced(pipeline, o, (String)replaced)}) 
+                                   { o,replaced,required -> onNewOutputReferenced(pipeline, o, (String)replaced, (Boolean)required)}) 
        
        po.branchName = branchName
        if(this.currentFileNameTransform instanceof FilterFileNameTransformer)
@@ -698,6 +722,24 @@ class PipelineContext {
            po.transformMode = "extend"
            
        return po
+   }
+   
+   /**
+    * Check the predicted outputs and remove any that were optional that did not get created
+    */
+   @CompileStatic
+   void finaliseOutputs() {
+       if(this.optionalOutputs.isEmpty()) {
+           return;
+       }
+       
+       this.rawOutput = this.rawOutput?.grep { PipelineFile f -> 
+           if(f.path in this.optionalOutputs) {
+               return f.exists()
+           }
+           else
+               return true
+       }
    }
    
    @CompileStatic
@@ -754,13 +796,15 @@ class PipelineContext {
     *                   becomes replaced by in input extension reference using
     *                   $output.bam
     */
-   synchronized void onNewOutputReferenced(Pipeline pipeline, Object o, String replaced = null) {
+   @CompileStatic
+   synchronized void onNewOutputReferenced(Pipeline pipeline, Object o, String replaced = null, boolean required=true) {
        
        assert o != null
        assert !(o instanceof List)
        
        if(!allInferredOutputs.contains(o)) 
-           allInferredOutputs << o; 
+           allInferredOutputs << String.valueOf(o)
+
        if(!inferredOutputs.contains(o)) 
            inferredOutputs << o;  
        
@@ -773,10 +817,17 @@ class PipelineContext {
            pipeline.nameApplied=true
         } 
         
+        if(!required) {
+            List boxed = Utils.boxImpl(o) // groovy 2.5.13 can't resolve Utils.box(Object) directly
+            this.optionalOutputs.addAll(boxed*.toString())
+        }
+        
        if(replaced)  {
-           this.setRawOutput(Utils.box(this.@output).collect { 
+           List boxedValue = Utils.<PipelineFile>box(this.@output).collect { 
                if(it.path == replaced) { replacedOutputs.add(replaced) ; return o } else { return it } 
-           })
+           }
+
+           this.setRawOutput(boxedValue)
        }
    }
    
@@ -822,13 +873,15 @@ class PipelineContext {
 
            FileNameMapper mapper = resolver.createNameMapper(origOutput.branchName)
            
+           Closure callback = { op, String replaced, Boolean required -> onNewOutputReferenced(pipeline, op, replaced, required)}
+           
            def po = new PipelineOutput([result],
                                      origOutput.stageName, 
                                      origDefaultOutput,
                                      (List)overrideOutputs,
                                      inboundBranches,
                                      mapper,
-                                     { op, String replaced -> onNewOutputReferenced(pipeline, op, replaced)}) 
+                                     callback) 
            
            po.branchName = origOutput.branchName 
            return po
@@ -1261,7 +1314,7 @@ class PipelineContext {
         
         def boxed = Utils.box(this.@input)
             
-        this.currentFilter = ((List<PipelineFile>)(boxed + Utils.box(this.pipelineStages[-1].originalInputs))).grep { PipelineFile f ->
+        this.currentFilter = ((List<PipelineFile>)(boxed + Utils.<PipelineFile>box(this.pipelineStages[-1].originalInputs))).grep { PipelineFile f ->
              f.path.indexOf('.')>=0  // only consider file names that actually contain periods
         }.collect { PipelineFile f ->
             Utils.ext(f.path) // For each such file, return the file extension
@@ -1960,6 +2013,8 @@ class PipelineContext {
         execImpl(cmd, joinNewLines, config, dependencies)
     }
     
+    final static Object devRetryLock = new Object()
+    
     @CompileStatic
     Command execImpl(String cmd, boolean joinNewLines, String config=null, List<CommandDependency> dependencies=null) {
         
@@ -1975,20 +2030,79 @@ class PipelineContext {
       // Reset referenced outputs so they can be re-evaluated for next command independently of this one
       this.referencedOutputs = []
       
-      Command c = async(cmd, joinNewLines, config, false, dependencies)
+      Command c 
       
-      for(String o in commandReferencedOutputs)
-          pathToCommandId[o] = c.id
-      
-      Map configObject = c.getConfig(this.@input)
-      c.outputs = commandReferencedOutputs.collect { String o ->
-          
-//          assert c.processedConfig != null
-          new PipelineFile(o, resolveStorageFor(o, configObject))
-      }
-      assert c.outputs.every { it instanceof PipelineFile }
+      while(true) {
+          Map configObject 
+          try {
+              c = async(cmd, joinNewLines, config, false, dependencies)
+              
+              for(String o in commandReferencedOutputs)
+                  pathToCommandId[o] = c.id
+              
+              configObject = c.getConfig(this.@input)
+              c.outputs = commandReferencedOutputs.collect { String o ->
+                  new PipelineFile(o, resolveStorageFor(o, configObject))
+              }
+              assert c.outputs.every { it instanceof PipelineFile }
      
-      c.exitCode = c.executor.waitFor()
+              c.exitCode = c.executor.waitFor()
+
+              break
+          }
+          catch(PipelineDevRetry e) {
+              
+              synchronized(devRetryLock) {
+                  
+                    Thread.sleep(100)
+//                   print "\033[?1049h"
+                  
+                    log.info "Retrying command in stage $stageName due to dev retry thrown"
+                  
+                    printDevContextInfo()
+                  
+                    String prettyCmd = cmd
+
+                    log.info "Replacing direct inputs using: " + getResolvedInputs()
+                    getResolvedInputs().each { inp ->
+                        prettyCmd = prettyCmd.replaceAll(inp.toString(), "${ansi().fgBrightMagenta()}$inp${ansi().fgDefault()}")
+                    }
+
+                    commandReferencedOutputs.each { outPath ->
+                        prettyCmd = prettyCmd.replaceAll(outPath, "${ansi().fgRed()}$outPath${ansi().fgDefault()}")
+                    }
+                    
+                    // __bpipe_lazy_resource_threads__
+                    String threadsMsg = ''
+                    if(prettyCmd.contains('__bpipe_lazy_resource_threads__')) {
+                        prettyCmd = prettyCmd.replaceAll('__bpipe_lazy_resource_threads__', "${ansi().fgGreen()}\\\${threads}${ansi().fgDefault()}")
+                        threadsMsg = "${ansi().bold()}Note:${ansi().boldOff()} ${ansi().fgGreen()}\${threads}${ansi().fgDefault()} will be assigned at runtime based on available concurrency"
+                    }
+
+                    String msg = branch.name ? "Stage $stageName in branch $branch.name would execute:\n\n        $prettyCmd" : "Would execute $prettyCmd"
+                    
+                    configObject = Command.getConfig(config, stageName, cmd, this.@input)
+                    String containerMsg
+                    if(configObject?.containsKey('container')) {
+                        ConfigObject container = configObject['container']
+                        containerMsg = "Will execute in container: " + container
+                    }
+                    
+                    println msg
+                    
+                    println threadsMsg
+                    
+                    if(containerMsg)
+                        println containerMsg
+
+                    println "\n${ansi().fgBlue()}Waiting for changes or <enter> to continue ....${ansi().fgDefault()}\n"
+                    
+
+                    throw e
+                }
+          }
+      }
+
       if(c.stopTimeMs <= 0)
           c.stopTimeMs = System.currentTimeMillis()
           
@@ -2002,7 +2116,7 @@ class PipelineContext {
             
         log.info "Command $c.id in branch $branch failed with exit code $c.exitCode"
         
-        throw new CommandFailedException("Command in stage $stageName failed with exit status = $c.exitCode : \n\n$c.command", this, c)
+        throw new CommandFailedException("Command $c.id in stage $stageName failed with exit status = $c.exitCode : \n\n$c.command", this, c)
       }
       
       if(!this.probeMode)
@@ -2353,7 +2467,7 @@ class PipelineContext {
       this.inferUsedProcs(command)
 
       // Inferred outputs are outputs that are picked up through the user's use of 
-      // $ouput.<ext> form in their commands. These are intercepted at string evaluation time
+      // $output.<ext> form in their commands. These are intercepted at string evaluation time
       // (prior to the async or exec command entry) and set as inferredOutputs until
       // the command is executed, and then we reset them
       List unconvertedOutputs = (this.inferredOutputs + this.referencedOutputs + this.internalOutputs + this.pendingGlobOutputs).unique()
@@ -2411,7 +2525,7 @@ class PipelineContext {
  
           this.executedOutputs.addAll(command.getOutputs())
       }
-      catch(PipelineTestAbort exPta) {
+      catch(PipelineTestAbort|PipelineDevRetry exPta) {
           exPta.missingOutputs = outOfDateOutputs
           throw exPta
       }
@@ -2435,8 +2549,16 @@ class PipelineContext {
      * 
      * @return  a list of out-of-date outputs or null if none were out of date
      */
-    private List resolveOutOfDateOutputs(List actualResolvedInputs, List checkOutputs) {
+    @CompileStatic
+    private List resolveOutOfDateOutputs(List actualResolvedInputs, List<PipelineFile> checkOutputs) {
         List<Path> outOfDateOutputs = null
+        
+        final List<PipelineFile> originalCheckOutputs = checkOutputs
+
+        // if some outputs optional, remove them if the command to create the outputs
+        // has been executed at least once successfully
+        checkOutputs = filterOptionalOutputs(checkOutputs)
+
         if(probeMode) {
             log.info "Skip check dependencies due to probe mode"
         }
@@ -2445,7 +2567,7 @@ class PipelineContext {
             log.info "Skip check dependencies due to no outputs to check"
         }
         else {
-            outOfDateOutputs = Dependencies.instance.getOutOfDate(checkOutputs,actualResolvedInputs)
+            outOfDateOutputs = Dependencies.theInstance.getOutOfDate(checkOutputs,actualResolvedInputs)
             if(outOfDateOutputs && Runner.touchMode) {
                 Utils.touchPaths(outOfDateOutputs)
                 if(outOfDateOutputs.every { Files.exists(it) })
@@ -2453,6 +2575,35 @@ class PipelineContext {
             }
         }
         return outOfDateOutputs
+    }
+
+    /**
+     * Filter outputs to be checked to decide if a command needs to be run to those
+     * that are required OR have not been previously been subject to execution of
+     * the relevant command.
+     * 
+     * @param outputsToCheck
+     * @return  filtered list of outputs to check
+     */
+    @CompileStatic
+    private List<PipelineFile> filterOptionalOutputs(List<PipelineFile> outputsToCheck) {
+        if(this.optionalOutputs.isEmpty()) {
+            return outputsToCheck
+        }
+        
+        Dependencies.theInstance.withOutputGraph {  graph ->
+            outputsToCheck = outputsToCheck.grep { PipelineFile o ->
+                if(o.path in optionalOutputs) {
+                    // If there is a properties file saved then we assume the command executed successfully at least once
+                    if(graph.propertiesFor(o) != null && !o.exists()) {
+                        println "Not running command for $o because it has a properties file"
+                        return false
+                    }
+                }
+                return true
+            }
+        }
+        return outputsToCheck
     }
 
     /**
@@ -2699,7 +2850,7 @@ class PipelineContext {
        def orig = exts
       
        exts = Utils.box(exts).collect { (it instanceof PipelineOutput || it instanceof PipelineInput) ? it.toString() : it }
-        
+
        List resolvedInputs
        
        boolean lastCheck = false
@@ -2968,7 +3119,7 @@ class PipelineContext {
             if(exts.size()>1)
                 throw new InputMissingError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with $orig\n\nMost likely missing extensions: ${exts[missingInputs]}$branchHierarchy")
             else
-                throw new InputMissingError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with ${orig}$branchHierarchy")
+                throw new InputMissingError("Stage $stageName unable to locate one or more inputs specified by 'from' ending with ${orig}\n\n$branchHierarchy")
         }
     }
    
@@ -3618,8 +3769,39 @@ class PipelineContext {
     }
     
     
+    void forwardSplit(def splitValue) {
+        this.splits = splitValue
+    }
+    
+    
     void setRawInput(List<PipelineFile> rawInput) {
         this.@input = rawInput
+    }
+    
+    void printDevContextInfo() {
+
+        println "\n${ansi().bold()} ====> ${new Date()} Dev Mode : " + stageName + ansi().boldOff() + "\n"
+        
+        println "${ansi().bold()}Direct Inputs: ${ansi().boldOff()}\n"
+
+       this.@input.each { inp ->
+            println "- $inp"
+        }
+        if(this.@input.size()>0)
+            println ""
+
+       Collection<Map.Entry> props = this.branch.properties.grep { Map.Entry entry -> entry.key != 'region' && entry.value } 
+       
+       String branchDesc = branch.hierarchy('/').trim().replaceAll('/$','')
+       
+       if(branchDesc || props)
+           println "${ansi().bold()}Branch ${props ? 'Variables for branch' : ''}: ${branchDesc} ${ansi().boldOff()}\n"
+
+       props.each { Map.Entry entry ->
+           println "- $entry.key : $entry.value"
+        }
+        if(props)
+            println ""
     }
 }
 

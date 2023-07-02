@@ -42,7 +42,6 @@ class Branch extends Expando implements Serializable {
     
     public static final long serialVersionUID = 0L
     
-    @Delegate
     String name = ""
     
     String dir = "."
@@ -50,6 +49,11 @@ class Branch extends Expando implements Serializable {
     PipelineChannel pipelineChannel
     
     Branch parent = null
+    
+    /**
+     * Branch level metadata - not inherited
+     */
+    Object metadata
     
     transient Closure dirChangeListener = null
     
@@ -118,7 +122,7 @@ class Branch extends Expando implements Serializable {
         return !check.is(null)
     }
     
-    String hierarchy() {
+    String hierarchy(String joiner='\n') {
         List<Branch> steps = [this]
         Branch step = this
         while(step.parent != null) {
@@ -129,7 +133,7 @@ class Branch extends Expando implements Serializable {
         int stepIndex = 0
         return steps.findAll { it.name != 'all' && !it.sanitisedName.isNumber() }
                     .collect { ("\t" * (stepIndex++)) + it.name }
-                    .join('\n')
+                    .join(joiner)
     }
     
     void setProperty(String name, Object value) {
@@ -158,4 +162,15 @@ class Branch extends Expando implements Serializable {
     String getSanitisedName() {
         return name?.replaceAll(REMOVE_TRAILING_DOT_SECTIONS_PATTERN,'')       
     }
+    
+    // --- support a subset of String methods that pass through to the branch name
+    // --- this is mostly for legacy compatibility since delegate to String was removed
+    
+    @CompileStatic String toLowerCase() { this.toString().toLowerCase() }
+    @CompileStatic String toUpperCase() { this.toString().toUpperCase() }
+    @CompileStatic String substring(int beginIndex) { this.toString().substring(beginIndex) }
+    @CompileStatic String substring(int beginIndex, int endIndex) { this.toString().substring(beginIndex, endIndex) }
+    @CompileStatic String matches(String pattern) { this.toString().matches(pattern) }
+    @CompileStatic String replaceAll(String pattern, String replacement) { this.toString().replaceAll(pattern, replacement) }
+    @CompileStatic int size() { this.toString().size() }
 }

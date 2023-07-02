@@ -230,9 +230,10 @@ class OutputMetaData implements Serializable {
         p.createTimeMs = createTimeMs ? String.valueOf(createTimeMs) : "0"
         p.stopTimeMs = stopTimeMs ? String.valueOf(stopTimeMs) : "0"
             
+        def propFile = getPropertyFile()
        
-        log.info "Saving output file details to file $propertyFile for command " + Utils.truncnl(command, 20)
-        propertyFile.withOutputStream { ofs ->
+        log.info "Saving output file details to file $propFile for command " + Utils.truncnl(command, 20)
+        propFile.withOutputStream { ofs ->
             p.save(ofs, "Bpipe Output File Meta Data")
         }
     }
@@ -373,7 +374,7 @@ class OutputMetaData implements Serializable {
         if(outputPath.startsWith("./"))
             outputPath = outputPath.substring(2)
         
-        int maxFileNameLength = Config.userConfig.getOrDefault('maxFileNameLength',2048)
+        int maxFileNameLength = Config.userConfig?.getOrDefault('maxFileNameLength',2048)?:2048
         String pathElement = outputPath.replace('/', "_").replace('\\','_')
         String fileName = this.stageName + "." + pathElement + ".properties"
         if(fileName.size() > maxFileNameLength)
