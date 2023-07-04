@@ -28,6 +28,6 @@ class DockerContainerWrapperTest {
         assert actualCommand.contains(expWorkDir)
         assert actualCommand.contains(expDefaultVolume)
         assert actualCommand.contains('testImage')
-        assert actualCommand.contains('/bin/sh -e')
+        assert actualCommand.contains('/bin/bash -e')
     }
 }
