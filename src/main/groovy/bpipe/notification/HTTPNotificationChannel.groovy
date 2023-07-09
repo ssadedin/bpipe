@@ -20,6 +20,8 @@ class HTTPNotificationChannel implements NotificationChannel {
     
     String contentType
     
+    NetRC netrc
+    
     public HTTPNotificationChannel(Map config) {
         this(config,'application/json')
     }
@@ -102,6 +104,8 @@ class HTTPNotificationChannel implements NotificationChannel {
         if(config?.username && config?.password) {
             headers.Authorization = 'Basic ' + "$config.username:$config.password".bytes.encodeBase64().toString()
         }
+        else
+            attemptNetRCAuthorization(url, headers)
         
         if(config?.containsKey('headers')) {
             if(!(config.headers instanceof Map)) 
@@ -175,5 +179,43 @@ class HTTPNotificationChannel implements NotificationChannel {
     @Override
     public String getDefaultTemplate(String contentType) {
         return null
+    }
+    
+    /**
+     * Searches for a matching machine name in the netrc file (if it exists) and, if found,
+     * adds Basic Auth to the request using the matching entry.
+     * 
+     * Note: prefers a value containing a port over one that does not.
+     * 
+     * @param urlValue
+     * @param headers
+     */
+    void attemptNetRCAuthorization(String urlValue, Map headers) {
+        if(this.netrc == null) {
+            try {
+                this.netrc = NetRC.load()
+                log.info("Loaded netrc file containing ${netrc.hosts.size()} from user home directory")
+            }
+            catch(Exception e) {
+                log.warning("Failed to load netrc file: " + e)
+                e.printStackTrace()
+                this.netrc = new NetRC(hosts:[])
+            }
+        }
+        
+        // Can we find a host in the netrc file matching the url?
+        URL url = new URL(urlValue)
+        
+        // First look for a url that includes the port
+        String hostAndPort = url.host + ':' + url.port
+        NetRCHost netrcHost = netrc.hosts.find { it.machine == hostAndPort }
+        if(!netrcHost) {
+            netrcHost = netrc.hosts.find { it.machine == url.host }
+        }
+        
+        if(netrcHost != null) {
+            log.info("Authorizing URL $url using netrc entry $netrcHost")
+            headers.Authorization = 'Basic ' + "$netrcHost.login:$netrcHost.password".bytes.encodeBase64().toString()
+        }
     }
 }
