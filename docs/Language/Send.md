@@ -86,19 +86,11 @@ to `true`. For example:
     }
 ```
 
+**Note**: when an HTTP channel (or sending to a URL) is activated, Bpipe
+will read and respect contents of a `.netrc` file in the user's home
+directory to add authorization headers to the request.
+
 ### Examples
-
-**Send a message via Google Talk**
-```groovy 
-
-    send text {"Hello there"} to gtalk
-```
-
-**Send a message via Gmail, including a subject line**
-```groovy 
-
-    send text {"Hello there, this is the message body"} to channel: gmail, subject: "This is an email from Bpipe"
-```
 
 **Send an HTML email to Gmail**
 ```groovy 
