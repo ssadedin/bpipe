@@ -199,7 +199,7 @@ class JMSAgent extends Agent {
     private void setupHookReply(Map commandAttributes, String replyToValue, RunPipelineCommand command, Message message) {
         command.onDirectoryConfigured = { File dir ->
             File hooksDir = new File(dir, ".bpipe/hooks")
-            hooksDir.mkdir()
+            hooksDir.mkdirs()
             Map configValue = [
                 correlationID : message.JMSCorrelationID,
                 * : config,
