@@ -1,6 +1,7 @@
 package bpipe.notification
 
 import org.apache.activemq.ActiveMQConnection
+
 import org.apache.activemq.ActiveMQConnectionFactory
 
 import bpipe.*
@@ -17,7 +18,7 @@ import javax.jms.Queue
 import javax.jms.TextMessage
 
 @Log
-class ActivemqNotificationChannel implements NotificationChannel {
+class ActivemqNotificationChannel extends JMSNotificationChannel {
     
     Queue queue
     
@@ -30,40 +31,11 @@ class ActivemqNotificationChannel implements NotificationChannel {
     MessageProducer producer
     
     public ActivemqNotificationChannel(Map config) {
-        try {
-            if(!(config.containsKey('queue')))
-                throw new PipelineError("ActiveMQ configuration is missing required key 'queue'")
-
-            this.config = config;
-            this.connection = createActiveMQConnection(config)
-            this.connection.start()
-            this.session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE)
-            this.producer = session.createProducer()
-            this.queue = session.createQueue(config.queue)
-        }
-        catch(Exception e) {
-            log.severe("Unable to create message queue to " + config.brokerURL + ": " + e.message)
-            throw e
-        }
+        super(config)
     }
 
-
-    @Override
-    public void notify(PipelineEvent event, String subject, Template template, Map<String, Object> model) {
-        
-        if(event == PipelineEvent.FINISHED) {
-            model.remove('commands')
-        }
-        
-        Map eventDetails = HTTPNotificationChannel.sanitiseDetails(model)
-
-        eventDetails.description = subject
-        
-        TextMessage msg
-        String messageBody
+    void configureMessage(TextMessage msg, PipelineEvent event, Map<String, Object> eventDetails) {
         if(event == PipelineEvent.SEND) {
-            messageBody = model['send.content']
-            msg = session.createTextMessage(messageBody)
             eventDetails.each { k,v ->
                 
                 if(v instanceof PipelineStage) 
@@ -73,53 +45,13 @@ class ActivemqNotificationChannel implements NotificationChannel {
                     msg.setStringProperty(k,v)
             }
         }
-        else {
-          messageBody = JsonOutput.toJson(eventDetails)
-          msg = session.createTextMessage(messageBody)
-        }
-        
-        msg.setJMSType(event.name())        
-        
-        log.info "Send $event to ActiveMQ queue"
-        
-        Queue queue = this.queue
-        if(model.containsKey('queue')) {
-            queue = session.createQueue(model.queue)
-        }
-        producer.send(queue, msg)
+    }
+   
+    Connection createConnection(Map config) {
+        createActiveMQConnection(config)
     }
 
-    @Override
-    public String getDefaultTemplate(String contentType) {
-        return 'email.template.txt'; // not used
-    }
-
-//    @Override
-//    public void onEvent(PipelineEvent eventType, String desc, Map<String, Object> details) {
-//          Map eventDetails = bpipe.Utils.sanitizeForSerialization(details)
-//          TextMessage msg = session.createTextMessage(JsonOutput.toJson(eventDetails))
-//          msg.setJMSType(eventType.name())
-//    }
-
-//    static void main(String [] args) {
-//        new ActiveMQConnectionFactory(brokerURL: 'tcp://localhost:61616').createConnection().with {
-//            start()
-//            createSession(false, Session.AUTO_ACKNOWLEDGE).with {
-//              TextMessage msg = createTextMessage("test")
-//              msg.setJMSType("STAGE_STARTED")
-//              createProducer().send(createQueue("queue"), msg)
-//            }
-//            close()
-//          }
-//    }
-    
-    void close() {
-        log.info "Closing ActiveMQ connections to $config.queue at $config.brokerURL"
-        Utils.closeQuietly(session)
-        Utils.closeQuietly(connection)
-    }
-    
-    static ActiveMQConnection createActiveMQConnection(Map config) {
+    static Connection createActiveMQConnection(Map config) {
         if(!(config.containsKey('brokerURL')))
             throw new PipelineError("ActiveMQ configuration is missing required key 'brokerURL'")
             

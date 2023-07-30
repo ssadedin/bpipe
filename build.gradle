@@ -106,6 +106,9 @@ dependencies {
     implementation group: 'com.google.cloud', name: 'google-cloud-nio', version: '0.62.0-alpha'
     implementation group: 'com.amazonaws', name: 'aws-java-sdk-ec2', version: '1.12.25'
     implementation group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.12.25'
+    implementation 'com.amazonaws:aws-java-sdk-sqs:1.12.25'
+    implementation 'com.amazonaws:amazon-sqs-java-messaging-lib:1.1.2'
+
     implementation group: 'com.upplication', name: 's3fs', version: '2.2.2'
     implementation group: 'org.apache.tika', name: 'tika-core', version: '2.4.1'
     
