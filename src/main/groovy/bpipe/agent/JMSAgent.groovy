@@ -6,6 +6,7 @@ import bpipe.Sender
 import bpipe.Utils
 import bpipe.cmd.BpipeCommand
 import bpipe.cmd.RunPipelineCommand
+import bpipe.notification.AWSSQSNotificationChannel
 import bpipe.notification.ActivemqNotificationChannel
 import bpipe.worx.JMSWorxConnection
 import bpipe.worx.WorxConnection
@@ -394,20 +395,29 @@ class JMSAgent extends Agent {
         if(connection != null)
             return
             
-        if(!(config.containsKey('brokerURL')))
-            throw new PipelineError("ActiveMQ configuration is missing required key 'brokerURL'")
-            
+           
         if(!(config.containsKey('commandQueue')))
-            throw new PipelineError("ActiveMQ configuration is missing required key 'queue'")
+            throw new PipelineError("ActiveMQ configuration is missing required key 'commandQueue'")
             
-        log.info "Connecting to: ${config.brokerURL}"
-            
-        this.connection = ActivemqNotificationChannel.createActiveMQConnection(config)      
+           
+        String type = config.getOrDefault('type', 'activemq')
+
+        if(type == 'sqs') {
+            this.connection = AWSSQSNotificationChannel.createSQSConnection(config)
+        }
+        else 
+        if(type == 'activemq') {
+            if(!(config.containsKey('brokerURL')))
+                throw new PipelineError("ActiveMQ configuration is missing required key 'brokerURL'")
+            log.info "Connecting to: ${config.brokerURL}"
+            this.connection = ActivemqNotificationChannel.createActiveMQConnection(config)
+        }
+
         this.connection.start()        
-        
        
         this.session = connection.createSession(false,
-             acknowledgeMode == 'read' ? Session.AUTO_ACKNOWLEDGE  : ActiveMQSession.INDIVIDUAL_ACKNOWLEDGE)
+             acknowledgeMode == 'read' ? Session.AUTO_ACKNOWLEDGE  : (type == 'activemq' ? ActiveMQSession.INDIVIDUAL_ACKNOWLEDGE : Session.CLIENT_ACKNOWLEDGE))
+
         this.queue = session.createQueue((String)config.commandQueue)
 
         if (config.containsKey('messageSelector')) {

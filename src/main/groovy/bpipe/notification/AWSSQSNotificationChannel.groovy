@@ -44,6 +44,10 @@ class AWSSQSNotificationChannel extends JMSNotificationChannel {
     }
 
     Connection createConnection(Map config) {
+        createSQSConnection(config)
+    }
+
+    static Connection createSQSConnection(Map config) {
         
         AWSCredentials credentials = new BasicAWSCredentials(
             (String)config.accessKey,
