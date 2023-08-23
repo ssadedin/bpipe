@@ -333,7 +333,14 @@ class JMSAgent extends Agent {
             return
         }
         
-        def connection = bpipe.notification.ActivemqNotificationChannel.createActiveMQConnection(replyConfig)
+        def connection 
+        if(replyConfig.type == 'sqs') {
+            connection = AWSSQSNotificationChannel.createSQSConnection(replyConfig)
+        }
+        else {
+            connection = bpipe.notification.ActivemqNotificationChannel.createActiveMQConnection(replyConfig)
+        }
+
         try {
             def session = connection.createSession(false,Session.AUTO_ACKNOWLEDGE)
             
