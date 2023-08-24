@@ -1,6 +1,7 @@
 ## JMS Integration
 
-Bpipe supports some integration with JMS, currently through ActiveMQ.
+Bpipe supports some integration with JMS, currently through ActiveMQ 
+and Amazon AQS SQS.
 
 This support comes in the form of both inbound and outbound messages:
 
@@ -12,7 +13,8 @@ This support comes in the form of both inbound and outbound messages:
 To run pipelines in response to messages, configure a Bpipe Agent.
 
 The agent runs permanently in the background on a system and listens to the configured queue. The
-agent is configured through the usual `bpipe.config` file, with a special `agent` section:
+agent is configured through the usual `bpipe.config` file, with a special `agent` section.
+For example for ActiveMQ:
 
 ```
 agent {
@@ -216,4 +218,53 @@ agent {
 
 The same configuration properties are applicable when configuring ActiveMQ as a notification 
 channel.
+
+## AWS SQS
+
+SQS is an AWS hosted queuing service that enables smooth cloud integration with messaging
+services. Bpipe supports notifications and the Bpipe agent connection through SQS.
+
+To configure notifications to SQS, add an `AWSSQS` section to the notifications configuration
+in the `bpipe.config` file:
+
+```groovy
+notifications {
+    AWSSQS {
+        queue='dev2-emedgene-qc.fifo'
+        region='ap-southeast-2'
+        accessKey = "..."
+        accessSecret = "..."
+        events=''
+    }
+}
+```
+
+Similarly, to run the agent using SQS, specify the `type` as `sqs` in the `agent` configuration
+block:
+
+```groovy
+agent {
+    type='sqs'
+    commandQueue='dev2-emedgene-qc.fifo'
+    region='ap-southeast-2'
+    accessKey = "..."
+    accessSecret = "..."
+}
+```
+
+**Note**:  for SQS integration, an AWS profile name can be specified instead of directly including
+the key and secret. This will cause Bpipe to attempt to read the user's `~/.aws/credentials` file
+to locate the corresponding profile. To do this, specify a `profile` attribute instead of the
+`accessKey` and `accessSecret` details.
+
+Example:
+
+```groovy
+agent {
+    type='sqs'
+    commandQueue='dev2-emedgene-qc.fifo'
+    region='ap-southeast-2'
+    profile='default
+}
+```
 

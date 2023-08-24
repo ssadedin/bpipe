@@ -49,18 +49,34 @@ class AWSSQSNotificationChannel extends JMSNotificationChannel {
 
     static Connection createSQSConnection(Map config) {
         
-        AWSCredentials credentials = new BasicAWSCredentials(
-            (String)config.accessKey,
-            (String)config.accessSecret
-        );
-         
+        AWSCredentials credentials
+        
+        if(config.containsKey('accessKey')) {
+            credentials = new BasicAWSCredentials((String)config.accessKey, (String)config.accessSecret);
+        }
+        else 
+        if(config.containsKey('profile')) {
+            Map keyInfo = bpipe.executor.AWSCredentials.theInstance.keys[config.profile]
+            if(keyInfo) {
+                credentials = new BasicAWSCredentials(keyInfo.access_key_id, keyInfo.secret_access_key);
+            }
+            else 
+             throw new IllegalStateException("Profile $config.profile for SQS connection could not be found in your AWS credentials file")
+        }
+        
+        if(credentials == null) {
+            throw new IllegalStateException(
+            "Unable to resolve credentials for AWS SQS connection. Please specify AWS " +
+            "profile in your credentials file, or specify accessKey and accessSecret in your config file")
+        }
+ 
         SQSConnectionFactory connectionFactory = new SQSConnectionFactory(
-                    new ProviderConfiguration(),
-                    AmazonSQSClientBuilder.standard()
-                            .withRegion(config.region)
-                            .withCredentials(new AWSStaticCredentialsProvider(credentials))
-                );
-    
+                 new ProviderConfiguration(),
+                 AmazonSQSClientBuilder.standard()
+                     .withRegion(config.region)
+                     .withCredentials(new AWSStaticCredentialsProvider(credentials))
+                 );
+ 
         // Create the connection
         return connectionFactory.createConnection();
     }
