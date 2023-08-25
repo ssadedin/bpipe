@@ -230,7 +230,7 @@ in the `bpipe.config` file:
 ```groovy
 notifications {
     AWSSQS {
-        queue='dev2-emedgene-qc.fifo'
+        queue='my-test-queue'
         region='ap-southeast-2'
         accessKey = "..."
         accessSecret = "..."
@@ -245,7 +245,7 @@ block:
 ```groovy
 agent {
     type='sqs'
-    commandQueue='dev2-emedgene-qc.fifo'
+    commandQueue='my-test-queue'
     region='ap-southeast-2'
     accessKey = "..."
     accessSecret = "..."
@@ -262,7 +262,7 @@ Example:
 ```groovy
 agent {
     type='sqs'
-    commandQueue='dev2-emedgene-qc.fifo'
+    commandQueue='my-test-queue'
     region='ap-southeast-2'
     profile='default
 }
