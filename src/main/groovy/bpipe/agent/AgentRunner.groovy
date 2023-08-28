@@ -16,6 +16,7 @@ class AgentRunner {
             v 'Verbose mode'
             n 'How many concurrent jobs to run', args:1, required:false
             s 'Wait for a single command and then exit (useful for debugging)', longOpt: 'single'
+            t 'Set timeout to exit after if no commands received', longOpt: 'timeout', args: 1, type: Long
         }
         
         def opts = cli.parse(args)
@@ -47,7 +48,23 @@ class AgentRunner {
         if(opts.s)
             agent.singleShot = true
             
+        log.info "Timeout option = " + opts.t
+        if(opts.t) {
+            log.info "Scheduling timeout in $opts.t ms"
+            new Thread({
+                Thread.sleep(opts.t)
+                if(agent.executed == 0) {
+                    log.info "Timeout of $opts.t ms expired with no jobs executed: exiting"
+                    agent.stopRequested = true
+                }
+                else  {
+                    log.info "Timeout of $opts.t ms expired with ${agent.executed} jobs executed: not exiting"
+                }
+            }).start()
+        }
+
         agent.run()
+        
     }
     
     

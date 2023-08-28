@@ -184,8 +184,16 @@ class JMSAgent extends Agent {
             }
         }
         
-        if(this.singleShot)
+        if(this.singleShot) {
             stopRequested=true
+            
+            log.info "Single shot command running : stop flag set and waiting for command completion"
+            
+            // Wait for current command to finish before exiting
+            while(runner.runState <2) {
+                Thread.sleep(3000)
+            }
+        }
     }
     
     /**

@@ -46,6 +46,8 @@ class AgentCommandRunner implements Runnable {
     
     Closure onRun = null
     
+    int runState = 0
+    
     /**
      * When waiting for acquisition of a lock, this object will be notified to interrupt
      */
@@ -80,6 +82,8 @@ class AgentCommandRunner implements Runnable {
     
     @Override
     public void run() {
+        
+        runState = 1
         
         if(concurrency != null) {
             concurrency.acquire()
@@ -153,6 +157,8 @@ class AgentCommandRunner implements Runnable {
             throw e
         }
         finally {
+            runState = 2
+
             bpipe.Utils.closeQuietly(worx.close())
             
             if(concurrency != null) {
