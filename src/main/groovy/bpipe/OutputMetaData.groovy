@@ -405,12 +405,19 @@ class OutputMetaData implements Serializable {
         this.canonicalInputs.contains(inp)
     }
     
-    List<String> canonicalInputs = null
+    /**
+     * We use this set because it preserves ordering on iteration
+     */
+    LinkedHashSet<String> canonicalInputs = null
     
     @CompileStatic
-    List<String> getCanonicalInputs() {
-        if(this.canonicalInputs == null)
-            this.canonicalInputs = this.inputs.collect { Utils.canonicalFileFor(it).path }
+    LinkedHashSet<String> getCanonicalInputs() {
+        if(this.canonicalInputs == null) {
+            this.canonicalInputs = new LinkedHashSet()
+            for(inp in this.inputs) { 
+                 this.canonicalInputs.add(Utils.canonicalFileFor(inp).path)
+            }
+        }
         return this.canonicalInputs
     } 
 
