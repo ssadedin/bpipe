@@ -323,8 +323,6 @@ class Dependencies {
         // Get the full branch path of this pipeline stage
         def pipeline = Pipeline.currentRuntimePipeline.get()
         String branchPath = pipeline.branchPath.join("/")
-        String outputDir = stage.context.outputDirectory
-        OutputDirectoryWatcher odw = OutputDirectoryWatcher.getDirectoryWatcher(outputDir)
         
         context.trackedOutputs.each { String id, Command command ->
             
