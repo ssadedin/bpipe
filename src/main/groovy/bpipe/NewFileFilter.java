@@ -32,6 +32,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
 import java.util.logging.Logger;
 
 public class NewFileFilter implements DirectoryStream.Filter<Path>{
@@ -39,6 +40,8 @@ public class NewFileFilter implements DirectoryStream.Filter<Path>{
     Map<String,Long> timestamps;
     
     static Logger log = Logger.getLogger("NewFileFilter");
+    
+    static Semaphore fileScanSemaphore = new Semaphore(4);
     
     public NewFileFilter(Map<String, Long> timestamps) {
         super();
@@ -75,18 +78,30 @@ public class NewFileFilter implements DirectoryStream.Filter<Path>{
      * @return
      * @throws IOException
      */
-    static List<Path> scanOutputDirectory(String dir, Map<String,Long> timestamps) throws IOException {
-        File dirFile = new File(dir);
-        if(!dirFile.exists())
-            return new ArrayList<Path>();
-                    
-        try(DirectoryStream<Path> ds = Files.newDirectoryStream(dirFile.toPath(), new NewFileFilter(timestamps))) {
-            List<Path> results = new ArrayList<Path>();
-            for(Path p : ds) {
-               results.add(p);
+    static List<Path> scanOutputDirectory(final String dir, final Map<String,Long> timestamps) throws IOException {
+        
+        try {
+            fileScanSemaphore.acquire();
+        
+            final File dirFile = new File(dir);
+            if(!dirFile.exists())
+                return new ArrayList<Path>();
+                        
+            try(DirectoryStream<Path> ds = Files.newDirectoryStream(dirFile.toPath(), new NewFileFilter(timestamps))) {
+                List<Path> results = new ArrayList<Path>();
+                for(Path p : ds) {
+                   results.add(p);
+                }
+                return results;
             }
-            return results;
         }
+        catch (InterruptedException e) {
+           return scanOutputDirectory(dir, timestamps);
+        }
+        finally {
+            fileScanSemaphore.release();
+        }
+
     }
   
 }
