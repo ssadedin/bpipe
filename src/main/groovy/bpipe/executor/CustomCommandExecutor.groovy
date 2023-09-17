@@ -222,8 +222,12 @@ class CustomCommandExecutor implements PersistentExecutor {
         if(config?.memory)
             env.MEMORY = String.valueOf(config.memory)
              
-        if(config?.procs)
-            env.PROCS = config.procs.toString()
+        if(config?.procs) {
+            if(config.containsKey('job_procs'))
+                env.PROCS = config.job_procs.toString()
+            else
+                env.PROCS = config.procs.toString()
+        }
             
         if(config?.proc_mode)
             env.PROC_MODE = config.proc_mode.toString()
