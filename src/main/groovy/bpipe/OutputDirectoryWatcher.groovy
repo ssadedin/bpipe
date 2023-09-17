@@ -42,6 +42,7 @@ import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;
 
 import static java.nio.file.StandardWatchEventKinds.*
+import static java.util.concurrent.TimeUnit.MILLISECONDS
 
 @Log
 class OutputDirectoryWatcher extends Thread {
@@ -107,7 +108,7 @@ class OutputDirectoryWatcher extends Thread {
         
         this.initialize()
         
-        long manualPollerSleepTime = (long)Config.userConfig.getOrDefault("manualPollerSleepTime",30000)
+        long manualPollerSleepTime = (long)Config.userConfig.getOrDefault("manualPollerSleepTime",15000)
         
         Map<String,Long> oldPaths = NewFileFilter.scanOutputDirectory(directory.toFile().path, null).collectEntries { Path p ->
             [p.fileName.toString(), Files.getLastModifiedTime(p).toMillis()]
@@ -115,34 +116,48 @@ class OutputDirectoryWatcher extends Thread {
         
         log.info "Found existing paths: " + oldPaths
         
-        for(;;) {
-            synchronized(manualPollerWaitLock) {
-                manualPollerWaitLock.wait(manualPollerSleepTime) 
-            }
-            
-            List<Path> newPaths = NewFileFilter.scanOutputDirectory(directory.toFile().path, oldPaths)
-            
+        DirectoryWatcherScheduler.theInstance.executor.scheduleAtFixedRate({
+            executeManualPoll(oldPaths)
+        }, manualPollerSleepTime, manualPollerSleepTime, MILLISECONDS)
+        
+//        for(;;) {
+//            executeManualPoll(manualPollerSleepTime, oldPaths)
+//        }
+    }
+
+    @CompileStatic
+    void executeManualPoll(Map<String,Long> oldPaths) {
+        
+        try {
+            final String path = directory.toFile().path
+            log.info("Manual poller scan of $path")
+            final List<Path> newPaths = NewFileFilter.scanOutputDirectory(path, oldPaths)
+
             for(Path newPath in newPaths) {
                 log.info "Manual poller detected $newPath.fileName"
                 this.processEvent(ENTRY_CREATE, newPath.fileName)
             }
-            
+
             // trigger notification for any threads sync() methods
             // waiting for files to appear
             synchronized(timestamps) {
                 timestamps.notify()
             }
-            
+
             long nowMs = System.currentTimeMillis()
-            oldPaths += newPaths.collectEntries { p ->
+            
+            for (Path p in newPaths) {
                 try {
-                    [p.fileName.toString(), Files.getLastModifiedTime(p).toMillis()]
+                    oldPaths[p.fileName.toString()] = Files.getLastModifiedTime(p).toMillis()
                 }
-                catch(java.nio.file.NoSuchFileException e) {
+                catch (java.nio.file.NoSuchFileException e) {
                     log.info "File $p.fileName removed after detection?"
-                    [p.fileName.toString(), nowMs]
+                    oldPaths[p.fileName.toString()] = nowMs
                 }
             }
+        }
+        catch(Throwable t) {
+            log.warning("Error occurred when polling for files: $t")
         }
     }
     
@@ -338,9 +353,15 @@ class OutputDirectoryWatcher extends Thread {
         if(watcher == null) {
             log.info "Creating directory watcher for $forDirectory"
             watcher = new OutputDirectoryWatcher(forDirectory)
-            watcher.setDaemon(true)
-            watcher.start()
             watchers[forDirectory] = watcher
+
+            if(Config.userConfig.getOrDefault('usePollerFileWatcher', true)) {
+                watcher.run()
+            }
+            else {
+                watcher.setDaemon(true)
+                watcher.start()
+            }
         }
         return watcher
     }

@@ -546,6 +546,7 @@ class Runner {
             normalShutdown=true
             ExecutorPool.shutdownAll()
             Poller.theInstance.executor.shutdown()
+            DirectoryWatcherScheduler.theInstance.executor.shutdown()
             EventManager.theInstance.signal(PipelineEvent.SHUTDOWN, "Shutting down process $pid")
             NotificationManager.theInstance.shutdown()
         }
