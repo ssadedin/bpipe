@@ -264,7 +264,7 @@ agent {
     type='sqs'
     commandQueue='my-test-queue'
     region='ap-southeast-2'
-    profile='default
+    profile='default'
 }
 ```
 
