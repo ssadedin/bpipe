@@ -167,7 +167,12 @@ class JMSAgent extends Agent {
             acknowledgeRun(message)
         }
         
-        String replyToValue = message.getJMSReplyTo()?:message.getStringProperty('reply-to')?:message.getStringProperty('replyTo')
+        String replyToValue
+        if(message.getJMSReplyTo())
+            replyToValue = ((Queue)message.getJMSReplyTo()).queueName
+        else
+            replyToValue = message.getStringProperty('reply-to')?:message.getStringProperty('replyTo')
+
         if(replyToValue) {
 
             log.info "ReplyTo set on message: will send message when complete"
@@ -415,6 +420,7 @@ class JMSAgent extends Agent {
         if(!(config.containsKey('commandQueue')))
             throw new PipelineError("ActiveMQ configuration is missing required key 'commandQueue'")
             
+        log.info "commandQueue is set to $config.commandQueue"
            
         String type = config.getOrDefault('type', 'activemq')
 
@@ -444,7 +450,7 @@ class JMSAgent extends Agent {
             this.consumer = session.createConsumer(queue)
         }
 
-        log.info "Connected to ActiveMQ $config.commandQueue @ $config.brokerURL"
+        log.info "Connected to queue $config.commandQueue @ $config.brokerURL"
     }
 
     @Override
