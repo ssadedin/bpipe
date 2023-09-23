@@ -355,7 +355,7 @@ class OutputDirectoryWatcher extends Thread {
             watcher = new OutputDirectoryWatcher(forDirectory)
             watchers[forDirectory] = watcher
 
-            if(Config.userConfig.getOrDefault('usePollerFileWatcher', true)) {
+            if(Config.userConfig.getOrDefault('usePollerFileWatcher', false)) {
                 watcher.run()
             }
             else {
