@@ -3427,10 +3427,11 @@ class PipelineContext {
      * An entire list of resolved inputs including those directly resolved 
      * and those inferred by input variable file extensions.
      */
+    @CompileStatic
     List<PipelineFile> getResolvedInputs() {
         List wrapperResolved = this.@inputWrapper?.resolvedInputs?:[]
         
-       return (wrapperResolved + this.allResolvedInputs).flatten().unique { it.path }
+       return (List<PipelineFile>)(wrapperResolved + this.allResolvedInputs).unique { o -> ((PipelineFile)o).path }
     }
     
     /**
