@@ -445,7 +445,7 @@ class AWSEC2CommandExecutor extends CloudExecutor implements ForwardHost {
         
         List sshCommand = ["ssh","-oStrictHostKeyChecking=no", "-i", keypair, this.user + '@' + this.hostname,"bash"]
         
-        log.info "Lanching command saved in $cmdFile using: " + sshCommand.join(' ')
+        log.info "Launching command saved in $cmdFile using: " + sshCommand.join(' ')
         
         ExecutedProcess proc = Utils.executeCommand([:], sshCommand) {
             redirectInput(cmdFile)
