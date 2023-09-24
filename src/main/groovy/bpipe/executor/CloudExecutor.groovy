@@ -243,8 +243,10 @@ abstract class CloudExecutor implements PersistentExecutor {
              return
              
         log.info("Command on $instanceId complete, transferring outputs $command.outputs back")
-        this.transferFrom(command.processedConfig, command.outputs)
-        this.transferredFrom = true
+        if(exitCode == 0) {
+            this.transferFrom(command.processedConfig, command.outputs)
+            this.transferredFrom = true
+        }
     }
     
     boolean canSSH() {
