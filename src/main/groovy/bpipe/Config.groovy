@@ -114,6 +114,23 @@ class Config {
     public static List<String> listValue(String name) {
         return listValue(Config.userConfig, name)
     }
+    
+    @CompileStatic
+    static  <T> T  getOptionalUserConfigValue(List<String> path, T defaultValue) {
+
+        Object cfg = userConfig
+        
+        for(String key in path) {
+
+            if(!cfg.containsKey(key))
+                return defaultValue
+
+            if(cfg instanceof Map)
+                cfg = ((Map)cfg)[key]
+        }
+        
+        return cfg
+    }
 
     /**
      * Safely interrogate a configuration for an attribute and interpret as a list
