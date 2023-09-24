@@ -281,10 +281,16 @@ class AWSEC2CommandExecutor extends CloudExecutor implements ForwardHost {
             if(Config.userConfig.containsKey('accessKey'))
                 config.accessKey = Config.userConfig.accessKey
             else
-                if(System.getenv('AWS_ACCESS_KEY_ID'))
-                    config.accessKey = System.getenv('AWS_ACCESS_KEY_ID')
-                else
-                    throw new Exception('AWSEC2 executor requires the accessKey configuration setting')
+            if(config.containsKey('profile')) {
+                Map keyInfo = bpipe.executor.AWSCredentials.theInstance.keys[config.profile]
+                config.accessKey = keyInfo.access_key_id
+                config.accessSecret = keyInfo.secret_access_key
+            }
+            else
+            if(System.getenv('AWS_ACCESS_KEY_ID'))
+                config.accessKey = System.getenv('AWS_ACCESS_KEY_ID')
+            else
+                throw new Exception('AWSEC2 executor requires the accessKey or profile configuration setting, or to have AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables set')
         }
 
         if(!config.containsKey('accessSecret'))  {
