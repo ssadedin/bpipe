@@ -44,7 +44,6 @@ import bpipe.Utils
  * 
  * @author simon.sadedin@mcri.edu.au
  */
-@Mixin(ForwardHost)
 @Log
 class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExecutor {
 

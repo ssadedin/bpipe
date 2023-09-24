@@ -44,8 +44,7 @@ import groovy.util.logging.Log
  * @author simon.sadedin
  */
 @Log
-@Mixin(ForwardHost)
-class GoogleCloudCommandExecutor extends CloudExecutor {
+class GoogleCloudCommandExecutor extends CloudExecutor implements ForwardHost {
     
     public static final long serialVersionUID = 0L
     
@@ -188,7 +187,7 @@ class GoogleCloudCommandExecutor extends CloudExecutor {
             
     }
 
-    ExecutedProcess ssh(Map options, String cmd, Closure builder=null) {
+    ExecutedProcess ssh(Map options=[:], String cmd, Closure builder=null) {
         
         String sdkHome = getSDKHome()
         

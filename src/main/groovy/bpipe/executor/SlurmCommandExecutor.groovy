@@ -48,7 +48,6 @@ import bpipe.Utils
  * @author andrew.lonsdale@lonsbio.com.au
  * @author slugger70@gmail.com
  */
-@Mixin(ForwardHost)
 @Log
 class SlurmCommandExecutor extends TorqueCommandExecutor implements CommandExecutor {
 

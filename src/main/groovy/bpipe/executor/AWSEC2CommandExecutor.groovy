@@ -69,8 +69,7 @@ import java.util.logging.Logger
  * An executor that runs commands by starting AWS EC2 images
  */
 @ToString(includeNames=true, excludes=['runningCommand','remoteErrorPath','exitFile'])
-@Mixin(ForwardHost)
-class AWSEC2CommandExecutor extends CloudExecutor {
+class AWSEC2CommandExecutor extends CloudExecutor implements ForwardHost {
     
     public static final long serialVersionUID = 0L
 
@@ -478,13 +477,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     }
     
     @Override
-    public ExecutedProcess ssh(String cmd, Closure builder=null) {
-        ssh([:], cmd, builder)
-    }
- 
-
-    @Override
-    public ExecutedProcess ssh(Map options, String cmd, Closure builder=null) {
+    public ExecutedProcess ssh(Map options=[:], String cmd, Closure builder=null) {
         
         assert hostname != null && hostname != ""
         

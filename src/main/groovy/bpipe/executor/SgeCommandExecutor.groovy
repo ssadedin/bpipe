@@ -44,9 +44,8 @@ import bpipe.ExecutedProcess
  *
  * @author Paolo Di Tommaso <paolo.ditommaso@gmail.com>
  */
-@Mixin(ForwardHost)
 @Log
-class SgeCommandExecutor implements CommandExecutor {
+class SgeCommandExecutor implements CommandExecutor, ForwardHost {
     
     public static final long serialVersionUID = 520230130470104528L;
 
