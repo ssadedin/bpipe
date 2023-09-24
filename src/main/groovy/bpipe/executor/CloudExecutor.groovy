@@ -156,12 +156,15 @@ abstract class CloudExecutor implements PersistentExecutor {
      
     
     @Override
-    @CompileStatic
+//    @CompileStatic
     public int waitFor() {
         
         while(true) {
             CommandStatus status = this.status()
             if(status == CommandStatus.COMPLETE) { 
+                
+                this.stopForwarding()
+
                 return exitCode
             }
                 

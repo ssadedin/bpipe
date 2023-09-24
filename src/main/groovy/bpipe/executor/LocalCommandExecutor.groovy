@@ -48,8 +48,7 @@ import bpipe.CommandManager;
  * @author simon.sadedin@mcri.edu.au
  */
 @Log
-@Mixin(ForwardHost)
-class LocalCommandExecutor implements CommandExecutor {
+class LocalCommandExecutor implements CommandExecutor, ForwardHost {
     
     public static final long serialVersionUID = 0L
     

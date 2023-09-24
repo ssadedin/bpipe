@@ -32,6 +32,7 @@ import java.nio.file.Path
 import java.util.List;
 import java.util.Timer;
 import java.util.concurrent.TimeUnit
+import java.util.logging.Logger
 
 /**
  * A mixin that can be added to any class to add functions for it to forward 
@@ -39,8 +40,9 @@ import java.util.concurrent.TimeUnit
  * 
  * @author simon.sadedin
  */
-@Log
-class ForwardHost {
+trait ForwardHost {
+    
+    static Logger forwardLogger = Logger.getLogger("ForwardHost")
     
     transient List<Forwarder> forwarders = []
     
@@ -51,7 +53,7 @@ class ForwardHost {
     
     public void forward(Path file, def stream) {
         Forwarder f = new Forwarder(file, stream)
-        log.info "Forwarding path $file using forwarder $f"
+        forwardLogger.info "Forwarding path $file using forwarder $f"
         
         Poller.instance.executor.scheduleAtFixedRate(f, 0, 2000, TimeUnit.MILLISECONDS)
     
@@ -61,9 +63,9 @@ class ForwardHost {
     public void forward(String fileName, def stream) {
     
         Forwarder f = new Forwarder(new File(fileName), stream)
-        log.info "Forwarding file $fileName using forwarder $f"
+        forwardLogger.info "Forwarding file $fileName using forwarder $f"
         
-        Poller.instance.executor.scheduleAtFixedRate(f, 0, 2000, TimeUnit.MILLISECONDS)
+        Poller.theInstance.executor.scheduleAtFixedRate(f, 0, 2000, TimeUnit.MILLISECONDS)
     
         this.forwarders << f
     }
@@ -73,7 +75,7 @@ class ForwardHost {
      */
     @CompileStatic
     void stopForwarding() {
-        log.info "Cancelling and flushing outputs for forwarders: $forwarders"
+        forwardLogger.info "Cancelling and flushing outputs for forwarders: $forwarders"
         
         this.forwarders*.cancel()
         
