@@ -425,6 +425,13 @@ class PipelineStage {
                             
                     bindingVariables += resolvedExtras
                 }
+                
+                Map stageParameters = 
+                    Config.getOptionalUserConfigValue(['stages',stageName,'parameters'], (Map)null)
+
+                if(stageParameters) {
+                    bindingVariables.putAll(stageParameters)
+                }
                         
                 List returnedInputs 
                 Runner.binding.stageLocalVariables.set(bindingVariables)
@@ -659,6 +666,7 @@ class PipelineStage {
      * @TODO    remove this?
      */
     void copyContextBindingsToBody() {
+        
 		// Note: although it would appear these are being injected at a per-pipeline level,
 		// in fact they end up as globally shared variables across all parallel threads
 		// (there IS only ONE binding for a closure and only ONE closure instance getting 
