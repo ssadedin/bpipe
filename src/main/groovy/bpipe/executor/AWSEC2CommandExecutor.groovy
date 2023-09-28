@@ -282,7 +282,11 @@ class AWSEC2CommandExecutor extends CloudExecutor implements ForwardHost {
                 config.accessKey = Config.userConfig.accessKey
             else
             if(config.containsKey('profile')) {
-                Map keyInfo = bpipe.executor.AWSCredentials.theInstance.keys[config.profile]
+                bpipe.executor.AWSCredentials credsInstance = bpipe.executor.AWSCredentials.getTheInstance()
+                Map keyInfo = credsInstance.keys[config.profile]
+                if(keyInfo == null) {
+                    throw new PipelineError("Profile $config.profile was not found in the aws credentials file loaded from $credsInstance.credentialsFile")
+                }
                 config.accessKey = keyInfo.access_key_id
                 config.accessSecret = keyInfo.secret_access_key
             }
@@ -325,6 +329,7 @@ class AWSEC2CommandExecutor extends CloudExecutor implements ForwardHost {
         if(config.containsKey('instanceType')) {
             instanceType = InstanceType.fromValue((String)config.instanceType)
         }
+        
         
         RunInstancesRequest runInstancesRequest = new RunInstancesRequest();
         runInstancesRequest.withImageId(image)
