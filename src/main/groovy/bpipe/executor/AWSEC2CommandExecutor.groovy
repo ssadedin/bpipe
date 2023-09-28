@@ -69,7 +69,7 @@ import java.util.logging.Logger
  * An executor that runs commands by starting AWS EC2 images
  */
 @ToString(includeNames=true, excludes=['runningCommand','remoteErrorPath','exitFile'])
-class AWSEC2CommandExecutor extends CloudExecutor implements ForwardHost {
+class AWSEC2CommandExecutor extends CloudExecutor {
     
     public static final long serialVersionUID = 0L
 

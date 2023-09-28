@@ -44,7 +44,7 @@ import groovy.util.logging.Log
  * @author simon.sadedin
  */
 @Log
-class GoogleCloudCommandExecutor extends CloudExecutor implements ForwardHost {
+class GoogleCloudCommandExecutor extends CloudExecutor {
     
     public static final long serialVersionUID = 0L
     

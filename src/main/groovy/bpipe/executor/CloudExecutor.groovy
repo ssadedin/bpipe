@@ -31,6 +31,7 @@ import bpipe.Command
 import bpipe.CommandDependency
 import bpipe.CommandStatus
 import bpipe.ExecutedProcess
+import bpipe.ForwardHost
 import bpipe.PipelineFile
 import bpipe.Utils
 import groovy.transform.CompileStatic
@@ -44,7 +45,7 @@ import groovy.util.logging.Log
  * @author Simon Sadedin
  */
 @Log
-abstract class CloudExecutor implements PersistentExecutor {
+abstract class CloudExecutor implements PersistentExecutor, ForwardHost {
     
     public static final long serialVersionUID = 0L
     

@@ -30,6 +30,7 @@ import java.util.concurrent.Semaphore
 import bpipe.Command;
 import bpipe.CommandStatus
 import bpipe.Config;
+import bpipe.ForwardHost
 import bpipe.OSResourceThrottle;
 import bpipe.PipelineError
 import bpipe.Utils
@@ -46,7 +47,7 @@ import groovy.util.logging.Log
  * @author simon.sadedin@mcri.edu.au
  */
 @Log
-class CustomCommandExecutor implements PersistentExecutor {
+class CustomCommandExecutor implements PersistentExecutor, ForwardHost {
     
     public static final long serialVersionUID = 0L
     
