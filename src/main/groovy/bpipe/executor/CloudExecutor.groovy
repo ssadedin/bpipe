@@ -157,7 +157,7 @@ abstract class CloudExecutor implements PersistentExecutor, ForwardHost {
      
     
     @Override
-//    @CompileStatic
+    @CompileStatic
     public int waitFor() {
         
         while(true) {
