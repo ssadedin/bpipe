@@ -162,6 +162,11 @@ abstract class CloudExecutor implements PersistentExecutor, ForwardHost {
         
         while(true) {
             CommandStatus status = this.status()
+            
+            if(this.command != null) { // defensively, command is transient so will not be there if deserialised
+                this.command.status = status
+            }
+            
             if(status == CommandStatus.COMPLETE) { 
                 
                 this.stopForwarding()
