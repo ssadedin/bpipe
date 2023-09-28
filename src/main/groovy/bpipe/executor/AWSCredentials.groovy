@@ -13,7 +13,7 @@ class AWSCredentials {
     /**
      * Read the AWS credentials from ~/.aws/credentials
      */
-    void load() {
+    synchronized void load() {
         
         try {
             
@@ -23,7 +23,7 @@ class AWSCredentials {
             
             Map key = null
             
-            def credsFile = new File( System.properties['user.home'] + '/.aws/credentials')
+            def credsFile = getCredentialsFile()
             if(!credsFile.exists())
                 return
 
@@ -57,7 +57,11 @@ class AWSCredentials {
         }
     }
     
-    static AWSCredentials getTheInstance() {
+    File getCredentialsFile() {
+        new File(System.properties['user.home'] + '/.aws/credentials')        
+    }
+    
+    static synchronized AWSCredentials getTheInstance() {
         if(AWSCredentials.instance.keys == null)
             AWSCredentials.instance.load()
 
