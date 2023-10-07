@@ -5,9 +5,24 @@ A frequent need in Bioinformatics pipelines is to execute several tasks at the s
 1. you have one set of data (eg. a sample) that needs to undergo several independent operations that can be done at the same time
 1. your data is made up of many separate samples which can be processed independently through part or all of your pipeline
 
-In both cases you can save a lot of time by doing the operations in parallel instead of sequentially.  Bpipe supports this kind of parallel execution with a simple syntax that helps you declare which parts of your pipeline can execute at the same time and what inputs should go to them.
+In both cases you can save a lot of time by doing the operations in parallel instead of sequentially.  Bpipe supports this kind 
+of parallel execution with a simple syntax that helps you declare which parts of your pipeline can execute at the 
+same time and what inputs should go to them.
 
-## Executing Multiple Stages Simultaneously on the Same Data
+## Branches
+
+Key to all parallelism in Bpipe is the concept of "branches". Each parallel portion of a pipeline
+is considered to be "branch" which is one of the split processing paths from a parent path.
+
+Bpipe has several different types of branches, which are described below. Central to all of these
+different branches is that files are isolated between branches. This is very important to help ensure that
+you do not have input file sets that should be separated crossing over and mixing with each other. For example,
+imagine if you are processing multiple samples within a single pipeline: it is very important that 
+data files for one sample are not fed into a step for a different sample. For this reason, when you 
+use "input" variables within Bpipe, they can only resolve files that are associated to the current branch, 
+and will not see files from outside the branch.
+
+## Data Driven Branching
 
 Suppose you had a very simple "hello world" pipeline as illustrated below:
 ```groovy 
@@ -316,7 +331,38 @@ NOTE: Unlike other branch properties, metadata is not inherited by child branche
 in grand child and lower branches then you must manually set properties on the child `branch` object yourself 
 inside the child branches.
 
-### Allocating Threads to Commands
+## Channels
+
+Bpipe also supports a separate type of branch known as a "channel" (this is different to notification 
+channels). Channels behave like branches in that they represent split processing paths within a 
+pipeline. However, they are different to branches in that they retain their state even when their processing 
+path terminates (by ending or merging back into the main processing path). Therefore, Channels can be "resumed" at a later
+point in processing, allowing you to retain the context that was associated to the processing path.
+
+For example, if your pipeline has several phases that each have parallel processing of samples within them,
+you can create a sample "channel" that persists throughout the whole end to end.
+
+Unlike branches, channels are created explicitly using the `channel` function.
+
+Consider the following example:
+
+```groovy
+samples = ['a','b','c']
+
+sample_channel = channel(samples).named('sample')
+
+sample_channel * [ 
+   analyse_raw data
+] + create_report  + sample_channel * [
+   produce_final_results
+]
+```
+
+Here the a, b, and c samples get processed in parallel in two separate phases. The use of the channel mechanism
+means that files resolved in `produce_final_results` will be those output for the correct sample in `analyse_raw_data`
+
+
+## Allocating Threads to Commands
 
 Sometimes you know in advance exactly how many threads you wish to use with a command. In that case, it makes sense
 to specify it using the `procs` attribute in a configuration, or to specify it directly in the pipeline stage
