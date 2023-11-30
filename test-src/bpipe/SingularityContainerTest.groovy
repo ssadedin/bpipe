@@ -20,9 +20,10 @@ class SingularityContainerTest {
     Map config = [
         container: [ 
             type:'singularity', 
-            image:'my_test_image'
-            ] 
+            image:'my_test_image',
+            execOptions: '--nv'
         ]
+    ]
         
     @Before
     void setup() {
@@ -37,6 +38,8 @@ class SingularityContainerTest {
         
         assert command.shell[0] == 'singularity'
         assert command.shell.findIndexOf { it == '-B' }  > 0
+        def execIndex = command.shell.findIndexOf { it == 'exec' }
+        assert command.shell[execIndex+1] == '--nv'
         assert command.shell[-3].path == 'my_test_image'
     }
 
@@ -52,6 +55,8 @@ class SingularityContainerTest {
         
         assert command.shell[0] == 'singularity'
         assert command.shell.findIndexOf { it == '-B' }  > 0
+        def execIndex = command.shell.findIndexOf { it == 'exec' }
+        assert command.shell[execIndex+1] == '--nv'
         assert command.shell[-3].path == 'my_test_image'
         
         def binds = command.shell.findIndexValues { it == '-B' }.collect { command.shell[it+1] }
