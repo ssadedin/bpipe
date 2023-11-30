@@ -66,11 +66,13 @@ class SingularityContainerWrapper implements CommandProcessor {
         log.info "Resolved singularity image $config.image for command $command.id at $imagePath"
         
         String shell = config.getOrDefault('shell', '/bin/bash')
+
+        String execOptions = config.execOptions ?: ''
         
         command.shell = 
             [
                 "singularity",
-                "exec",
+                "exec", execOptions,
                 "-B", Runner.runDirectory,
                 "--pwd", bpipe.Runner.runDirectory,
             ] + extraVolumes + [imagePath, shell, '-e']
