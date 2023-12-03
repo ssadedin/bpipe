@@ -29,6 +29,7 @@ import bpipe.CommandStatus
 import bpipe.Config
 import bpipe.ExecutedProcess
 import bpipe.ForwardHost
+import bpipe.OSResourceThrottle
 import bpipe.PipelineError
 import bpipe.PipelineFile
 import bpipe.Runner
@@ -45,6 +46,7 @@ import com.amazonaws.services.ec2.model.DescribeInstancesRequest
 import com.amazonaws.services.ec2.model.DescribeInstancesResult
 import com.amazonaws.services.ec2.model.Instance
 import com.amazonaws.services.ec2.model.InstanceType
+import com.amazonaws.services.ec2.model.RequestSpotInstancesRequest
 import com.amazonaws.services.ec2.model.Reservation
 import com.amazonaws.services.ec2.model.ResourceType
 import com.amazonaws.services.ec2.model.RunInstancesRequest
@@ -64,6 +66,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.Semaphore
 import java.util.logging.Logger
+
 
 /**
  * An executor that runs commands by starting AWS EC2 images
@@ -163,10 +166,21 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         }
         else
         if(processId != null) {
-            log.info "Checking exit code for ${commandId}"
+            log.info "Checking Exit code for ${commandId}"
             try {
-                ExecutedProcess probe = ssh("if [ -e ${exitFile} ]; then cat ${exitFile}; else echo running; fi")
-                String probeOutput = probe.out.toString().trim()
+//                ExecutedProcess probe = ssh(commandTimeout:10000, "bash -c 'if [ -e ${exitFile} ]; then cat ${exitFile}; else echo running;  fi; exit 0;'")
+                ExecutedProcess probe = ssh("date > /tmp/${commandId}.bpipecheck ;  if [ -e ${exitFile} ]; then echo 'command $commandId exiting with code \$(head -n 1 ${exitFile}'; exit \$(head -n 1 ${exitFile}); fi; exit 192;", 
+                    execOptions: [throwOnError:false, out: System.out, err: System.err, timeout: 10000]
+                )
+                
+                String probeOutput
+                if(probe.timedOut || probe.exitValue == 192) {
+                    probeOutput = "running"
+                }
+                else {
+                    probeOutput = probe.exitValue
+                }
+
                 log.info "Probe output from command $commandId: [$probeOutput]"
                 if(probeOutput == "running") {
                     return CommandStatus.RUNNING
@@ -183,6 +197,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             catch(Exception e) {
                 this.finished = true
                 log.info "Error in probe: treating command ${commandId} as finished due to $e"
+                this.exitCode = -1
                 cleanup()
                 return CommandStatus.COMPLETE
             }
@@ -488,15 +503,33 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     }
     
     @Override
+    @CompileStatic
     public ExecutedProcess ssh(Map options=[:], String cmd, Closure builder=null) {
         
         assert hostname != null && hostname != ""
         
-        List timeoutOption = options?.timeout ? ["-oConnectTimeout=10"] : []
+        List sshOptions = []
+        if(options?.timeout)
+            sshOptions.add("-oConnectTimeout=10")
+
+        if(options.verbose) {
+            sshOptions.add("-vvv")
+        }
         
-        List<String> sshCommand = ["ssh","-oStrictHostKeyChecking=no", *timeoutOption, "-i", keypair, user + '@' +hostname,cmd]*.toString()
+        List<String> sshCommand = ["ssh","-oStrictHostKeyChecking=no", *sshOptions, "-i", keypair, user + '@' +hostname,cmd]*.toString()
         
-        return Utils.executeCommand(sshCommand, throwOnError: true)        
+        Map execOptions = [:]
+        if(options.commandTimeout)
+            execOptions.timeout = options.commandTimeout
+           
+        if(options.execOptions) {
+            execOptions += (Map)options.execOptions
+        } 
+
+//        return (ExecutedProcess)OSResourceThrottle.theInstance.withLock {
+//            Thread.sleep(100)
+            return Utils.executeCommand((List<Object>)sshCommand, throwOnError: true, *:execOptions)
+//        }
     }
     
     @Override

@@ -24,6 +24,7 @@
  */
 package bpipe
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 
 import java.util.concurrent.Semaphore;
@@ -42,6 +43,7 @@ import java.util.concurrent.Semaphore;
  */
 @Singleton
 @Log
+@CompileStatic
 class OSResourceThrottle {
     
     /**
@@ -57,7 +59,7 @@ class OSResourceThrottle {
     synchronized acquireLock(Map cfg) {
         if(concurrencyCounter == null) {
            // TODO: the concurrency is not implemented, should be removed
-           concurrencyCounter = new Semaphore(cfg?.concurrency?:1)
+           concurrencyCounter = new Semaphore((int)(cfg?.concurrency?:1))
         }
         concurrencyCounter.acquire()
     }
@@ -83,4 +85,8 @@ class OSResourceThrottle {
 			concurrencyCounter.release()
 		}
 	} 
+    
+    static OSResourceThrottle getTheInstance() {
+        return OSResourceThrottle.instance
+    }
 }

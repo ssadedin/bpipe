@@ -41,6 +41,7 @@ import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import java.util.logging.ConsoleHandler;
 import java.util.logging.FileHandler
 import java.util.logging.Level;
@@ -54,6 +55,7 @@ class ExecutedProcess {
     Appendable err
     Appendable out
     int exitValue
+    boolean timedOut
 }
 
 /**
@@ -987,6 +989,9 @@ class Utils {
         List<String> stringified = startCmd*.toString()
         
         log.info "Executing command: " + stringified.join(' ')
+        if(options) {
+            log.info "Command options are: " + options
+        }
         
         ProcessBuilder pb = new ProcessBuilder(stringified)
         if(builder != null) {
@@ -1002,14 +1007,36 @@ class Utils {
             
             // Note: observed issue with hang here on Broad cluster
             // seems to be related to hang inside OS / NFS call. Maybe use forwarder for this?
-            p.waitForProcessOutput(out, err)
+            // p.waitForProcessOutput(out, err)
             
-            result.exitValue = p.waitFor()
+            p.consumeProcessOutput(out, err)
+            
+            log.info "Waiting for process exit: $p (timeout = $options.timeout)"
+            
+            if(options.timeout) {
+                long startTimeMs = System.currentTimeMillis()
+                long maxTimeMs = (long)options.timeout
+                while(p.isAlive()) {
+                    if(System.currentTimeMillis() - startTimeMs > maxTimeMs) {
+                        log.info "Waiting for process $p timed out"
+                        // Timed out
+                        result.timedOut = true
+                        result.exitValue = -1
+                        p.destroy()
+                    }
+                    Thread.sleep(2000)
+                }
+            }
+            else {
+                result.exitValue = p.waitFor()
+            }
+            
+            log.info "Process $p exited with code $result.exitValue"
             result.err = err
             result.out = out
         }        
         
-        if(options.throwOnError && result.exitValue != 0) 
+        if(options.throwOnError && result.exitValue != 0 && !result.timedOut) 
             throw new Exception("Command returned exit code ${result.exitValue}: " + stringified.join(" ") + "\n\nOutput: $result.out\n\nStd Err:\n\n$result.err")
             
         return result
