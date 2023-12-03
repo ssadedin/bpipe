@@ -534,9 +534,13 @@ class AWSEC2CommandExecutor extends CloudExecutor {
 
         dirGroups.each { dir, dirFiles ->
             log.info "Transfer $dirFiles from $hostname ..."
-            String fileExpr = dirFiles.size()>1 ? "{${dirFiles*.name.join(',')}}" : dirFiles[0].name
-            List sshCommand = ["scp","-oStrictHostKeyChecking=no", "-i", keypair, "$user@$hostname:$dir/$fileExpr", dir]*.toString()
-            Utils.executeCommand((List<Object>)sshCommand, throwOnError: true)        
+//            String fileExpr = dirFiles.size()>1 ? "{${dirFiles*.name.join(',')}}" : dirFiles[0].name
+            dirFiles.each { 
+                def fileExpr = "$user@$hostname:$dir/$it.name"
+                log.info("Transfer $fileExpr")
+                List sshCommand = ["scp","-oStrictHostKeyChecking=no", "-i", keypair, fileExpr, dir]*.toString()
+                Utils.executeCommand((List<Object>)sshCommand, throwOnError: true)        
+            }
         }
     }
 
