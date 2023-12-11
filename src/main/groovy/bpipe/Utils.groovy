@@ -1026,6 +1026,9 @@ class Utils {
                     }
                     Thread.sleep(2000)
                 }
+                
+                if(!p.isAlive())
+                    result.exitValue = p.exitValue()
             }
             else {
                 result.exitValue = p.waitFor()
