@@ -78,6 +78,8 @@ class BpipeScriptBase extends groovy.lang.Script {
     
     Sender send(Sender s) { return s }
     
+    PipelineChannel channel(Iterable x) { }
+    
     Checker check(String name, Closure c) { }
     
     Checker check(Closure c) { }
