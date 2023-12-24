@@ -581,28 +581,28 @@ class PipelineContext {
         @CompileStatic
         void resolveOutput() {
             
-            Map<Integer,PipelineInput> allInputs = allUsedInputWrappers
+            Map<Integer,List<PipelineInput>> allInputs = allUsedInputWrappers
             
             // If an input property was referenced, compute the default from that instead
-            List<PipelineFile> allResolved = (List<PipelineFile>)allInputs.collect { Map.Entry<Integer,PipelineInput> e -> 
+            List<PipelineFile> allResolved = (List<PipelineFile>)allInputs.collect { Map.Entry<Integer,List<PipelineInput>> e -> 
                 
-                PipelineInput resolvedInputs = e.value
-                
-                // Because an output is being referenced, we need to force the input to resolve
-                // (it may not have resolved because Groovy does not invoke toString() upon reference, only
-                // after all variables have been resolved). This is only necessary after a `from` is 
-                // applied because it resets the inputs into a state where previous resolution may have been
-                // lost
-                if(PipelineContext.this.forceResolve) {
-                    try {
-                        resolvedInputs.toString()
+                e.value.collect { PipelineInput resolvedInputs ->
+                    // Because an output is being referenced, we need to force the input to resolve
+                    // (it may not have resolved because Groovy does not invoke toString() upon reference, only
+                    // after all variables have been resolved). This is only necessary after a `from` is 
+                    // applied because it resets the inputs into a state where previous resolution may have been
+                    // lost
+                    if(PipelineContext.this.forceResolve) {
+                        try {
+                            resolvedInputs.toString()
+                        }
+                        catch(Exception exIgnore) {
+                            // Ignore
+                        }
                     }
-                    catch(Exception exIgnore) {
-                        // Ignore
-                    }
-                }
-                
-                return ((PipelineInput)e.value).resolvedInputs 
+                    
+                    return resolvedInputs.resolvedInputs
+                  }
             }.flatten()
             
             if(!allResolved) {
@@ -997,7 +997,7 @@ class PipelineContext {
     * All input wrappers that got referenced during a pipeline stage, keyed on 
     * index
     */
-   Map<Integer,PipelineInput> allUsedInputWrappers = new TreeMap()
+   Map<Integer,List<PipelineInput>> allUsedInputWrappers = new TreeMap<Integer, List<PipelineInput>>()
    
    /**
     * If this context is spawning a new branch in the pipeline, the inputs that
@@ -1056,7 +1056,7 @@ class PipelineContext {
          this.inputWrapper = wrapper
        
        if(!allUsedInputWrappers.containsKey(i)) {
-           allUsedInputWrappers[i] = wrapper
+           allUsedInputWrappers[i] = [wrapper]
        }    
        return wrapper
    }
@@ -1068,7 +1068,7 @@ class PipelineContext {
    PipelineInput getInput() {
        if(!inputWrapper || inputWrapper instanceof MultiPipelineInput) {
            inputWrapper = new PipelineInput(this.@input, pipelineStages, this.aliases)
-           this.allUsedInputWrappers[0] = inputWrapper
+           this.allUsedInputWrappers.get(0,(List<PipelineInput>)[]).add(inputWrapper)
            if(this.resolutionInputs) {
                inputWrapper.resolutionStack = this.resolutionInputs
            }
@@ -1085,7 +1085,7 @@ class PipelineContext {
    def getInputs() {
        if(!inputWrapper || !(inputWrapper instanceof MultiPipelineInput)) {
            this.inputWrapper = new MultiPipelineInput(this.@input, pipelineStages, this.aliases)
-           this.allUsedInputWrappers[0] = inputWrapper
+           this.allUsedInputWrappers.get(0,(List<PipelineInput>)[]).add(inputWrapper)
        }
        inputWrapper.currentFilter = currentFilter    
        return this.inputWrapper;
@@ -2459,10 +2459,16 @@ class PipelineContext {
       else
           joined = cmd
           
+      List<PipelineFile> commandInputs = this.allUsedInputWrappers.collect { index, List<PipelineInput> wrappers ->
+          wrappers*.resolvedInputs
+      }.flatten().unique()
+
       // note - set the command here, so that it can be used to resolve
       // the right configuration. However we set it again below
       // after we have resolved the right thread / procs value
       Command command = new Command(name: this.stageName, command:joined, configName:configName, dependencies: dependencies)
+      
+      command.getConfig(commandInputs)
       
       this.inferUsedProcs(command)
 
@@ -2480,7 +2486,7 @@ class PipelineContext {
       // We expect that the actual inputs will have been resolved by evaluation of the command to be executed 
       // before this method is invoked
       def actualResolvedInputs = 
-          convertToPipelineFiles(command, Utils.box(this.@inputWrapper?.resolvedInputs) + internalInputs).collect { aliases[it] }
+          convertToPipelineFiles(command, commandInputs + internalInputs).collect { aliases[it] }
 
       log.info "Checking actual resolved inputs ${Utils.logBig(actualResolvedInputs,'inputs')}"
 
@@ -2661,7 +2667,7 @@ class PipelineContext {
 
       // If the config itself specifies procs, it should override the auto-thread magic variable
       // which may get given a crazy high number of threads
-      def commandCfg = command.getConfig(Utils.box(this.resolvedInputs))
+      def commandCfg = command.getProcessedConfig()
       if(!commandCfg.containsKey('procs'))
           return
           

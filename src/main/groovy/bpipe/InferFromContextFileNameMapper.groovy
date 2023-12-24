@@ -102,7 +102,7 @@ class InferFromContextFileNameMapper implements FileNameMapper {
         
         // Check each utilised custom type mapping. If the output matches one of them, 
         // treat the mappign as a single unit in creating a filter expression
-        for(PipelineInput inp in ctx.allUsedInputWrappers*.value) {
+        for(PipelineInput inp in (List<PipelineInput>)ctx.allUsedInputWrappers*.value.flatten()) {
             for(Map.Entry<String,String> e in inp.utilisedMappings) {
                 
                 String result = resolveAsFilterOnSameExt(firstOutput, e.value, segments)
