@@ -369,6 +369,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         log.info "Instance $instanceId started with host name $hostname"
     }
     
+    @CompileStatic
     void connectInstance(Map config) {
 
         this.autoShutdown = config.getOrDefault('autoShutdown', this.autoShutdown)
@@ -378,10 +379,46 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         DescribeInstancesResult dir = describeInstance()
         if(dir.reservations.isEmpty())
             throw new PipelineError("Pre-specified EC2 instance $instanceId is not available / has no reservations in your EC2 account")
+            
+        List<Instance> instances = (List<Instance>)dir*.reservations*.instances.flatten()
+
+        log.info "Found ${instances.size()} instances for instanceid $instanceId"
+        
+        Instance instance = instances.find { it.state.name == "running" }
+        if(instance == null) {
+            instance = instances.find { it.state.name == "stopped" }
+            if(!instance) {
+                throw new PipelineError("AWS EC2 executor was configured to use instance $instanceId, but this instance does not exist in stopped or running state")
+            }
+            
+            startStoppedInstance(instance.instanceId)
+        }
 
         assert this.instanceId
         this.hostname = queryHostName()
         log.info "Resolved hostname $hostname for instance $instanceId"
+    }
+
+    private startStoppedInstance(String instanceId) {
+        StartInstancesRequest startInstancesRequest = new StartInstancesRequest()
+        startInstancesRequest.setInstanceIds([instanceId])
+        StartInstancesResult result = ec2.startInstances(startInstancesRequest);
+
+        Utils.waitWithTimeout(120000) {
+            List<Instance> allInstances = (List<Instance>)describeInstance()*.reservations*.instances.flatten()
+
+            Instance theInstance = allInstances.find { it.instanceId == instanceId }
+
+            if(theInstance.state.name == "running") {
+                return true
+            }
+
+            Thread.sleep(10000)
+
+            log.info("Waiting for instance $instanceId to be in running state (current state = $theInstance.state)")
+
+            return null
+        }
     }
     
     @CompileStatic
