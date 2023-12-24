@@ -24,17 +24,8 @@
  */
 package bpipe.executor
 
-import bpipe.Command
-import bpipe.CommandStatus
-import bpipe.Config
-import bpipe.ExecutedProcess
-import bpipe.ForwardHost
-import bpipe.OSResourceThrottle
-import bpipe.PipelineError
-import bpipe.PipelineFile
-import bpipe.Runner
-import bpipe.Utils
-import bpipe.storage.StorageLayer
+import java.nio.file.Path
+import java.util.logging.Logger
 
 import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.auth.AWSStaticCredentialsProvider
@@ -42,30 +33,21 @@ import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.ec2.AmazonEC2
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder
-import com.amazonaws.services.ec2.model.DescribeInstancesRequest
-import com.amazonaws.services.ec2.model.DescribeInstancesResult
-import com.amazonaws.services.ec2.model.Instance
-import com.amazonaws.services.ec2.model.InstanceType
-import com.amazonaws.services.ec2.model.RequestSpotInstancesRequest
-import com.amazonaws.services.ec2.model.Reservation
-import com.amazonaws.services.ec2.model.ResourceType
-import com.amazonaws.services.ec2.model.RunInstancesRequest
-import com.amazonaws.services.ec2.model.RunInstancesResult
-import com.amazonaws.services.ec2.model.Tag
-import com.amazonaws.services.ec2.model.TagSpecification
-import com.amazonaws.services.ec2.model.TerminateInstancesRequest
+import com.amazonaws.services.ec2.model.*
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 
+import bpipe.Command
+import bpipe.CommandStatus
+import bpipe.Config
+import bpipe.ExecutedProcess
+import bpipe.PipelineError
+import bpipe.PipelineFile
+import bpipe.Runner
+import bpipe.Utils
+import bpipe.storage.StorageLayer
 import groovy.transform.CompileStatic
 import groovy.transform.ToString
-
-import static com.amazonaws.services.ec2.model.ResourceType.Instance
-
-import java.nio.file.Files
-import java.nio.file.Path
-import java.util.concurrent.Semaphore
-import java.util.logging.Logger
 
 
 /**
@@ -99,6 +81,11 @@ class AWSEC2CommandExecutor extends CloudExecutor {
      * if a command is executing on the remote instance, its process id is stored here
      */
     String processId
+    
+    /**
+     * Id to distinguish separate pipelines
+     */
+    String pipelineId
     
     /**
      * Not used yet: the working directory to run commands in on the remote instance
@@ -169,7 +156,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             log.info "Checking Exit code for ${commandId}"
             try {
 //                ExecutedProcess probe = ssh(commandTimeout:10000, "bash -c 'if [ -e ${exitFile} ]; then cat ${exitFile}; else echo running;  fi; exit 0;'")
-                ExecutedProcess probe = ssh("date > /tmp/${commandId}.bpipecheck ;  if [ -e ${exitFile} ]; then echo 'command $commandId exiting with code \$(head -n 1 ${exitFile}'; exit \$(head -n 1 ${exitFile}); fi; exit 192;", 
+                ExecutedProcess probe = ssh("date > /tmp/${commandId}.bpipecheck ;  if [ -e ${exitFile} ]; then exit \$(head -n 1 ${exitFile}); fi; exit 192;", 
                     execOptions: [throwOnError:false, out: System.out, err: System.err, timeout: 10000]
                 )
                 
@@ -453,6 +440,8 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     @Override
     public void startCommand(Command command, Appendable outputLog, Appendable errorLog) {
         
+        this.pipelineId = Config.config.pid
+        
         assert this.instanceId != null
         
         this.commandId = command.id
@@ -478,27 +467,31 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         log.info "Working directory for command $command.id is $commandWorkDir"
         
         
+        List<String> shell = command.shell ?: ['bash']
+
         File cmdFile = new File(jobDir, "cmd.sh")
-        cmdFile.text = 
+        String cmdText = 
         """
-            mkdir -p .bpipe/aws
+            mkdir -p ${new File(exitFile).absoluteFile.parentFile.path}
 
-            echo \$\$ | tee .bpipe/aws/$command.id
-
-            export HOMEDIR=`pwd`
+            echo \$\$ | tee /tmp/bpipe-aws/$pipelineId/$command.id
 
             sudo mkdir -p $commandWorkDir && sudo chown \$USER $commandWorkDir
 
             cd $commandWorkDir || { echo "Unable to change to expected working directory: $workingDirectory > /dev/stderr"; exit 1; }
 
-            nohup bash  <<'BPIPEEOF' > \$HOMEDIR/${remoteOutputPath} 2> \$HOMEDIR/${remoteErrorPath} &
+            nohup ${shell.join(' ')} <<'BPIPEEOF' > ${remoteOutputPath} 2> ${remoteErrorPath} &
         """.stripIndent() +
             command.command.stripIndent() +
         """
-            echo \$? > \$HOMEDIR/${exitFile}
+            echo \$? > ${exitFile}
 
             BPIPEEOF
         """.stripIndent()
+        
+        cmdFile.text = cmdText
+        
+        log.info "Executing AWS wrapper command:\n\n=====\n$cmdText\n=======\n"
         
         List sshCommand = ["ssh","-oStrictHostKeyChecking=no", "-i", keypair, this.user + '@' + this.hostname,"bash"]
         
@@ -515,14 +508,17 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         this.reconnect(outputLog, errorLog)
     }
     
+    @CompileStatic
     String getRemoteOutputPath() {
-        ".bpipe/aws/${commandId}.out"
+        "/tmp/bpipe-aws/$pipelineId/${commandId}.out"
     }
     
+    @CompileStatic
     String getRemoteErrorPath() {
-        ".bpipe/aws/${commandId}.err"
+        "/tmp/bpipe-aws/$pipelineId/${commandId}.err"
     }
     
+    @CompileStatic
     private void waitForProcessIdInOutput(final ExecutedProcess proc) {
         while(true) {
             if(!proc.out.toString().isEmpty()) {
@@ -535,8 +531,9 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         }
     }
     
+    @CompileStatic
     String getExitFile() {
-       ".bpipe/aws/${commandId}.exit"
+       "/tmp/bpipe-aws/$pipelineId/${commandId}.exit"
     }
     
     @Override
