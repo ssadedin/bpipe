@@ -349,6 +349,7 @@ class PipelineContext {
         this.internalOutputs = []
         this.pendingGlobOutputs = []
         this.allUsedInputWrappers = new TreeMap()
+        this.inputWrapper = null
         this.probeMode = false        
         this.referencedOutputs = []
         this.trackedOutputs = [:]
