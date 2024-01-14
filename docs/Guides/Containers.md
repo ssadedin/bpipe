@@ -201,7 +201,7 @@ Note that it is also required to specify the shell as `/bin/sh` as the container
 ## Anaconda (conda)
 
 Although not strictly a container platform, Anaconda is also often used to create isolated
-environments for commands to run in. Bootstrapping an Anaconda enironment within a command
+environments for commands to run in. Bootstrapping an Anaconda environment within a command
 can be awkward without damaging the portability of the command, so Bpipe supports
 basic activation of conda environments through command level configuration.
 
