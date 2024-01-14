@@ -1086,7 +1086,7 @@ class PipelineContext {
    def getInputs() {
        if(!inputWrapper || !(inputWrapper instanceof MultiPipelineInput)) {
            this.inputWrapper = new MultiPipelineInput(this.@input, pipelineStages, this.aliases)
-           this.allUsedInputWrappers.get(0,(List<PipelineInput>)[]).add(inputWrapper)
+           this.allUsedInputWrappers.get(0,(List<PipelineInput>)[]).add((PipelineInput)inputWrapper) /* cast needed for groovy 2.5.x */
        }
        inputWrapper.currentFilter = currentFilter    
        return this.inputWrapper;
