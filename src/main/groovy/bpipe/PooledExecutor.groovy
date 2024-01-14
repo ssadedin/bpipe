@@ -48,8 +48,7 @@ import groovy.transform.CompileStatic
   *  <li>Hosted command - the actual job commands that are doing the work. The
   *      host command executes the hosted commands.
   */
-@Mixin(ForwardHost)
-class PooledExecutor implements CommandExecutor {
+class PooledExecutor implements CommandExecutor, ForwardHost {
     
     static Logger log = Logger.getLogger('PooledExecutor')
     
@@ -152,7 +151,9 @@ class PooledExecutor implements CommandExecutor {
     int waitFor() {
         
         int exitCode = waitForExitFile()
-        this.outputLog.flush()
+        
+        if(this.outputLog.wrapped != null)
+            this.outputLog.flush()
         
         if(onFinish != null)
             onFinish()
