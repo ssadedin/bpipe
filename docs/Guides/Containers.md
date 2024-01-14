@@ -196,3 +196,36 @@ For example, to use the `delly` container image for amd64 on Apple Silicon:
 
 Note that it is also required to specify the shell as `/bin/sh` as the container does not include
 `bash`.
+
+
+## Anaconda (conda)
+
+Although not strictly a container platform, Anaconda is also often used to create isolated
+environments for commands to run in. Bootstrapping an Anaconda enironment within a command
+can be awkward without damaging the portability of the command, so Bpipe supports
+basic activation of conda environments through command level configuration.
+
+To cause Bpipe to inject bootstrapping shell code to enable Anaconda to work as well
+as activation of a specific Anaconda environment, add a `conda_env` attribute to the
+command configuration. For example:
+
+```groovy
+conda_env = 'gcp'
+```
+
+By default, the environment will be selected relative to the `conda` executable found in the PATH.
+You may wish to specify the absolute path to the conda installation so that the user's
+environment does not alter which environment is used. This can be done using the `conda` 
+configuration in Bpipe configuration:
+
+```
+conda {
+    executable = '/home/bob/anaconda/bin/conda'
+}
+```
+
+Note that conda environment support is implemented by prefixing your command with
+additional script contents to cause activation of the anaconda environment. In 
+some contexts this could interact with your actual command or alter things like
+line numbers reported in error messages. 
+

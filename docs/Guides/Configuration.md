@@ -62,6 +62,13 @@ python {
 }
 ```
 
+- conda (anaconda executable)
+```
+conda {
+    executable='/some/path/to/conda/binary'
+}
+```
+
 
 - R
 ```

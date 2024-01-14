@@ -19,6 +19,7 @@ import bpipe.PipelineDevRetry
 import bpipe.ResourceUnit;
 import bpipe.Runner
 import bpipe.Utils
+import bpipe.processors.CondaEnvContainerWrapper
 import bpipe.processors.DockerContainerWrapper
 import bpipe.processors.EnvironmentVariableSetter
 import bpipe.processors.MemoryLimitReplacer
@@ -199,17 +200,18 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         
         List<CommandProcessor> processors = [
             new EnvironmentVariableSetter(), 
+            new CondaEnvContainerWrapper(),
             new MemoryLimitReplacer(), 
             new ThreadAllocationReplacer(),
             new StorageResolver(commandExecutor),
         ]
         
         String containerType = ((Map)cmd.processedConfig.container)?.type
-        log.info "Container type for command $cmd.id is $containerType"
+        log.info "Container type for command $cmd.id in stage $cmd.name is $containerType based on config $cmd.configName"
         if(containerType) {
             if(containerType == "docker") {
                 log.info "Configuring command with docker shell wrapper for command $cmd.id"
-                processors << new DockerContainerWrapper()
+                processors << new DockerContainerWrapper(commandExecutor)
             }
             else
             if(containerType == "singularity") {
