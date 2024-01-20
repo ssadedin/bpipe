@@ -310,13 +310,7 @@ class PooledExecutor implements CommandExecutor, ForwardHost {
      */
     void stopPooledExecutor() {
         
-        try {
-            this.executor.stop()
-        }
-        catch(Throwable e) {
-            log.warning("Attempt to stop pooled executor returned error: " + e)
-        }
-            
+           
         // Write out the stop flag
         Path stopFilePath = storage.toPath(this.stopFile.path)
         log.info "Writing stop file: $stopFilePath"
@@ -330,6 +324,13 @@ class PooledExecutor implements CommandExecutor, ForwardHost {
             String msg = "Exit file $exitFilePath was not observed after ${EXECUTOR_EXIT_FILE_TIMEOUT}ms"
             log.warning(msg)
             System.err.println "WARNING: $msg"
+        }
+
+        try {
+            this.executor.stop()
+        }
+        catch(Throwable e) {
+            log.warning("Attempt to stop pooled executor returned error: " + e)
         }
         
         log.info "Cleaning up executor for pool $command.id"
