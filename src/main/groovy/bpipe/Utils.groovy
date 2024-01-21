@@ -1204,6 +1204,7 @@ class Utils {
      * @return
      */
     static Map<String,Closure> waitWithTimeout(long timeoutMs, Closure action) {
+        long pollIntervalMs = 200
         return [
             ok: { okAction ->
                 long startMs = System.currentTimeMillis()
@@ -1211,7 +1212,7 @@ class Utils {
                     def result = action()
                     if(result != null && result != false)
                         return [ timeout: { return okAction(result) }]
-                    Thread.sleep(100)
+                    Thread.sleep(pollIntervalMs)
                     
                     if(System.currentTimeMillis() - startMs > timeoutMs)
                         return [ timeout: {  it() }]
@@ -1224,7 +1225,7 @@ class Utils {
                     def result = action()
                     if(result != null && result != false)
                         return 
-                    Thread.sleep(100)
+                    Thread.sleep(pollIntervalMs)
                     
                     if(System.currentTimeMillis() - startMs > timeoutMs) {
                         timeoutAction()
