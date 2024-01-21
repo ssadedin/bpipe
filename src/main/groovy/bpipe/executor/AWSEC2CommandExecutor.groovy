@@ -104,6 +104,8 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     transient List<Process> logsProcesses
     
     boolean autoShutdown = true
+
+    boolean autoStop = false
     
     /**
      * Mounted storage associated with this executor or null if no storage associated
@@ -215,6 +217,13 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         // Must be done before termination to get cloud output files back
         super.cleanup()
         
+        if(autoStop) {
+            // by shutting down this way, the instance will live long enough that the user can log in to debug something
+            // or otherwise capture the state
+            log.info "Stopping instance $instanceId because autoShutdown=$autoShutdown and autoStop=$autoStop"
+            this.ssh("sudo shutdown +5")
+        }
+        else
         if(autoShutdown) {
             log.info "Terminating instance $instanceId for executor $this"
             
@@ -324,6 +333,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     public void acquireInstance(Map config, String image, String id) {
         
         this.autoShutdown = config.getOrDefault('autoShutdown', this.autoShutdown)
+        this.autoStop = config.getOrDefault('autoStop', this.autoStop)
         
         createClient(config)
         
