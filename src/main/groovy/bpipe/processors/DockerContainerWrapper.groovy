@@ -25,6 +25,8 @@
 package bpipe.processors
 
 import bpipe.*
+import bpipe.executor.AWSEC2CommandExecutor
+import bpipe.executor.CommandExecutor
 import bpipe.storage.BindStorageLayer
 import bpipe.storage.StorageLayer
 import groovy.util.logging.Log
@@ -36,6 +38,13 @@ import groovy.util.logging.Log
  */
 @Log
 class DockerContainerWrapper implements CommandProcessor {
+    
+    
+    CommandExecutor commandExecutor
+    
+    DockerContainerWrapper(CommandExecutor commandExecutor) {
+        this.commandExecutor = commandExecutor
+    }
 
     @Override
     public void transform(Command command, List<ResourceUnit> resources) {
@@ -44,7 +53,7 @@ class DockerContainerWrapper implements CommandProcessor {
         
         String shell = config.getOrDefault('shell', '/bin/bash')
 
-        def extraVolumes = Config.listValue(config, 'storage').collect { name ->
+        List extraVolumes = Config.listValue(config, 'storage').collect { name ->
             
             BindStorageLayer layer = (BindStorageLayer)StorageLayer.create(name)
 
@@ -54,9 +63,14 @@ class DockerContainerWrapper implements CommandProcessor {
         .sum()
         ?: []
         
+        // Todo: move to some kind of 'configureContainerVolumes' on command executor?
+        if(commandExecutor instanceof AWSEC2CommandExecutor) {
+            extraVolumes.addAll(["-v", "/tmp/bpipe-aws:/tmp/bpipe-aws"])
+        }
+        
 		log.info("Volume arguments for docker command: ${extraVolumes}")
 		
-		List<String> dockerCommand = [config.getOrDefault('command', [shell,'-e'])].flatten()
+		List<String> dockerCommand = [config.getOrDefault('command', [shell])].flatten()
 
 		List<String> dockerRunOptions = Config.listValue(config, 'options') ?: ['--rm']
 
@@ -78,6 +92,7 @@ class DockerContainerWrapper implements CommandProcessor {
             [
                 "docker",
                 "run",
+                "-i",
                 *platformArg,
                 *dockerRunOptions,
                 *entryPointArg,
