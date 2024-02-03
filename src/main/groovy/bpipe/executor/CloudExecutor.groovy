@@ -145,14 +145,20 @@ abstract class CloudExecutor implements PersistentExecutor, ForwardHost {
     @CompileStatic
     void transferFiles(Map config, List<PipelineFile> files) {
        
-//        if(!((Map)config.getOrDefault('storage', null))?.getOrDefault('transfer', false)) {
-//            return
-//        }
-        
         if(!config.getOrDefault('transfer', false))
             return
             
+        Date now = new Date()
+            
+        files.forEach {
+            println "$now TRANSFER: $it"
+        }
+            
         this.transferTo(files)
+
+        now = new Date()
+        
+        println "$now: TRANSFER COMPLETE (${files.size()} files)"
     }
      
     
