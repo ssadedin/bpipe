@@ -1724,7 +1724,9 @@ class PipelineContext {
         String path = o.path
         if(!(path in this.referencedOutputs) && !(path in this.inferredOutputs) && !(path in this.allInferredOutputs)) {
              if(!this.trackedOutputs[commandId]) {
-                 this.trackedOutputs[commandId] = new Command(id: commandId, outputs: [o], command: command)
+                 Command dummyCommand = new Command(id: commandId, outputs: [o], command: command)
+                 dummyCommand.getConfig(this.input)
+                 this.trackedOutputs[commandId] = dummyCommand
                  this.pathToCommandId[path] = commandId
              }
              else
