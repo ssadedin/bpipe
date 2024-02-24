@@ -225,9 +225,11 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         }
         else
         if(autoShutdown) {
-            log.info "Terminating instance $instanceId for executor $this"
-            
-            ec2.terminateInstances(new TerminateInstancesRequest([instanceId]))
+            if(instanceId) {
+                log.info "Terminating instance $instanceId for executor $this"
+                
+                ec2.terminateInstances(new TerminateInstancesRequest([instanceId]))
+            }
         }
         else {
             log.info "Instance $instanceId will not be terminated because autoShutdown = $autoShutdown"
@@ -358,8 +360,20 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         if(config.containsKey('securityGroup')) {
             runInstancesRequest = runInstancesRequest.withSecurityGroups((String)config.securityGroup)
         }         
-                
-        RunInstancesResult result = this.ec2.runInstances(runInstancesRequest)
+
+        RunInstancesResult result       
+
+        List<String> retryErrorCodes = [ "InsufficientInstanceCapacity", "VcpuLimitExceeded" ]
+        try {
+            result = this.ec2.runInstances(runInstancesRequest)
+        }
+        catch(AmazonEC2Exception ex) {
+            if(!(ex.errorCode in retryErrorCodes))
+                throw ex
+            else
+                throw new CapacityTemporarilyUnavailableException("Unable to acquire instance for job $id (image=$image, instanceType=$instanceType) due to $ex.errorCode", ex)
+        }
+
         this.instanceId = result.reservation.instances[0].instanceId
         this.hostname = queryHostName()
         

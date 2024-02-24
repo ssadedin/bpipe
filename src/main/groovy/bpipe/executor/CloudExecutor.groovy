@@ -107,39 +107,66 @@ abstract class CloudExecutor implements PersistentExecutor, ForwardHost {
         
         this.project = cfg.getOrDefault('project',null)
         
-        if(this.instanceId == null) {
-            if(cfg.containsKey('instanceId')) {
-                this.instanceId = cfg.instanceId
-                log.info "Connecting to existing cloud instance $instanceId for command $cmd.id"
-                this.connectInstance(cfg)
+        try {
+            if(this.instanceId == null) {
+                if(cfg.containsKey('instanceId')) {
+                    this.instanceId = cfg.instanceId
+                    log.info "Connecting to existing cloud instance $instanceId for command $cmd.id"
+                    this.connectInstance(cfg)
+                }
+                else {
+                    log.info "Cloud executor is not connected to running instance via $cfg: acquiring instance"
+                    
+                    int attempts = 0
+                    while(true) {
+                        try {
+                            this.acquireInstance(cfg, image, cmd.id)
+                            log.info("Acquired instance $instanceId")
+                            break
+                        }
+                        catch(CapacityTemporarilyUnavailableException ex) {
+
+                            if(attempts++ > (int)cfg.getOrDefault('retryAttempts', 20i))
+                                throw ex
+
+                            log.info "Request (attempt $attempts) for instance of type $cfg.instanceType failed due to $ex.message : will retry ..."
+
+                            Thread.sleep(Utils.ONE_MINUTE_MS)
+                        }
+                    }
+                    log.info "Instance $instanceId started after $attempts retries for command ${command?.id}"
+                }
             }
-            else {
-                log.info "Cloud executor is not connected to running instance via $cfg: acquiring instance"
-                this.acquireInstance(cfg, image, cmd.id)
+            else 
+                this.acquiring = false
+            
+            this.command.save()
+            
+            log.info "Instance $instanceId acquired, waiting for connectivity"
+             
+            // It can take a small amount of time before the instance can be ssh'd to - downstream 
+            // functions will assume that an instance is available for SSH, so it's best to do
+            // that check now
+            this.waitForSSHAccess()
+           
+            this.mountStorage(cfg)
+            
+            // Provision dependencies
+            for(CommandDependency dep : cmd.dependencies) {
+                log.info("Executing dependency $dep for command $cmd.id")
+                dep.provision(this)
             }
+            
+            this.transferFiles(cfg, cmd.inputs)
+            
+            // Execute the command via SSH
+            this.startCommand(cmd, outputLog, errorLog)
         }
-        else 
-            this.acquiring = false
-        
-        this.command.save()
-         
-        // It can take a small amount of time before the instance can be ssh'd to - downstream 
-        // functions will assume that an instance is available for SSH, so it's best to do
-        // that check now
-        this.waitForSSHAccess()
-       
-        this.mountStorage(cfg)
-        
-        // Provision dependencies
-        for(CommandDependency dep : cmd.dependencies) {
-            log.info("Executing dependency $dep for command $cmd.id")
-            dep.provision(this)
+        catch(Exception e) {
+            log.info "Error occurred starting command $command.id ($e) : cleaning up associated instance"
+            this.cleanup()
+            throw e
         }
-        
-        this.transferFiles(cfg, cmd.inputs)
-        
-        // Execute the command via SSH
-        this.startCommand(cmd, outputLog, errorLog)
     }
     
     @CompileStatic
