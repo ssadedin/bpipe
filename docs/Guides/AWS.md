@@ -102,6 +102,7 @@ If acquisition of an instance fails due to a temporary capacity limit such as
 `InsufficientInstanceCapacity` or `VcpuLimitExceeded` error codes, Bpipe will execute
 a retry / wait loop where it will re-attempt at 5 minute intervals. By default,
 Bpipe will retry up to 20 times to acquire an instance. You can modify this 
-by setting the `retryAttempts` property in the cloud executor configuration.
+by setting the `instanceRetryAttempts` property in the cloud executor configuration,
+and you can modify the interval of retries with the `instanceRetryInterval` property.
 
 

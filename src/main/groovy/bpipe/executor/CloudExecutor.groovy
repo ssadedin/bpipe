@@ -107,6 +107,8 @@ abstract class CloudExecutor implements PersistentExecutor, ForwardHost {
         
         this.project = cfg.getOrDefault('project',null)
         
+        int retryMins = cfg.getOrDefault('instanceRetryMinutes', 5i)
+        
         try {
             if(this.instanceId == null) {
                 if(cfg.containsKey('instanceId')) {
@@ -126,12 +128,12 @@ abstract class CloudExecutor implements PersistentExecutor, ForwardHost {
                         }
                         catch(CapacityTemporarilyUnavailableException ex) {
 
-                            if(attempts++ > (int)cfg.getOrDefault('retryAttempts', 20i))
+                            if(attempts++ > (int)cfg.getOrDefault('instanceRetryAttempts', 20i))
                                 throw ex
 
                             log.info "Request (attempt $attempts) for instance of type $cfg.instanceType failed due to $ex.message : will retry ..."
 
-                            Thread.sleep(Utils.ONE_MINUTE_MS)
+                            Thread.sleep(retryMins * Utils.ONE_MINUTE_MS)
                         }
                     }
                     log.info "Instance $instanceId started after $attempts retries for command ${command?.id}"
