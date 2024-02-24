@@ -67,6 +67,7 @@ class Utils {
     
     public static Logger log = Logger.getLogger("bpipe.Utils")
     
+    public static final long ONE_MINUTE_MS = 60000L
     
     /**
      * Convert a list of heterogenous objects to Path objects
@@ -1331,11 +1332,11 @@ class Utils {
      * Attempts to execute an action up to <code>maxRetries</code> times, with
      * exponential backoff.
      * 
-     * Exponentional backoff is based on an initial time of 1 second for the first
+     * Exponential backoff is based on an initial time of 1 second for the first
      * retry and then doubling each time, with the exception that a minimum 
      * (backoffBaseTime) is applied for the first step.
      * 
-     * @param options
+     * @param options   backoffBaseTime, exceptionType, maxRetryWaitTime
      * @param maxRetries
      * @param action
      * @return
@@ -1348,11 +1349,18 @@ class Utils {
        if(options.backoffBaseTime)
            backoffBaseTime = (long)options.backoffBaseTime
            
+       Class exceptionType = options.exceptionType
+           
+       long maxRetryWaitTime = (long) options.getOrDefault('maxRetryWaitTime', -1)
+           
         while(true) {
             try {
                 return action()
             }
             catch(Exception e) {
+                if(exceptionType && (e.class != exceptionType))
+                    throw e
+                
                 if(count > maxRetries)
                     throw e
 
@@ -1364,6 +1372,9 @@ class Utils {
             Thread.sleep(sleepTimeMs)
             ++count
             sleepTimeMs = Math.max(backoffBaseTime,sleepTimeMs*2)
+            if(maxRetryWaitTime>0) {
+                sleepTimeMs = Math.min(maxRetryWaitTime, sleepTimeMs)
+            }
         }
     } 
     
