@@ -1695,8 +1695,9 @@ class PipelineContext {
             List<PipelineFile> retransformed = this.currentFileNameTransform.transform(probeResolvedInputs)
             
             probeResolvedInputs.eachWithIndex { PipelineFile inpFile, int i ->
-                if(!origOutputPaths.contains(inpFile.path))  {
-                    if(retransformed[i] != null) {
+                PipelineFile retx = retransformed[i]
+                if(retx != null) {
+                    if(!origOutputPaths.contains(retx.path) && this.allInferredOutputs.contains(retx.path))  {
                         List<PipelineFile> newNames = toOutputFolder(retransformed[i])
                         String newPath = newNames[0].toString()
                         logger.info "Replace output ${fixedOutputs[i]} => $newPath after probe due to alternative input reference with filter"
