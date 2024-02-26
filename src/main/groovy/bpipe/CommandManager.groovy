@@ -221,7 +221,7 @@ class CommandManager {
                         println "Command $cmd.id is persistent command: ignoring"
                     }
                     else {
-                        safeStopExecutor(exec)
+                        safeStopExecutor(cmd, exec)
                         
                         if(cmd)
                             stoppedCommands << cmd
@@ -262,8 +262,12 @@ class CommandManager {
         return count
     }
 
-    private void safeStopExecutor(CommandExecutor exec) {
+    private void safeStopExecutor(Command cmd, CommandExecutor exec) {
         Exception error
+        
+        if(exec.hasProperty('command'))
+            exec.command = cmd
+
         try {
             exec.stop()
         }

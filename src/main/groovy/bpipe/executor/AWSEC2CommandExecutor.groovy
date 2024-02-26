@@ -201,8 +201,6 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     
     @Override
     public void stop() {
-        // TODO Auto-generated method stub
-        
     }
     
     @Override
@@ -227,6 +225,10 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         if(autoShutdown) {
             if(instanceId) {
                 log.info "Terminating instance $instanceId for executor $this"
+                
+                if(ec2 == null) {
+                    this.createClient(this.command.getConfig(this.command.inputs))
+                }
                 
                 ec2.terminateInstances(new TerminateInstancesRequest([instanceId]))
             }
