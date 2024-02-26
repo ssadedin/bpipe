@@ -242,7 +242,7 @@ class CommandManager {
                 cleanup(f.name)
             }
             catch(Exception e) {
-                log.error "Failed to clean up command object $f.name: " + e
+                log.severe "Failed to clean up command object $f.name: " + e
             }
             ++count
         }
