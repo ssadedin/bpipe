@@ -198,6 +198,20 @@ Note that it is also required to specify the shell as `/bin/sh` as the container
 `bash`.
 
 
+## Custom Singularity Options
+
+You may specify arbitrary options to singularity (not docker) container commands by setting the
+`execOptions` property in the container configuration. For example, the following configuration
+adds the `--nv` option required to access GPUs within singularity containers:
+
+```grooovy
+container {
+    type='singularity'
+    execOptions="--nv"
+}
+```
+
+
 ## Anaconda (conda)
 
 Although not strictly a container platform, Anaconda is also often used to create isolated
