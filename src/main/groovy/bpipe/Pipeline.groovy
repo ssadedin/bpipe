@@ -298,7 +298,7 @@ public class Pipeline implements ResourceRequestor {
      * inside the child pipeline are associated with the pipeline 
      * by this thread local variable
      */
-    static ThreadLocal<Pipeline> currentRuntimePipeline = new ThreadLocal()
+    public static ThreadLocal<Pipeline> currentRuntimePipeline = new ThreadLocal()
     
     
     /**

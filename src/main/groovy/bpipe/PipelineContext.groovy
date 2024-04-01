@@ -30,6 +30,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.PathMatcher
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock
 import java.util.logging.Logger
 import java.util.regex.Matcher
 import java.util.regex.Pattern;
@@ -2017,8 +2018,10 @@ class PipelineContext {
         execImpl(cmd, joinNewLines, config, dependencies)
     }
     
-    final static Object devRetryLock = new Object()
+    public static Set<String> CONTINUED_DEV_STAGES = Collections.synchronizedSet(new HashSet())
     
+    final static ReentrantReadWriteLock devRetryLock = new ReentrantReadWriteLock()
+
     @CompileStatic
     Command execImpl(String cmd, boolean joinNewLines, String config=null, List<CommandDependency> dependencies=null) {
         
@@ -2056,54 +2059,61 @@ class PipelineContext {
           }
           catch(PipelineDevRetry e) {
               
-              synchronized(devRetryLock) {
-                  
-                    Thread.sleep(100)
-//                   print "\033[?1049h"
-                  
-                    log.info "Retrying command in stage $stageName due to dev retry thrown"
-                  
-                    printDevContextInfo()
-                  
-                    String prettyCmd = cmd
+                log.info "hit retry lock for stage $stageName - locked by current thread? " + devRetryLock.isWriteLockedByCurrentThread()
 
-                    log.info "Replacing direct inputs using: " + getResolvedInputs()
-                    getResolvedInputs().each { inp ->
-                        prettyCmd = prettyCmd.replaceAll(inp.toString(), "${ansi().fgBrightMagenta()}$inp${ansi().fgDefault()}")
-                    }
-
-                    commandReferencedOutputs.each { outPath ->
-                        prettyCmd = prettyCmd.replaceAll(outPath, "${ansi().fgRed()}$outPath${ansi().fgDefault()}")
-                    }
+                if(!devRetryLock.isWriteLockedByCurrentThread())
+                    devRetryLock.writeLock().lock()
                     
-                    // __bpipe_lazy_resource_threads__
-                    String threadsMsg = ''
-                    if(prettyCmd.contains('__bpipe_lazy_resource_threads__')) {
-                        prettyCmd = prettyCmd.replaceAll('__bpipe_lazy_resource_threads__', "${ansi().fgGreen()}\\\${threads}${ansi().fgDefault()}")
-                        threadsMsg = "${ansi().bold()}Note:${ansi().boldOff()} ${ansi().fgGreen()}\${threads}${ansi().fgDefault()} will be assigned at runtime based on available concurrency"
-                    }
-
-                    String msg = branch.name ? "Stage $stageName in branch $branch.name would execute:\n\n        $prettyCmd" : "Would execute $prettyCmd"
-                    
-                    configObject = Command.getConfig(config, stageName, cmd, this.@input)
-                    String containerMsg
-                    if(configObject?.containsKey('container')) {
-                        ConfigObject container = configObject['container']
-                        containerMsg = "Will execute in container: " + container
-                    }
-                    
-                    println msg
-                    
-                    println threadsMsg
-                    
-                    if(containerMsg)
-                        println containerMsg
-
-                    println "\n${ansi().fgBlue()}Waiting for changes or <enter> to continue ....${ansi().fgDefault()}\n"
-                    
-
+                if(Runner.devSkip.contains(stageName)) {
+                    devRetryLock.writeLock().unlock()
                     throw e
                 }
+              
+                Thread.sleep(100)
+//                   print "\033[?1049h"
+              
+                log.info "Retrying command in stage $stageName due to dev retry thrown"
+              
+                printDevContextInfo()
+              
+                String prettyCmd = cmd
+
+                log.info "Replacing direct inputs using: " + getResolvedInputs()
+                getResolvedInputs().each { inp ->
+                    prettyCmd = prettyCmd.replaceAll(inp.toString(), "${ansi().fgBrightMagenta()}$inp${ansi().fgDefault()}")
+                }
+
+                commandReferencedOutputs.each { outPath ->
+                    prettyCmd = prettyCmd.replaceAll(outPath, "${ansi().fgRed()}$outPath${ansi().fgDefault()}")
+                }
+                
+                // __bpipe_lazy_resource_threads__
+                String threadsMsg = ''
+                if(prettyCmd.contains('__bpipe_lazy_resource_threads__')) {
+                    prettyCmd = prettyCmd.replaceAll('__bpipe_lazy_resource_threads__', "${ansi().fgGreen()}\\\${threads}${ansi().fgDefault()}")
+                    threadsMsg = "${ansi().bold()}Note:${ansi().boldOff()} ${ansi().fgGreen()}\${threads}${ansi().fgDefault()} will be assigned at runtime based on available concurrency"
+                }
+
+                String msg = branch.name ? "Stage $stageName in branch $branch.name would execute:\n\n        $prettyCmd" : "Would execute $prettyCmd"
+                
+                configObject = Command.getConfig(config, stageName, cmd, this.@input)
+                String containerMsg
+                if(configObject?.containsKey('container')) {
+                    ConfigObject container = configObject['container']
+                    containerMsg = "Will execute in container: " + container
+                }
+                
+                println msg
+                
+                println threadsMsg
+                
+                if(containerMsg)
+                    println containerMsg
+
+                println "\n${ansi().fgBlue()}Waiting for changes or <enter> to continue ....${ansi().fgDefault()}\n"
+                
+
+                throw e
           }
       }
 

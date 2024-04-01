@@ -605,11 +605,22 @@ class PipelineStage {
         def pipeline = Pipeline.currentRuntimePipeline.get()
         def devResponseFile = new File('.bpipe/dev_continue')
         devResponseFile.text = ''
-        Thread.sleep(1200) 
+
+        boolean skipped = Runner.devSkip.contains(stageName)
+
+        if(!skipped)
+            Thread.sleep(1200) 
         
         List<File> pathsToCheck = Pipeline.allLoadedPaths.collect { new File((String)it) } + [devResponseFile]
         log.info "Checking paths :" + pathsToCheck
-        String modifiedPath = Utils.waitForModified(pathsToCheck)
+        
+        String modifiedPath = null
+        
+
+        if(!skipped)
+            modifiedPath = Utils.waitForModified(pathsToCheck)
+        else
+            modifiedPath = Runner.devModified[stageName]
         
         try {
             if(modifiedPath == null || modifiedPath == devResponseFile.absolutePath) {
@@ -618,8 +629,12 @@ class PipelineStage {
 //                bpipe.Runner.devMode = false
                 log.info "After removing, dev stages are now: " + Config.config.devAt
                 Runner.devSkip << stageName 
+                
+                if(PipelineContext.devRetryLock.writeLock().isHeldByCurrentThread())
+                    PipelineContext.devRetryLock.writeLock().unlock()
             }
             else {
+                Runner.devModified[stageName]= modifiedPath
                 Pipeline.allLoadedPaths.remove(modifiedPath)
                 Runner.binding.readOnly = false
                 GroovyShell shell = Pipeline.load(modifiedPath, false)

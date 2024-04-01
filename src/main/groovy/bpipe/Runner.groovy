@@ -139,6 +139,8 @@ class Runner {
      */
     public static Set<String> devSkip = [] as Set
     
+    public static Map<String, String> devModified = [:]
+    
     public static boolean cleanupRequired = false
     
     /**
