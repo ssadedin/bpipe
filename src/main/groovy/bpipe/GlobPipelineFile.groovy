@@ -55,7 +55,13 @@ class GlobPipelineFile extends PipelineFile {
     
     @Override
     boolean exists() {
-        return getDirectoryStream().any { true }
+        def stream = getDirectoryStream()
+        try {
+            return stream.any { true }
+        }
+        finally {
+            stream.close()
+        }
     }
 	
 	@CompileStatic
@@ -65,10 +71,17 @@ class GlobPipelineFile extends PipelineFile {
     
     @CompileStatic
     List<Path> toPaths() {
-        List<Path> paths = (List<Path>)getDirectoryStream().collect { it }
-        return paths
+        def stream = getDirectoryStream()
+        try {
+            List<Path> paths = (List<Path>)stream.collect { it }
+            return paths
+        }
+        finally {
+            stream.close()
+        }
     }
     
+    @CompileStatic
     DirectoryStream getDirectoryStream() {
        Path myPath = this.toPath()
        Path dir = resolveDir(myPath)
@@ -88,6 +101,7 @@ class GlobPipelineFile extends PipelineFile {
        }
     }
     
+    @CompileStatic
     Path resolveDir(Path child) {
         Path dir = child.parent
         if(dir == null) { // unqualified path

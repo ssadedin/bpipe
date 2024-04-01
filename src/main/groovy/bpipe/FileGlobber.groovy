@@ -1,12 +1,14 @@
 package bpipe
 
 import java.nio.file.Path
+import java.nio.file.DirectoryStream
 import java.nio.file.Files
 import java.util.regex.Pattern
 
 import bpipe.storage.StorageLayer
 import groovy.transform.CompileStatic
 
+@CompileStatic
 class FileGlobber {
     
     StorageLayer storage 
@@ -16,15 +18,20 @@ class FileGlobber {
         Path patternPath = storage.toPath(globPattern.toString())
         Path dir = resolveDir(patternPath)
         
-        List<String> result = 
-            Files.newDirectoryStream(dir, patternPath.fileName.toString()).collect { Path p ->
-                p.normalize().toString()
-            }
-            
-        return result
+        DirectoryStream stream = Files.newDirectoryStream(dir, patternPath.fileName.toString())
+        try {
+            List<String> result =
+                (List<String>)stream.collect { Path p ->
+                    p.normalize().toString()
+                }
+            return result
+        }
+        finally {
+            stream.close()
+        }
+        
     }
     
-    @CompileStatic
     List<String> glob(Pattern globPattern) {
         
         // Determine the base directory that will be searched
@@ -33,13 +40,20 @@ class FileGlobber {
         
         Pattern pattern = Pattern.compile(patternPath.fileName.toString())
         
-        List<String> result = Files.newDirectoryStream(dir).grep { Path p ->
-                pattern.matcher(p.fileName.toString()).matches() 
-            }.collect { p -> 
-                ((Path)p).normalize()
-            }*.toString()
-            
-        return result
+        DirectoryStream stream = Files.newDirectoryStream(dir)
+        try {
+            List<String> result = stream.grep { Path p ->
+                    pattern.matcher(p.fileName.toString()).matches() 
+                }.collect { p -> 
+                    ((Path)p).normalize()
+                }*.toString()
+                
+            return result
+        }
+        finally {
+            stream.close()
+        }
+
     }
     
     Path resolveDir(Path child) {
@@ -50,7 +64,6 @@ class FileGlobber {
         return dir
     }
     
-    @CompileStatic
     List<String> cleanupResult(List<String> results) {
         results.collect { 
             it.startsWith('./') ? it.substring(2) : it

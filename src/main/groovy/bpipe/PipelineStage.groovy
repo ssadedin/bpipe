@@ -29,7 +29,6 @@ import groovy.transform.CompileStatic
 import groovy.transform.TypeChecked
 import groovy.util.logging.Log
 
-import java.nio.file.DirectoryStream
 import java.nio.file.Files;
 import java.nio.file.Path
 import java.util.regex.Pattern
@@ -270,6 +269,8 @@ class PipelineStage {
                 if(!context.uncleanFilePath.delete())
                     log.warning("Unable to delete in-progress command file $context.uncleanFilePath")
             }
+            
+            OutputDirectoryWatcher.releaseDirectoryWatcher(context.outputDirectory)
         }
         
         try {

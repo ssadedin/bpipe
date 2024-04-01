@@ -151,7 +151,17 @@ class PipelineFile implements Serializable {
         log.info "File does not appear to exist: listing directory to flush file system: " + this
         Path p = this.toPath()
         Path parent = p.toAbsolutePath().parent
-        try { Files.list(parent) } catch(Exception e) { log.warning("Failed to list files of parent directory of " + this + " ($parent)"); }
+
+        def stream
+        try { 
+            stream = Files.list(parent)
+        } catch(Exception e) { 
+            log.warning("Failed to list files of parent directory of " + this + " ($parent)"); 
+        }
+        finally {
+            stream.close()
+        }
+
         if(this.exists()) {
             log.info("File " + this + " revealed by listing directory to flush metadata") 
             return false

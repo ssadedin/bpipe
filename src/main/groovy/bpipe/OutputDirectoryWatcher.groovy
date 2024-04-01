@@ -33,7 +33,9 @@ import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
 
 import com.sun.nio.file.SensitivityWatchEventModifier;
@@ -45,7 +47,10 @@ import static java.nio.file.StandardWatchEventKinds.*
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 
 @Log
+@CompileStatic
 class OutputDirectoryWatcher extends Thread {
+    
+    String rawDirectory
     
     Path directory
     
@@ -71,12 +76,15 @@ class OutputDirectoryWatcher extends Thread {
      * method.
      */
     private static Map<String,OutputDirectoryWatcher> watchers = [:]
+
+    private static Map<String,AtomicInteger> watcherCounts = [:]
     
     OutputDirectoryWatcher(String directory) {
-        this(new File(directory).toPath())
+        this(directory, new File(directory).toPath())
     } 
     
-    OutputDirectoryWatcher(Path directory) {
+    OutputDirectoryWatcher(String rawDirectory, Path directory) {
+        this.rawDirectory = rawDirectory
         this.directory = directory
         if(!Files.exists(directory)) {
             Files.createDirectories(directory)
@@ -103,6 +111,8 @@ class OutputDirectoryWatcher extends Thread {
     
     Object manualPollerWaitLock = new Object()
     
+    ScheduledFuture future  = null
+
     @CompileStatic
     void runUsingManuallPoller() {
         
@@ -116,9 +126,25 @@ class OutputDirectoryWatcher extends Thread {
         
         log.info "Found existing paths: " + oldPaths
         
-        DirectoryWatcherScheduler.theInstance.executor.scheduleAtFixedRate({
+
+        Closure doPoll = {
+            try {
+                if(watcherCounts[rawDirectory].get() == 0) {
+                    log.info("Cancelling watcher for $rawDirectory because it has no users any more")
+                    if(future != null) {
+                        future.cancel(false)
+                    }
+                }
+            }
+            catch(Throwable t) {
+                log.info("Error in watcher check for $rawDirectory: " + t)
+            }
+
             executeManualPoll(oldPaths)
-        }, manualPollerSleepTime, manualPollerSleepTime, MILLISECONDS)
+        }
+        
+        future = DirectoryWatcherScheduler.theInstance.executor.scheduleAtFixedRate(
+            doPoll, manualPollerSleepTime, manualPollerSleepTime, MILLISECONDS)
         
 //        for(;;) {
 //            executeManualPoll(manualPollerSleepTime, oldPaths)
@@ -348,12 +374,23 @@ class OutputDirectoryWatcher extends Thread {
     }
     
     @CompileStatic
+    synchronized public static int releaseDirectoryWatcher(String forDirectory) {
+        int result = watcherCounts.getOrDefault(forDirectory, new AtomicInteger(1)).decrementAndGet()
+        if(result == 0) {
+            log.info("All uses of watcher for $forDirectory are gone")
+        }
+        return result
+    }
+    
+    
+    @CompileStatic
     synchronized public static OutputDirectoryWatcher getDirectoryWatcher(String forDirectory) {
         OutputDirectoryWatcher watcher = watchers[forDirectory]
         if(watcher == null) {
             log.info "Creating directory watcher for $forDirectory"
             watcher = new OutputDirectoryWatcher(forDirectory)
             watchers[forDirectory] = watcher
+            watcherCounts.get(forDirectory, new AtomicInteger(1))
 
             if(Config.userConfig.getOrDefault('usePollerFileWatcher', false)) {
                 watcher.run()
