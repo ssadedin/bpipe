@@ -10,7 +10,7 @@ class AboutDetails {
     String title
 }
 
-class BpipeScriptBase extends groovy.lang.Script {
+abstract class BpipeScriptBase extends groovy.lang.Script {
     
     void requires(Map requirements) { }
     
@@ -119,8 +119,6 @@ class BpipeScriptBase extends groovy.lang.Script {
 
     void forward(String... files) {}
     void forward(List<String> files) {}
-
-    public Object run() { return null; }
 
     public Object run(List<String> files, Closure c) { }
 	
