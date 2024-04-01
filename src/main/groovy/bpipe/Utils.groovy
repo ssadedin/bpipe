@@ -302,6 +302,7 @@ class Utils {
         boxImpl(outputs)
     }
 
+    @CompileStatic
     static <T> List<T> boxImpl(Object outputs) {
         
         if(outputs == null)
@@ -310,7 +311,7 @@ class Utils {
         if(outputs instanceof Collection)
             return outputs as List
         
-        if(outputs.class.isArray())    
+        if(outputs.class?.isArray())    
             return outputs as List
             
         return [outputs]
