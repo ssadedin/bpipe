@@ -357,7 +357,9 @@ class LocalCommandExecutor implements CommandExecutor, ForwardHost {
         
         log.info "Shutting down local job $id with pid $pid"
         
-        List killCmd = ["bash","-c","source ${bpipe.Runner.BPIPE_HOME}/bin/bpipe-utils.sh; killtree $pid"]
+        List<String> shell = command.shell ?: ['bash']
+        
+        List killCmd = [*shell,"-c","source ${bpipe.Runner.BPIPE_HOME}/bin/bpipe-utils.sh; killtree $pid"]
         ExecutedProcess killResult = Utils.executeCommand(killCmd)
         if(killResult.exitValue != 0) {
             throw new RuntimeException("Attempt to kill process returned exit code " + 
