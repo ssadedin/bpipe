@@ -2,9 +2,16 @@
 package bpipe
 
 import java.nio.file.Path
+
+import org.junit.BeforeClass
 import org.junit.Test;
 
 class OutputDirectoryWatcherTest {
+    
+    @BeforeClass
+    static void before() {
+        Config.userConfig = new ConfigObject()
+    }
     
     @Test
     void testOutputDirectoryWatcher() {
@@ -13,7 +20,7 @@ class OutputDirectoryWatcherTest {
         Path dir = testDir.toPath()
         dir.toFile().mkdirs()
         
-        OutputDirectoryWatcher odw = new OutputDirectoryWatcher(dir)
+        OutputDirectoryWatcher odw = new OutputDirectoryWatcher(testDir.path, dir)
         odw.start()
         
         long startMs = System.currentTimeMillis()
