@@ -198,6 +198,25 @@ Note that it is also required to specify the shell as `/bin/sh` as the container
 `bash`.
 
 
+## Docker Options
+
+You may run into permissions errors when the default user inside the container you are running
+has conflicting permissions to that of the user outside.
+
+You can cause Bpipe to set the current user's uid as the user inside the container by adding
+the `inherit_user` setting to the container config:
+
+```groovy
+    delly {
+        type='docker'
+        image='dellytools/delly'
+        inherit_user=true
+       }
+   }
+```
+
+
+
 ## Custom Singularity Options
 
 You may specify arbitrary options to singularity (not docker) container commands by setting the

@@ -351,16 +351,41 @@ samples = ['a','b','c']
 
 sample_channel = channel(samples).named('sample')
 
-sample_channel * [ 
-   analyse_raw data
-] + create_report  + sample_channel * [
-   produce_final_results
-]
+run {
+    sample_channel * [ 
+       analyse_raw data
+    ] + create_report  + sample_channel * [
+       produce_final_results
+    ]
+}
 ```
 
 Here the a, b, and c samples get processed in parallel in two separate phases. The use of the channel mechanism
 means that files resolved in `produce_final_results` will be those output for the correct sample in `analyse_raw_data`
 
+
+Just like when you parallelise using a list within a pipeline, you can also substitute the source
+for a Map, in which case Bpipe will create channels that treat the keys as branch names, and
+the values as files to be fed into each branch. This creates a very natural mechanism to split your
+data by sample or another grouping and then maintain a isolated data processing for each one.
+
+An example of using a channel with a Map as input is like so:
+
+```
+samples = ['a','b','c'].collectEntries { sample_id ->
+   [ sample_id, args.grep { it.startsWith(sample_id) } ]
+}
+
+sample_channel = channel(samples).named('sample')
+
+run {
+    sample_channel * [ 
+       analyse_raw data
+    ] + create_report  + sample_channel * [
+       produce_final_results
+    ]
+}
+```
 
 ## Allocating Threads to Commands
 
