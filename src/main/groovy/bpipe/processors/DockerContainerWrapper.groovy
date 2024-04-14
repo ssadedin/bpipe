@@ -83,9 +83,15 @@ class DockerContainerWrapper implements CommandProcessor {
 			 entryPointArg = entryPoint ? ["--entrypoint", entryPoint] : ["--entrypoint", "/usr/bin/env"]
 		}
         
-        List<String> platformArg = []
+        List<String> additionalArgs = []
         if(config.containsKey('platform')) {
-            platformArg = ["--platform", config.platform]
+            additionalArgs.addAll(["--platform", config.platform])
+        }
+        
+        if(config.containsKey('inherit_user') && config.inherit_user == true) {
+            Map userInfo = Utils.getUserInfo()
+            log.info("Using uid: $userInfo for docker command")
+            additionalArgs.addAll(["--user", "$userInfo.uid"])
         }
 
         command.shell = 
@@ -93,7 +99,7 @@ class DockerContainerWrapper implements CommandProcessor {
                 "docker",
                 "run",
                 "-i",
-                *platformArg,
+                *additionalArgs,
                 *dockerRunOptions,
                 *entryPointArg,
                 "-w", Runner.runDirectory, 
@@ -102,5 +108,7 @@ class DockerContainerWrapper implements CommandProcessor {
                 config.image,
                 *dockerCommand
             ]  
+            
+       log.info "Configured docker shell command as: " + (command.shell.join(' '))
     }
 }

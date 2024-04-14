@@ -69,6 +69,25 @@ class Utils {
     
     public static final long ONE_MINUTE_MS = 60000L
     
+    private static Map<String, String> userInfo = null
+    
+    
+    /**
+     * Return the current uid and guid in a Map
+     */
+    static Map<String,String> getUserInfo() {
+        
+        if(userInfo == null) {
+            log.info "Querying user uid and gid using command"
+            userInfo = [
+                uid: "id -u".execute().text.trim(),
+                gid: "id -g".execute().text.trim()
+            ]
+        }
+
+        return userInfo
+    }
+    
     /**
      * Convert a list of heterogenous objects to Path objects
      * 
