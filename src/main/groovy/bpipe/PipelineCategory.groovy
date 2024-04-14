@@ -1195,6 +1195,7 @@ class PipelineCategory {
      * @param value
      * @return
      */
+    @CompileStatic
     static String getPrefix(String value) {
         return value.replaceAll(LAST_FILE_EXTENSION, '')    
     }
