@@ -19,7 +19,7 @@ class PipelineChannel implements Serializable {
     
     String name
     
-    List<String> files
+    List<Object> files
     
     PipelineChannel named(String value) {
         this.name = value
