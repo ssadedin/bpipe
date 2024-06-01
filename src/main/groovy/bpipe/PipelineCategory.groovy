@@ -354,7 +354,11 @@ class PipelineCategory {
     static Object multiply(PipelineChannel channel, List<Closure> segments) {
         if(channel.files) {
             Map<String,Object> fileMap = [channel.source, channel.files.collect { Utils.box(it) }].transpose().collectEntries()
-            channel.files.clear()
+
+            // Removed this due to it preventing channels selecting for original input files 
+            // if they are reused (they only work once). Need to watch out for 
+            // regression here as it is unclear why this logic was originally added
+            // channel.files.clear()
             multiply(fileMap, segments, channel)
         }
         else {
