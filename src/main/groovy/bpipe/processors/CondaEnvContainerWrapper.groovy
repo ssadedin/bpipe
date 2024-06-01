@@ -28,10 +28,12 @@ class CondaEnvContainerWrapper implements CommandProcessor {
         
         String conda = Utils.resolveExe("conda", "conda")
         
+//            $conda info --envs
+        
+        
         String prefix = 
         """
 
-            $conda info --envs
 
             export SHELL="$shell"; eval "\$('$conda' 'shell.${shellType}' 'hook' 2> /dev/null)"; conda activate $condaEnv ;
         """.stripIndent()
