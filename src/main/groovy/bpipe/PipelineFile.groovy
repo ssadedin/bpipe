@@ -159,7 +159,8 @@ class PipelineFile implements Serializable {
             log.warning("Failed to list files of parent directory of " + this + " ($parent)"); 
         }
         finally {
-            stream.close()
+            if(stream)
+                stream.close()
         }
 
         if(this.exists()) {
