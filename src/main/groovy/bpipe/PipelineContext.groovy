@@ -2097,11 +2097,20 @@ class PipelineContext {
                 String msg = branch.name ? "Stage $stageName in branch $branch.name would execute:\n\n        $prettyCmd" : "Would execute $prettyCmd"
                 
                 configObject = Command.getConfig(config, stageName, cmd, this.@input)
-                String containerMsg
-                if(configObject?.containsKey('container')) {
-                    ConfigObject container = configObject['container']
-                    containerMsg = "Will execute in container: " + container
+
+                String condaInfo = ""
+                if(configObject && configObject['conda_env']) {
+                    condaInfo = " in conda environment ${configObject['conda_env']}"
                 }
+
+                String containerMsg = condaInfo
+                if(configObject?.containsKey('container') && configObject.container) {
+                    ConfigObject container = configObject['container']
+                    if(container)
+                        containerMsg = "Will execute in container: " + container + condaInfo
+                }
+                else
+                    containerMsg = "\nWill execute " + condaInfo
                 
                 println msg
                 
