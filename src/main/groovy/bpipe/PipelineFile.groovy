@@ -213,3 +213,13 @@ class PipelineFile implements Serializable {
 	}
 	
 }
+
+@CompileStatic
+class PipelineFilePathComparator implements Comparator {
+
+    @Override
+    public int compare(Object o1, Object o2) {
+        return ((PipelineFile)o1).path.compareTo(((PipelineFile)o2).path)
+    }
+    
+}

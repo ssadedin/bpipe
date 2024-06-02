@@ -83,6 +83,12 @@ class PipelineInput {
      */
     List<PipelineFile> resolvedInputs = []
     
+    /**
+     * Set containing the paths we have resolved, designed to minimise
+     * worst case scenario performance with many inputs
+     */
+    Set<String> resolvedInputPaths = new HashSet<String>()
+    
     List<PipelineStage> stages 
     
     /**
@@ -134,8 +140,10 @@ class PipelineInput {
            throw new InputMissingError("Expected ${defaultValueIndex+1} or more inputs but fewer provided")
             
         PipelineFile resolvedValue = boxed[defaultValueIndex]
-        if(!this.resolvedInputs.any { it.path == resolvedValue.path })
+        if(!resolvedInputPaths.contains(resolvedValue.path)) {
             this.resolvedInputs.add(resolvedValue)
+            this.resolvedInputPaths.add(resolvedValue.path)
+        }
             
         return resolvedValue
     }
@@ -160,11 +168,13 @@ class PipelineInput {
     @CompileStatic
     void addResolvedInputs(List<PipelineFile> objs) {
         
-        assert objs.every { it instanceof PipelineFile }
+        // assert objs.every { it instanceof PipelineFile }
         
         for(inp in objs) {
-            if(!this.resolvedInputs.any { it.path == inp.path })
+            if(!resolvedInputPaths.contains(inp.path)) {
                 this.resolvedInputs.add(inp)
+                this.resolvedInputPaths.add(inp.path)
+            }
         }
         
         if(parent)
@@ -442,7 +452,9 @@ class PipelineInput {
                   throw new PipelineError("Insufficient inputs: at least ${defaultValueIndex+1} inputs are expected with extension .${name} but only ${resolved.size()} are available")
             }
             parentError=null
-        		mapToCommandValue(resolved)
+           
+            // Note: this is where the actual results are stored into resolvedInputs
+            mapToCommandValue(resolved)
         }
         catch(InputMissingError e) {
             log.fine("No input resolved for property $name: returning child PipelineInput for possible double extension resolution")
@@ -450,10 +462,13 @@ class PipelineInput {
             ime = e
         }
         
-        PipelineInput childInp = new PipelineInput((List<PipelineFile>)resolved.collect{it} , stages, aliases)
+        List<PipelineFile> resolvedFiles = (List<PipelineFile>)resolved
+        
+        PipelineInput childInp = new PipelineInput(resolvedFiles.collect{it} , stages, aliases)
         childInp.parent = this
         childInp.utilisedMappings = this.utilisedMappings
-        childInp.resolvedInputs = (List<PipelineFile>)resolved.collect { it }
+        childInp.resolvedInputs = resolvedFiles.collect { it }
+        childInp.resolvedInputPaths = new HashSet(resolvedFiles*.path)
         childInp.currentFilter = this.currentFilter
         childInp.extensionPrefix = this.extensionPrefix ? this.extensionPrefix+"."+name : name
         childInp.defaultValueIndex = defaultValueIndex
