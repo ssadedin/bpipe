@@ -78,8 +78,10 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
     
     def propertyMissing(String name) {
         
-        if(this.resolvedInputs)
+        if(this.resolvedInputs) {
             this.resolvedInputs.clear()
+            this.resolvedInputPaths.clear()
+        }
             
         def result = super.propertyMissing(name)
         if(result) {
