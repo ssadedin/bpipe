@@ -26,10 +26,9 @@ class CondaEnvContainerWrapper implements CommandProcessor {
         // Crude but works for most shell setups
         String shellType = shell.tokenize("/")[-1]
         
-        String conda = Utils.resolveExe("conda", "conda")
+        String conda = Utils.resolveExe("conda", "conda", config)
         
 //            $conda info --envs
-        
         
         String prefix = 
         """

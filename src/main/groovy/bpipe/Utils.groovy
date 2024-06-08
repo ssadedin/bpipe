@@ -953,13 +953,14 @@ class Utils {
    /**
     * Check if an executable has been configured by the user and if so, return the full path to it
     */
-   public static String resolveExe(String name, String defaultExe) {
+   @CompileStatic
+   public static String resolveExe(String name, String defaultExe, Map<String,Object> config=Config.userConfig) {
        String resolvedExe = defaultExe
-       if(Config.userConfig.containsKey(name) && Config.userConfig[name].containsKey("executable")) {
-           resolvedExe = Config.userConfig[name].executable
+       if(config.containsKey(name) && ((Map)config[name]).containsKey("executable")) {
+           resolvedExe = ((Map)config[name]).executable
            File exeFile = new File(resolvedExe)
            if(!exeFile.exists()) {
-               Path scriptParentDir = new File(Config.config.script).absoluteFile.parentFile.toPath()
+               Path scriptParentDir = new File((String)Config.config.script).absoluteFile.parentFile.toPath()
                Path relativeToPipeline = scriptParentDir.resolve(exeFile.toPath())
                if(Files.exists(relativeToPipeline)) {
                    String pathRelativeToPipeline = relativeToPipeline.toFile().absolutePath
