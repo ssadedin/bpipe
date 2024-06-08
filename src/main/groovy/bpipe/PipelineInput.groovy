@@ -319,12 +319,13 @@ class PipelineInput {
     List<PipelineFile> resolveInputsEndingWithPatterns(def exts, def origs, failIfNotFound=true) {    
         
         def orig = exts
+        List extList = Utils.box(exts)
         synchronized(stages) {
 
             List<List<PipelineFile>> reverseOutputs = computeOutputStack()
 	        
             List<String> missingExts = []
-	        def filesWithExts = [Utils.box(exts),origs].transpose().collect { extsAndOrigs ->
+	        def filesWithExts = [extList,origs].transpose().collect { extsAndOrigs ->
                 
                 List<String> extOrigPair = (List<String>) extsAndOrigs
 

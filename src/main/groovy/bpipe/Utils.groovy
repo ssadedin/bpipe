@@ -744,16 +744,6 @@ class Utils {
         throw new IllegalStateException("Failed to create directory within $TEMP_DIR_ATTEMPTS")
       }
     
-    /**
-     * Return true if the specified token is a part of the given file name, separated by delimiters
-     * @param token
-     * @param name
-     * @return
-     */
-    static boolean isTokenInName(String token, String name) {
-        
-    }
-    
     static List collectText(Object n, Closure c) {
         collectText(n, [], c)
     }
