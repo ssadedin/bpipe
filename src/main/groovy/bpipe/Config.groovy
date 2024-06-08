@@ -147,7 +147,7 @@ class Config {
         if(rawValue instanceof List)
             return (List)rawValue
         else
-        if(rawValue instanceof String || rawValue instanceof GString)
+        if(rawValue instanceof CharSequence)
             return rawValue.toString().tokenize(',')*.trim()
         else
             throw new PipelineError("Configuration value ${name} is expected to be a string (text) value or a List object but was provided as type " + rawValue?.class?.name)

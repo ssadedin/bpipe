@@ -203,7 +203,7 @@ class Command implements Serializable {
             }
         }
         
-        if(cfg.containsKey('container') && (cfg.container instanceof String || cfg.container instanceof GString)) {
+        if(cfg.containsKey('container') && (cfg.container instanceof CharSequence)) {
             def container = Config.userConfig.containers[cfg.container.toString()]
             if(!container) 
                 throw new PipelineError("""

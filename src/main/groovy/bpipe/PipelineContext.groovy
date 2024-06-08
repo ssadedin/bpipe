@@ -2880,7 +2880,7 @@ class PipelineContext {
        
        def orig = exts
       
-       exts = Utils.box(exts).collect { (it instanceof PipelineOutput || it instanceof PipelineInput) ? it.toString() : it }
+       exts = Utils.box(exts).collect { (it instanceof PipelineOutput || it instanceof PipelineInput) ? ((Object)it).toString() : it }
 
        List resolvedInputs
        
