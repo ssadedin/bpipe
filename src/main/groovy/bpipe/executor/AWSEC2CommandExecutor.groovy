@@ -366,7 +366,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
 
         RunInstancesResult result       
 
-        List<String> retryErrorCodes = [ "InsufficientInstanceCapacity", "VcpuLimitExceeded" ]
+        List<String> retryErrorCodes = [ "InsufficientInstanceCapacity", "VcpuLimitExceeded", "RequestLimitExceeded" ]
         try {
             result = this.ec2.runInstances(runInstancesRequest)
         }
