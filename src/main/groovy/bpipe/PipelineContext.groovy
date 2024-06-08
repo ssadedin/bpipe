@@ -2109,8 +2109,10 @@ class PipelineContext {
                     if(container)
                         containerMsg = "Will execute in container: " + container + condaInfo
                 }
-                else
-                    containerMsg = "\nWill execute " + condaInfo
+                else {
+                    if(condaInfo)
+                        containerMsg = "\nWill execute " + condaInfo
+                }
                 
                 println msg
                 
