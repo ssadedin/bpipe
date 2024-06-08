@@ -94,6 +94,12 @@ class OutputLog implements Appendable {
 //    @CompileStatic
     void flush(CharSequence output) {
         
+        if(bpipe.Runner.devMode) {
+            while(PipelineContext.devRetryLock.isWriteLocked()) {
+                Thread.sleep(300)
+            }
+        }
+        
         if(output != null) {
             buffer(output)
         }
