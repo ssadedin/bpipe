@@ -423,7 +423,7 @@ class PipelineContext {
        
 	   this.@output = this.resolvePipelineFiles(outs)
            
-       log.info "Actual output set: " + this.@output
+       log.info("Setting raw outputs: " + Utils.logBig(this.@output, "outputs"))
    }
    
    /**
