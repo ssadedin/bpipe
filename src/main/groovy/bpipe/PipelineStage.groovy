@@ -502,6 +502,9 @@ class PipelineStage {
             // outputs need to be prioritised over inputs
             // (see PipelineCategory#mergeChildStagesToParent)
         }
+        else {
+            this.context.rawOutput*.sourceBranch = this.context.branch
+        }
 
         context.defaultOutput = null
         log.info "Setting next inputs $nextInputs on stage ${this.hashCode()}, context ${context.hashCode()} in thread ${Thread.currentThread().id}"
