@@ -1484,7 +1484,7 @@ class Utils {
     }
     
     @CompileStatic
-    public static logBig(List values, final String type) {
+    public static String logBig(List values, final String type) {
         if(values.size()<20)
             return type + ' ' + values.toString()
 
