@@ -85,7 +85,7 @@ abstract class StorageLayer implements Serializable {
         
         ConfigObject storageConfig = 
             (ConfigObject)bpipe.Config.userConfig['filesystems']
-                        .get(name, null)
+                        .getOrDefault(name, null)
         
         // We inherit the region value (but not others) from the main config
         if(('region' in bpipe.Config.userConfig) && !storageConfig.containsKey('region')) {
