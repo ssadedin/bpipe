@@ -145,6 +145,9 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
                 throw new PipelinePausedException()
             }
              
+            if(outputLog instanceof bpipe.OutputLog)
+                outputLog.flush()
+
             commandExecutor.start(cfg, this.command, outputLog, errorLog)
         }
         finally {

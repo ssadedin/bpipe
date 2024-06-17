@@ -155,7 +155,13 @@ class PipelineStage {
                         
         displayName = calculateDisplayName(pipeline)
                         
-        context.outputLog.flush("\n"+" Stage ${displayName} ".center((int)Config.config.columns,"="))
+
+        String stageMsg = "\n"+" Stage ${displayName} ".center((int)Config.config.columns,"=")
+        if(Config.userConfig['stages']?.getAt(stageName)?.getAt('quiet'))
+            context.outputLog.bufferLine(stageMsg)
+        else
+            context.outputLog.flush(stageMsg)
+
         CommandLog.cmdLog << "# Stage $displayName"
         ++stageCount
                     
