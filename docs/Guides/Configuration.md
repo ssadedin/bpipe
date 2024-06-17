@@ -144,15 +144,16 @@ The ability to use many different configuration files, and capability of utilisi
 classes (including Java libraries) creates some new problems when these files are used
 in complex configurations: 
 
-- how can you define values that used within the configuration files without
-  duplicating their definition in every file?
+- how can you define common values that are used across the configuration files without
+  duplicating their definition in each file?
 - how can you use your own libraries within the configuration files? For example,
   you may want to build  your configuration through API calls, parsing files in
-  custom formats or through database access
+  custom formats or through database access. Or you may wish to define a
+  configuration model using type safe classes.
   
-To help solve this issue, Bpipe provides a special configuration file option with unique
-behaviour: the "bootstrap" configuration, which is named `bpipe.bootstrap.config`. This
-file is unique in that:
+To help solve this type of "meta configuration" problem, Bpipe provides a special 
+configuration file option with unique behaviour: the "bootstrap" configuration, which
+is named `bpipe.bootstrap.config`. This file is unique in that:
 
 - it is loaded before any other configuration files
 - any `libs` defined in the bootstrap configuration are then available to the other
@@ -161,7 +162,8 @@ file is unique in that:
   are accessible directly as variables within the other configuration files
   
 Using this technique, you can make core common values or libraries that you want to be
-accessible across all other layers of configuration available.
+accessible across all other layers of configuration available - in some ways, you can think
+of it as "configuration configuration".
 
 Note that values from the bootstrap configuration are also merged to the final configuration
 used in the pipeline, taking precedence after the pipeline level configuration (that is,
