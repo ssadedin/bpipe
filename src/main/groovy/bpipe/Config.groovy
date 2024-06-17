@@ -286,7 +286,7 @@ class Config {
            }
        }
        
-       userConfig = finalConfig
+       userConfig = (Map<String,Object>)finalConfig
 
        if(userConfig.containsKey("noDiagram")) {
            def noDiagramStages = ((String)userConfig.noDiagram).split(",")
