@@ -1506,7 +1506,7 @@ public class Pipeline implements ResourceRequestor {
             println "MSG: Downloading chromosome sizes from $url"
             new GZIPInputStream(new URL(url).openStream()).withStream { stream ->
                 chromFile.withOutputStream { outStream ->
-                    Files.copy(stream,outStream)
+                    outStream << stream
                 }
             }
             Pipeline.genomes[name] = loadCachedGenome(cachedGenome, options.contig?true:false)
