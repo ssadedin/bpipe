@@ -153,7 +153,8 @@ in complex configurations:
   
 To help solve this type of "meta configuration" problem, Bpipe provides a special 
 configuration file option with unique behaviour: the "bootstrap" configuration, which
-is named `bpipe.bootstrap.config`. This file is unique in that:
+is named `bpipe.bootstrap.config`, and must be located in the same directory as your 
+main pipeline file. This file is unique in that:
 
 - it is loaded before any other configuration files
 - any `libs` defined in the bootstrap configuration are then available to the other
