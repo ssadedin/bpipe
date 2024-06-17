@@ -166,31 +166,40 @@ class Config {
      */
     public static void readUserConfig() {
         
-	
+    
         ConfigSlurper slurper = Config.config.environment == 'default' ? new ConfigSlurper() : new ConfigSlurper(Config.config.environment)
+
+        Map binding = Runner.binding.getVariables().collectEntries {it}
         
-        slurper.setBinding(Runner.binding.getVariables().collectEntries {it})
+        slurper.setBinding(binding)
         
-		File builtInConfigFile = new File(System.getProperty("bpipe.home") +"/bpipe.config")
-		
-		// Allows running in-situ in project source distro root dir to work
-		if(!builtInConfigFile.exists()) {
-			builtInConfigFile = new File(System.getProperty("bpipe.home") + "/src/main/config", "bpipe.config")
-		}
+        File builtInConfigFile = new File(System.getProperty("bpipe.home") +"/bpipe.config")
+        
+        // Allows running in-situ in project source distro root dir to work
+        if(!builtInConfigFile.exists()) {
+            builtInConfigFile = new File(System.getProperty("bpipe.home") + "/src/main/config", "bpipe.config")
+        }
         
         Map<String,File> configFiles = [builtInConfig: builtInConfigFile]
         
         // The default way to prompt user for information is to ask at the console
         // Configuration in user home directory
-		File homeConfigFile = new File(System.getProperty("user.home"), ".bpipeconfig")
-		if(homeConfigFile.exists()) {
+        File homeConfigFile = new File(System.getProperty("user.home"), ".bpipeconfig")
+        if(homeConfigFile.exists()) {
             configFiles.homeConfig = homeConfigFile
-		}
+        }
         
         File configFile = new File("bpipe.config")
         
         // Configuration in directory next to main pipeline script
         if(config.script) {
+            
+            File bootstrapConfigFile = new File(new File(config.script).absoluteFile.parentFile, "bpipe.bootstrap.config")
+            if(bootstrapConfigFile.exists()) {
+                log.info "Reading bootstrap configuration from ${bootstrapConfigFile.absolutePath}"
+                configFiles.bootstrapConfig = bootstrapConfigFile
+            }
+
             File pipelineConfigFile = new File(new File(config.script).absoluteFile.parentFile, "bpipe.config")
             if(pipelineConfigFile.exists() && (pipelineConfigFile.absolutePath != configFile.absolutePath)) {
                 log.info "Reading Bpipe configuration from ${pipelineConfigFile.absolutePath}"
@@ -216,6 +225,18 @@ class Config {
             log.info "No local configuration file found"
         }
         
+        if(configFiles.bootstrapConfig) {
+            ConfigObject cfg = slurper.parse(configFiles.bootstrapConfig.text)
+            if(cfg.containsKey('libs')) {
+                cfg.libs.each {  lib ->
+                    log.info "Adding $lib to Bpipe boostrap classpath"
+                    slurper.classLoader.addURL(new File(lib).toURL())
+                }
+            }
+            
+            binding.putAll(cfg.parameters)
+        }
+        
         Map<String,ConfigObject> configs
         GParsPool.withPool(configFiles.size()) {
             configs = configFiles.grep { it.value.exists() }.collectParallel { e ->
@@ -226,23 +247,30 @@ class Config {
                 }
             }.collectEntries()
         }
-		
-        userConfig = configs.builtInConfig ?: new ConfigObject()
-		if(configs.homeConfig) {
-			log.info "Merging home config file"
-			userConfig.merge(configs.homeConfig)
-		}
         
-        if(configs.pipelineConfig) {
-            log.info "Merging pipeline config file"
-			userConfig.merge(configs.pipelineConfig)
+        userConfig = configs.builtInConfig ?: new ConfigObject()
+        
+       
+        if(configs.homeConfig) {
+            log.info "Merging home config file"
+            userConfig.merge(configs.homeConfig)
         }
         
-		if(configs.localConfig) {
-			log.info "Merging local config file"
-			userConfig.merge(configs.localConfig)
-		}
-		
+        if(configs.bootstrapConfig) {
+            log.info "Merging bootstrap config file"
+            userConfig.merge(configs.bootstrapConfig)
+        }
+
+        if(configs.pipelineConfig) {
+            log.info "Merging pipeline config file"
+            userConfig.merge(configs.pipelineConfig)
+        }
+       
+        if(configs.localConfig) {
+            log.info "Merging local config file"
+            userConfig.merge(configs.localConfig)
+        }
+        
         if(!userConfig.executor) {
             userConfig.executor = "local"
         }
