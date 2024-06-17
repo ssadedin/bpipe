@@ -14,10 +14,10 @@ import groovyx.gpars.GParsPool;
 @Log
 class Config {
     
-	/**
-	 * Lower level configuration values.  These are not directly user 
-	 * exposed.
-	 */
+    /**
+     * Lower level configuration values.  These are not directly user 
+     * exposed.
+     */
     public static Map<String,Object> config = [
         
         // Environment to select, when multiple are availabe in a bpipe.config file
@@ -36,8 +36,8 @@ class Config {
         // (eg: per sample, etc.)
         defaultOutputDirectory : ".",
 
-	    // Default name of doc pipeline html file
-		defaultDocHtml: "index.html",
+        // Default name of doc pipeline html file
+        defaultDocHtml: "index.html",
 
         // The maximum number of threads that Bpipe will launch 
         // when running jobs
@@ -51,23 +51,23 @@ class Config {
         // This feature is still experimental, so off by 
         // default for now
         enableCommandTracking : false, 
-		
-		// For many commands we don't want the log files to persist
-		// eg: the output of the help info
-		// This flag is read on shutdown and if true, a 
-		// marker file is written that causes the log files to be 
-		// ignored / cleaned up 
-		eraseLogsOnExit : true, 
-		
-		// If set to true an HTML report of the run is generated
-		report: false, 
-		
-		// The PID of the Bpipe Java process (set immediately after startup)
-		pid: null,
-		
-		// The path to the file that is capturing the output for this 
-		// Bpipe run 
-		outputLogPath: null,
+        
+        // For many commands we don't want the log files to persist
+        // eg: the output of the help info
+        // This flag is read on shutdown and if true, a 
+        // marker file is written that causes the log files to be 
+        // ignored / cleaned up 
+        eraseLogsOnExit : true, 
+        
+        // If set to true an HTML report of the run is generated
+        report: false, 
+        
+        // The PID of the Bpipe Java process (set immediately after startup)
+        pid: null,
+        
+        // The path to the file that is capturing the output for this 
+        // Bpipe run 
+        outputLogPath: null,
         
         // Stages where the pipeline should break at (set with -u on command line)
         breakAt: [],
@@ -77,10 +77,10 @@ class Config {
         
         // Whether a break has been triggered
         breakTriggered : false,
-		
-		// Branches to run: if empty all branches are run, can be set on command line to limit
-		// to a particular branches 
-		branchFilter: []
+        
+        // Branches to run: if empty all branches are run, can be set on command line to limit
+        // to a particular branches 
+        branchFilter: []
     ]
     
     /**
