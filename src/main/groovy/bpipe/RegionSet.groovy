@@ -443,4 +443,14 @@ class RegionSet implements Serializable {
     RegionValue getRegion() {
         new RegionValue(this.sequences.values())
     }
+    
+    @CompileStatic
+    boolean overlaps(final String chr, final int from, final int to) {
+        this.sequences.any { it.value.overlaps(chr, from, to) }
+    }
+    
+    @CompileStatic
+    boolean overlaps(final String chr) {
+        this.sequences.any { it.value.name == chr }
+    }
 }

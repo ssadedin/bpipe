@@ -32,6 +32,12 @@ class GenomicRange implements Serializable {
         new GenomicRange(r)
     } 
     
+    boolean overlaps(IntRange range) {
+        return range.containsWithinBounds(to) ||
+                range.containsWithinBounds(from) ||
+                range.to >= from && range.to <= to
+    }
+    
     int size() {
         return Math.abs(from - to)
     }

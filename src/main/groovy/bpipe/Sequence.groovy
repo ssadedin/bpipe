@@ -158,6 +158,14 @@ class Sequence implements Serializable {
     }
     
     @CompileStatic
+    boolean overlaps(String chr, int from, int to)  {
+        if(this.name != chr) {
+            return false
+        }
+        return this.range.overlaps(to..from)
+    }
+    
+    @CompileStatic
     int size() {
         return this.range.size()
     }
