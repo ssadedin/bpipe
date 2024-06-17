@@ -21,9 +21,9 @@ BPIPE_HOME=$( cd `dirname $0`/.. ; pwd)
 
 if [ ! -z "$EXTRA_GROOVY_CLASSPATH" ];
 then
-    CPFLAG="$EXTRA_GROOVY_CLASSPATH:$BPIPE_HOME/lib/bpipe.jar"
+    CPFLAG="$EXTRA_GROOVY_CLASSPATH:$BPIPE_HOME/lib/bpipe.jar:$BPIPE_HOME/lib/bpipe-all.jar:"
 else
-    CPFLAG="$BPIPE_HOME/lib/bpipe.jar:$BPIPE_HOME/build/libs/bpipe.jar"
+    CPFLAG="$BPIPE_HOME/lib/bpipe.jar:$BPIPE_HOME/build/libs/bpipe.jar:$BPIPE_HOME/lib/bpipe-all.jar"
 fi
 
 : ${JAVA:="java"}
