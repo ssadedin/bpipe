@@ -164,12 +164,15 @@ class Config {
      * (the last two above will often be the same, but when one pipeline for running many
      * different analyses it will be useful)
      */
+    @CompileStatic
     public static void readUserConfig() {
         
-    
-        ConfigSlurper slurper = Config.config.environment == 'default' ? new ConfigSlurper() : new ConfigSlurper(Config.config.environment)
+        ConfigSlurper slurper = Config.config.environment == 'default' ? new ConfigSlurper() : new ConfigSlurper((String)Config.config.environment)
 
         Map binding = Runner.binding.getVariables().collectEntries {it}
+        
+        // Make the primary pipeline script location available to the config files
+        binding.put('scriptPath', config.script)
         
         slurper.setBinding(binding)
         
@@ -194,13 +197,13 @@ class Config {
         // Configuration in directory next to main pipeline script
         if(config.script) {
             
-            File bootstrapConfigFile = new File(new File(config.script).absoluteFile.parentFile, "bpipe.bootstrap.config")
+            File bootstrapConfigFile = new File(new File((String)config.script).absoluteFile.parentFile, "bpipe.bootstrap.config")
             if(bootstrapConfigFile.exists()) {
                 log.info "Reading bootstrap configuration from ${bootstrapConfigFile.absolutePath}"
                 configFiles.bootstrapConfig = bootstrapConfigFile
             }
 
-            File pipelineConfigFile = new File(new File(config.script).absoluteFile.parentFile, "bpipe.config")
+            File pipelineConfigFile = new File(new File((String)config.script).absoluteFile.parentFile, "bpipe.config")
             if(pipelineConfigFile.exists() && (pipelineConfigFile.absolutePath != configFile.absolutePath)) {
                 log.info "Reading Bpipe configuration from ${pipelineConfigFile.absolutePath}"
                 configFiles.pipelineConfig = pipelineConfigFile
@@ -227,74 +230,83 @@ class Config {
         
         if(configFiles.bootstrapConfig) {
             ConfigObject cfg = slurper.parse(configFiles.bootstrapConfig.text)
+            binding.put('configPath', configFiles.bootstrapConfig.canonicalPath)
             if(cfg.containsKey('libs')) {
-                cfg.libs.each {  lib ->
+                listValue(cfg,'libs').each {  lib ->
                     log.info "Adding $lib to Bpipe boostrap classpath"
                     slurper.classLoader.addURL(new File(lib).toURL())
                 }
             }
             
-            binding.putAll(cfg.parameters)
+            if(cfg.containsKey('parameters'))
+                binding.putAll((Map)cfg.parameters)
         }
         
-        Map<String,ConfigObject> configs
-        GParsPool.withPool(configFiles.size()) {
-            configs = configFiles.grep { it.value.exists() }.collectParallel { e ->
-                def file = e.value
-                def name = e.key
-                Utils.time("Read config from $file") {
-                    [name, slurper.parse(file.toURI().toURL())]
-                }
-            }.collectEntries()
-        }
-        
-        userConfig = configs.builtInConfig ?: new ConfigObject()
+        Map<String,ConfigObject> configs = readParallelConfigs(slurper, configFiles)
+       
+        ConfigObject finalConfig = configs.builtInConfig ?: new ConfigObject()
         
        
         if(configs.homeConfig) {
             log.info "Merging home config file"
-            userConfig.merge(configs.homeConfig)
+            finalConfig.merge(configs.homeConfig)
         }
         
         if(configs.bootstrapConfig) {
             log.info "Merging bootstrap config file"
-            userConfig.merge(configs.bootstrapConfig)
+            finalConfig.merge(configs.bootstrapConfig)
         }
 
         if(configs.pipelineConfig) {
             log.info "Merging pipeline config file"
-            userConfig.merge(configs.pipelineConfig)
+            finalConfig.merge(configs.pipelineConfig)
         }
        
         if(configs.localConfig) {
             log.info "Merging local config file"
-            userConfig.merge(configs.localConfig)
+            finalConfig.merge(configs.localConfig)
         }
         
-        if(!userConfig.executor) {
-            userConfig.executor = "local"
+        if(!finalConfig.executor) {
+            finalConfig.executor = "local"
         }
         else
-            log.info "Default executor is $userConfig.executor"
+            log.info "Default executor is $finalConfig.executor"
             
             
        // Allow user to over ride any value in config with local config 
-       userConfig.flatten().each { k,v ->
+       finalConfig.flatten().each { k,v ->
            
            if(k == "mode") 
                return
            
            if(config.containsKey(k)) {
                log.info "Overriding default config value ${config[k]} with user defined value ${v}"
-               config[k] = v
+               config[(String)k] = v
            }
        }
        
+       userConfig = finalConfig
+
        if(userConfig.containsKey("noDiagram")) {
-           def noDiagramStages = userConfig.noDiagram.split(",")
+           def noDiagramStages = ((String)userConfig.noDiagram).split(",")
            log.info "The following stages are configured to be ignored in diagrams: $noDiagramStages"
            Config.noDiagram.addAll(noDiagramStages)
        }
+    }
+    
+    private static Map<String,ConfigObject> readParallelConfigs(final ConfigSlurper slurper, Map configFiles) {
+        return GParsPool.withPool(configFiles.size()) {
+            return configFiles.grep { ((Map.Entry<String,File>)it).value.exists() }
+                              .collectParallel { Map.Entry<String,File> e ->
+                                    File file = e.value
+                                    def name = e.key
+                                    Utils.time("Read config from $file") {
+                                        [name, slurper.parse(file.toURI().toURL())]
+                                    }
+                              }
+                              .collectEntries()
+        }
     }
     
     public static void lockUserConfig() {
