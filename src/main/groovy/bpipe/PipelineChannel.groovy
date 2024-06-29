@@ -1,6 +1,7 @@
 package bpipe
 
 import groovy.transform.ToString
+import java.nio.file.Path
 
 /**
  * A channel is a type of branch which filters prioritises inputs
@@ -27,7 +28,18 @@ class PipelineChannel implements Serializable {
     }
     
     public static channel(Map<String,Object> source) {
-        new PipelineChannel(source:source*.key, files: source*.value)
+        
+        // Need to ensure that source files are serialisable, so 
+        // convert to strings
+        List<String> sourceFiles = source*.value.collect { def fileLike ->
+            if(fileLike instanceof Path)
+                fileLike = fileLike.toFile()
+            if(fileLike instanceof File)
+                fileLike = fileLike.canonicalPath
+            return fileLike.toString()
+        }
+        
+        new PipelineChannel(source:source*.key, files: sourceFiles)
     }
 
     public static channel(String... source) {
