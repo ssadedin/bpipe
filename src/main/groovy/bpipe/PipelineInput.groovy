@@ -401,8 +401,7 @@ class PipelineInput {
             
             log.info "Resolving inputs matching pattern $regex"
             for(s in reverseOutputs) {
-                if(log.isLoggable(Level.INFO))
-	                log.info("Checking outputs ${s}")
+	                log.info("Checking " + Utils.logBig(s, 'outputs'))
                         
                 List<PipelineFile> o = checkMatch(s, wholeMatch)
                 if(!o.isEmpty())
