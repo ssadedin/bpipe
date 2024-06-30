@@ -31,12 +31,14 @@ class PipelineChannel implements Serializable {
         
         // Need to ensure that source files are serialisable, so 
         // convert to strings
-        List<String> sourceFiles = source*.value.collect { def fileLike ->
-            if(fileLike instanceof Path)
-                fileLike = fileLike.toFile()
-            if(fileLike instanceof File)
-                fileLike = fileLike.canonicalPath
-            return fileLike.toString()
+        List<List<String>> sourceFiles = source*.value.collect { def fileLikes ->
+            return Utils.box(fileLikes).collect { fileLike ->
+                if(fileLike instanceof Path)
+                    fileLike = fileLike.toFile()
+                if(fileLike instanceof File)
+                    fileLike = fileLike.path
+                return fileLike.toString()
+            }
         }
         
         new PipelineChannel(source:source*.key, files: sourceFiles)
