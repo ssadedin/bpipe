@@ -143,6 +143,8 @@ class Runner {
     
     public static boolean cleanupRequired = false
     
+    public static long runDelayMs = 0L
+    
     /**
      * Lock used to ensure only one instance of bpipe runs in a directory at a time 
      **/
@@ -513,6 +515,11 @@ class Runner {
             println "\n" + " ( ${ansi().fgGreen()}Running in Dev mode for Stage ${ansi().fgBlue()}${opts['dev']}${ansi().fgDefault()} ) ".center((int)Config.config.columns, "=") + "\n"
             Config.config.devAt = ((String)opts['dev']).split(",")
         }
+        
+        
+        if(opts['delay']) {
+             runDelayMs = Integer.parseInt((String)opts['delay']) * 1000L
+        }
 
         initThreads*.join(20000)
         
@@ -586,6 +593,7 @@ class Runner {
         cli.with {
             h longOpt:'help', 'usage information'
             d longOpt:'dir', 'output directory', args:1
+            delay 'Delay in seconds before starting pipeline', longOpt: 'delay', args:1
             a longOpt: 'autoarchive', 'clean up all internal files after run into given archive', args:1
             t longOpt:'test', 'test mode'
             f longOpt: 'filename', 'output file name of report', args:1

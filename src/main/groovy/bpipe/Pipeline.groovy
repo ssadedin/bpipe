@@ -857,6 +857,11 @@ public class Pipeline implements ResourceRequestor {
                 Runner.binding.readOnly = true
             }
             
+            if(Runner.runDelayMs > 0L) {
+                println "\nMSG: Waiting ${Runner.runDelayMs}ms before starting ...\n"
+                Thread.sleep(Runner.runDelayMs)
+            }
+            
             runSegment(resolvedInputFiles, constructedPipeline)
                     
             if(failed) {
