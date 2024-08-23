@@ -4,7 +4,7 @@ run test1.txt  test1.csv test2.txt
 
 exists test1.hello.xml
 
-[ `cat test1.hello.xml | groovy -e 'print(System.in.readLines()[0..1] == ["2","3"])'` == true ] || err "Contents of output file test1.hello.xml didn't match expected"
+([ `head -n 1 test1.hello.xml` == "2" ] && [ `tail -n 1 test1.hello.xml` == "3" ] && [ `wc -l test1.hello.xml | awk '{print $1}'` ==  2 ]) || err "Contents of output file test1.hello.xml didn't match expected"
 
 true
 
