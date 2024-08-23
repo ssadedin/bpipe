@@ -62,6 +62,11 @@ class AgentRunner {
                 agent.concurrency = new Semaphore(concurrency.toInteger())
             }
             agent.singleShot = agentConfig.getOrDefault('singleshot', opts.s)
+            
+            if(agentConfig.containsKey('bpipeHome')) {
+                agent.bpipeHome = agentConfig.bpipeHome
+                log.info("Using custom Bpipe home $agent.bpipeHome for agent $agent.name")
+            }
                 
             if(opts.t) {
                 log.info "Scheduling timeout in $opts.t ms"

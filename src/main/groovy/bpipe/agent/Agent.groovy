@@ -59,8 +59,8 @@ abstract class Agent extends TimerTask {
      * for that command type. These are either objects extending BpipeCommand or Closures 
      * that are executed directly.
      */
-    public static Map COMMANDS = [
-        "retry" : { dir, args, writer -> bpipe(dir, ['retry'], writer)},
+    public Map COMMANDS = [
+        "retry" : { dir, args, writer -> bpipe(bpipeHome, dir, ['retry'], writer)},
         "stop" : Stop,
         "log" : LogCommand,
         "run" : RunPipelineCommand,
@@ -95,6 +95,8 @@ abstract class Agent extends TimerTask {
     boolean singleShot = false
     
     Semaphore concurrency = null
+    
+    String bpipeHome = bpipe.Runner.BPIPE_HOME 
     
     int executed = 0
     
@@ -155,7 +157,13 @@ abstract class Agent extends TimerTask {
         try {
             ++this.executed
             BpipeCommand command = createCommandFromAttributes(commandAttributes)
-            command.dir = commandAttributes.directory ?: ((PipelineInfo)pipelines[((Map)(commandAttributes.run)).id]).path
+            command.bpipeHome = this.bpipeHome
+            
+            command.dir = commandAttributes.directory
+            if(!command.dir) {
+                command.dir = ((PipelineInfo)pipelines[((Map)(commandAttributes.run))?.id])?.path
+            }
+
             validateCommand(command)
             AgentCommandRunner runner = new AgentCommandRunner(createConnection(), (Long)commandAttributes.id, command, outputMode, onRun)
             runner.concurrency = this.concurrency
@@ -241,7 +249,7 @@ abstract class Agent extends TimerTask {
         return command
     }
     
-    static void bpipe(String dir, List bpipeArgs, Writer out) {
+    static void bpipe(String home, String dir, List bpipeArgs, Writer out) {
         if(dir == null) 
             throw new IllegalArgumentException("Directory parameter not set. Directory for command to run in must be specified")
         
@@ -250,7 +258,7 @@ abstract class Agent extends TimerTask {
             throw new IllegalArgumentException("Directory supplied $dir is not in an existing path. The directory parent must already exist.")
         
         log.info "Args are: " + bpipeArgs
-        List<String> cmd = [ bpipe.Runner.BPIPE_HOME + "/bin/bpipe" ] 
+        List<String> cmd = [ home + "/bin/bpipe" ] 
         cmd.addAll(bpipeArgs)
         log.info "Running command : " + cmd;
         ExecutedProcess result = Utils.executeCommand(cmd, out:out, err: out) {

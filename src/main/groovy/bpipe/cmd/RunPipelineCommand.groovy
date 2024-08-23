@@ -68,7 +68,7 @@ class RunPipelineCommand extends BpipeCommand {
         
         this.runDirectory = dirFile
         
-        List<String> cmd = [ bpipe.Runner.BPIPE_HOME + "/bin/bpipe", "run" ] 
+        List<String> cmd = [ bpipeHome + "/bin/bpipe", "run" ] 
         cmd.addAll(args)
         result = Utils.executeCommand(cmd, out:out, err: out) {
             directory(dirFile)

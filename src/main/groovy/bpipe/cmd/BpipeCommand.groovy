@@ -6,6 +6,7 @@ import bpipe.agent.PipelineInfo
 import groovy.transform.CompileStatic;
 import groovy.util.logging.Log;;
 
+@CompileStatic
 @Log
 abstract class BpipeCommand {
     
@@ -20,6 +21,8 @@ abstract class BpipeCommand {
     File COMMAND_TMP = new File(System.getProperty("user.home") + "/.bpipedb/commandtmp")
     
     String dir
+    
+    String bpipeHome = bpipe.Runner.BPIPE_HOME 
     
     BpipeCommand(String commandLine, List<String> args) {
         this.commandLine = commandLine
@@ -55,7 +58,7 @@ abstract class BpipeCommand {
         if(!COMMAND_TMP.exists())
             COMMAND_TMP.mkdirs()
         
-        String command = bpipe.Runner.BPIPE_HOME + "/bin/$exe $commandLine"
+        String command = this.bpipeHome + "/bin/$exe $commandLine"
         if(args) {
             command = "$command " + args.collect { "'" + it + "'" }.join(" ")
         }
