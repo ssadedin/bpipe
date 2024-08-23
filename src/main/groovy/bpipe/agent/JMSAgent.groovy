@@ -15,7 +15,7 @@ import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
-
+import java.util.logging.Logger
 import javax.jms.BytesMessage
 import javax.jms.Connection
 import javax.jms.Destination
@@ -28,7 +28,6 @@ import javax.jms.TextMessage
 import org.apache.activemq.ActiveMQConnectionFactory
 import org.apache.activemq.ActiveMQSession
 
-@Log
 @CompileStatic
 class JMSAgent extends Agent {
     
@@ -36,6 +35,16 @@ class JMSAgent extends Agent {
     
     final static File STOP_FILE = new File(".agent.stop")
     
+    /**
+     * Per agent instance logging - initialised in run method
+     */
+    Logger log 
+
+    /**
+     * Global logger for static methods
+     */
+    final static Logger logger = Logger.getLogger('JMSAgent')   
+
     Queue queue
     
     Session session
@@ -63,6 +72,8 @@ class JMSAgent extends Agent {
      */
     void run() {
         
+        this.log = Logger.getLogger('JMSAgent:' + name)
+
         log.info "Acknowledge mode is $acknowledgeMode"
         while(true) {
             try {
@@ -141,7 +152,7 @@ class JMSAgent extends Agent {
         else
             throw new Exception('Unexpected message type received: ' + message.class.name)
             
-        log.info "Received command: " + text
+        log.info "Received command: [" + text + "], JMSType=" + message.getJMSType() 
         
         if(text == "stop") {
             this.stopRequested = true
@@ -149,7 +160,7 @@ class JMSAgent extends Agent {
             return
         }
         
-        if(text == "ping") {
+        if(text.trim() == "ping") {
             this.respondToPing(message)
             acknowledgeRun(message)
             return
@@ -272,7 +283,7 @@ class JMSAgent extends Agent {
      * Load the checks from the file system and format into appropriate object for return in reply
      */
     static Map getCheckDetails(String dir) {
-        log.info "Loading checks from $dir "
+        logger.info "Loading checks from $dir "
         def checks = bpipe.Check.loadAll(new File(dir, '.bpipe/checks'))
         return [ 
             checks:  checks.collect { [name: it.name, stage: it.stage, branch: it.branch, message: it.message, passed: it.passed] }
@@ -330,11 +341,11 @@ class JMSAgent extends Agent {
             ]
         ]
         
-        log.info("Supp details are: " + suppDetails)
+        logger.info("Supp details are: " + suppDetails)
 
         def responseJSON = ((Map)replyConfig.response) + suppDetails
         
-        log.info("response JSON to send upstream: " + responseJSON)
+        logger.info("response JSON to send upstream: " + responseJSON)
 
         String formattedResponse = new JsonBuilder(responseJSON).toPrettyString()
 
@@ -342,7 +353,7 @@ class JMSAgent extends Agent {
         String sentFilePath = 'agent.' + replyConfig.replyQueue + '.' + Utils.sha1((String)("${replyConfig.brokerURL}:$replyConfig.replyQueue\n$formattedResponse"))
         File sentFile = new File(Sender.SENT_FOLDER, sentFilePath)
         if(sentFile.exists()) {
-            log.info "Not sending agent reply because sent file $sentFile.absolutePath already exists"
+            logger.info "Not sending agent reply because sent file $sentFile.absolutePath already exists"
             return
         }
         
@@ -357,7 +368,7 @@ class JMSAgent extends Agent {
         try {
             def session = connection.createSession(false,Session.AUTO_ACKNOWLEDGE)
             
-            log.info("Sending agent reply message to $replyConfig.replyQueue (sent file $sentFile.absolutePath does not exist)")
+            logger.info("Sending agent reply message to $replyConfig.replyQueue (sent file $sentFile.absolutePath does not exist)")
             def dest = session.createQueue((String)replyConfig.replyQueue)
        
             TextMessage response = session.createTextMessage(formattedResponse)
@@ -366,7 +377,7 @@ class JMSAgent extends Agent {
                 response.JMSCorrelationID = replyConfig.correlationID
             
             producer.send(response)
-            log.info "Sent response to $replyConfig.replyQueue"
+            logger.info "Sent response to $replyConfig.replyQueue"
             
             if(!Sender.SENT_FOLDER.exists())
                 Sender.SENT_FOLDER.mkdirs()

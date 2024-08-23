@@ -32,41 +32,76 @@ class AgentRunner {
        
         Config.readUserConfig()
         
-        bpipe.agent.Agent agent 
+        List<Agent> agents = []
+        
+        List<ConfigObject> agentConfigs = []
+
+        // Default agent, configured under "agent"
         if(Config.userConfig.containsKey('agent')) {
-            agent = new JMSAgent(Config.userConfig.agent)
-        }
-        else {
-            agent = new bpipe.agent.HttpAgent()
+            Config.userConfig.agent.name = 'default'
+            agentConfigs.add(Config.userConfig.agent)
         }
         
-        if(opts.n) {
-            log.info("Setting concurrency = " + opts.n)
-            agent.concurrency = new Semaphore(opts.n.toInteger())
+        for(Map.Entry e in Config.userConfig.agents) {
+            log.info("Adding agent $e.key")
+            e.value.name = e.key
+            agentConfigs.add(e.value)
         }
         
-        if(opts.s)
-            agent.singleShot = true
+        for(ConfigObject agentConfig : agentConfigs) {
+
+            log.info("Configuring agent $agentConfig.name")
+
+            bpipe.agent.Agent agent = new JMSAgent(agentConfig)
             
-        log.info "Timeout option = " + opts.t
-        if(opts.t) {
-            log.info "Scheduling timeout in $opts.t ms"
-            new Thread({
-                Thread.sleep(opts.t)
-                if(agent.executed == 0) {
-                    log.info "Timeout of $opts.t ms expired with no jobs executed: exiting"
-                    agent.stopRequested = true
-                }
-                else  {
-                    log.info "Timeout of $opts.t ms expired with ${agent.executed} jobs executed: not exiting"
-                }
-            }).start()
+            agent.name = agentConfig.name
+            
+            def concurrency = agentConfig.getOrDefault('concurrency', opts.n)
+            if(concurrency) {
+                log.info("Setting concurrency = " + concurrency)
+                agent.concurrency = new Semaphore(concurrency.toInteger())
+            }
+            agent.singleShot = agentConfig.getOrDefault('singleshot', opts.s)
+                
+            if(opts.t) {
+                log.info "Scheduling timeout in $opts.t ms"
+                new Thread({
+                    Thread.sleep(opts.t)
+                    if(agent.executed == 0) {
+                        log.info "Timeout of $opts.t ms expired with no jobs executed: exiting"
+                        agent.stopRequested = true
+                    }
+                    else  {
+                        log.info "Timeout of $opts.t ms expired with ${agent.executed} jobs executed: not exiting"
+                    }
+                }).start()
+            }
+            
+            agents.add(agent)
         }
 
-        agent.run()
+        // If no other agent was specified, use the default HTTP agent
+        if(!agents) {
+            log.info("No agents configured: running default http agent")
+            agents.add(new bpipe.agent.HttpAgent())
+        }
+
+        log.info "Launching ${agents.size()} agents"
         
+        List<Thread> threads = agents.collect { agent ->
+            new Thread(
+                    {
+                        agent.run()
+                    }
+                )
+        }
+        
+        threads*.start()
+        
+        log.info("Started ${threads.size()} agents")
+        
+        threads*.join()
     }
-    
     
 
     private static initializeLogging() {
