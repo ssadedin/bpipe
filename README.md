@@ -1,12 +1,10 @@
 Welcome to Bpipe  ![Tests](https://github.com/ssadedin/bpipe/actions/workflows/ci-build.yml/badge.svg)
 =================
-
-<style type='text/css'> .col-md-3 { display: none; } </style>
  
 Bpipe provides a platform for running data analytic workgflows that consist of a series of processing stages - known as 'pipelines'. Bpipe has special features to help with
 specific challenges in Bioinformatics and computational biology.
 
-* May 2023 - New! [Bpipe 0.9.12](https://github.com/ssadedin/bpipe/releases/tag/0.9.12) released!
+* August 2024 - New! [Bpipe 0.9.13](https://github.com/ssadedin/bpipe/releases/tag/0.9.13) released!
 * [Documentation](https://docs.bpipe.org)
 * [Mailing List](https://groups.google.com/forum/#!forum/bpipe-discuss) (Google Group)
 
