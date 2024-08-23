@@ -329,7 +329,30 @@ agents {
 ```
 
 
+## Specifying the Path to Bpipe
+
+By default, the agent runs commands using the same Bpipe installation that launched the agent. You 
+can change it to use a different one on a per-agent basis using the `bpipeHome` setting:
 
 
+```groovy
+agents {
+
+    main {
+        commandQueue='run_pipeline'
+        brokerURL='tcp://activemq.server.com:61616'
+        messageSelector = "JMSType = 'main'"
+    }
+
+    legacy {
+        commandQueue='run_pipeline'
+        brokerURL='tcp://activemq.server.com:61616'
+        messageSelector = "JMSType = 'legacy'"
+        bpipeHome = '/opt/bpipe/0.9.1'
+    }
+}
+```
+
+This example supports a "legacy" option that uses an old version of Bpipe when a header is set to "legacy".
 
 
