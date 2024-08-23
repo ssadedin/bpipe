@@ -111,7 +111,7 @@ that the agent is alive and processing messages.
 ## Using Response Messages
 
 If you are integrating Bpipe into a larger system, it is likely that you will want to know
-the status of the pipeline that run (did it succeed, fail, where is it up to, etc).
+the status of the pipeline that ran (did it succeed, fail, where is it up to, etc).
 
 To support these use cases, the Bpipe Agent will send messages to a "response queue". This can
 be set to a fixed value in the agent configuration:
@@ -267,4 +267,69 @@ agent {
     profile='default'
 }
 ```
+
+
+## Listening to Multiple Queues
+
+You may wish to have a single agent listen to more than one queue, and have these
+process jobs independently. You can achieve this by adding an `agents` block in the
+configuration and then adding each agent you wish to configure.
+
+Concurrency can be configured seperately for each agent using a `concurrency` setting.
+
+Here is an example of an Agent that is configured to listen to two queues, one which is treated as a priority
+and has a higher concurrency:
+
+```groovy
+agents {
+
+    main {
+        commandQueue='run_pipeline'
+        brokerURL='tcp://activemq.server.com:61616'
+        concurrency=2
+    }
+
+    priority {
+        commandQueue='priority_pipeline'
+        brokerURL='tcp://activemq.server.com:61616'
+        concurrency=4
+    }
+}
+```
+
+## Selectors
+
+You can perform content-based routing for your agent by using JMS "message selectors". This allows you to 
+select which messages to respond to using SQL-like syntax that is applied to headers, properties and other
+attributes of the message.
+
+This example shows how we can achieve a similar result to the last example but using only a single 
+queue to process messages at two different priority levels. The different priorities select on the standard
+`JMSType` header which can be set by the sender.
+
+```groovy
+agents {
+
+    def defaults = {
+        commandQueue='run_analysis'
+        brokerURL='tcp://activemq.server.com:61616'
+    }
+
+    main {
+        defaults()
+        messageSelector = "JMSType = 'normal'"
+    }
+
+    priority {
+        defaults()
+        concurrency=4
+        messageSelector = "JMSType = 'priority'"
+    }
+}
+```
+
+
+
+
+
 
