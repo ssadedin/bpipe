@@ -638,9 +638,6 @@ class PipelineStage {
 //                bpipe.Runner.devMode = false
                 log.info "After removing, dev stages are now: " + Config.config.devAt
                 Runner.devSkip << stageName 
-                
-                if(PipelineContext.devRetryLock.writeLock().isHeldByCurrentThread())
-                    PipelineContext.devRetryLock.writeLock().unlock()
             }
             else {
                 Runner.devModified[stageName]= modifiedPath
@@ -654,6 +651,9 @@ class PipelineStage {
                 log.info "Retrying due to dev retry"
             }
             
+            if(PipelineContext.devRetryLock.writeLock().isHeldByCurrentThread())
+                PipelineContext.devRetryLock.writeLock().unlock()
+
             pipeline.nameApplied = originalNameApplied
             context.@defaultOutput = originalDefaultOutput
             context.@output = originalOutput
