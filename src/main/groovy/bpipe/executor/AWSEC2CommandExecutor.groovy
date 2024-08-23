@@ -363,6 +363,13 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         if(config.containsKey('securityGroup')) {
             runInstancesRequest = runInstancesRequest.withSecurityGroups((String)config.securityGroup)
         }         
+        
+        if(config.containsKey('initScript')) {
+            final String script = config['initScript']
+            final String userData = script.bytes.encodeBase64()
+            runInstancesRequest = runInstancesRequest.withUserData(userData)
+            log.info "Configured init script for $command.name as userData"
+        }         
 
         RunInstancesResult result       
 
