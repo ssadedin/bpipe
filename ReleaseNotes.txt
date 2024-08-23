@@ -1,3 +1,74 @@
+
+=========== Changes for Bpipe Version 0.9.13 ============
+
+   - CHANGE: Supported version of Java is now JDK11 and version of
+     Groovy is 3.0.10
+
+   - FEATURE: Many improvements to agents including:
+       - a single Bpipe agent can now listen to
+         multiple queues
+       - support for JMS selectors so that different
+         commands can be handled with different settings
+
+   - FIX: bpipe.$LAUNCHER_PID.run.pid race condition 
+     serialised as part of the command branch which 
+
+   - FEATURE: support for a "bootstrap" config file
+     (bpipe.bootstrap.config) that is loaded first and
+     can perform meta-configuration (configuration
+     of downstream configuration files)
+
+   - FEATURE (experimental): quiet mode to cause stages to output 
+     messages only if they actually execute something 
+
+   - FEATURE: improved scalability to very large numbers of
+     input files and output directories
+
+   - FEATURE: allow AMQ connection config to come from file 
+
+   - FEATURE: Improvements to AWS support, including:
+         - retry AWS commands for api rate limit exceeded, and insufficient
+           capacity errors with customisable settings
+         - ability to provide initScript
+         - improved "transfer" mode that relies only on SSH to transfer files 
+           to the instance
+         - support for stopping rather than terminating instances, either to make
+           them reusable or to aid in troubleshooting
+         - improved support for running docker containers on AWS EC2 instances
+         - support for reading AWS credentials file and specifying profile
+           to provide credentials
+
+   - FEATURE: support for stage level configuration in bpipe.config
+     to configure commands
+
+   - FEATURE: support for specifying Anaconda environments to run
+     commands in, where Bpipe handles activating the environment so
+     that use of the environment is not hard coded in the pipeline
+
+   - FEATURE: Support setting of uid to current user in docker commands 
+
+   - FIX: "bpipe stop" killing non-bpipe processes when using containers on Mac 
+
+   - FEATURE: many improvements to "dev mode" where bpipe steps through
+     the pipeline interactively and shows highlighted commands
+
+   - FIX: various file handle leaks related to output directories 
+
+   - FEATURE: Add new execOptions for Singularity container config 
+
+   - FEATURE: Add bpipe pipeline id and command id to Name tag attached to EC2 instances 
+     because: useful for dev / test where maintaining ongoing
+
+   - FEATURE: add support to read .netrc file to obtain API authentication credentials
+
+   - FEATURE: Allow configuration of custom options to Docker command 
+
+   - FEATURE: support for hooks and durable replies  in JMS agent : even if 
+     Bpipe errors and is retried, the replyTo will be respected
+
+   - FEATURE: support to specify non default platform for container images 
+
+
 =========== Changes for Bpipe Version 0.9.12 ============
 
    - FEATURE: add display of cores into stats table 
