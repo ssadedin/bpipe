@@ -541,6 +541,7 @@ class Runner {
             
             DirtyFileManager.theInstance.initCleanupState()
   
+            Runner.LOCAL_JOB_DIR.mkdirs()
 
             log.info "Run ... "
             normalShutdown = false
