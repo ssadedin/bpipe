@@ -19,6 +19,7 @@ import com.amazon.sqs.javamessaging.SQSConnectionFactory
 import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.auth.AWSStaticCredentialsProvider
 import com.amazonaws.auth.BasicAWSCredentials
+import com.amazonaws.auth.BasicSessionCredentials
 import com.amazonaws.services.sqs.AmazonSQSClientBuilder
 
 @Log
@@ -62,6 +63,22 @@ class AWSSQSNotificationChannel extends JMSNotificationChannel {
             }
             else 
              throw new IllegalStateException("Profile $config.profile for SQS connection could not be found in your AWS credentials file")
+        }
+        else
+        if(System.getenv('AWS_SECRET_ACCESS_KEY')) {
+            
+            if(System.getenv('AWS_SESSION_TOKEN')) {
+                credentials = new BasicSessionCredentials(
+                    System.getenv('AWS_ACCESS_KEY_ID'), 
+                    System.getenv('AWS_SECRET_ACCESS_KEY'),
+                    System.getenv('AWS_SESSION_TOKEN'))
+
+                log.info("Using AWS SQS session credentials from environment")
+            }
+            else {
+                credentials = new BasicAWSCredentials(System.getenv('AWS_ACCESS_KEY_ID'),System.getenv('AWS_SECRET_ACCESS_KEY'));
+                log.info("Using AWS SQS fixed credentials from environment")
+            }
         }
         
         if(credentials == null) {
