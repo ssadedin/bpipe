@@ -4,6 +4,7 @@ import bpipe.*
 
 import groovy.util.logging.Log
 import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
 import groovy.text.Template
 
 import java.util.Map
@@ -53,7 +54,26 @@ class AWSSQSNotificationChannel extends JMSNotificationChannel {
         AWSCredentials credentials
         
         if(config.containsKey('accessKey')) {
-            credentials = new BasicAWSCredentials((String)config.accessKey, (String)config.accessSecret);
+            String accessKey = (String)config.accessKey
+            if(accessKey == 'auto') {
+                // Query from known URLs in EC2 environment
+                log.info("Querying role from canonical EC2 URL")
+                String roleName = new URL('http://169.254.169.254/latest/meta-data/iam/security-credentials/').text.trim()
+                
+                log.info("Using role $roleName for querying access credentials")
+                Map credentialsInfo = new JsonSlurper().parse(new URL("http://169.254.169.254/latest/meta-data/iam/security-credentials/$roleName"))
+                
+                credentials = new BasicSessionCredentials(
+                    credentialsInfo.AccessKeyId,
+                    credentialsInfo.SecretAccessKey,
+                    credentialsInfo.Token
+                )
+                
+                log.info("Retrieved access key $credentialsInfo.AccessKeyId for session $credentialsInfo.Token")
+            }
+            else {
+                credentials = new BasicAWSCredentials(accessKey, (String)config.accessSecret);
+            }
         }
         else 
         if(config.containsKey('profile')) {
