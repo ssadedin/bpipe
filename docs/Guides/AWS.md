@@ -21,14 +21,33 @@ user = 'centos' // unix username to ssh as
 region = 'ap-southeast-2' // region to create instances in
 instanceType = 't2.small' // type of instance to use
 
-storage='S3'
-
+// If using S3 buckets for data transfer
+storage='S3' 
 filesystems {
     S3 {
         bucket='<name of bucket to use as work directory>'
     }
 }
 ```
+
+## Storage Management
+
+Bpipe offers two options for provisioning access to input and output files to EC2
+instances. These are:
+
+- using S3 buckets. In this case, a bucket is mounted within your instance automatically
+  and is used by commands as if it is part of native storage. This option is
+  better if your whole pipeline consisting of multiple stages is hosted in AWS.
+- SSH (scp) transfer. In this case, Bpipe uses `scp` to transfer files to the instance
+  and back again. This option works well for hybrid pipelines when only specific steps use
+  remote EC2 instances.
+
+To use the transfer option, set `transfer=true` in your configuration. In that scenario, you do
+not need to configure an S3 bucket.
+
+To use the S3 bucket option, set up the S3 bucket as a file system as shown in the example
+above. This file system must be configured as the file system for all the commands that
+need to run in EC2 instances.
 
 ### Security Groups
 
@@ -55,7 +74,9 @@ convention avoids you having to specify both the name of the key pair and its pa
 ## Preparing an image
 
 As shown in the example above, one thing you must provide is an image id. This image
-should contain all the software that you need to run the tools in your pipeline. In addition,
+should contain all the software that you need to run the tools in your pipeline.
+
+If you wish to utilise S3 storage to transfer and host analysis files,
 you should also add the s3fs-fuse. This will allow Bpipe to mount buckets for you onto your 
 instances, so that your pipelines can transparent read and write files from S3 buckets instead of 
 having to copy them to and from the instance. Follow the instructions from the sf3fs-fuse 
