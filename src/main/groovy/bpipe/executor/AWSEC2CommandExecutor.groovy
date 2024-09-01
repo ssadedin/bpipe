@@ -364,6 +364,9 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             runInstancesRequest = runInstancesRequest.withSecurityGroups((String)config.securityGroup)
         }         
         
+        if(config.containsKey('instanceProfile'))
+            runInstancesRequest.setIamInstanceProfile(new IamInstanceProfileSpecification().withName((String)config.instanceProfile))
+        
         if(config.containsKey('initScript')) {
             final String script = config['initScript']
             final String userData = script.bytes.encodeBase64()

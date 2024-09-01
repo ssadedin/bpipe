@@ -63,6 +63,7 @@ group with inbound rules:
 
 You can then specify this security group in your `bpipe.config` file for all cloud access.
 
+
 ### Key Pairs
 
 It is expected that you have already created and downloaded a key pair to allow
@@ -70,6 +71,13 @@ SSH access. Bpipe follows a convention that the name of the key pair is expected
 the file name it is stored in, absent the `.pem` extension. For example, if you call the 
 file `my_secret_key.pem` then Bpipe expects the key is called in AWS `my_secret_key`. This
 convention avoids you having to specify both the name of the key pair and its path.
+
+### Instance Profile / Role
+
+EC2 instances are commonly authorised to access other Amazon services by assigning an IAM role
+on creation. This is performed through a corresponding instance profile. If you would like to
+assign an IAM role to EC2 instances created by Bpipe, set the `instanceProfile` attribute to the
+name of the role (and profile) you would like Bpipe to use.
 
 ## Preparing an image
 
