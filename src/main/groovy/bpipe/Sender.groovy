@@ -64,6 +64,11 @@ class Sender {
      */
     def content
     
+    /**
+     * Some sender contexts may specify a template explicitly
+     */
+    String template
+    
     String defaultSubject
     
     Map details = [:]
@@ -113,6 +118,8 @@ class Sender {
     
     Sender issue(Map details) {
         this.content = details
+        if(details?.template)
+            this.template = details.template
         this.contentType = "application/json"
         this.defaultSubject = details.title
         return this
@@ -283,6 +290,14 @@ class Sender {
             "send.file" : this.details.file,
             "send.branch" : ctx.branch.name 
         ]
+        
+        if(this.template) {
+            log.info "Template $template found in notification details"
+            props["template"] = this.template
+        }
+        else {
+            log.info "No template in details"
+        }
         
         if('url' in details) {
             props["send.url"] = details.url

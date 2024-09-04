@@ -111,6 +111,23 @@ as an attachment. For example:
     ) to channel: 'gitlab', file: input.png
 ```
 
+## Description Templates
+
+You can use a template file for the description if you wish. To do this:
+
+- ensure any variables needed in the template are included in the `issue(...)` section as attributes
+- add a `template : "<path to your template file>"` attribute also.
+- do not include the description attribute
+
+For example:
+
+```
+    send issue(                                                                         
+        title: 'Results of Experiment',
+        template: 'templates/experiment_results.md'
+    ) to channel: 'gitlab', file: input.png
+```
+
 ## Gitlab Actions
 
 You can cause various actions to occur such as adding and removing labels, assigning issues

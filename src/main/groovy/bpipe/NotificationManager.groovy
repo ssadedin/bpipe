@@ -229,6 +229,9 @@ class NotificationManager {
                 templateName = cfg.template
             }
         }
+        else {
+            log.info "Using template $templateName for notification $evt"
+        }
         
         // Is it customized for this event?
         if(cfg.containsKey("templates")) {
