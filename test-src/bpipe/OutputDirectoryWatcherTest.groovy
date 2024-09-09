@@ -56,6 +56,6 @@ class OutputDirectoryWatcherTest {
         assert "foo.txt" in odw.modifiedSince(updateMs)
         assert "bar.txt" in odw.modifiedSince(updateMs)
         
-        odw.stop = true
+        odw.stopRunning = true
     }
 }

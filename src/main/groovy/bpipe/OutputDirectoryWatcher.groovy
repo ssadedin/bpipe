@@ -56,7 +56,7 @@ class OutputDirectoryWatcher extends Thread {
     
     WatchKey watchKey
     
-    WatchService watcher 
+    static WatchService watcher 
     
     TreeMap<Long,List<String>> timestamps = new TreeMap()
     
@@ -66,7 +66,10 @@ class OutputDirectoryWatcher extends Thread {
     
     List<List> fileCreationListeners = []
     
-    boolean stop = false
+    /**
+     * Global mapping from watch key to watcher so as to route watch events to the right instance
+     */
+    static Map<WatchKey, OutputDirectoryWatcher> keyToWatcher = Collections.synchronizedMap([:])
     
     long initTimeMs = -1L
     
@@ -92,7 +95,8 @@ class OutputDirectoryWatcher extends Thread {
         }
             
         if(!Config.userConfig.getOrDefault('usePollerFileWatcher', false)) {
-            this.watcher = FileSystems.getDefault().newWatchService();
+            if(watcher == null)
+                this.watcher = FileSystems.getDefault().newWatchService();
         }
     }
     
@@ -105,6 +109,11 @@ class OutputDirectoryWatcher extends Thread {
         }
         else {
             log.info "Watching directories using native watcher"
+
+            this.setupWatcher()
+           
+            this.initialize()
+      
             runUsingNativeWatcher()
         }
     }
@@ -187,53 +196,53 @@ class OutputDirectoryWatcher extends Thread {
         }
     }
     
+    static boolean stopRunning = false
+    static boolean running = false
+    
     @CompileStatic
-    void runUsingNativeWatcher() {
+    static void runUsingNativeWatcher() {
         
-        this.setupWatcher()
-            
-        this.initialize()
-        
+        if(running)
+            return
+       
         for(;;) {
-            
-            log.fine "Polling directory $directory"
             
             WatchKey key = watcher.poll(2000, TimeUnit.MILLISECONDS)
             
-            if(stop) {
-                log.info "Stopping polling of directory $directory"
+            if(stopRunning) {
+                log.info "Stopping inotify based directory polling"
                 return
             }
             
             if(key == null)
                 continue
-            
-            assert key == this.watchKey
+                
+            OutputDirectoryWatcher instance = keyToWatcher[key]
             
             for(WatchEvent<Path> e in key.pollEvents()) {
                 
                 WatchEvent.Kind kind = e.kind()
                 if(kind == OVERFLOW) {
-                    log.warning "Overflow of directory watcher for $directory occurred!"
+                    log.warning "Overflow of directory watcher for $instance.directory occurred!"
                     continue
                 }
                 
                 Path path = e.context()
-                processEvent(kind, path)
+                instance.processEvent(kind, path)
             }
             
             // trigger notification for any threads sync() methods
             // waiting for files to appear
-            synchronized(timestamps) {
-                timestamps.notify()
+            synchronized(instance.timestamps) {
+                instance.timestamps.notify()
             }
             
             if(!key.reset()) {
-                log.warning("WARNING: watch key for directory $directory expired")
+                log.warning("WARNING: watch key for directory $instance.directory expired")
                 
                 Thread.sleep(1000)
-                if(!setupWatcher(false)) // one reason this can happen is if the directory 
-                                         // was deleted deliberately. If so, don't recreate
+                if(!instance.setupWatcher(false)) // one reason this can happen is if the directory 
+                                                  // was deleted deliberately. If so, don't recreate
                     return
             }
         }
@@ -247,6 +256,8 @@ class OutputDirectoryWatcher extends Thread {
 
             this.watchKey =
                     this.directory.register(watcher, [ENTRY_CREATE, ENTRY_MODIFY] as WatchEvent.Kind[],  com.sun.nio.file.SensitivityWatchEventModifier.HIGH)
+                    
+            keyToWatcher.putAt(watchKey, this)
 
             log.info "Using high sensitivity file watcher for $directory"
             
@@ -258,6 +269,7 @@ class OutputDirectoryWatcher extends Thread {
             try {
                 this.watchKey =
                         this.directory.register(watcher, [ENTRY_CREATE, ENTRY_MODIFY] as WatchEvent.Kind[])
+                keyToWatcher.putAt(watchKey, this)
             }
             catch(Throwable t2) {
                 log.warning "Unable to create directory watcher: " + t2
