@@ -45,6 +45,7 @@ import bpipe.Utils
  * @author simon.sadedin@mcri.edu.au
  */
 @Log
+@CompileStatic
 class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExecutor {
 
     public static final long serialVersionUID = 0L
@@ -90,7 +91,7 @@ class TorqueCommandExecutor extends CustomCommandExecutor implements CommandExec
             return super.waitFor()
         }
         
-        int exitCode = TorqueStatusMonitor.getInstance().waitFor(command, commandId)
+        int exitCode = TorqueStatusMonitor.theInstance.waitFor(command, commandId)
         log.info "Exit code $exitCode returned for $commandId from TorqueStatusMonitor"
         
         if(this.command)

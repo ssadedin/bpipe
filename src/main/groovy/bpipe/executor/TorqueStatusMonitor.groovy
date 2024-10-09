@@ -60,7 +60,6 @@ class TorqueStatusMonitor extends TimerTask {
     
     Map<String, TorqueJobState> jobs = [:]
     
-    
     TorqueStatusMonitor() {
         log.info "Starting torque status monitor ..."
         
@@ -208,5 +207,9 @@ class TorqueStatusMonitor extends TimerTask {
         else {
             throw new Exception("Error parsing torque output: unexpected error: $line")
         }
+    }
+    
+    static TorqueStatusMonitor getTheInstance() {
+        return theInstance
     }
 }
