@@ -198,11 +198,21 @@ class TorqueStatusMonitor extends TimerTask {
                 throw new Exception("Error parsing torque output: unexpected output format: $line")
 
             String jobId = m.toMatchResult().group(1)
-            log.info "Job $jobId set to error state due to transition to unknown job id state: $line"
- 
+            
+            // Jobs may enter this state because they expired on the queue. We can check if an exit code
+            // was written by the command; if so, we can accept that exit code instead of failing the job
             TorqueJobState jobState = jobs[jobId]
+            File exitFile = new File(".bpipe/commandtmp/$jobId/cmd.exit")
+            if(exitFile.exists()) {
+                Integer exitCode = exitFile.text.trim().toInteger()
+                log.info "Job $jobId set to COMPLETE state with exit code $exitCode read from exit file, due to transition to unknown job id state: $line"
+                jobState.exitCode = exitCode
+            }
+            else {
+                log.info "Job $jobId set to error state due to transition to unknown job id state: $line, and exit file $exitFile is not found"
+                jobState.exitCode = -1 // error
+            }
             jobState.state = CommandStatus.COMPLETE
-            jobState.exitCode = -1 // error
         }
         else {
             throw new Exception("Error parsing torque output: unexpected error: $line")

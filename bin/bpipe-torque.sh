@@ -204,10 +204,19 @@ $memory_request
 $procs_request
 #PBS -q $QUEUE
 $CUSTOM
-set -e;
+
 $mods_request
 cd \$PBS_O_WORKDIR
+
+(
+
+set -e;
+
 $COMMAND
+
+)
+
+echo \$? > $JOBDIR/cmd.exit
 
 $POST_CMD
 
