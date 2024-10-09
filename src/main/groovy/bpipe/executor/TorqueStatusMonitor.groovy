@@ -220,6 +220,6 @@ class TorqueStatusMonitor extends TimerTask {
     }
     
     static TorqueStatusMonitor getTheInstance() {
-        return theInstance
+        return TorqueStatusMonitor.instance
     }
 }
