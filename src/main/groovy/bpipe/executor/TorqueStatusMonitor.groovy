@@ -36,6 +36,7 @@ import groovy.util.logging.Log
 
 class TorqueJobState {
     String jobId
+    String bpipeJobId
     CommandStatus state
     int exitCode
 }
@@ -73,7 +74,7 @@ class TorqueStatusMonitor extends TimerTask {
     
     @CompileStatic
     int waitFor(Command command, String jobId) {
-        TorqueJobState state = new TorqueJobState(jobId: jobId, state: CommandStatus.UNKNOWN)
+        TorqueJobState state = new TorqueJobState(jobId: jobId, state: CommandStatus.UNKNOWN,  bpipeJobId: command.id)
         while(true) {
             
             CommandStatus lastState = state.state
@@ -202,7 +203,7 @@ class TorqueStatusMonitor extends TimerTask {
             // Jobs may enter this state because they expired on the queue. We can check if an exit code
             // was written by the command; if so, we can accept that exit code instead of failing the job
             TorqueJobState jobState = jobs[jobId]
-            File exitFile = new File(".bpipe/commandtmp/$jobId/cmd.exit")
+            File exitFile = new File(".bpipe/commandtmp/$jobState.bpipeJobId/cmd.exit")
             if(exitFile.exists()) {
                 Integer exitCode = exitFile.text.trim().toInteger()
                 log.info "Job $jobId set to COMPLETE state with exit code $exitCode read from exit file, due to transition to unknown job id state: $line"
