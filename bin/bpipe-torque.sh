@@ -216,9 +216,13 @@ $COMMAND
 
 )
 
-echo \$? > $JOBDIR/cmd.exit
+EXIT_CODE=\$?
+
+echo \$EXIT_CODE > $JOBDIR/cmd.exit
 
 $POST_CMD
+
+exit \$EXIT_CODE
 
 HERE
 
