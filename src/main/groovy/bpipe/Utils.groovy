@@ -1057,6 +1057,18 @@ class Utils {
         return result
     }
     
+    static Map<String,Boolean> checkProcessesRunning(List<String> pids) {
+        String info = "ps -o ppid,ruser -p ${pids.join(' ')}".execute().text
+        Map results = pids.collectEntries { [it, Boolean.FALSE] }
+        def lines = info.split("\n")*.trim()
+        for(line in lines) {
+            def (pid,user) = line.tokenize(" ")
+            results[pid] = Boolean.TRUE
+        }
+        return results
+    }    
+    
+    @CompileStatic
     static boolean isProcessRunning(String pid) {
         String info = "ps -o ppid,ruser -p ${pid}".execute().text
         def lines = info.split("\n")*.trim()

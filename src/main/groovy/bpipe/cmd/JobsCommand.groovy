@@ -68,12 +68,14 @@ class JobInfo {
     
     String runningState 
     
+    String result
+    
     TimeDuration getTimeSpan() {
         return finishTime && startTime ?  TimeCategory.minus(finishTime, startTime) : null
     }
     
     List toList() {
-        return [ jobDate, pid, jobDir, getTimeSpan(), commandName, runningState ]
+        return [ jobDate, pid, jobDir, getTimeSpan(), commandName, runningState, result ]
     }
 }
 
@@ -90,8 +92,11 @@ class JobsCommand extends BpipeCommand {
         cli.usage = "bpipe jobs <options>"
         cli.with {
             all 'Show completed  as well as running jobs'
+            age 'Show jobs up to this many hours old (24)', args:1, type: Integer
+            m 'Match given substring on directory name', args:1, type: String
             watch 'Show continuously updated display'
             sleep 'Sleep time when watching continuously', args:1
+            u 'Only show each directory once with latest result'
             h  'Show help', longOpt: 'help'
         }
         parse()
@@ -114,8 +119,9 @@ class JobsCommand extends BpipeCommand {
         File jobsDir = new File(bpipeDbDir, "jobs")
         File completedDir = new File(bpipeDbDir, "completed") 
         
+        int ageHours = opts.age?:24
         long sleepTime = (opts.sleepTime ?: "10000").toLong()
-        long maxAgeMs = 24 * 60 * 60 * 1000
+        long maxAgeMs = ageHours * 60 * 60 * 1000
         if(opts.all) {
             maxAgeMs = Long.MAX_VALUE
         }
@@ -124,7 +130,6 @@ class JobsCommand extends BpipeCommand {
         // just do that at the start
         
         List<JobInfo> completedJobs = getJobs(completedDir,maxAgeMs, false)
-        
         while(true) {
             
             List<JobInfo> jobRows = getJobs(jobsDir, Long.MAX_VALUE)
@@ -132,6 +137,14 @@ class JobsCommand extends BpipeCommand {
             jobRows.addAll(completedJobs)
             
             jobRows.sort { row -> -row.startTime.time }
+            
+            if(opts.m) {
+                jobRows = jobRows.findAll { it.jobDir.path.contains(opts.m) }
+            }
+            
+            if(opts.u) {
+                jobRows = jobRows.unique { it.jobDir.path }
+            }
             
             if(opts.watch) {
                 print(ansi().eraseScreen().cursor(0, 0))
@@ -146,14 +159,23 @@ class JobsCommand extends BpipeCommand {
                     println "\nNo jobs found\n"
                 }
                 else
-                    println "\nNo currently running jobs\n"
+                    println "\nNo active / recent jobs\n"
             }
             else {
-                Utils.table(["Date", "PID", "Directory", "Run Time", "Stage","State"], jobRows*.toList(), 
+                Utils.table(["Date", "PID", "Directory", "Run Time", "Stage","State","Result"], jobRows*.toList(), 
                 render: [
                     "State": { String val, width -> 
                         if(val.trim() == "Running")  { 
                             print(ansi().fg(GREEN).toString());
+                            print(val.padRight(width)); 
+                            print(ansi().reset())
+                        } else { 
+                            print(val.padRight(width))
+                        } 
+                    },
+                    "Result" :{ String val, width  ->
+                        if(val.trim() == "Failed")  { 
+                            print(ansi().fg(RED).toString());
                             print(val.padRight(width)); 
                             print(ansi().reset())
                         } else { 
@@ -220,7 +242,19 @@ class JobsCommand extends BpipeCommand {
         Command cmd = isRunning ? getLastCommand(jobDir) : null
         
         
-        long finishTimeMs = isRunning ? now.time : new File(jobDir,".bpipe/results/${pid}.xml")?.lastModified() 
+        File xmlPath = new File(jobDir,".bpipe/results/${pid}.xml")
+        long finishTimeMs = isRunning ? now.time : xmlPath?.lastModified() 
+        
+        Boolean succeeded = null
+        try {
+            def xml = new XmlSlurper().parse(xmlPath)
+            if(xml.endDateTime.size())
+                succeeded = xml.succeeded?.text()?.trim()=="true"
+        }
+        catch(Exception e) {
+            // do nothing
+            // println "WARNING: exception reading result file: $e"
+        }
        
         return new JobInfo(
             jobDate: new Date(jobFile.lastModified()).format('YYYY-MM-dd'),
@@ -229,7 +263,8 @@ class JobsCommand extends BpipeCommand {
             startTime: new Date(jobFile.lastModified()),
             finishTime: finishTimeMs ? new Date(finishTimeMs) : null,
             commandName: cmd?.name,
-            runningState:  isRunning ? "Running" : "Finished"
+            runningState:  isRunning ? "Running" : "Finished",
+            result : succeeded == null ? "Unknown" : (succeeded ? "Succeeded" : "Failed" )
         )
     }
     
