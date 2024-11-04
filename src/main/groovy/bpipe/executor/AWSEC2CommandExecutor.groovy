@@ -511,7 +511,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         """
             mkdir -p ${new File(exitFile).absoluteFile.parentFile.path}
 
-            echo \$\$ | tee /tmp/bpipe-aws/$pipelineId/$command.id
+            echo \$\$ | tee ${getPipelineTmpDir()}/$command.id
 
             sudo mkdir -p $commandWorkDir && sudo chown \$USER $commandWorkDir
 
@@ -531,7 +531,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         log.info "Executing AWS wrapper command:\n\n=====\n$cmdText\n=======\n"
         
         List sshCommand = ["ssh","-oStrictHostKeyChecking=no", "-i", keypair, this.user + '@' + this.hostname,"bash"]
-        
+
         log.info "Launching command saved in $cmdFile using: " + sshCommand.join(' ')
         
         ExecutedProcess proc = Utils.executeCommand([:], sshCommand) {
@@ -597,10 +597,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             execOptions += (Map)options.execOptions
         } 
 
-//        return (ExecutedProcess)OSResourceThrottle.theInstance.withLock {
-//            Thread.sleep(100)
-            return Utils.executeCommand((List<Object>)sshCommand, throwOnError: true, *:execOptions)
-//        }
+        return Utils.executeCommand((List<Object>)sshCommand, throwOnError: true, *:execOptions)
     }
     
     @Override
@@ -671,5 +668,10 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         // TODO: idea here is that certain things (eg: file transfer) need to behave differently depending
         // if storage is mounted or not
         this.storage = storage
+    }
+    
+    @CompileStatic
+    File getPipelineTmpDir() {
+        new File("/tmp/bpipe-aws/$pipelineId/$command.id")
     }
 }
