@@ -1021,7 +1021,7 @@ class Utils {
             // seems to be related to hang inside OS / NFS call. Maybe use forwarder for this?
             // p.waitForProcessOutput(out, err)
             
-            p.consumeProcessOutput(out, err)
+            TextDumper.consumeProcessOutput((String)(options.source?:'executeCommand'), p, out, err)
             
             log.info "Waiting for process exit: $p (timeout = $options.timeout)"
             
