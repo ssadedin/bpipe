@@ -73,7 +73,7 @@ class Runner {
     // Populated just prior to launch
     static String scriptDirectory = null
     
-    final static BpipeParamsBinding binding = new BpipeParamsBinding()
+    final public static BpipeParamsBinding binding = new BpipeParamsBinding()
     
     static List<Command> runningCommands = null
 	

@@ -501,11 +501,9 @@ public class Pipeline implements ResourceRequestor {
         Pipeline pipeline = new Pipeline()
         PipelineCategory.addStages(pipelineBuilder.binding)
         
-        log.info "Segment is loading external stages"
-        if(!pipelineBuilder.binding.variables.containsKey("BPIPE_NO_EXTERNAL_STAGES"))
-            pipeline.loadExternalStages()
-
-        log.info "Segment finished loading external stages"
+        if(pipelineBuilder.binding != Runner.binding) {
+            pipelineBuilder.binding.variables.putAll(Runner.binding.variables)
+        }
         
         Object result = pipeline.execute([], pipelineBuilder.binding, pipelineBuilder, false)
         
