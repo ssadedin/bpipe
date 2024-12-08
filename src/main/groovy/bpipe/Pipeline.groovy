@@ -1286,7 +1286,7 @@ public class Pipeline implements ResourceRequestor {
             
             libPaths.sort()
             
-            currentLoadingPaths.add(pipeFolder)
+            currentLoadingPaths.addAll(libPaths)
             
             try {
                 loadExternalStagesFromPathList(shell, libPaths, cache, includesLibs)
