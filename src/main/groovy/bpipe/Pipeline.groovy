@@ -505,6 +505,12 @@ public class Pipeline implements ResourceRequestor {
             pipelineBuilder.binding.variables.putAll(Runner.binding.variables)
         }
         
+        if(System.getenv("BPIPE_LIB")) {
+            def pipeFolders = System.getenv("BPIPE_LIB").split(Utils.isWindows()?";":":").collect { new File(it) }
+            GroovyShell shell = new GroovyShell(pipelineBuilder.binding)
+            loadExternalStagesFromPaths(shell, pipeFolders, true, true)        
+        }
+
         Object result = pipeline.execute([], pipelineBuilder.binding, pipelineBuilder, false)
         
         segmentJoiners.addAll(pipeline.joiners)
