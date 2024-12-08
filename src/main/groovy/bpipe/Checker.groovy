@@ -176,6 +176,9 @@ class Checker {
         catch(PipelineTestAbort e) {
             throw e
         }
+        catch(PipelineDevRetry e) {
+            throw e
+        }
         catch(Exception e) {
             log.info "Check failed with non-command exception ($e)"
             e.printStackTrace()
