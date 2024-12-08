@@ -597,6 +597,8 @@ public class Pipeline implements ResourceRequestor {
         
         pipeline.loadExternalStages()
         pipeline.joiners += segmentJoiners
+        
+        Runner.running = true
 
         def mode = Config.config.mode 
         if(mode in ["run","documentation","register","resume"]) // todo: documentation should be its own mode! but can't support that right now
@@ -655,8 +657,8 @@ public class Pipeline implements ResourceRequestor {
      * and both decrements and notifies the given counter when finished.
      */
     void runSegment(def inputs, Closure s) {
+        Pipeline prevPipeline = currentRuntimePipeline.get()
         try {
-            
             currentRuntimePipeline.set(this) 
         
             this.rootContext = createContext()
@@ -735,8 +737,9 @@ public class Pipeline implements ResourceRequestor {
             log.info "Finished running segment in thread ${Thread.currentThread().id} for inputs $inputs"
             Concurrency.instance.unregisterResourceRequestor(this)
             
-            if(currentRuntimePipeline.get() == this)
-                currentRuntimePipeline.set(null)
+            if(currentRuntimePipeline.get() == this && !Runner.running) {
+                currentRuntimePipeline.set(prevPipeline)
+            }
         }
     }
     

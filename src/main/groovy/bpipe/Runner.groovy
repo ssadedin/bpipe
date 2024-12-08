@@ -70,6 +70,8 @@ class Runner {
     
     final static String canonicalRunDirectory = new File(runDirectory).canonicalPath
     
+    public static boolean running = false
+    
     // Populated just prior to launch
     static String scriptDirectory = null
     
