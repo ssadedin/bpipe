@@ -65,7 +65,7 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
        }
        addFilterExts(boxed)
        
-       if(boxed.empty && !this.optional)
+       if(boxed.empty && !super.isFlaggedAsOptional())
            throw new InputMissingError("Expected one or more inputs with extension '" + this.extensionPrefix + "' but none could be located from pipeline.")
            
        return boxed

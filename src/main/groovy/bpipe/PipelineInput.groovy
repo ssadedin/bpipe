@@ -651,6 +651,10 @@ class PipelineInput {
         return this
     }
     
+    boolean isFlaggedAsOptional() {
+        return this.@optional
+    }
+    
     String flag(String flag) {
         return withFlag(flag)
     }
