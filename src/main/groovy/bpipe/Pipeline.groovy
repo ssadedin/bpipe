@@ -734,6 +734,9 @@ public class Pipeline implements ResourceRequestor {
         finally {
             log.info "Finished running segment in thread ${Thread.currentThread().id} for inputs $inputs"
             Concurrency.instance.unregisterResourceRequestor(this)
+            
+            if(currentRuntimePipeline.get() == this)
+                currentRuntimePipeline.set(null)
         }
     }
     
@@ -804,6 +807,7 @@ public class Pipeline implements ResourceRequestor {
                 if(constructedPipeline instanceof List) {
                     currentRuntimePipeline.set(this)
                     constructedPipeline = (Closure)PipelineCategory.splitOnFiles("*", constructedPipeline, false)
+                    currentRuntimePipeline.set(null)
                 }
             }
         }
