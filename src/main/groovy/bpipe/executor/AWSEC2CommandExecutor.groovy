@@ -349,7 +349,6 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         
         RunInstancesRequest runInstancesRequest = new RunInstancesRequest();
         runInstancesRequest.withImageId(image)
-//                .withInstanceType(InstanceType.T1Micro)
                 .withInstanceType(instanceType)
                 .withMinCount(1)
                 .withMaxCount(1)
@@ -366,13 +365,10 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         
         if(config.containsKey('instanceProfile'))
             runInstancesRequest.setIamInstanceProfile(new IamInstanceProfileSpecification().withName((String)config.instanceProfile))
-        
-        if(config.containsKey('initScript')) {
-            final String script = config['initScript']
-            final String userData = script.bytes.encodeBase64()
+            
+        def userData = resolveUserData(config)
+        if(userData)
             runInstancesRequest = runInstancesRequest.withUserData(userData)
-            log.info "Configured init script for $command.name as userData"
-        }         
 
         RunInstancesResult result       
 
@@ -391,6 +387,41 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         this.hostname = queryHostName()
         
         log.info "Instance $instanceId started with host name $hostname"
+    }
+    
+    /**
+     * Check the given config for elements that would require user data to be set. These include
+     * an explicit init script, or alternatively, a walltime which is implemented through a shutdown
+     * command that is set as an init script
+     * 
+     * @param config
+     * @return  base 64 encoded user data
+     */
+    @CompileStatic
+    String resolveUserData(Map config) {
+        List<String> initScriptParts = []
+        if(config.containsKey('walltime')) {
+            // Walltime expressed in hh:mm:ss form
+            // But we need it in minutes
+            List<Integer> timeParts = ((String)config.walltime).tokenize(':')*.toInteger()
+            int minutes = timeParts.size()==3 ? (timeParts[0] * 60 + timeParts[1]) : timeParts[0]
+            log.info "Calculated $minutes shutdown minutes from walltime $config.walltime"
+            initScriptParts.add("shutdown -h +$minutes".toString())
+        }
+        
+        if(config.containsKey('initScript')) {
+            initScriptParts.add(config['initScript'])
+        }
+        
+        if(initScriptParts) {
+            final String script = '#!/bin/bash\n' + initScriptParts.join('\n') + '\n'
+            final String userData = script.bytes.encodeBase64()
+            log.info "Resolved init script for $command.name as userData:\n\n$script"
+            return userData
+        }         
+        else {
+            return null
+        }
     }
     
     @CompileStatic

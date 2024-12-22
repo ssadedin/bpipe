@@ -24,6 +24,7 @@ class AWSEC2CommandExecutorTest {
             user: 'centos',
             region: 'ap-southeast-2'
    ]
+
     
     @BeforeClass
     static void before() {
@@ -78,5 +79,38 @@ class AWSEC2CommandExecutorTest {
         
         println "Terminating instance $awse.instanceId"
 //        awse.ec2.terminateInstances(new TerminateInstancesRequest([awse.instanceId]))
+    }
+    
+    
+    @Test
+    public void 'user data calculation'() {
+        
+        def awse = new AWSEC2CommandExecutor(command: new Command(name: 'test'))
+        
+        String userData = awse.resolveUserData(walltime:'12:00:00')
+        assert userData : "should have user data when walltime is set"
+        
+        String result = new String(userData.decodeBase64(), 'utf-8')
+        assert result.contains("shutdown -h +720")
+        
+        userData = awse.resolveUserData(walltime:'12:00')
+        assert userData : "should have user data when walltime is set"
+        result = new String(userData.decodeBase64(), 'utf-8')
+        assert result.contains("shutdown -h +12")
+
+        userData = awse.resolveUserData(walltime:'12:00', initScript: 'echo "hello world"')
+        assert userData : "should have user data when walltime or initScript is set"
+        result = new String(userData.decodeBase64(), 'utf-8')
+        assert result.contains("shutdown -h +12")
+
+        userData = awse.resolveUserData(initScript: 'echo "hello world"')
+        assert userData : "should have user data when walltime or initScript is set"
+        result = new String(userData.decodeBase64(), 'utf-8')
+        assert !result.contains("shutdown")
+        assert result.contains("hello world")
+        
+        userData = awse.resolveUserData([:])
+        assert !userData : "should not have user data when neither walltime or initScript is set"
+
     }
 }
