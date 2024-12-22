@@ -410,7 +410,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         }
         
         if(config.containsKey('initScript')) {
-            initScriptParts.add(config['initScript'])
+            initScriptParts.add((String)config['initScript'])
         }
         
         if(initScriptParts) {
