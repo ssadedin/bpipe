@@ -91,6 +91,7 @@ nav:
   - Integration with JMS / Queuing Systems: Guides/JMS.md
   - Using Bpipe with Amazon Web Services (AWS/EC2): Guides/AWS.md
   - Using Bpipe with Google Cloud (GCS): Guides/GoogleCloud.md
+  - Using generic SSH to execute commands: Guides/SSHExecutor.md
   - Running Commands in Containers: Guides/Containers.md
 - Examples:
   - Paired End Alignment: Examples/PairedEndAlignment.md
