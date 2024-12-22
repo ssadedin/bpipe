@@ -9,6 +9,7 @@ import bpipe.Config
 import bpipe.ExecutedProcess
 import bpipe.ForwardHost
 import bpipe.PipelineError
+import bpipe.PipelineFile
 import bpipe.Runner
 import bpipe.Utils
 import bpipe.storage.StorageLayer
@@ -125,6 +126,8 @@ class SSHCommandExecutor implements CommandExecutor, ForwardHost {
         
         log.info "Working directory for command $command.id is $commandWorkDir"
         
+        this.transferFiles(cmd.processedConfig, cmd.inputs)
+        
         List<String> shell = command.shell ?: ['bash']
 
         File cmdFile = new File(jobDir, "cmd.sh")
@@ -189,6 +192,7 @@ class SSHCommandExecutor implements CommandExecutor, ForwardHost {
         }
     }
    
+    @CompileStatic
     public String status() {
         
         if(finished) 
@@ -252,7 +256,9 @@ class SSHCommandExecutor implements CommandExecutor, ForwardHost {
         if(options.verbose) {
             sshOptions.add("-vvv")
         }
-        sshOptions.addAll(keypairArgs)
+        
+        if(keypairArgs)
+            sshOptions.addAll(keypairArgs)
         
         List<String> sshCommand = ["ssh","-oStrictHostKeyChecking=no", *sshOptions, user + '@' +hostname,cmd]*.toString()
         
@@ -266,13 +272,91 @@ class SSHCommandExecutor implements CommandExecutor, ForwardHost {
 
         return Utils.executeCommand((List<Object>)sshCommand, throwOnError: true, *:execOptions)
     }
+    
+    @CompileStatic
+    void transferFiles(Map config, List<PipelineFile> files) {
+       
+        if(!config.getOrDefault('transfer', false))
+            return
+            
+        Date now = new Date()
+            
+        files.forEach {
+            println "$now TRANSFER: $it"
+        }
+            
+        this.transferTo(files)
+
+        now = new Date()
+        
+        println "$now: TRANSFER COMPLETE (${files.size()} files)"
+    }
+    
+    String createDirectoriesPrefix = ""
+    
+
+    @CompileStatic
+    public void transferTo(List<PipelineFile> fileList) {
+
+        assert hostname != null && hostname != ""
+        
+        Map<String,List<PipelineFile>> dirGroups = fileList.groupBy { it.toPath().toFile().absoluteFile.parentFile.absolutePath }
+        
+        List<String> outputDirs = (List<String>)command.outputs.groupBy {  PipelineFile output ->
+            Path outputPath = output.toPath()
+            outputPath.toAbsolutePath().parent.toString()
+        }*.key
+        
+        List<String> allDirs = (dirGroups*.key + outputDirs).unique()
+        
+        log.info "Creating directories on $hostname : ${dirGroups*.key}"
+        ssh("$createDirectoriesPrefix mkdir -p " + allDirs.join(' ') + " && $createDirectoriesPrefix chmod uga+rwx " + allDirs.join(' ') )
+        
+        dirGroups.each { dir, dirFiles ->
+            log.info "Transfer $dirFiles to $hostname ..."
+            List sshCommand = ["rsync", "-r", "-e", "ssh -oStrictHostKeyChecking=no ${keypairArgs?.join(' ')?:''}", *dirFiles*.toString(), user + '@' +hostname+':'+dir]*.toString()
+            Utils.executeCommand((List<Object>)sshCommand, throwOnError: true)        
+        }
+    }
+    
+    @CompileStatic
+    public void transferFrom(Map config, List<PipelineFile> fileList) {
+        assert hostname != null && hostname != ""
+        
+        Map<String,List<PipelineFile>> dirGroups = fileList.groupBy { it.toPath().toAbsolutePath().parent.toString() }
+
+        dirGroups.each { dir, dirFiles ->
+            log.info "Transfer $dirFiles from $hostname ..."
+            dirFiles.each { 
+                def fileExpr = "$user@$hostname:$dir/$it.name"
+                log.info("Transfer $fileExpr")
+                List sshCommand = ["scp","-oStrictHostKeyChecking=no", *keypairArgs, fileExpr, dir]*.toString()
+                Utils.executeCommand((List<Object>)sshCommand, throwOnError: true)        
+            }
+        }
+    }
 
     @Override
     public void stop() {
     }
+    
+    boolean transferredFrom
 
     @Override
-    public void cleanup() {
+    void cleanup() {
+        
+        if(!command?.processedConfig)
+            return
+        if(!command.processedConfig.getOrDefault('transfer', false))
+            return
+         if(transferredFrom)
+             return
+             
+        log.info("Command $command.id on $hostname complete, transferring outputs $command.outputs back")
+        if(exitCode == 0) {
+            this.transferFrom(command.processedConfig, command.outputs)
+            this.transferredFrom = true
+        }
     }
 
     @Override
