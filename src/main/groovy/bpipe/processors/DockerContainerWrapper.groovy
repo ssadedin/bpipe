@@ -91,7 +91,11 @@ class DockerContainerWrapper implements CommandProcessor {
         if(config.containsKey('inherit_user') && config.inherit_user == true) {
             Map userInfo = Utils.getUserInfo()
             log.info("Using uid: $userInfo for docker command")
-            additionalArgs.addAll(["--user", "$userInfo.uid"])
+            String userAttribute = "$userInfo.uid"
+            if(userInfo.gid) {
+                userAttribute += ":$userInfo.gid"
+            }
+            additionalArgs.addAll(["--user", userAttribute])
         }
 
         command.shell = 
