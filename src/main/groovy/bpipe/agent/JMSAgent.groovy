@@ -225,9 +225,15 @@ class JMSAgent extends Agent {
         command.onDirectoryConfigured = { File dir ->
             File hooksDir = new File(dir, ".bpipe/hooks")
             hooksDir.mkdirs()
+            
+            // The config may contain a closure which in some circumstances can be triggered
+            // to execute by JSON serialisation
+            // To avoid that, we need to sanitise the config first by removing entries with values that are Closures
+            Map sanitisedConfig = config.grep { Map.Entry e ->  !(e.value instanceof Closure) }.collectEntries()
+            
             Map configValue = [
                 correlationID : message.JMSCorrelationID,
-                * : config,
+                * : sanitisedConfig,
                 replyQueue: replyToValue,
                 response: [
                     replyTo: message.JMSMessageID,
