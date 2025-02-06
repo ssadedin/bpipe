@@ -416,16 +416,16 @@ class JMSAgent extends Agent {
             return
             
         int n = 0
-        int waitMs = 0
+        long totalWaitedMs = 0
+        final long permitCheckWaitMs = 2000
         while(concurrency.availablePermits()==0) {
-            Thread.sleep(2000)
+            Thread.sleep(permitCheckWaitMs)
+            totalWaitedMs+=permitCheckWaitMs
             if(n++ % 5 == 0) {
-                waitMs+=2000
-                log.info "Blocked waiting for $waitMs for current commands to complete ..."
+                log.info "Blocked waiting for $totalWaitedMs for current commands to complete ..."
             }
+            ++n
         }
-        
-        return
     }
     
     void connect() {
