@@ -424,7 +424,6 @@ class JMSAgent extends Agent {
             if(n++ % 5 == 0) {
                 log.info "Blocked waiting for $totalWaitedMs for current commands to complete ..."
             }
-            ++n
         }
     }
     
