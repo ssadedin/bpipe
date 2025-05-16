@@ -106,6 +106,7 @@ class Runner {
     
     static Map<String,BpipePlugin> plugins = [:]
     
+    @SuppressWarnings("deprecation")
     static CliBuilder runCli = new CliBuilder(usage: DEFAULT_HELP, posix: true)
           
     static CliBuilder stopCommandsCli = new CliBuilder(usage: "bpipe stopcommands\n", posix: true)
