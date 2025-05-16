@@ -303,7 +303,7 @@ class NotificationManager {
 			channel.notify(evt, desc, template, detail)
 		}
 		catch(Throwable t) {
-			log.warning("Failed to send notification via channel "+ channel + " with using template file $templateFile?.absolutePath,configuration " + Utils.sanitiseConfig(cfg) + ": " + t)
+			log.warning("Failed to send notification via channel "+ channel + " with using template file ${templateFile?.absolutePath},configuration " + Utils.sanitiseConfig(cfg) + ": " + t)
             log.log(Level.SEVERE, "Failed to send notification to channel $cfg.name using template $templateFile, coniguration " + Utils.sanitiseConfig(cfg), t)
             
             String stagePart = detail.containsKey('stage') ? " Stage ${detail.stage.stageName} " : ""
