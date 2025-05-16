@@ -157,7 +157,7 @@ class CustomCommandExecutor implements PersistentExecutor, ForwardHost {
         
         this.setEnvironment(env)
             
-        log.info "Using account: $env?.account"
+        log.info "Using account: ${env?.account}"
         
         String startCmd = pb.command().join(' ')
         log.info "Starting command: " + startCmd
