@@ -40,12 +40,6 @@ import bpipe.storage.StorageLayer
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 
-enum RescheduleResult {
-        SUCCEEDED,
-        FAILED
-}
-
-
 @Log
 class ExecutorPool {
     
@@ -664,3 +658,9 @@ class ExecutorPool {
         return command
     }
 }
+
+enum RescheduleResult {
+        SUCCEEDED,
+        FAILED
+}
+
