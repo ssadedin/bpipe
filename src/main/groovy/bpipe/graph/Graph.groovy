@@ -49,9 +49,6 @@ import org.apache.batik.svggen.GenericImageHandler;
 import org.apache.batik.svggen.SVGGeneratorContext;
 import org.apache.batik.svggen.SVGGraphics2D
 import org.apache.batik.svggen.SVGGraphics2DIOException;
-import org.w3c.dom.DOMImplementation
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 
 @Log
 class Graph extends JFrame {
@@ -212,8 +209,8 @@ class Graph extends JFrame {
         
         println "Drawing SVG graph ..."
         String svgNS = SVGDOMImplementation.SVG_NAMESPACE_URI;
-        DOMImplementation domImpl = SVGDOMImplementation.getDOMImplementation();
-        Document document = domImpl.createDocument(svgNS, "svg", null);
+        def domImpl = SVGDOMImplementation.getDOMImplementation();
+        def document = domImpl.createDocument(svgNS, "svg", null);
          
         // Create an instance of the SVG Generator
         SVGGeneratorContext ctx = SVGGeneratorContext.createDefault(document);
@@ -229,7 +226,7 @@ class Graph extends JFrame {
         graphComponent.getGraphControl().drawGraph(svgGenerator, true);
      
         //Once every thing is drawn on graphics find root element and update this by adding additional values for the required fields.
-        Element root = svgGenerator.getRoot();
+        def root = svgGenerator.getRoot();
         root.setAttributeNS(null, "width", graphComponent.getGraphControl().getPreferredSize().width + "");
         root.setAttributeNS(null, "height", graphComponent.getGraphControl().getPreferredSize().height + "");
         root.setAttributeNS(null, "viewBox", "0 0 " + graphComponent.getGraphControl().getPreferredSize().width + " " + graphComponent.getGraphControl().getPreferredSize().height);
