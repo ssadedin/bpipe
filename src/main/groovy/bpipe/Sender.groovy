@@ -50,9 +50,9 @@ import static org.fusesource.jansi.Ansi.Color.*
 @Log
 class Sender {
     
-    final static File SENT_FOLDER = new File(".bpipe/sent/")
+    public final static File SENT_FOLDER = new File(".bpipe/sent/")
 
-    final static File PENDING_SEND_FOLDER = new File(".bpipe/sent/pending")
+    public final static File PENDING_SEND_FOLDER = new File(".bpipe/sent/pending")
 
     PipelineContext ctx
     

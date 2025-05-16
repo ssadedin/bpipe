@@ -92,13 +92,13 @@ public class Pipeline implements ResourceRequestor {
     /**
      * Default imports added to the top of all files executed by Bpipe
      */
-    static final String PIPELINE_IMPORTS = "import static Bpipe.*; import static bpipe.PipelineChannel.*; import static bpipe.RegionSet.bed; import static bpipe.Pipeline.filetype; import Preserve as preserve; import Intermediate as intermediate; import Accompanies as accompanies; import Produce as produce; import Transform as transform; import Filter as filter;"
+    public static final String PIPELINE_IMPORTS = "import static Bpipe.*; import static bpipe.PipelineChannel.*; import static bpipe.RegionSet.bed; import static bpipe.Pipeline.filetype; import Preserve as preserve; import Intermediate as intermediate; import Accompanies as accompanies; import Produce as produce; import Transform as transform; import Filter as filter;"
     
     /**
      * The thread id of the master thread that is running the baseline root
      * pipeline
      */
-    static Long rootThreadId
+    public static Long rootThreadId
     
     /**
      * The top level pipeline at the root of the pipeline hierarchy

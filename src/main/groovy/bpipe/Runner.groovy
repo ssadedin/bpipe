@@ -844,17 +844,17 @@ class Runner {
     /**
      * Centralised directory where completed job links are linked
      */
-    static final File COMPLETED_DIR = new File(System.getProperty("user.home") + "/.bpipedb/completed")
+    public static final File COMPLETED_DIR = new File(System.getProperty("user.home") + "/.bpipedb/completed")
     
     /**
      * The local directory where job information is stored
      */
-    static final File LOCAL_JOB_DIR = new File(".bpipe/jobs")
+    public static final File LOCAL_JOB_DIR = new File(".bpipe/jobs")
     
     /**
      * Bpipe home, set as system property by Bpipe runner script prior to launching
      */
-    static String BPIPE_HOME = System.getProperty("bpipe.home")?.asType(File)?.canonicalPath?:new File(".").canonicalPath
+    public static String BPIPE_HOME = System.getProperty("bpipe.home")?.asType(File)?.canonicalPath?:new File(".").canonicalPath
 
     public static final File HOOKS_DIRECTORY = new File(".bpipe/hooks")
     
