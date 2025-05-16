@@ -6,9 +6,10 @@ resources (memory, CPU, storage space, etc) they can use.  Bpipe supports
 integration with third-party Resource Manager software to run commands that are
 part of your pipeline in this kind of environment.  Out of the box Bpipe
 supports  [Torque PBS](https://adaptivecomputing.com/cherry-services/torque-resource-manager/),
-Sun / Oracle Grid Engine, and Platform LSF.  Others can be integrated if you
+Sun / Oracle Grid Engine, and SLURM.  Others can be integrated if you
 implement a simple adapter shell script that can relay commands between Bpipe
-and the resource manager software.
+and the resource manager software, or if you want to customise more than that,
+a Groovy class that you add to Bpipe's classpath.
 
 ## Using a Resource Manager
 
@@ -211,6 +212,31 @@ However, note that the ncpus in the select statement is not automatically
 integrated with Bpipe's automated concurrency management. For example, if you use
 -n to control total concurrency, Bpipe won't know about the value embedded in your
 select statement, unless you specify it explicitly (eg: with "using").
+
+## SLURM
+
+Slurm is configured by setting the executor to "slurm":
+
+```groovy 
+   executor="slurm"
+```
+
+For consistency with other managers, Bpipe still refers to partitions as "queues", so to select
+which partition to run a job in, use the `queue` setting:
+
+```groovy
+queue="batch"
+```
+
+### Job timeouts and cancellation
+
+SLURM has slightly different behaviour for some job states, using symbolic status values
+where other systems return specialised exit codes. For consistency, Bpipe translates these
+to exit codes. The following special exit codes apply:
+
+
+- 998 : Job exceeded time limit
+- 999 : Job was cancelled by user
 
 ## Module Loading
 
