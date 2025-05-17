@@ -163,6 +163,11 @@ make_slurm_script () {
    else
         MEM_UNIT="gb" # default is to assume GB
    fi
+   
+   if [ ! -z "$GPUS" ];
+   then
+        gpus_request="#SBATCH --gpus=$GPUS"
+   fi
 
    # handle the single, smp and mpi types specially
    case $JOBTYPE in
@@ -222,6 +227,7 @@ $account
 $memory_request
 #SBATCH --time=$WALLTIME
 $procs_request
+$gpus_request
 #SBATCH -p $QUEUE
 
 set -o errexit
