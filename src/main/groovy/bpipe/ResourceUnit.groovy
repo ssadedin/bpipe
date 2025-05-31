@@ -52,8 +52,16 @@ class ResourceUnit implements Serializable {
     ]
     
     static ResourceUnit memory(Object value) {
+        return memory(value, "memory")
+    }
+
+    static ResourceUnit storage(Object value) {
+        return memory(value, "storage_space")
+    }
+    
+    static ResourceUnit memory(Object value, String key) {
         
-        def fromInt = { x -> new ResourceUnit(amount: x*1024, key: "memory") }
+        def fromInt = { x -> new ResourceUnit(amount: x*1024, key: key) }
         
         if(value instanceof Integer)
             return fromInt(value)
@@ -67,18 +75,19 @@ class ResourceUnit implements Serializable {
             int amount = patternMatch[0][1].toInteger()
             String unit = patternMatch[0][2].toUpperCase()
             if(amount < 0)
-                throw new PipelineError("Amount for memory specification is ${amount} < 0: please specify a positive integer")
+                throw new PipelineError("Amount for $key specification is ${amount} < 0: please specify a positive integer")
                 
             if(MEMORY_UNIT_CONVERSION.containsKey(unit)) {
                 amount = MEMORY_UNIT_CONVERSION[unit](amount)
-                return new ResourceUnit(amount:amount, key:"memory")
+                return new ResourceUnit(amount:amount, key:key)
             }
             else 
-                throw new PipelineError("Unknown unit ${unit} specified for memory configuration. Please use MB, GB, or TB")
+                throw new PipelineError("Unknown unit ${unit} specified for $key configuration. Please use MB, GB, or TB")
         }
         
-        throw new PipelineError("Unable to parse memory specification: $value")
+        throw new PipelineError("Unable to parse $key specification: $value")
     }
+    
     
     Object clone() {
         new ResourceUnit(amount:amount, maxAmount:maxAmount, key:key)

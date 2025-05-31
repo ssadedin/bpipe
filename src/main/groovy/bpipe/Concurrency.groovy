@@ -296,6 +296,18 @@ class Concurrency {
            registeredResourceRequestors.remove(requestor)
        }
    }
+   
+   /**
+    * Total amount of storage space required for outputs of current executing or pending 
+    * commands in MB.
+    *
+    * Note: concurrent requests add together, so in a highly concurrent situation 
+    * all the commands can request storage at once and all be blocked and none
+    * can run even when <em>some</em> could have proceeded. We accept this for storage
+    * where it would not work for threads, since storage is a consumed resource rather
+    * than temporarily utilised.
+    */
+   static AtomicLong outstandingStorageRequests = new AtomicLong(0)
 
    /**
     * Called by parallel paths before they begin execution: enforces overall concurrency by blocking
@@ -303,36 +315,72 @@ class Concurrency {
     */
    @CompileStatic
    void acquire(ResourceUnit resourceUnit) {
-        Semaphore resource
-        synchronized(resourceAllocations) {
-            resource = resourceAllocations.get(resourceUnit.key)
-        }
-        
-        if(resource == null) {
-            log.info "Unknown resource type $resourceUnit.key specified: treating as infinite resource"
-            return
-        }
-        
+       
+       final long startTimeMs = System.currentTimeMillis()
        int amount = resourceUnit.amount
-        
-       log.info "Thread " + Thread.currentThread().id + 
-           " requesting for $amount concurrency permit(s) type $resourceUnit.key with " + resource.availablePermits() + " available"
-           
-       long startTimeMs = System.currentTimeMillis()
+	   if(resourceUnit.key == "storage_space") {
+		   amount = resourceUnit.amount
+		   waitForFreeSpace(amount)
+	   }
+	   else {
        
-       if(resourceUnit.key == "threads") {
-           amount = negotiateDynamicResources(resourceUnit, resource)
-       }
+            Semaphore resource
+            synchronized(resourceAllocations) {
+                resource = resourceAllocations.get(resourceUnit.key)
+            }
+            
+            if(resource == null) {
+                log.info "Unknown resource type $resourceUnit.key specified: treating as infinite resource"
+                return
+            }
+            
+           log.info "Thread " + Thread.currentThread().id + 
+               " requesting for $amount concurrency permit(s) type $resourceUnit.key with " + resource.availablePermits() + " available"
+               
            
-       resource.acquire(amount)
-       resourceUnit.amount = amount
-       
+           if(resourceUnit.key == "threads") {
+               amount = negotiateDynamicResources(resourceUnit, resource)
+           }
+           
+		   resource.acquire(amount)
+		   resourceUnit.amount = amount
+	   }
+      
        long durationMs = startTimeMs - System.currentTimeMillis()
        if(durationMs > 1000) {
            log.info "Thread " + Thread.currentThread().id + " blocked for $durationMs ms waiting for resource $resourceUnit.key amount(s) $amount"
        }
        else
            log.info "Thread " + Thread.currentThread().id + " acquired resource $resourceUnit.key in amount $amount"
+   }
+   
+   /**
+	* Waits until there is at least the specified amount of free space (in MB) on the local filesystem.
+	*
+	* @param requiredMB the required free space in MB
+	* @param pathToCheck optional path to check (default is current directory)
+	*/
+   @CompileStatic
+   void waitForFreeSpace(final int requiredMB, final String pathToCheck = ".") {
+	   
+	   long totalAmount = outstandingStorageRequests.addAndGet(requiredMB)
+	   final File target = new File(pathToCheck).absoluteFile
+	   while(true) {
+            long freeBytes = target.usableSpace
+            long freeMB = (long) (freeBytes / (1024.0 * 1024.0))
+
+            log.info "Free space on ${target.absolutePath}: ${freeMB} MB (required: ${requiredMB} MB)"
+            totalAmount = outstandingStorageRequests.get()
+            final long requiredBytes = totalAmount * 1024L * 1024L
+
+            if (freeBytes >= requiredBytes) {
+                break
+            }
+            else {
+                log.info "Not enough space to satisfy $requiredMB MB on path $pathToCheck Sleeping for 30 seconds ..."
+                sleep(30000)  // sleep for 30 seconds
+            }
+	   }
    }
 
    /**
@@ -524,6 +572,13 @@ class Concurrency {
    
    @CompileStatic
    void release(ResourceUnit resourceUnit) {
+       
+       if(resourceUnit.key == "storage_space") {
+           log.info("Releasing storage reservation $resourceUnit")
+           outstandingStorageRequests.addAndGet(-resourceUnit.amount)
+           return
+       }
+       
         Semaphore resource
         synchronized(resourceAllocations) {
             resource = resourceAllocations.get(resourceUnit.key)

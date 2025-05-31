@@ -2549,6 +2549,13 @@ class PipelineContext {
       
       command.stageId = this.pipelineStages[-1].id
       
+      if(command.processedConfig.containsKey('storage_space')) {
+          this.usedResources['storage_space'] = ResourceUnit.storage(command.processedConfig.storage_space)
+          log.info "Configured storage space resource for $stageName: $usedResources.storage_space"
+      }
+      else
+          log.info "No storage space specified for $stageName"
+          
       try {
           command = commandManager.start(stageName, command, configName, Utils.box(this.input), 
                                          this.usedResources,
