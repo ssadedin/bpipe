@@ -9,6 +9,8 @@ class NetRCTest {
     @Test
     void testParseNetRC() {
         
+        new File('src/test/data').mkdirs()
+
         File netRCFile = new File('src/test/data/netrc.test.txt')
         
         netRCFile.text = 
