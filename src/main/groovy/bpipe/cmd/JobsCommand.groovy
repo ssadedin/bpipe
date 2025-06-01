@@ -76,7 +76,7 @@ class JobInfo {
     }
     
     List toList() {
-        return [ jobDate, pid, jobDir, getTimeSpan(), commandName, runningState, result, scriptName ]
+        return [ jobDate, pid, scriptName, jobDir, getTimeSpan(), commandName, runningState, result ]
     }
 }
 
@@ -163,7 +163,7 @@ class JobsCommand extends BpipeCommand {
                     println "\nNo active / recent jobs\n"
             }
             else {
-                Utils.table(["Date", "PID", "Directory", "Run Time", "Stage","State","Result"], jobRows*.toList(), 
+                Utils.table(["Date", "PID", "Pipeline", "Directory", "Run Time", "Stage", "State", "Result"], jobRows*.toList(), 
                 render: [
                     "State": { String val, width -> 
                         if(val.trim() == "Running")  { 
