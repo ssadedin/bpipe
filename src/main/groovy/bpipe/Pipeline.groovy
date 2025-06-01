@@ -1042,10 +1042,13 @@ public class Pipeline implements ResourceRequestor {
         long commandTimeMs = commandList.sum {  Command cmd -> (cmd.stopTimeMs - cmd.startTimeMs) }
         if(commandTimeMs == null)
             commandTimeMs = 0
+           
+        File scriptFile = new File(Config.config.script).canonicalFile
                   
         new File(".bpipe/results/${Config.config.pid}.xml").withWriter { w ->
             MarkupBuilder xml = new MarkupBuilder(w)
             xml.job(id:Config.config.pid) {
+                script(scriptFile.absolutePath)
                 succeeded(String.valueOf(!failed))
                 startDateTime(startDate.format(DATE_FORMAT))
                 if(finishDate)
