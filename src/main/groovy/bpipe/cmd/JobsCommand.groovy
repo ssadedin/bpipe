@@ -69,13 +69,14 @@ class JobInfo {
     String runningState 
     
     String result
+    String scriptName = "Unknown"
     
     TimeDuration getTimeSpan() {
         return finishTime && startTime ?  TimeCategory.minus(finishTime, startTime) : null
     }
     
     List toList() {
-        return [ jobDate, pid, jobDir, getTimeSpan(), commandName, runningState, result ]
+        return [ jobDate, pid, jobDir, getTimeSpan(), commandName, runningState, result, scriptName ]
     }
 }
 
@@ -246,10 +247,21 @@ class JobsCommand extends BpipeCommand {
         long finishTimeMs = isRunning ? now.time : xmlPath?.lastModified() 
         
         Boolean succeeded = null
+        def scriptName = "Unknown"
         try {
             def xml = new XmlSlurper().parse(xmlPath)
             if(xml.endDateTime.size())
                 succeeded = xml.succeeded?.text()?.trim()=="true"
+            if(xml.script.size()){
+                def s = xml.script.text()?.trim()
+                if(s){
+                    def fname = s.tokenize('/')[-1]
+                    if(fname.toLowerCase().endsWith('.groovy')){
+                        fname = fname[0..-8]
+                    }
+                    scriptName = fname
+                }
+            }
         }
         catch(Exception e) {
             // do nothing
@@ -264,6 +276,7 @@ class JobsCommand extends BpipeCommand {
             finishTime: finishTimeMs ? new Date(finishTimeMs) : null,
             commandName: cmd?.name,
             runningState:  isRunning ? "Running" : "Finished",
+            scriptName: scriptName,
             result : succeeded == null ? "Unknown" : (succeeded ? "Succeeded" : "Failed" )
         )
     }
