@@ -84,6 +84,18 @@ class SlurmCommandExecutor extends TorqueCommandExecutor implements CommandExecu
 
 
     }
+    
+    @Override
+    String getErrorWarning(int exitCode) {
+       switch(exitCode) {
+           case 999:
+               return "Job $commandId (command $command.id) in stage $command.name was cancelled"
+           case 998:
+               return "Job commandId (command $command.id) timed out (exceeded walltime) in stage $command.name"
+           case 997:
+               return "Job $commandId (command $command.id) exceeded memory limit in stage $command.name"
+       }
+    }
 
     void cleanup() {
         this.stopForwarding()

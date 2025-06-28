@@ -300,12 +300,13 @@ status () {
          scontrol_success=$?
          if [[ $scontrol_success == 0 ]]
          then
-               job_state=`echo $scontrol_output|grep JobState|sed 's/.*JobState=\([A-Z]*\) .*/\1/'` # JobState is in caps
+               job_state=`echo $scontrol_output|grep JobState|sed 's/.*JobState=\([A-Z_]*\) .*/\1/'` # JobState is in caps
                case "$job_state" in
                   CONFIGURING|PENDING|SUSPENDED) echo WAITING;; 
                   COMPLETING|RUNNING) echo RUNNING;;    
                   CANCELLED) echo COMPLETE 999;; # Artificial exit code because Slurm does not provide one    
                   TIMEOUT) echo COMPLETE 998;; # Artificial exit code because Slurm does not provide one    
+                  OUT_OF_MEMORY) echo COMPLETE 997;;
                   COMPLETED|FAILED|NODE_FAIL|PREEMPTED) 
                   # scontrol will include ExitCode=N:M, where the N is exit code and M is signal (ignored)
                   #        command_exit_status=`echo $scontrol_output |grep Exit|sed 's/.*ExitCode=\([0-9]*\):[0-9]*/\1/'`
@@ -326,14 +327,14 @@ status () {
           # the job is too old to remember about
           elif [[ $scontrol_success == 1 ]]
           then
-                errortext="slurm_load_jobs error: Invalid job id specified"
-                if  [[ $scontrol_output == $errortext ]]
-                then 
-                          echo UNKNOWN
-                else
-                    # all other scontrol errors are treated as failures
-                               exit $SCONTROL_FAILED
-                fi
+              errortext="slurm_load_jobs error: Invalid job id specified"
+              if  [[ $scontrol_output == $errortext ]]
+              then 
+                  echo UNKNOWN
+              else
+                  # all other scontrol errors are treated as failures
+                  exit $SCONTROL_FAILED
+              fi
           else
                exit $SCONTROL_FAILED
           fi

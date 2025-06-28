@@ -395,17 +395,30 @@ class CustomCommandExecutor implements PersistentExecutor, ForwardHost {
 	            if(parts.size() != 2)
 	                throw new PipelineError("Unexpected format in output of job status command [$cmd]:  $result")
                     
+                    
                 if(!this.cleanedUp) {
                     this.cleanedUp = true
                     cleanup()
                 }
                 
-	            return Integer.parseInt(parts[1])
+	            int exitCode = Integer.parseInt(parts[1])
+                if(exitCode != 0) {
+                    String warningString = this.getErrorWarning(exitCode) 
+                    if(warningString) {
+                        println "WARNING: $warningString"
+                    }
+                }
+                return exitCode
             }
             else 
             if(status == CommandStatus.UNKNOWN.name()) {
                 if(errorCount > MAX_STATUS_ERROR) {
-                    throw new PipelineError("Job ${commandId} returned UNKNOWN status prior to completion. This may indicate your job queue is configured to time out jobs too quickly.  Please consult your administrator to see if job information can be retained longer.")
+                    throw new PipelineError(
+                        """
+                            Job ${commandId} (command $command.id) returned UNKNOWN status prior to completion.\n
+                            This may indicate your job queue is configured to time out jobs too quickly, or that a job configuration option stops your job from executing once started.\n
+                            You can check the files in .bpipe/commandtmp/${command.id} to see the submitted job directly.
+                        """.stripIndent())
                 }
                 else
                   log.warning "Job status query returned UNKNOWN for job ${commandId}. Will retry."
@@ -423,6 +436,16 @@ class CustomCommandExecutor implements PersistentExecutor, ForwardHost {
 			
 			currentSleep = minSleep + Math.min(maxSleep, Math.exp(factor * (System.currentTimeMillis() - startTimeMillis)))
         }
+    }
+    
+    /**
+     * Give executors an opportunity to print specific warnings for special error codes they may support
+     * 
+     * @param exitCode  exit code returned from job / runner
+     * @return  human readable string to print
+     */
+    String getErrorWarning(int exitCode) {
+       return null 
     }
     
     List<String> getIgnorableOutputs() {
