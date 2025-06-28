@@ -91,7 +91,7 @@ class Config {
     /**
      * Configured plugins
      */
-    static Map<String,BpipePlugin> plugins = [:]
+    public static Map<String,BpipePlugin> plugins = [:]
     
     /**
      * A list of pipeline stages that should not be included in diagrams
