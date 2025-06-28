@@ -230,6 +230,16 @@ container {
 }
 ```
 
+### Custom path to singularity executable / apptainer
+
+If you use apptainer instead of singularity, or if you want to specify
+a custom path to the singularity executable, you can do that with the
+`singularityExecutable` option:
+
+```
+singularityExecutable="apptainer"
+```
+
 
 ## Anaconda (conda)
 
