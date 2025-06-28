@@ -97,13 +97,4 @@ nav:
   - Paired End Alignment: Examples/PairedEndAlignment.md
   - RNA Seq Corset: Examples/RNASeqCorset.md
   - WGS Variant Calling: Examples/WGSVariantCalling.md
-- Releases:
-  - 0.9.11 (latest): Releases/0.9.11.md
-  - 0.9.10: Releases/0.9.10.md
-  - 0.9.9.9: Releases/0.9.9.9.md
-  - 0.9.9.8: Releases/0.9.9.8.md
-  - 0.9.9.7: Releases/0.9.9.7.md
-  - 0.9.9.6: Releases/0.9.9.6.md
-  - 0.9.9.5: Releases/0.9.9.5.md
-  - 0.9.9.4: Releases/0.9.9.4.md
-  - 0.9.9.3: Releases/0.9.9.3.md
+
