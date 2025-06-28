@@ -35,6 +35,7 @@ import bpipe.OSResourceThrottle;
 import bpipe.PipelineError
 import bpipe.Utils
 import bpipe.storage.StorageLayer
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 
 /**
@@ -195,6 +196,7 @@ class CustomCommandExecutor implements PersistentExecutor, ForwardHost {
      * @param env   Map containing values of environment variables. 
      *              the standard set.
      */
+	@CompileStatic
     void setEnvironment(Map env) {
         String commandScript = '.bpipe/commandtmp/'+command.id+'/'+command.id+'.sh'
         File commandScriptFile = new File(commandScript)
