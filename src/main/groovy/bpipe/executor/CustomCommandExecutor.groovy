@@ -299,11 +299,15 @@ class CustomCommandExecutor implements PersistentExecutor, ForwardHost {
     	        p.waitForProcessOutput(out, err)
     	        int exitValue = p.waitFor() 
     	        if(exitValue != 0)
-    	            return CommandStatus.UNKNOWN.name()
-    	        result = out.toString().trim()
+    	            result = CommandStatus.UNKNOWN.name()
+                else
+                    result = out.toString().trim()
 	        }
         }
         
+        if(!result)
+            return CommandStatus.UNKNOWN.name()
+
         String statusValue = result.split()[0]
         if(this.command) {
             try {
