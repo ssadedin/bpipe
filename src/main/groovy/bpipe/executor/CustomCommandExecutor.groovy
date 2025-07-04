@@ -287,6 +287,7 @@ class CustomCommandExecutor implements PersistentExecutor, ForwardHost {
      * For custom commands status is returned by calling the shell script with the
      * 'status' argument and the stored command id.
      */
+    @CompileStatic
     public String statusImpl() {
         String cmd = "bash $managementScript status ${commandId}"
 		String result
