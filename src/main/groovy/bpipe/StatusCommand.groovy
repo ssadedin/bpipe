@@ -56,6 +56,12 @@ class StatusCommand extends BpipeCommand {
         }
         
         def opts= cli.parse(args)
+        if(!opts) {
+            opts.usage()
+            return
+        }
+        
+        
         if(opts.s) {
             
             CommandManager mgr = new CommandManager()
