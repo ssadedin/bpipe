@@ -341,7 +341,7 @@ class JMSAgent extends Agent {
         Map suppDetails = [
             result:[
                 command: ((Map)replyConfig.command)?.id,
-                status: pipeline.failed ? "failed" : "ok",
+                status: (pipeline == null || pipeline.failed) ? "failed" : "ok",
                 directory: bpipe.Runner.runDirectory,
                 *:checks
             ]
