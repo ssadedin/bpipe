@@ -156,6 +156,8 @@ class Runner {
     @CompileStatic
     public static void main(String [] arguments) {
         
+        
+        
         List<String> args = arguments as List<String>
         
         if(!BPIPE_HOME || BPIPE_HOME.isEmpty()) {
@@ -493,7 +495,7 @@ class Runner {
             Config.config.breakAt = ((String)opts['u']).split(",")
         }
 
-        def gcl = new GroovyClassLoader()
+        def gcl = new GroovyClassLoader(Runner.class.classLoader.rootLoader)
         
         if('parameters' in Config.userConfig) {
             Config.userConfig.parameters.collect { Map.Entry<String,Object> e ->
@@ -538,7 +540,7 @@ class Runner {
         script.setProperty("args", pipelineArgs);
         
         // If there are hooks in the hooks folder, run those
-        executeHooks()
+        executeHooks(gcl)
 
         // RUN it
         try {
@@ -986,10 +988,10 @@ class Runner {
      * Look for files in the hooks directory and execute each one to enable them to attach
      * event listeners to enable functionality they care about.
      */
-    static void executeHooks() {
+    static void executeHooks(GroovyClassLoader gcl) {
         List<File> hookFiles = HOOKS_DIRECTORY.listFiles().findAll { it.name.endsWith('.groovy') }.sort { it.name }
 
-        GroovyShell shell = new GroovyShell()
+        GroovyShell shell = new GroovyShell(gcl)
         
         hookFiles.each { File hookFile ->
             shell.run(hookFile, [])
