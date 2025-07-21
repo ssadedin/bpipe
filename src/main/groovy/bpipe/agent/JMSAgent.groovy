@@ -166,7 +166,16 @@ class JMSAgent extends Agent {
             return
         }            
         
-        Map commandAttributes = (Map)new JsonSlurper().parseText(text)
+        String replyToValue = getMessageReplyTo(message)
+
+        Map commandAttributes
+        try {
+            commandAttributes = (Map)new JsonSlurper().parseText(text)
+        }
+        catch(Exception e) {
+            handleBadCommandMessage(e, message)
+            return
+        }
         
         if(config.containsKey('transform')) {
             commandAttributes = ((Closure)config.transform)(commandAttributes)
@@ -178,11 +187,6 @@ class JMSAgent extends Agent {
             acknowledgeRun(message)
         }
         
-        String replyToValue
-        if(message.getJMSReplyTo())
-            replyToValue = ((Queue)message.getJMSReplyTo()).queueName
-        else
-            replyToValue = message.getStringProperty('reply-to')?:message.getStringProperty('replyTo')
 
         if(replyToValue) {
 
@@ -210,6 +214,29 @@ class JMSAgent extends Agent {
                 Thread.sleep(3000)
             }
         }
+    }
+
+    private void handleBadCommandMessage(Exception e, Message message) {
+        Utils.logException(logger, "Failed parsing command message to Map as JSON", e)
+        message.acknowledge()
+        String replyToValue = getMessageReplyTo(message)
+        if(replyToValue) {
+            Map replyValue = [
+                command: null,
+                status: "failed",
+                error: "Unable to parse message JSON: " + e.toString()
+            ]
+            sendReply(message, JsonOutput.prettyPrint(JsonOutput.toJson(replyValue)))
+        }
+    }
+
+    private String getMessageReplyTo(Message message) {
+        String replyToValue
+        if(message.getJMSReplyTo())
+            replyToValue = ((Queue)message.getJMSReplyTo()).queueName
+        else
+            replyToValue = message.getStringProperty('reply-to')?:message.getStringProperty('replyTo')
+        return replyToValue
     }
     
     /**
