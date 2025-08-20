@@ -58,6 +58,7 @@ class AWSSQSNotificationChannel extends JMSNotificationChannel {
             if(accessKey == 'auto') {
                 // Query from known URLs in EC2 environment
                 log.info("Querying role from canonical EC2 URL")
+                // FIXME: This request will fail from inside an EC2 when started with imdsv2 = true
                 String roleName = new URL('http://169.254.169.254/latest/meta-data/iam/security-credentials/').text.trim()
                 
                 log.info("Using role $roleName for querying access credentials")
