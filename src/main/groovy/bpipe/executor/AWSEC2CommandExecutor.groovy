@@ -106,6 +106,8 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     boolean autoShutdown = true
 
     boolean autoStop = false
+
+    boolean imdsv2 = true
     
     /**
      * Mounted storage associated with this executor or null if no storage associated
@@ -338,6 +340,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         
         this.autoShutdown = config.getOrDefault('autoShutdown', this.autoShutdown)
         this.autoStop = config.getOrDefault('autoStop', this.autoStop)
+        this.imdsv2 = config.getOrDefault('imdsv2', this.imdsv2)
         
         createClient(config)
         
@@ -356,6 +359,10 @@ class AWSEC2CommandExecutor extends CloudExecutor {
                 .withTagSpecifications(
                     new TagSpecification(resourceType: ResourceType.Instance.toString())
                         .withTags(new Tag().withKey('Name').withValue("${command.name}-${Config.config.pid}-${command.id}"))
+                )
+                .withMetadataOptions(
+                    new InstanceMetadataOptionsRequest()
+                        .withHttpTokens(this.imdsv2 ? 'required' : 'optional')
                 )
 
                 
