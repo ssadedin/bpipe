@@ -55,6 +55,11 @@ class ActivemqNotificationChannel extends JMSNotificationChannel {
            
         def connectionFactory = new ActiveMQConnectionFactory(brokerURL: config.brokerURL)
 
+        // The recommendation is that this be left false to allow for failover, message retry etc to execute
+        // even if the JVM is shutting down. However it causes Bpipe to hang at shutdown under certain conditions
+        // which is problematic for scenarios where it is run automated / unattended
+        connectionFactory.sessionTaskRunner.setDaemon(true)
+
         if (config.containsKey('username') && config.containsKey('credentialsJsonFile')) {
             throw new PipelineError("ActiveMQ configuration username and credentialsJsonFile are mutually exclusive, please only provide one or the other")
         }
