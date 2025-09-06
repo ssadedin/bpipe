@@ -6,6 +6,8 @@ import groovy.json.JsonSlurper
 import org.apache.activemq.ActiveMQConnection
 
 import org.apache.activemq.ActiveMQConnectionFactory
+import org.apache.activemq.ThreadPriorities
+import org.apache.activemq.thread.TaskRunnerFactory
 
 import bpipe.*
 
@@ -54,11 +56,15 @@ class ActivemqNotificationChannel extends JMSNotificationChannel {
             
            
         def connectionFactory = new ActiveMQConnectionFactory(brokerURL: config.brokerURL)
-
+        
+        def taskRunnerFactory = 
+            new TaskRunnerFactory("ActiveMQ Session Task", ThreadPriorities.INBOUND_CLIENT_SESSION, false, 1000, false, 4)
+            
         // The recommendation is that this be left false to allow for failover, message retry etc to execute
         // even if the JVM is shutting down. However it causes Bpipe to hang at shutdown under certain conditions
         // which is problematic for scenarios where it is run automated / unattended
-        connectionFactory.sessionTaskRunner?.setDaemon(true)
+        taskRunnerFactory.setDaemon(true)
+        connectionFactory.setSessionTaskRunner(taskRunnerFactory)
 
         if (config.containsKey('username') && config.containsKey('credentialsJsonFile')) {
             throw new PipelineError("ActiveMQ configuration username and credentialsJsonFile are mutually exclusive, please only provide one or the other")
