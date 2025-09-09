@@ -46,3 +46,4 @@ gradle-lib
 tests/huge_parallel/*.hello
 tmp
 /eclipse-build-tests/
+.aider*
