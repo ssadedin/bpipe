@@ -3161,6 +3161,12 @@ class PipelineContext {
         }
     }
    
+    /**
+     * Allowance when checking input file timestamps for potential file system lag which can make
+     * inputs look like they are created after the pipeline started
+     */
+    private final static long FILESYSTEM_LAG_MS = 15000L
+
    /**
     * Check if the given file is resolvable as a pre-existing file.
     * <p>
@@ -3216,14 +3222,17 @@ class PipelineContext {
             }
        }
 
-      long lastModified = Files.getLastModifiedTime(path).toMillis()
-      if(!allowForeign && (lastModified > Runner.startTimeMs))  {
+       long lastModified = Files.getLastModifiedTime(path).toMillis()
+       if(!allowForeign && (lastModified > Runner.startTimeMs + FILESYSTEM_LAG_MS))  {
           log.info "File $pathValue resolved as external file newer than pipeline run time: flagging as error"
           throw new PipelineError("""
                The following path is referenced via 'from' but is newer than the pipeline run time,
                even though it is not a recognised output of your pipeline:
 
                    $pathValue 
+
+                   File timestamp: ${new Date(lastModified)}
+                   Pipeline start time: ${new Date(Runner.startTimeMs)}
 
                This could mean an unexpected file from outside your pipeline was resolved.
                If this file is expected, please ensure it is marked as an output of your pipeline
