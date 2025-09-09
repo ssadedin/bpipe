@@ -388,6 +388,12 @@ class Runner {
         if(opt['e']) {
             Config.config.environment = opt['e']
         }
+        else {
+            def localEnv = System.getenv('BPIPE_DEFAULT_ENVIRONMENT')
+            if(localEnv) {
+                Config.config.environment = localEnv
+            }
+        }
         
         // read the configuration file, if available
         readUserConfig()
