@@ -401,7 +401,8 @@ class PipelineInput {
             
             log.info "Resolving inputs matching pattern $regex"
             for(s in reverseOutputs) {
-	                log.info("Checking " + Utils.logBig(s, 'outputs'))
+
+	            //log.info("Checking " + Utils.logBig(s, 'outputs'))
                         
                 List<PipelineFile> o = checkMatch(s, wholeMatch)
                 if(!o.isEmpty())
@@ -598,7 +599,7 @@ class PipelineInput {
         
         for(inps in resolutionStack.reverse()) {
            if(inps) {
-               log.info "Add input from resolutionStack resolution chain: " + inps
+//               log.fine "Add input from resolutionStack resolution chain: " + inps
                reverseOutputs.add(0,(List<PipelineFile>)inps) 
            }
         }
@@ -608,7 +609,7 @@ class PipelineInput {
         // then it will go with those rather than searching backwards for a previous match
         for(inps in inputInputs.reverse()) {
            if(inps) {
-               log.info "Add input from PipelineInput resolution chain: " + inps
+//               log.info "Add input from PipelineInput resolution chain: " + inps
                reverseOutputs.add(0,(List<PipelineFile>)inps) 
            }
         }
@@ -633,6 +634,7 @@ class PipelineInput {
         }
     }
     
+    @CompileStatic
     void addFilterExts(List<PipelineFile> files) {
         // If a filter is in operation and the file extension of the input was not already
         // resolved by the filter, add it here since this input could now be the input targeted
@@ -646,19 +648,23 @@ class PipelineInput {
         }
     }
     
+    @CompileStatic
     PipelineInput getOptional() {
         this.optional = true
         return this
     }
     
+    @CompileStatic
     boolean isFlaggedAsOptional() {
         return this.@optional
     }
     
+    @CompileStatic
     String flag(String flag) {
         return withFlag(flag)
     }
     
+    @CompileStatic
     String withFlag(String flag) {
         try {
             PipelineFile resolvedValue = getResolvedValue()
@@ -682,6 +688,7 @@ class PipelineInput {
      * @param flag name of flag, including dashes (eg: "-I" or "--input")
      * @return  string containing each matching input prefixed by the flag and a space
      */
+    @CompileStatic
     protected String formatFlag(String flag, List<PipelineFile> boxed) {
        addResolvedInputs(boxed)
        if(flag.endsWith("=")) {
