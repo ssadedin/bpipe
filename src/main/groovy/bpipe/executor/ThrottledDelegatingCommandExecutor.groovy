@@ -64,7 +64,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
      */
     boolean deferred = false
     
-    @Delegate CommandExecutor commandExecutor
+    CommandExecutor commandExecutor
     
     /**
      * Set if this job has been rescheduled
@@ -360,4 +360,24 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
     static synchronized void enterDevLoop(Map cfg, Command cmd) {
         throw new PipelineDevRetry("Dev retry for $cmd.name")
     }
+
+	@Override
+	public Semaphore getLaunchLock() {
+		return this.commandExecutor.getLaunchLock()
+	}
+
+	@Override
+	public String localPath(String storageName) {
+		return this.commandExecutor.localPath(storageName)
+	}
+
+	@Override
+	public void mountStorage(StorageLayer storage) {
+		this.commandExecutor.mountStorage(storage)
+	}
+
+	@Override
+	public List<String> getIgnorableOutputs() {
+		return this.commandExecutor.getIgnorableOutputs()
+	}
 }
