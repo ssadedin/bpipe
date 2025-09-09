@@ -131,9 +131,9 @@ class AgentCommandRunner implements Runnable {
                         RunPipelineCommand rpc = (RunPipelineCommand)command
                         command.out = out
 
-                         command.run(out)
+                        command.run(out)
                         
-                       if(command instanceof RunPipelineCommand)
+                        if(command instanceof RunPipelineCommand)
                             exitCode = ((RunPipelineCommand)command).result.exitValue
                     }
                     else {
