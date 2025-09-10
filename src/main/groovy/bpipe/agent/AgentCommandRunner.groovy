@@ -48,6 +48,8 @@ class AgentCommandRunner implements Runnable {
     
     int runState = 0
     
+    String environment = null
+    
     /**
      * When waiting for acquisition of a lock, this object will be notified to interrupt
      */
@@ -128,7 +130,13 @@ class AgentCommandRunner implements Runnable {
                         onRun.call()
 
                     if(command instanceof RunPipelineCommand || command instanceof ClosurePipelineCommand) {
+                        
                         RunPipelineCommand rpc = (RunPipelineCommand)command
+                        
+                        if(this.environment != null && !rpc.args.contains("--env")) {
+                            rpc.args = (List<String>)["--env", this.environment, *rpc.args]
+                        }
+                        
                         command.out = out
 
                         command.run(out)

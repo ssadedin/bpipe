@@ -74,6 +74,8 @@ abstract class Agent extends TimerTask {
     
     String name = bpipe.Runner.HOSTNAME
     
+    String environment = null
+    
 //    String id = Utils.sha1(String.valueOf(System.currentTimeMillis()) + new Random().nextInt())
     
     String id = Utils.sha1(Runner.BPIPE_HOME + '::' + name + '::' + System.properties['user.name'])
@@ -167,6 +169,7 @@ abstract class Agent extends TimerTask {
             validateCommand(command)
             AgentCommandRunner runner = new AgentCommandRunner(createConnection(), (Long)commandAttributes.id, command, outputMode, onRun)
             runner.concurrency = this.concurrency
+            runner.environment = this.environment
             new Thread(runner).start()
             return runner
         }
@@ -174,6 +177,7 @@ abstract class Agent extends TimerTask {
             // report the error upstream if we can
             AgentCommandRunner runner = new AgentCommandRunner(createConnection(), (Long)commandAttributes.id, e, outputMode, onRun)
             runner.concurrency = this.concurrency
+            runner.environment = this.environment
             ++this.errors
             new Thread(runner).start() 
             return null

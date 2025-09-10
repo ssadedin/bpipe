@@ -55,6 +55,10 @@ class AgentRunner {
             bpipe.agent.Agent agent = new JMSAgent(agentConfig)
             
             agent.name = agentConfig.name
+            if(agentConfig.containsKey('env')) {
+                agent.environment = agentConfig.env
+                log.info "Agent $agent.name configured to use env $agent.environment"
+            }
             
             def concurrency = agentConfig.getOrDefault('concurrency', opts.n)
             if(concurrency) {
