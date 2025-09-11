@@ -1,7 +1,7 @@
 #Bpipe without any arguments will output a summary of the valid commands.
 
 ```
-Bpipe Version 0.9.8.6   Built on Wed Oct 22 16:06:17 EST 2014
+Bpipe Version 0.9.9.4   Built on Sat Jun 10 07:39:02 CDT 2017
 
 usage: bpipe [run|test|debug|execute] [options] <pipeline> <in1> <in2>...
              retry [test]
@@ -16,7 +16,7 @@ usage: bpipe [run|test|debug|execute] [options] <pipeline> <in1> <in2>...
              preserve
              diagram <pipeline> <in1> <in2>...
              diagrameditor <pipeline> <in1> <in2>...
- -b,--branch <arg>                Comma separated list of branches to
+ -b,--branch <arg>                comma-separated list of branches to
                                   limit execution to
  -d,--dir <arg>                   output directory
  -f,--filename <arg>              output file name of report
@@ -27,7 +27,7 @@ usage: bpipe [run|test|debug|execute] [options] <pipeline> <in1> <in2>...
  -m,--memory <arg>                maximum memory
  -n,--threads <arg>               maximum threads
  -p,--param <param=value>         defines a pipeline parameter, or file of
-                                  paramaters via @<file>
+                                  parameters via @<file>
  -r,--report                      generate an HTML report / documentation
                                   for pipeline
  -R,--report <arg>                generate report using named template
