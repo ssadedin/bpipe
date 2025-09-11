@@ -56,21 +56,9 @@ class AWSSQSNotificationChannel extends JMSNotificationChannel {
         if(config.containsKey('accessKey')) {
             String accessKey = (String)config.accessKey
             if(accessKey == 'auto') {
-                // Query from known URLs in EC2 environment
-                log.info("Querying role from canonical EC2 URL")
-                // FIXME: This request will fail from inside an EC2 when started with imdsv2 = true
-                String roleName = new URL('http://169.254.169.254/latest/meta-data/iam/security-credentials/').text.trim()
-                
-                log.info("Using role $roleName for querying access credentials")
-                Map credentialsInfo = new JsonSlurper().parse(new URL("http://169.254.169.254/latest/meta-data/iam/security-credentials/$roleName"))
-                
-                credentials = new BasicSessionCredentials(
-                    credentialsInfo.AccessKeyId,
-                    credentialsInfo.SecretAccessKey,
-                    credentialsInfo.Token
-                )
-                
-                log.info("Retrieved access key $credentialsInfo.AccessKeyId for session $credentialsInfo.Token")
+                log.info("Using default AWS credentials provider chain for auto credentials")
+                def credsProvider = new com.amazonaws.auth.DefaultAWSCredentialsProviderChain()
+                credentials = credsProvider.getCredentials()
             }
             else {
                 credentials = new BasicAWSCredentials(accessKey, (String)config.accessSecret);

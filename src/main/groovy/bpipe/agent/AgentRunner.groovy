@@ -1,5 +1,6 @@
 package bpipe.agent
 
+import bpipe.BpipeDB
 import bpipe.BpipeLogFormatter
 
 import java.util.concurrent.Semaphore
@@ -117,7 +118,7 @@ class AgentRunner {
         def parentLog = log.getParent()
         parentLog.getHandlers().each { parentLog.removeHandler(it) }
 
-        File logFile = new File(System.getProperty("user.home")+"/.bpipedb/agent.log")
+        File logFile = BpipeDB.getFile("agent.log")
         if(logFile.exists()) {
             logFile.delete()
         }

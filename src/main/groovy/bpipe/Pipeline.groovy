@@ -1475,7 +1475,7 @@ public class Pipeline implements ResourceRequestor {
      * if necessary
      */
     static synchronized void genome(Map options, String name) {
-        File genomesDir = new File(System.getProperty("user.home"), ".bpipedb/genomes")
+        File genomesDir = BpipeDB.getFile("genomes")
         if(!genomesDir.exists())
             if(!genomesDir.mkdirs())
                 throw new IOException("Unable to create directory to store genomes. Please check permissions for $genomesDir")

@@ -1,5 +1,6 @@
 package bpipe.cmd
 
+import bpipe.BpipeDB
 import bpipe.Runner
 import bpipe.Utils;
 import bpipe.agent.PipelineInfo
@@ -18,7 +19,7 @@ abstract class BpipeCommand {
     
     OptionAccessor opts  
     
-    File COMMAND_TMP = new File(System.getProperty("user.home") + "/.bpipedb/commandtmp")
+    File COMMAND_TMP = BpipeDB.getFile("commandtmp")
     
     String dir
     

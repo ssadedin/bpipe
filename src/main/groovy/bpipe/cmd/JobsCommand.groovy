@@ -115,10 +115,9 @@ class JobsCommand extends BpipeCommand {
         
         Config.config["mode"] = "jobs"
         
-        File homeDir = new File(System.properties["user.home"])
-        File bpipeDbDir = new File(homeDir, ".bpipedb")
-        File jobsDir = new File(bpipeDbDir, "jobs")
-        File completedDir = new File(bpipeDbDir, "completed") 
+        File bpipeDbDir = new File(BpipeDB.getDbPath())
+        File jobsDir = BpipeDB.getFile("jobs")
+        File completedDir = BpipeDB.getFile("completed")
         
         int ageHours = opts.age?:24
         long sleepTime = (opts.sleepTime ?: "10000").toLong()

@@ -848,12 +848,12 @@ class Runner {
     /**
      * Centralised directory where in-progress jobs are linked
      */
-    static final File CENTRAL_JOB_DIR = new File(System.getProperty("user.home") + "/.bpipedb/jobs/")
+    static final File CENTRAL_JOB_DIR = BpipeDB.getFile("jobs")
     
     /**
      * Centralised directory where completed job links are linked
      */
-    public static final File COMPLETED_DIR = new File(System.getProperty("user.home") + "/.bpipedb/completed")
+    public static final File COMPLETED_DIR = BpipeDB.getFile("completed")
     
     /**
      * The local directory where job information is stored
