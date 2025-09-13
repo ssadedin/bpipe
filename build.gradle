@@ -57,12 +57,15 @@ dependencies {
         implementation files(fileTree(dir:'groovy-lib', includes:['groovy-json-2.5.13.jar']))
     }
     else {
-        implementation group: 'org.codehaus.groovy', name: 'groovy-all', version: GROOVY_VERSION
+        implementation group: 'org.codehaus.groovy', name: 'groovy', version: GROOVY_VERSION
         implementation group: 'org.codehaus.groovy', name: 'groovy-dateutil', version: GROOVY_VERSION
         implementation group: 'org.codehaus.groovy', name: 'groovy-cli-commons', version: GROOVY_VERSION
         implementation group: 'org.codehaus.groovy', name: 'groovy-datetime', version: GROOVY_VERSION
         implementation group: 'org.codehaus.groovy', name: 'groovy-json', version: GROOVY_VERSION
         implementation group: 'org.codehaus.groovy', name: 'groovy-sql', version: GROOVY_VERSION
+        implementation group: 'org.codehaus.groovy', name: 'groovy-templates', version: GROOVY_VERSION
+        implementation group: 'org.codehaus.groovy', name: 'groovy-xml', version: GROOVY_VERSION
+        implementation group: 'org.codehaus.groovy', name: 'groovy-groovysh', version: GROOVY_VERSION
     }
 
     implementation files(fileTree(dir:'local-lib', includes:['*.jar']))
