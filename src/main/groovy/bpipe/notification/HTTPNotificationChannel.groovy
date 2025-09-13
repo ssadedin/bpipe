@@ -198,7 +198,6 @@ class HTTPNotificationChannel implements NotificationChannel {
             }
             catch(Exception e) {
                 log.warning("Failed to load netrc file: " + e)
-                e.printStackTrace()
                 this.netrc = new NetRC(hosts:[])
             }
         }
