@@ -27,9 +27,6 @@ package bpipe.cmd
 import java.io.Writer;
 import java.util.List
 
-import javax.security.auth.Subject.SecureSet
-import javax.swing.text.rtf.RTFGenerator
-
 import bpipe.BpipeDB
 import bpipe.Command
 import bpipe.CommandManager;
