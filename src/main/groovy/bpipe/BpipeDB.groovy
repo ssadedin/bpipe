@@ -1,29 +1,17 @@
 package bpipe
 
 import groovy.transform.CompileStatic
+import groovy.util.logging.Log
 
 @CompileStatic
+@Log
 class BpipeDB {
     
-    private static String dbPath = null
+    private static String dbPath = System.getenv("BPIPE_DB_DIR") ?: 
+                                 System.getProperty("user.home") + "/.bpipedb"
     
     static String getDbPath() {
-        if(dbPath != null) {
-            log.info "Using cached DB path: $dbPath"
-            return dbPath
-        }
-            
-        // Check config first
-        def cfg = Config.userConfig as ConfigObject
-        log.info "Checking config for DB path. Config: $cfg"
-        if(cfg?.containsKey('db') && ((ConfigObject)cfg.db)?.containsKey('directory')) {
-            dbPath = ((ConfigObject)cfg.db).directory.toString()
-            log.info "Using configured DB path from config: $dbPath"
-        }
-        else {
-            dbPath = System.getProperty("user.home") + "/.bpipedb"
-            log.info "Using default DB path: $dbPath"
-        }
+        log.info "Using DB path: $dbPath"
         return dbPath
     }
     

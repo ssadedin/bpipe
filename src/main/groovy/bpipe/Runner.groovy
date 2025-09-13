@@ -172,7 +172,16 @@ class Runner {
         
         String pid = resolvePID()
         
+        def parentLog = initializeLogging(pid)
+
         Config.config.pid = pid
+        
+        // Read user config early to ensure it's available for BpipeDB
+        readUserConfig()
+        
+        // Initialize database directories after config is read
+        CENTRAL_JOB_DIR = BpipeDB.getFile("jobs")
+        COMPLETED_DIR = BpipeDB.getFile("completed")
         
         Config.config.outputLogPath = ".bpipe/logs/${pid}.log"
         
@@ -200,7 +209,6 @@ class Runner {
            testMode = true
         }
 
-        def parentLog = initializeLogging(pid)
         
         log.info "Initializing plugins ..."
         Config.initializePlugins()
@@ -848,12 +856,12 @@ class Runner {
     /**
      * Centralised directory where in-progress jobs are linked
      */
-    static final File CENTRAL_JOB_DIR = BpipeDB.getFile("jobs")
+    static File CENTRAL_JOB_DIR = null
     
     /**
      * Centralised directory where completed job links are linked
      */
-    public static final File COMPLETED_DIR = BpipeDB.getFile("completed")
+    public static File COMPLETED_DIR = null
     
     /**
      * The local directory where job information is stored

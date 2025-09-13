@@ -32,6 +32,9 @@ BUILDDATE=0
 # as otherwise Java can default to extreme amounts (gigabytes)
 : ${MAX_JAVA_MEM:="256m"}
 
+# Default location for bpipe database
+: ${BPIPE_DB_DIR:="$HOME/.bpipedb"}
+
 # Pattern used to parse log files when tailing
 TAIL_PATTERN='s/\[[*.0-9a-zA-Z_-]*\(\.\{0,1\}[0-9]*\)\{1,\}\]'$'\t//g' 
 
@@ -282,14 +285,24 @@ function handle_sigint() {
 # build directory override the jar files. 
 #----------------------------------------------------------
 get_classpath() {
+
+  if [ ! -z "$NO_ECLIPSE_CLASSES" ];
+  then
+      ECLIPSE_CLASSPATH=""
+      #echo "NOT Using Eclipse classes from $ECLIPSE_CLASSPATH"
+  else
+      ECLIPSE_CLASSPATH="$BPIPE_HOME/eclipse-build:"
+      #echo "Using Eclipse classes from $ECLIPSE_CLASSPATH"
+  fi
+  
  
   BPIPE_JAR="$BPIPE_HOME/lib/bpipe-all.jar"
   if [ -e "$BPIPE_HOME/build/libs/bpipe-all.jar" ];
   then
-        BPIPE_JAR="$BPIPE_HOME/eclipse-build:$BPIPE_HOME/build/libs/bpipe-all.jar"
+        BPIPE_JAR="${ECLIPSE_CLASSPATH}$BPIPE_HOME/build/libs/bpipe-all.jar"
   elif [ -e "$BPIPE_HOME/build/libs/bpipe.jar" ];
   then
-        BPIPE_JAR="$BPIPE_HOME/eclipse-build:$BPIPE_HOME/build/libs/bpipe.jar"
+        BPIPE_JAR="${ECLIPSE_CLASSPATH}$BPIPE_HOME/build/libs/bpipe.jar"
   fi
 
   LIB=lib
@@ -304,7 +317,7 @@ get_classpath() {
   # bpipe classes with those from the build directory and the eclipse compile path
   if [ -e $BPIPE_HOME/build/classes/groovy/main ] || [ -e $BPIPE_HOME/eclipse-build ];
   then
-    CP="$BPIPE_HOME/eclipse-build:$BPIPE_HOME/build/classes/groovy/main:$CP:$BPIPE_HOME/build/libs/bpipe-all.jar"
+    CP="${ECLIPSE_CLASSPATH}$BPIPE_HOME/build/classes/groovy/main:$CP:$BPIPE_HOME/build/libs/bpipe-all.jar"
   fi
 
   # Support for Cygwin: convert the class path to windows format 
@@ -794,14 +807,14 @@ echo "$0 $COMMAND $*" >> .bpipe/jobs/$BPIPE_PID
 (
     if [ ! -e .bpipedb/jobs ];
     then
-        mkdir -p ~/.bpipedb/jobs
+        mkdir -p "$BPIPE_DB_DIR/jobs"
     fi
-    JOBDB_FILE=~/.bpipedb/jobs/$BPIPE_PID
-    if [ -e $JOBDB_FILE ];
+    JOBDB_FILE="$BPIPE_DB_DIR/jobs/$BPIPE_PID"
+    if [ -e "$JOBDB_FILE" ];
     then
-      rm $JOBDB_FILE;
+      rm "$JOBDB_FILE";
     fi
-    ln -s `pwd`/.bpipe/jobs/$BPIPE_PID  $JOBDB_FILE
+    ln -s "`pwd`/.bpipe/jobs/$BPIPE_PID" "$JOBDB_FILE"
 ) &
 
 # Set up signal handler to trap Ctrl-C so that we can cleanly abort the job
