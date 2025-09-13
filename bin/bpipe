@@ -318,6 +318,7 @@ get_classpath() {
   if [ -e $BPIPE_HOME/build/classes/groovy/main ] || [ -e $BPIPE_HOME/eclipse-build ];
   then
     CP="${ECLIPSE_CLASSPATH}$BPIPE_HOME/build/classes/groovy/main:$CP:$BPIPE_HOME/build/libs/bpipe-all.jar"
+    BPIPE_JAR="$BPIPE_HOME/build/classes/groovy/main:$BPIPE_JAR"
   fi
 
   # Support for Cygwin: convert the class path to windows format 
