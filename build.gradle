@@ -116,7 +116,7 @@ dependencies {
     implementation group: 'org.apache.tika', name: 'tika-core', version: '2.4.1'
     
 
-//    testImplementation group: 'junit', name: 'junit', version: '4.8.2'
+    testImplementation group: 'junit', name: 'junit', version: '4.13.2'
 }
 
 //compileGroovy {
