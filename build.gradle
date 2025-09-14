@@ -117,6 +117,7 @@ dependencies {
     
 
     testImplementation group: 'junit', name: 'junit', version: '4.13.2'
+    testImplementation group: 'org.codehaus.groovy', name: 'groovy-test', version: GROOVY_VERSION
 }
 
 //compileGroovy {
