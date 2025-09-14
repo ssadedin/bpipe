@@ -286,6 +286,8 @@ function handle_sigint() {
 #----------------------------------------------------------
 get_classpath() {
 
+  ECLIPSE_BUILD="$BPIPE_HOME/eclipse-build"
+
   if [ ! -z "$NO_ECLIPSE_CLASSES" ];
   then
       ECLIPSE_CLASSPATH=""
@@ -315,10 +317,10 @@ get_classpath() {
 
   # In case we are running in place in the bpipe project root, we pre-empt any other 
   # bpipe classes with those from the build directory and the eclipse compile path
-  if [ -e $BPIPE_HOME/build/classes/groovy/main ] || [ -e $BPIPE_HOME/eclipse-build ];
+  if [ -e $BPIPE_HOME/build/classes/groovy/main ] || [ -e "$ECLIPSE_BUILD" ];
   then
     CP="${ECLIPSE_CLASSPATH}$BPIPE_HOME/build/classes/groovy/main:$CP:$BPIPE_HOME/build/libs/bpipe-all.jar"
-    BPIPE_JAR="$BPIPE_HOME/build/classes/groovy/main:$BPIPE_JAR"
+    BPIPE_JAR="$ECLIPSE_CLASSPATH:$BPIPE_HOME/build/classes/groovy/main:$BPIPE_JAR"
   fi
 
   # Support for Cygwin: convert the class path to windows format 
@@ -422,9 +424,12 @@ function set_bpipe_home() {
     # Note: the first test below is necessary for Cygwin
     if readlink $0 > /dev/null && type readlink > /dev/null 2>&1 ; 
     then
-        BPIPE_HOME=$(dirname $(readlink -f $0))/..
+        BPIPE_HOME=$(dirname $(readlink -f $0/..))
+    elif type realpath > /dev/null;
+    then
+    	BPIPE_HOME=$(dirname $(realpath $(dirname $0)))
     else
-        BPIPE_HOME=`dirname $0`/..
+        BPIPE_HOME=$(dirname $(dirname $0))
     fi
 
     # For Cygwin, we need windows compatible version of path for JVM to use
