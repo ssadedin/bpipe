@@ -26,6 +26,8 @@
 package bpipe
 
 import java.nio.channels.FileLock
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import java.util.logging.ConsoleHandler
 import java.util.logging.FileHandler
 import java.util.logging.Handler;
@@ -156,7 +158,11 @@ class Runner {
     @CompileStatic
     public static void main(String [] arguments) {
         
-        
+        if(System.properties.bpipe_show_timings == 'true') {
+            LocalTime now = LocalTime.now();
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("mm:ss.nnnnnnnnn");
+            System.out.println(now.format(fmt) + " main");
+        }
         
         List<String> args = arguments as List<String>
         
