@@ -112,7 +112,7 @@ class PooledExecutor implements CommandExecutor, ForwardHost {
         Path cmdScriptTmp = storage.toPath(".bpipe/commandtmp/$hostCommandId/" + ExecutorPool.POOLED_COMMAND_FILENAME + ".tmp")
         
         log.info "Write command $cmd.command to command script at $cmdScriptTmp"
-        cmdScriptTmp.text = cmd.command
+        cmdScriptTmp.toFile().text = cmd.command
         
         log.info "File to move is created"
         Thread.sleep(2000)
