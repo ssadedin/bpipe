@@ -2120,6 +2120,13 @@ class PipelineContext {
                 
                 if(containerMsg)
                     println containerMsg
+                String memoryMsg = ""
+                if(prettyCmd.contains('__bpipe_lazy_resource_memory__')) {
+                    prettyCmd = prettyCmd.replaceAll('__bpipe_lazy_resource_memory__', "${ansi().fgGreen()}\\\${memory}${ansi().fgDefault()}")
+                    memoryMsg = "${ansi().bold()}Note:${ansi().boldOff()} ${ansi().fgGreen()}\${memory}${ansi().fgDefault()} will be assigned at runtime"
+                }
+                if(memoryMsg)
+                    println memoryMsg
 
                 for(key in ['Executor','Memory','Walltime','Modules']) {
                     if(configObject.containsKey(key.toLowerCase()))
