@@ -2120,12 +2120,11 @@ class PipelineContext {
                 
                 if(containerMsg)
                     println containerMsg
-                String modulesMsg = ""
-                if(configObject && configObject.containsKey('modules') && configObject.modules) {
-                    modulesMsg = "Modules to be loaded: " + configObject.modules.join(", ")
+
+                for(key in ['Executor','Memory','Walltime','Modules']) {
+                    if(configObject.containsKey(key.toLowerCase()))
+                        println((key.padRight(12)) + ": " + configObject[key.toLowerCase()])
                 }
-                if(modulesMsg)
-                    println modulesMsg
 
                 println "\n${ansi().fgBlue()}Waiting for changes or <enter> to continue ....${ansi().fgDefault()}\n"
                 
