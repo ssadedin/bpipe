@@ -91,7 +91,6 @@ class OutputLog implements Appendable {
         }
     }
     
-//    @CompileStatic
     void flush(CharSequence output) {
         
         if(bpipe.Runner.devMode) {
@@ -109,7 +108,6 @@ class OutputLog implements Appendable {
         
     }
     
-//    @CompileStatic
     void bufferLine(String line) {
         
         // In dev mode, no output log at all, just print raw output
