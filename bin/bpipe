@@ -44,11 +44,13 @@ then
   shift
 fi
 
+BPIPE_SHOW_TIMINGS=${BPIPE_SHOW_TIMINGS:-false}
+
 #----------------------------------------------------------
 # Print a timing message (for debug)
 #----------------------------------------------------------
 tmsg() {
-    [ ! -z "$BPIPE_SHOW_TIMINGS" ] && { echo `date +'%M:%S.%N'`" $1"; }
+    [ "$BPIPE_SHOW_TIMINGS" == "true" ] && { echo `date +'%M:%S.%N'`" $1"; }
 }
 
 IS_MAC=false
@@ -729,15 +731,22 @@ else
     BPIPEDEBUG_FLAGS=""
 fi
 
+
 HEADLESS_FLAG=${HEADLESS_FLAG:--Djava.awt.headless=true}
+
+TIMING_INFO_FLAGS=""
+
+if [ "$BPIPE_SHOW_TIMINGS" == "true" ];
+then
+    TIMING_INFO_FLAGS="-Dbpipe_show_timings=$BPIPE_SHOW_TIMINGS -Xlog:cds+time,class+load,startuptime"
+fi
 
 LAUNCH_CMD='
    printf $$ > .bpipe.'$LAUNCHER_PID'.run.pid &
    exec java -Xmx'${MAX_JAVA_MEM}' \
              '${HEADLESS_FLAG}' -noverify \
              -XX:+TieredCompilation \
-             -classpath "'"$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*:$CP"'" '$BPIPEDEBUG_FLAGS' '$MODEFLAG' \
-             -Dbpipe_show_timings=false \
+             -classpath "'"$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*:$CP"'" '$BPIPEDEBUG_FLAGS' '$MODEFLAG' '$TIMING_INFO_FLAGS' \
              -Dbpipe.pid='$LAUNCHER_PID' \
              -Dbpipe.home='"$JVM_BPIPE_HOME"' \
              -Dbpipe.version='$VERSION' \
