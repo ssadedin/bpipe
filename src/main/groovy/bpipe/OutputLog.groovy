@@ -56,6 +56,10 @@ class OutputLog implements Appendable {
      */
     StringBuilder buffer = new StringBuilder()
     
+    // New fields for maintaining a rolling tail of the last N lines
+    int maxTailLines = 5
+    List<String> tailBuffer = []
+    
     String branch
     String prefix
     String commandId
@@ -109,6 +113,11 @@ class OutputLog implements Appendable {
     }
     
     void bufferLine(String line) {
+        // Update rolling tail buffer
+        tailBuffer << line
+        if(tailBuffer.size() > maxTailLines) {
+            tailBuffer.remove(0)
+        }
         
         // In dev mode, no output log at all, just print raw output
         if(Runner.devMode)
@@ -149,12 +158,15 @@ class OutputLog implements Appendable {
         this.flush()
         return this;
     }
+    List<String> getLastTailLines() {
+        return tailBuffer.clone()
+    }
 }
-
+ 
 /**
  * An output log that simply forwards to another output log.
  * 
- * @author Simon Sadedin
+ * @author Simon
  */
 class ForwardingOutputLog {
     
