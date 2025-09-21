@@ -407,8 +407,10 @@ class Sender {
         
         def prettyContent = content
 
-        ctx.getResolvedInputs().each { inp ->
-            prettyContent = prettyContent.replaceAll(inp.toString(), "${ansi().fgBrightMagenta()}$inp${ansi().fgDefault()}")
+        if(prettyContent instanceof String) {
+            ctx.getResolvedInputs().each { inp ->
+                prettyContent = prettyContent.replaceAll(inp.toString(), "${ansi().fgBrightMagenta()}$inp${ansi().fgDefault()}")
+            }
         }
         
         println "Would send: \n\n$prettyContent\n\nto channel $configName:\n"
