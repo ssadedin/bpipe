@@ -53,6 +53,7 @@ import org.codehaus.groovy.runtime.ReverseListIterator
 import bpipe.graph.Graph;
 import bpipe.storage.StorageLayer
 import bpipe.storage.UnknownStoragePipelineFile
+import static org.fusesource.jansi.Ansi.*
 
 import static bpipe.Utils.isContainer 
 import static bpipe.Utils.unbox 
@@ -930,14 +931,27 @@ public class Pipeline implements ResourceRequestor {
                 String branchPart = pe.ctx?.branch?.firstNonTrivialName ? " ($pe.ctx.branch.firstNonTrivialName) " : ""
                 String stageName = pe.ctx?.stageName
                 if(stageName && stageName != "Unknown") {
-                    return "In stage ${pe.ctx?.stageName}$branchPart: " + pe.message
+                    String mainMessage = "In stage ${pe.ctx?.stageName}$branchPart: " + pe.message
+                    
+                    if(pe instanceof CommandFailedException) {
+                        OutputLog o = pe.getCommand().outputLog
+                        if(o?.getLastTailLines()) {
+                            mainMessage += "\n\nTrailing lines:${ansi().fgRed()}\n\n    " + o.getLastTailLines().join('\n    ')  + ansi().fgDefault() + '\n'
+                        }
+                        else {
+                            mainMessage += "\nNo output recorded from command\n"
+                        }
+                    }
+                    
+                    return mainMessage
                 }
                 else {
                     return pe.message
                 }
             }
-            else 
+            else {
                 return e.message
+            }
         }.join('\n')
     }
     

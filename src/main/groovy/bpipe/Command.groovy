@@ -116,6 +116,8 @@ class Command implements Serializable {
      */
     List<String> shell 
     
+    transient OutputLog outputLog
+    
     File dir
     
     transient List<CommandDependency> dependencies

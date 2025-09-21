@@ -48,6 +48,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern
 import org.codehaus.groovy.runtime.StackTraceUtils
+import static org.fusesource.jansi.Ansi.*
 
 import bpipe.storage.StorageLayer
 
@@ -1096,6 +1097,17 @@ class Utils {
             }
             
             String result = (e.ctx ? " $e.ctx.stageName $branch " : "").center(width,"-") + "\n\n" + e.message + "\n"
+            
+            if(e instanceof CommandFailedException) {
+                OutputLog o = e.getCommand().outputLog
+                if(o?.getLastTailLines()) {
+                    result += "\n\nTrailing lines:${ansi().fgRed()}\n\n    " + o.getLastTailLines().join('\n    ')  + ansi().fgDefault() + '\n'
+                }
+                else {
+                    result += "\nNo output recorded from command\n"
+                }
+            }
+            
             
 //            if(branchHierarchy) {
 //                result = result + "\n$branchInfo\n"

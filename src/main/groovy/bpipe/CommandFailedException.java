@@ -33,15 +33,25 @@ package bpipe;
  */
 class CommandFailedException extends PipelineError {
     
-    Command command;
+    private static final long serialVersionUID = 1L;
+
+    private Command command;
 
     public CommandFailedException(String arg0, PipelineContext ctx, Command command) {
         super(arg0, ctx);
-        this.command = command;
+        this.setCommand(command);
     }
 
     public CommandFailedException(Throwable arg0) {
         super(arg0);
+    }
+
+    public Command getCommand() {
+        return command;
+    }
+
+    public void setCommand(Command command) {
+        this.command = command;
     }
     
 }

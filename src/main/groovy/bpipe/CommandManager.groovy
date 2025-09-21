@@ -151,6 +151,8 @@ class CommandManager {
         
         command.name = name
         command.executor = wrapped
+        command.outputLog = commandLog
+
         wrapped.start(cfg, command, commandLog, commandLog)
     		
 		this.commandIds[cmdExec] = command.id

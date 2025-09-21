@@ -2091,7 +2091,13 @@ class PipelineContext {
                 String threadsMsg = ''
                 if(prettyCmd.contains('__bpipe_lazy_resource_threads__')) {
                     prettyCmd = prettyCmd.replaceAll('__bpipe_lazy_resource_threads__', "${ansi().fgGreen()}\\\${threads}${ansi().fgDefault()}")
-                    threadsMsg = "${ansi().bold()}Note:${ansi().boldOff()} ${ansi().fgGreen()}\${threads}${ansi().fgDefault()} will be assigned at runtime based on available concurrency"
+                    threadsMsg = "${ansi().bold()}Note:${ansi().boldOff()} ${ansi().fgGreen()}\${threads}${ansi().fgDefault()} will be assigned at runtime based on available concurrency\n"
+                }
+
+                String memoryMsg = ""
+                if(prettyCmd.contains('__bpipe_lazy_resource_memory__')) {
+                    prettyCmd = prettyCmd.replaceAll('__bpipe_lazy_resource_memory__', "${ansi().fgGreen()}\\\${memory}${ansi().fgDefault()}")
+                    memoryMsg = "${ansi().bold()}Note:${ansi().boldOff()} ${ansi().fgGreen()}\${memory}${ansi().fgDefault()} will be assigned based on configuration\n"
                 }
 
                 String msg = branch.name ? "Stage $stageName in branch $branch.name would execute:\n\n        $prettyCmd" : "Would execute $prettyCmd"
@@ -2107,7 +2113,7 @@ class PipelineContext {
                 if(configObject?.containsKey('container') && configObject.container) {
                     ConfigObject container = configObject['container']
                     if(container)
-                        containerMsg = "Will execute in container: " + container + condaInfo
+                        containerMsg = "Will execute in container: " + container + condaInfo + '\n'
                 }
                 else {
                     if(condaInfo)
@@ -2117,20 +2123,20 @@ class PipelineContext {
                 println msg
                 
                 println threadsMsg
+
+                if(memoryMsg)
+                    println memoryMsg
                 
                 if(containerMsg)
                     println containerMsg
-                String memoryMsg = ""
-                if(prettyCmd.contains('__bpipe_lazy_resource_memory__')) {
-                    prettyCmd = prettyCmd.replaceAll('__bpipe_lazy_resource_memory__', "${ansi().fgGreen()}\\\${memory}${ansi().fgDefault()}")
-                    memoryMsg = "${ansi().bold()}Note:${ansi().boldOff()} ${ansi().fgGreen()}\${memory}${ansi().fgDefault()} will be assigned at runtime"
-                }
-                if(memoryMsg)
-                    println memoryMsg
 
-                for(key in ['Executor','Memory','Walltime','Modules']) {
+                if(config) {
+                    println("Config".padRight(12) + ": " + config)
+                }
+
+                for(key in ['Executor','Queue','Memory','Walltime','Modules']) {
                     if(configObject.containsKey(key.toLowerCase()))
-                        println((key.padRight(12)) + ": " + configObject[key.toLowerCase()])
+                        println((key.take(11).padRight(12)) + ": " + configObject[key.toLowerCase()])
                 }
 
                 println "\n${ansi().fgBlue()}Waiting for changes or <enter> to continue ....${ansi().fgDefault()}\n"
@@ -2153,7 +2159,8 @@ class PipelineContext {
             
         log.info "Command $c.id in branch $branch failed with exit code $c.exitCode"
         
-        throw new CommandFailedException("Command $c.id in stage $stageName failed with exit status = $c.exitCode : \n\n$c.command", this, c)
+        String message = "Command $c.id in stage $stageName failed with exit status = $c.exitCode : \n\n$c.command"
+        throw new CommandFailedException(message, this, c)
       }
       
       if(!this.probeMode)

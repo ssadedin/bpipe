@@ -58,7 +58,8 @@ class OutputLog implements Appendable {
     
     // New fields for maintaining a rolling tail of the last N lines
     int maxTailLines = 5
-    List<String> tailBuffer = []
+
+    ArrayDeque<String> tailBuffer = new ArrayDeque(maxTailLines)
     
     String branch
     String prefix
@@ -113,10 +114,11 @@ class OutputLog implements Appendable {
     }
     
     void bufferLine(String line) {
+
         // Update rolling tail buffer
-        tailBuffer << line
+        tailBuffer.addLast(line)
         if(tailBuffer.size() > maxTailLines) {
-            tailBuffer.remove(0)
+            tailBuffer.removeFirst()
         }
         
         // In dev mode, no output log at all, just print raw output
@@ -158,8 +160,9 @@ class OutputLog implements Appendable {
         this.flush()
         return this;
     }
-    List<String> getLastTailLines() {
-        return tailBuffer.clone()
+
+    Iterable<String> getLastTailLines() {
+        return tailBuffer
     }
 }
  
