@@ -29,7 +29,7 @@ class SelectFromPredefinedFileNameMapper implements FileNameMapper {
         final String dotName = '.' + name
         
         // note: without the leading dot, can result in incorrect substring matches,
-        // eg: .gvcf matches .vcf
+        // eg: test.gvcf matches test.vcf
         final endExt = '.' + segments.join('.')
         
         String result = this.overrideOutputs.find { 
