@@ -137,7 +137,7 @@ class PipelineDelegate {
         else
         if(name in ["produce","transform","filter","preserve"]) {
             if((name == "transform") && !(args[-1] instanceof Closure)) {
-                args = args.clone() + [null]
+                args = (args as List) + [null]
             }
             else
             if(args.size()<2)
