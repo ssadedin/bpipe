@@ -1,5 +1,6 @@
 plugins {
-  id 'com.github.johnrengelman.shadow' version '7.1.2'
+  // id 'com.github.johnrengelman.shadow' version '7.1.2'
+  id 'com.gradleup.shadow' version '8.3.0'
 }
 
 apply plugin: 'eclipse'
@@ -181,6 +182,8 @@ shadowJar {
 	transform(FixedGroovyExtensionModuleTransformer)
     
     exclude '*slf4j-*'
+    
+    // entryCompression = ZipEntryCompression.STORED
     
 //	minimize {
 //		dependency('org.codehaus.groovy:.*:.*')
