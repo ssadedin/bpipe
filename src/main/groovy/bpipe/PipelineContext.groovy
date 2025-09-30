@@ -3808,6 +3808,7 @@ class PipelineContext {
         return String.valueOf(memoryValue)
     }
     
+    @CompileStatic
     void setOutputDirectory(String outputDirectory) {
         assert outputDirectory != null
         this.@outputDirectory = outputDirectory
@@ -3841,6 +3842,7 @@ class PipelineContext {
     }
     
     
+    @CompileStatic
     void setRawInput(List<PipelineFile> rawInput) {
         this.@input = rawInput
     }
