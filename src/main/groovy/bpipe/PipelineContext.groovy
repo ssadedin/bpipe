@@ -3865,7 +3865,8 @@ class PipelineContext {
            println "${ansi().bold()}Branch ${props ? 'Variables for branch' : ''}: ${branchDesc} ${ansi().boldOff()}\n"
 
        props.each { Map.Entry entry ->
-           println "- $entry.key : $entry.value"
+           if(entry.value?.class in [String,Integer,Long,Double,Float,Boolean])
+               println "- $entry.key : $entry.value"
         }
         if(props)
             println ""
