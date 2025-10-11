@@ -31,8 +31,10 @@ import java.util.*;
  * This exception is thrown when the pipeline is aborted because
  * the user ran it in "test"mode.
  */
-class PipelineTestAbort extends RuntimeException {
+public class PipelineTestAbort extends RuntimeException {
     
+    private static final long serialVersionUID = 1L;
+
     boolean summary = false;
     
     List<String> missingOutputs;
