@@ -709,8 +709,12 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         this.storage = storage
     }
     
+
+    final static String tmpDir = System.getProperty("java.io.tmpdir") 
+
     @CompileStatic
     File getPipelineTmpDir() {
-        new File("/tmp/bpipe-aws/$pipelineId/$command.id")
+        log.info "Using temp directory for pipeline $pipelineId from: " + tmpDir + " for command: $command"
+        new File("$tmpDir/bpipe-aws/$pipelineId/${command?.id}")
     }
 }
