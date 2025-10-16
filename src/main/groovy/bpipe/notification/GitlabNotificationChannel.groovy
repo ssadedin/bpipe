@@ -153,41 +153,50 @@ class GitlabNotificationChannel implements NotificationChannel {
         ]
         
         String titleMatch = null
-        if(issueDetails.title instanceof Map) {
-            params.search = issueDetails.title.search
-            titleMatch = issueDetails.title.match
+        Integer issueId = null
+        if( issueDetails.issueId ){
+            issueId = issueDetails.issueId as Integer
         }
         else {
-            params.search = issueDetails.title
-        }
-        
-		// Search the project issues for one matching the given title
-		Integer issueId = null
-		try {
-            
-			String searchResultJSON = 
-                Utils.sendURL(params, 'GET', "$baseURL/projects/$project.id/issues", ["PRIVATE-TOKEN": cfg.token])
-			
-			List<Map> searchResult = new JsonSlurper().parseText(searchResultJSON)
-           
-            if(titleMatch) {
-                log.info "Prior to filtering found ${searchResult.size()} issues"
-                Pattern pattern = ~titleMatch
-                searchResult = searchResult.grep { Map issueJSON ->
-                    issueJSON.title =~ pattern 
-                }
+            if(issueDetails.title instanceof Map) {
+                params.search = issueDetails.title.search
+                titleMatch = issueDetails.title.match
             }
+            else {
+                params.search = issueDetails.title
+            }
+        }
 
-            log.info "Final search result contains ${searchResult.size()} issues"
-			if(searchResult.isEmpty()) {
-                return false
-			}
+		try {
+            if ( issueId == null ){
+                // Search the project issues for one matching the given title
+                String searchResultJSON = 
+                    Utils.sendURL(params, 'GET', "$baseURL/projects/$project.id/issues", ["PRIVATE-TOKEN": cfg.token])
+                
+                List<Map> searchResult = new JsonSlurper().parseText(searchResultJSON)
             
-            if(searchResult.size()>1 && issueDetails.unique) 
-                throw new NonuniqueGitlabIssue("Search for $issueDetails.title in project $project.id yielded multiple results when configured with a unique constraint")
-             
-            issueId = searchResult[0].iid
-            log.info "Found issue $issueId corresonding to title $issueDetails.title in project $project.id"
+                if(titleMatch) {
+                    log.info "Prior to filtering found ${searchResult.size()} issues"
+                    Pattern pattern = ~titleMatch
+                    searchResult = searchResult.grep { Map issueJSON ->
+                        issueJSON.title =~ pattern 
+                    }
+                }
+
+                log.info "Final search result contains ${searchResult.size()} issues"
+                if(searchResult.isEmpty()) {
+                    return false
+                }
+                
+                if(searchResult.size()>1 && issueDetails.unique) 
+                    throw new NonuniqueGitlabIssue("Search for $issueDetails.title in project $project.id yielded multiple results when configured with a unique constraint")
+                
+                issueId = searchResult[0].iid
+                log.info "Found issue $issueId corresonding to title $issueDetails.title in project $project.id"
+            }
+            else{
+                log.info("Using supplied $issueId in project $project.id")
+            }
             
     		NotesApi notesApi = gitlab.notesApi
     		notesApi.createIssueNote(project.id, issueId , issueDetails.description)
