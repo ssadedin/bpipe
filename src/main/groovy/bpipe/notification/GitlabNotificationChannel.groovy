@@ -154,7 +154,7 @@ class GitlabNotificationChannel implements NotificationChannel {
         
         String titleMatch = null
         Integer issueId = null
-        if( issueDetails.issueId ){
+        if(issueDetails.issueId) {
             issueId = issueDetails.issueId as Integer
         }
         else {
@@ -168,7 +168,7 @@ class GitlabNotificationChannel implements NotificationChannel {
         }
 
 		try {
-            if ( issueId == null ){
+            if(issueId == null) {
                 // Search the project issues for one matching the given title
                 String searchResultJSON = 
                     Utils.sendURL(params, 'GET', "$baseURL/projects/$project.id/issues", ["PRIVATE-TOKEN": cfg.token])
