@@ -139,6 +139,7 @@ if(!new File("local-lib").listFiles().find { it.name =~ /gridgain.*.jar/ }) {
     } } }
 }
 
+/*
 import com.github.jengelman.gradle.plugins.shadow.transformers.*
 @groovy.transform.CompileStatic
 @CacheableTransformer
@@ -177,9 +178,19 @@ class FixedGroovyExtensionModuleTransformer extends GroovyExtensionModuleTransfo
 		os.closeEntry()
 	}
 }
+*/
 
 shadowJar {
-	transform(FixedGroovyExtensionModuleTransformer)
+    
+    
+ //   if(GROOVY_VERSION == "3.0.25") {
+        mergeGroovyExtensionModules()
+//    }
+//    else {
+//	    transform(FixedGroovyExtensionModuleTransformer)
+//    }
+
+
     
     exclude '*slf4j-*'
     
