@@ -401,8 +401,9 @@ class AWSEC2CommandExecutor extends CloudExecutor {
                 throw new CapacityTemporarilyUnavailableException("Unable to acquire instance for job $id (image=$image, instanceType=$instanceType) due to $ex.errorCode", ex)
         }
 
+        boolean isPublicIp = config.getOrDefault('publicIp', true)
         this.instanceId = result.reservation.instances[0].instanceId
-        this.hostname = queryHostName()
+        this.hostname = queryHostName(isPublicIp)
         
         log.info "Instance $instanceId started with host name $hostname"
     }
@@ -446,6 +447,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     void connectInstance(Map config) {
 
         this.autoShutdown = config.getOrDefault('autoShutdown', this.autoShutdown)
+        boolean isPublicIp = config.getOrDefault('publicIp', true)
         
         createClient(config)
 
@@ -468,7 +470,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         }
 
         assert this.instanceId
-        this.hostname = queryHostName()
+        this.hostname = queryHostName(isPublicIp)
         log.info "Resolved hostname $hostname for instance $instanceId"
     }
 
@@ -495,22 +497,30 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     }
     
     @CompileStatic
-    protected String queryHostName() {
+    protected String queryHostName(boolean isPublicIp) {
         String hostname = Utils.withRetries(8) {
             DescribeInstancesResult result = describeInstance();
             for(Reservation reservations : result.getReservations()) {
                 Instance instance = reservations.instances.find { it.instanceId == instanceId }
-                if(instance.publicDnsName) {
-                    return instance.publicDnsName
+                if(isPublicIp) {
+                    if(instance.publicDnsName) {
+                        return instance.publicDnsName
+                    }
+                }
+                else {
+                    if(instance.privateDnsName) {
+                        // Client may not be able to resolve hostname for private subnet, so return the IP instead
+                        return instance.privateIpAddress
+                    }
                 }
             }
             
             log.info "Still waiting for $instanceId to have a hostname"
-            throw new IllegalStateException('Instance does not have public host name yet')
+            throw new IllegalStateException('Instance does not have a host name yet')
         }
         
         if(!hostname)
-            throw new IllegalStateException('Could not resolve public DNS hostname for instance ' + instanceId)
+            throw new IllegalStateException('Could not resolve DNS hostname/IP for instance ' + instanceId)
             
         return hostname
     }
