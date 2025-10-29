@@ -370,6 +370,12 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         if(config.containsKey('securityGroup')) {
             runInstancesRequest = runInstancesRequest.withSecurityGroups((String)config.securityGroup)
         }         
+        if(config.containsKey('securityGroupId')) {
+            runInstancesRequest = runInstancesRequest.withSecurityGroupIds((String)config.securityGroupId)
+        }
+        if(config.containsKey('subnetId')) {
+            runInstancesRequest = runInstancesRequest.withSubnetId((String)config.subnetId)
+        }
         
         if(config.containsKey('instanceProfile'))
             runInstancesRequest.setIamInstanceProfile(new IamInstanceProfileSpecification().withName((String)config.instanceProfile))
