@@ -349,6 +349,10 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             instanceType = InstanceType.fromValue((String)config.instanceType)
         }
         
+        String nameTag = "${command.name}-${Config.config.pid}-${command.id}"
+        if(config.containsKey('nameTagPrefix')) {
+            nameTag = (String)config.nameTagPrefix + nameTag
+        }
         
         RunInstancesRequest runInstancesRequest = new RunInstancesRequest();
         runInstancesRequest.withImageId(image)
@@ -358,7 +362,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
                 .withKeyName(new File(keypair).name.replaceAll('.pem$',''))
                 .withTagSpecifications(
                     new TagSpecification(resourceType: ResourceType.Instance.toString())
-                        .withTags(new Tag().withKey('Name').withValue("${command.name}-${Config.config.pid}-${command.id}"))
+                        .withTags(new Tag().withKey('Name').withValue(nameTag))
                 )
 
         if(this.imdsv2 != null) {
