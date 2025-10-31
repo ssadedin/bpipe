@@ -976,9 +976,13 @@ public class Pipeline implements ResourceRequestor {
 
         if(rootContext)
             rootContext.msg "Finished at " + finishDate
+        else
+            println "Finished at " + finishDate
 
         about(finishedAt: finishDate)
         cmdlog << "# " + (" Finished at " + finishDate + " Duration = " + TimeCategory.minus(finishDate,startDate) +" ").center(Config.config.columns,"#")
+        
+
     }
 
     /**
