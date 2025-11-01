@@ -558,6 +558,9 @@ then
     # Clean all commands considered to be currently executing
     rm -rf .bpipe/commands
     exit 
+elif [ "$COMMAND" == "keygen" ];
+then
+    launch_in_foreground keygen $*
 elif [ "$COMMAND" == "checks" ];
 then
     shift 1

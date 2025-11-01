@@ -102,6 +102,7 @@ class Runner {
                    register <pipeline> <in1> <in2>...
                    diagram <pipeline> <in1> <in2>...
                    diagrameditor <pipeline> <in1> <in2>...
+                   keygen
 
       Options:
     """.stripIndent().trim() + '\n\n'
@@ -1170,6 +1171,19 @@ class Runner {
             return amount.toInteger() * 1000
     }
     
+    static void generateKeyPair() {
+        try {
+            KeyPair keyPair = HPKESecretExchange.generateAndSaveKeyPair("bpipe.public.pem", "bpipe.private.pem")
+            println "\nGenerated new HPKE keypair:"
+            println "  Public key:  bpipe.public.pem" 
+            println "  Private key: bpipe.private.pem\n"
+        }
+        catch(Exception e) {
+            println "\nError generating keypair: ${e.message}\n"
+            exit(1)
+        }
+    }
+
     static void readUserConfig() {
         log.info "Reading user config ... "
         Utils.time ("Read user config") {
