@@ -323,4 +323,23 @@ class HPKESecretExchange {
             pemWriter.flush()
         }
     }
+
+    /**
+     * Generates a new X25519 key pair and saves them to PEM files
+     * @param publicKeyFile Path where the public key PEM file should be written
+     * @param privateKeyFile Path where the private key PEM file should be written
+     * @return The generated KeyPair
+     */
+    static KeyPair generateAndSaveKeyPair(String publicKeyFile, String privateKeyFile) {
+        // Generate key pair
+        KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance(KEM_ALGORITHM, "BC")
+        keyPairGen.initialize(255, new SecureRandom())
+        KeyPair keyPair = keyPairGen.generateKeyPair()
+        
+        // Save keys to PEM files
+        writePublicKeyToPEM(keyPair.public, publicKeyFile)
+        writePrivateKeyToPEM(keyPair.private, privateKeyFile)
+        
+        return keyPair
+    }
 }
