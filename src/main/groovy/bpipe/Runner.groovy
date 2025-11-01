@@ -259,6 +259,13 @@ class Runner {
             cli = diagramCli
             Config.config["mode"] = "documentation"
         }
+        else
+        if(mode == "keygen") {
+            log.info("Mode is keygen")
+            Config.config["mode"] = mode
+            generateKeyPair()
+            exit(0)
+        }
         else 
         if(mode == "diagrameditor") {
             log.info("Mode is diagram editor")
