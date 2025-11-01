@@ -7,10 +7,7 @@ import java.security.PublicKey
 import java.security.SecureRandom
 import java.security.Security
 
-import org.bouncycastle.openssl.PEMParser
-import org.bouncycastle.openssl.PEMWriter
-import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
-import org.bouncycastle.util.io.pem.PemObject
+import org.bouncycastle.util.io.pem.*
 
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
@@ -276,10 +273,11 @@ class HPKESecretExchange {
      */
     static PublicKey readPublicKeyFromPEM(String filename) {
         new File(filename).withReader { reader ->
-            def pemParser = new PEMParser(reader)
-            def pemObject = pemParser.readObject()
-            def converter = new JcaPEMKeyConverter().setProvider("BC")
-            return converter.getPublicKey(pemObject)
+            def pemReader = new PemReader(reader)
+            def pemObject = pemReader.readPemObject()
+            def keyFactory = java.security.KeyFactory.getInstance(KEM_ALGORITHM, "BC")
+            def keySpec = new java.security.spec.X509EncodedKeySpec(pemObject.getContent())
+            return keyFactory.generatePublic(keySpec)
         }
     }
 
@@ -290,10 +288,11 @@ class HPKESecretExchange {
      */
     static PrivateKey readPrivateKeyFromPEM(String filename) {
         new File(filename).withReader { reader ->
-            def pemParser = new PEMParser(reader)
-            def pemObject = pemParser.readObject()
-            def converter = new JcaPEMKeyConverter().setProvider("BC")
-            return converter.getPrivateKey(pemObject)
+            def pemReader = new PemReader(reader)
+            def pemObject = pemReader.readPemObject()
+            def keyFactory = java.security.KeyFactory.getInstance(KEM_ALGORITHM, "BC")
+            def keySpec = new java.security.spec.PKCS8EncodedKeySpec(pemObject.getContent())
+            return keyFactory.generatePrivate(keySpec)
         }
     }
 
@@ -304,8 +303,9 @@ class HPKESecretExchange {
      */
     static void writePublicKeyToPEM(PublicKey key, String filename) {
         new File(filename).withWriter { writer ->
-            def pemWriter = new PEMWriter(writer)
-            pemWriter.writeObject(key)
+            def pemWriter = new PemWriter(writer)
+            def pemObject = new PemObject("PUBLIC KEY", key.getEncoded())
+            pemWriter.writeObject(pemObject)
             pemWriter.flush()
         }
     }
@@ -317,8 +317,9 @@ class HPKESecretExchange {
      */
     static void writePrivateKeyToPEM(PrivateKey key, String filename) {
         new File(filename).withWriter { writer ->
-            def pemWriter = new PEMWriter(writer)
-            pemWriter.writeObject(key)
+            def pemWriter = new PemWriter(writer)
+            def pemObject = new PemObject("PRIVATE KEY", key.getEncoded())
+            pemWriter.writeObject(pemObject)
             pemWriter.flush()
         }
     }
