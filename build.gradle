@@ -105,9 +105,15 @@ dependencies {
 
     implementation ('com.hazelcast:hazelcast-all:2.1.2') { transitive = false }
     
+    implementation("org.bouncycastle:bcprov-jdk18on:1.82")
+    
     implementation group: 'com.squareup.okhttp3', name: 'okhttp', version: '4.9.3'
     
+    // Google Cloud
     implementation group: 'com.google.cloud', name: 'google-cloud-nio', version: '0.62.0-alpha'
+    
+    
+    // AWS support
     implementation group: 'com.amazonaws', name: 'aws-java-sdk-ec2', version: '1.12.25'
     implementation group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.12.25'
     implementation 'com.amazonaws:aws-java-sdk-sqs:1.12.25'
