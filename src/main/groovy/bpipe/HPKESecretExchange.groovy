@@ -7,6 +7,11 @@ import java.security.PublicKey
 import java.security.SecureRandom
 import java.security.Security
 
+import org.bouncycastle.openssl.PEMParser
+import org.bouncycastle.openssl.PEMWriter
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
+import org.bouncycastle.util.io.pem.PemObject
+
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -261,6 +266,60 @@ class HPKESecretExchange {
             
         } catch (Exception e) {
             throw new RuntimeException("Decryption failed: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * Reads an X25519 public key from a PEM file
+     * @param filename Path to the PEM file containing the public key
+     * @return The loaded PublicKey
+     */
+    static PublicKey readPublicKeyFromPEM(String filename) {
+        new File(filename).withReader { reader ->
+            def pemParser = new PEMParser(reader)
+            def pemObject = pemParser.readObject()
+            def converter = new JcaPEMKeyConverter().setProvider("BC")
+            return converter.getPublicKey(pemObject)
+        }
+    }
+
+    /**
+     * Reads an X25519 private key from a PEM file
+     * @param filename Path to the PEM file containing the private key
+     * @return The loaded PrivateKey
+     */
+    static PrivateKey readPrivateKeyFromPEM(String filename) {
+        new File(filename).withReader { reader ->
+            def pemParser = new PEMParser(reader)
+            def pemObject = pemParser.readObject()
+            def converter = new JcaPEMKeyConverter().setProvider("BC")
+            return converter.getPrivateKey(pemObject)
+        }
+    }
+
+    /**
+     * Writes an X25519 public key to a PEM file
+     * @param key The PublicKey to write
+     * @param filename Path where the PEM file should be written
+     */
+    static void writePublicKeyToPEM(PublicKey key, String filename) {
+        new File(filename).withWriter { writer ->
+            def pemWriter = new PEMWriter(writer)
+            pemWriter.writeObject(key)
+            pemWriter.flush()
+        }
+    }
+
+    /**
+     * Writes an X25519 private key to a PEM file
+     * @param key The PrivateKey to write
+     * @param filename Path where the PEM file should be written
+     */
+    static void writePrivateKeyToPEM(PrivateKey key, String filename) {
+        new File(filename).withWriter { writer ->
+            def pemWriter = new PEMWriter(writer)
+            pemWriter.writeObject(key)
+            pemWriter.flush()
         }
     }
 }
