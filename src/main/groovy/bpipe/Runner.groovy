@@ -26,6 +26,7 @@
 package bpipe
 
 import java.nio.channels.FileLock
+import java.security.KeyPair
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.logging.ConsoleHandler
