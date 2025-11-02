@@ -21,6 +21,9 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
  */
 class HPKESecretExchange {
     
+    public static HPKESecretExchange instance = null
+    
+    
     // HPKE Configuration - sensible defaults
     private static final int HPKE_MODE_BASE = 0x00
     private static final String KEM_ALGORITHM = "X25519"
