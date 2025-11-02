@@ -70,9 +70,17 @@ class RunPipelineCommand extends BpipeCommand {
         
         List<String> cmd = [ bpipeHome + "/bin/bpipe", "run" ] 
         cmd.addAll(args)
+
+        // Just for clarity, a reference to refer to inside the closure below
+        final Map<String,String> commandEnvironment = this.environment
+
         result = Utils.executeCommand(cmd, out:out, err: out) {
             directory(dirFile)
-            environment().put('BPIPE_QUIET','true')
+
+            Map env = environment()
+            
+            env.put('BPIPE_QUIET','true')
+            env.putAll(commandEnvironment)
         }
         
     }
