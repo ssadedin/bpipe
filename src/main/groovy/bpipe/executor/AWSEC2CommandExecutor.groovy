@@ -285,12 +285,37 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     }
 
     private BasicAWSCredentials getPlainTextCredentials(Map config) {
-        AWSCredentials credentials = new BasicAWSCredentials(
-                (String)config.accessKey,
-                (String)config.accessSecret
-                )
-                
-        return credentials
+        String accessKey = config.accessKey
+        String accessSecret = config.accessSecret
+
+        // If the secret starts with HPKE1:, decrypt it
+        if(accessSecret?.startsWith('HPKE1:')) {
+            if(HPKESecretExchange.instance == null) {
+                throw new PipelineError("HPKE encrypted AWS credentials found but no HPKESecretExchange instance configured")
+            }
+
+            // Parse the HPKE1:<ephemeral>:<secret> format
+            String[] parts = accessSecret.split(':')
+            if(parts.length != 3) {
+                throw new PipelineError("Invalid HPKE encrypted credential format - expected HPKE1:<ephemeral>:<secret>")
+            }
+
+            // Extract components and decrypt
+            Map<String,String> encapsulatedData = [
+                ephemeralPublicKey: parts[1],
+                encryptedSecret: parts[2]
+            ]
+
+            try {
+                byte[] decrypted = HPKESecretExchange.instance.decapsulate(encapsulatedData)
+                accessSecret = new String(decrypted)
+            }
+            catch(Exception e) {
+                throw new PipelineError("Failed to decrypt AWS credentials: " + e.message, e)
+            }
+        }
+
+        return new BasicAWSCredentials(accessKey, accessSecret)
     }
 
     /**

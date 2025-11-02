@@ -108,6 +108,37 @@ Note that in this example, file1.txt and file2.txt do not exist locally, they ar
 exist in the S3 bucket you have configured above.
 
 
+## Encrypting AWS Credentials
+
+Bpipe supports encrypting AWS credentials using HPKE (Hybrid Public Key
+Encryption) to protect sensitive access keys. When enabled, your AWS secret
+access key can be encrypted before being stored in configuration files
+or set in the environment. Bpipe will decrypt the value using a private key
+that you can separately configure. This scheme allows for secrets to be 
+provisioned in configuration or via environment variables without them
+being inherently exposed to all the users who can access these 
+values. 
+
+The encryption uses:
+
+- X25519 for key exchange
+- HKDF-SHA256 for key derivation
+- AES-128-GCM for encryption
+
+To use encrypted credentials:
+
+1. Encrypt your AWS secret access key using HPKE in the format: `HPKE1:<ephemeral key>:<encrypted secret>`
+2. Use this encrypted value in your configuration:
+
+```
+executor="AWSEC2"
+accessKey = '<your access key>'
+accessSecret = 'HPKE1:Az8eKJ...:<encrypted portion>'
+```
+
+Bpipe will automatically detect and decrypt the secret when it starts AWS operations. The prefix
+"HPKE1:" indicates to Bpipe that the value is encrypted and needs to be decrypted before use.
+
 ## Using pre-existing instances
 
 You may wish to use an instance that is already in existence to launch your jobs. You can achieve
