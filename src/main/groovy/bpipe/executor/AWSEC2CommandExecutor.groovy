@@ -662,29 +662,49 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     @Override
     @CompileStatic
     public void transferTo(List<PipelineFile> fileList) {
-
         assert hostname != null && hostname != ""
-        
+
+        // Calculate total size to transfer
+        long totalBytes = fileList.sum { PipelineFile f ->
+            f.toPath().toFile().length()
+        } as long
+
+        log.info "Starting transfer of ${totalBytes/1024/1024}MB to $hostname"
+        long startTime = System.currentTimeMillis()
+
         Map<String,List<PipelineFile>> dirGroups = fileList.groupBy { it.toPath().toFile().absoluteFile.parentFile.absolutePath }
-        
+
         List<String> outputDirs = (List<String>)command.outputs.groupBy {  PipelineFile output ->
             Path outputPath = output.toPath()
             outputPath.toAbsolutePath().parent.toString()
         }*.key
-        
+
         List<String> allDirs = (dirGroups*.key + outputDirs).unique()
-        
+
         log.info "Creating directories on $hostname : ${dirGroups*.key}"
         ssh('sudo mkdir -p ' + allDirs.join(' ') + ' && sudo chmod uga+rwx ' + allDirs.join(' ') )
-        
+
         dirGroups.each { dir, dirFiles ->
             log.info "Transfer $dirFiles to $hostname ..."
-//            List sshCommand = ["scp","-oStrictHostKeyChecking=no", "-i", keypair,*dirFiles*.toString(), user + '@' +hostname+':'+dir]*.toString()
-            List sshCommand = ["rsync", "-r", "-e", "ssh -oStrictHostKeyChecking=no -i $keypair", *dirFiles*.toString(), user + '@' +hostname+':'+dir]*.toString()
-            Utils.executeCommand((List<Object>)sshCommand, throwOnError: true)        
+            List sshCommand = [
+                "rsync",
+                "-r",
+                "-e",
+                "ssh -oStrictHostKeyChecking=no -i $keypair",
+                *dirFiles*.toString(),
+                user + '@' +hostname+':'+dir
+            ]*.toString()
+            Utils.executeCommand((List<Object>)sshCommand, throwOnError: true)
         }
+
+        // Calculate and log transfer rate
+        long endTime = System.currentTimeMillis()
+        double elapsedSecs = (endTime - startTime)/1000.0
+        double mbPerSec = (totalBytes/1024/1024)/elapsedSecs
+
+        log.info sprintf("Transferred %.1fMB in %.1f seconds (%.1f MB/s) to $hostname for job $commandId", totalBytes/1024/1024, elapsedSecs, mbPerSec)
     }
-    
+   
     @Override
     @CompileStatic
     public void transferFrom(Map config, List<PipelineFile> fileList) {
