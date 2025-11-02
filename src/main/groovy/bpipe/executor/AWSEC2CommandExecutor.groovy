@@ -267,11 +267,8 @@ class AWSEC2CommandExecutor extends CloudExecutor {
              
         this.keypair = config.keypair
         this.user = config.user
-             
-        AWSCredentials credentials = new BasicAWSCredentials(
-            (String)config.accessKey,
-            (String)config.accessSecret
-        );
+        
+        AWSCredentials credentials = getPlainTextCredentials(config);
         
         ec2 = AmazonEC2ClientBuilder
             .standard()
@@ -285,6 +282,15 @@ class AWSEC2CommandExecutor extends CloudExecutor {
                 .withCredentials(new AWSStaticCredentialsProvider(credentials))
                 .withRegion(Regions.fromName((String)config.region))
                 .build();
+    }
+
+    private BasicAWSCredentials getPlainTextCredentials(Map config) {
+        AWSCredentials credentials = new BasicAWSCredentials(
+                (String)config.accessKey,
+                (String)config.accessSecret
+                )
+                
+        return credentials
     }
 
     /**
