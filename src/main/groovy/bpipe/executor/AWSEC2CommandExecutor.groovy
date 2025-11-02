@@ -41,6 +41,7 @@ import bpipe.Command
 import bpipe.CommandStatus
 import bpipe.Config
 import bpipe.ExecutedProcess
+import bpipe.HPKESecretExchange
 import bpipe.PipelineError
 import bpipe.PipelineFile
 import bpipe.Runner
