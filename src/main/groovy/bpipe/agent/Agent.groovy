@@ -250,6 +250,10 @@ abstract class Agent extends TimerTask {
         if(args != null)
             command.args = args
             
+        if(commandAttributes.environment) {
+            command.environment = commandAttributes.environment
+        }
+            
         return command
     }
     

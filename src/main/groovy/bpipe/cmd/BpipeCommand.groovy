@@ -15,6 +15,8 @@ abstract class BpipeCommand {
     
     List<String> args = []
     
+    Map<String,String> environment = [:]
+    
     CliBuilder cli = new CliBuilder()
     
     OptionAccessor opts  
@@ -73,11 +75,15 @@ abstract class BpipeCommand {
         String chmodText = """chmod u+rx $tmpFile.absolutePath""".execute().text
         log.info "Chmod output: $chmodText"
         
+        // Just for clarity, a reference to refer to inside the closure below
+        final Map<String,String> commandEnvironment = this.environment
+        
         Process p =
             new ProcessBuilder("bash", "-c", tmpFile.absolutePath)
                                 .directory(new File(directory))
+                                .tap { it.environment().putAll(commandEnvironment) }
                                 .start()
-                                
+            
         String output                                
         Utils.withStreams(p) {
             p.waitForProcessOutput(out, out)
