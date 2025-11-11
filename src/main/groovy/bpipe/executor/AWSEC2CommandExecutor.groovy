@@ -376,11 +376,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         
         createClient(config)
         
-        InstanceType instanceType = InstanceType.T1Micro
-        if(config.containsKey('instanceType')) {
-            instanceType = InstanceType.fromValue((String)config.instanceType)
-        }
-        
+       
         String nameTag = "${command.name}-${Config.config.pid}-${command.id}"
         if(config.containsKey('nameTagPrefix')) {
             nameTag = (String)config.nameTagPrefix + nameTag
@@ -388,7 +384,6 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         
         RunInstancesRequest runInstancesRequest = new RunInstancesRequest();
         runInstancesRequest.withImageId(image)
-                .withInstanceType(instanceType)
                 .withMinCount(1)
                 .withMaxCount(1)
                 .withKeyName(new File(keypair).name.replaceAll('.pem$',''))
@@ -396,6 +391,18 @@ class AWSEC2CommandExecutor extends CloudExecutor {
                     new TagSpecification(resourceType: ResourceType.Instance.toString())
                         .withTags(new Tag().withKey('Name').withValue(nameTag))
                 )
+
+        InstanceType instanceType = InstanceType.T1Micro
+        if(config.containsKey('instanceType')) {
+            try {
+                instanceType = InstanceType.fromValue((String)config.instanceType)
+                runInstancesRequest.withInstanceType(instanceType)
+            }
+            catch(Exception e) {
+                log.info("Instance type $config.instanceType for $command.name was not a recognised instance type")
+                runInstancesRequest.withInstanceType((String)config.instanceType)
+            }
+        }
 
         if(this.imdsv2 != null) {
             runInstancesRequest = runInstancesRequest.withMetadataOptions(
