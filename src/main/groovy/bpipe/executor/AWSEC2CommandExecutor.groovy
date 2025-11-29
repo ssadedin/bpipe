@@ -286,8 +286,10 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     }
 
     private BasicAWSCredentials getPlainTextCredentials(Map config) {
-        String accessKey = config.accessKey
-        String accessSecret = config.accessSecret
+        
+        // Check if they are URL object - if so, retrieve the secrets from the URL
+        String accessKey = Utils.resolvePossibleAuthenticatedURL(config.accessKey)
+        String accessSecret = Utils.resolvePossibleAuthenticatedURL(config.accessSecret)
 
         // If the secret starts with HPKE1:, decrypt it
         if(accessSecret?.startsWith('HPKE1:')) {
