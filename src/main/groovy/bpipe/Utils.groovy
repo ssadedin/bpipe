@@ -1284,6 +1284,25 @@ class Utils {
     }
     
     @CompileStatic
+    public static String resolvePossibleAuthenticatedURL(Object stringOrURL) {
+        if(stringOrURL instanceof String)
+            return stringOrURL
+            
+        if(stringOrURL instanceof URL) {
+            String url = ((URL)stringOrURL).toString()
+            
+            Map headers = [:]
+            Utils.attemptNetRCAuthorization(url, headers)
+            
+            return Utils.connectAndSend("GET", null, url, headers)
+
+        }
+        else {
+            throw new PipelineError("Expected value to be String or URL object but found ${stringOrURL?.class}")
+        }
+    }
+    
+    @CompileStatic
     static String sendURL(Map<String,Object> params, String method, String baseURL, Map headers=[:], Map postParams=null) {
 		String paramString = params?.collect {
 			URLEncoder.encode(it.key)+'='+URLEncoder.encode(String.valueOf(it.value))
@@ -1583,4 +1602,6 @@ class Utils {
         }
         return paths.find { it.lastModified() > lastModifiedMs }.absolutePath
     }
+    
+    
 }
