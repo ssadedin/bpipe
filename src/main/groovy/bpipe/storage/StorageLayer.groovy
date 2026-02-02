@@ -83,6 +83,12 @@ abstract class StorageLayer implements Serializable {
         if(name == null || name == 'local')
             return new LocalFileSystemStorageLayer()
         
+        if(!bpipe.Config.userConfig.containsKey('filesystems')) {
+            throw new bpipe.PipelineError(
+                "Storage '${name}' was requested but no 'filesystems' entry is defined in your bpipe.config file.\n\n" +
+                "Please add a filesystems section to your bpipe.config file with an entry for ${name}")
+        }
+        
         ConfigObject storageConfig = 
             (ConfigObject)bpipe.Config.userConfig['filesystems']
                         .getOrDefault(name, null)
