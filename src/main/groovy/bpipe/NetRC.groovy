@@ -23,7 +23,10 @@ class NetRC {
      * Parse the netrc file from the home directory
      */
     static NetRC load() {
-         return load(new File(System.properties['user.home'], '.netrc'))
+         File netrcFile = new File(System.properties['user.home'], '.netrc')
+         if(!netrcFile.exists())
+             return new NetRC(hosts: [])
+         return load(netrcFile)
     }
     
     /**

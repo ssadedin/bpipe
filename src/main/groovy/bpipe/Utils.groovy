@@ -1386,7 +1386,8 @@ class Utils {
         if(netrc == null) {
             try {
                 this.netrc = NetRC.load()
-                log.info("Loaded netrc file containing ${netrc.hosts.size()} from user home directory")
+                if(netrc.hosts)
+                    log.info("Loaded netrc file containing ${netrc.hosts.size()} entries from user home directory")
             }
             catch(Exception e) {
                 log.warning("Failed to load netrc file: " + e)
