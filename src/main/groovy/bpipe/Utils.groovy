@@ -1351,6 +1351,47 @@ class Utils {
         }
     }
     
+    
+    static NetRC netrc
+
+    /**
+     * Searches for a matching machine name in the netrc file (if it exists) and, if found,
+     * adds Basic Auth to the request using the matching entry.
+     * 
+     * Note: prefers a value containing a port over one that does not.
+     * 
+     * @param urlValue
+     * @param headers
+     */
+    static void attemptNetRCAuthorization(String urlValue, Map headers) {
+        if(netrc == null) {
+            try {
+                this.netrc = NetRC.load()
+                if(netrc.hosts)
+                    log.info("Loaded netrc file containing ${netrc.hosts.size()} entries from user home directory")
+            }
+            catch(Exception e) {
+                log.warning("Failed to load netrc file: " + e)
+                this.netrc = new NetRC(hosts:[])
+            }
+        }
+        
+        // Can we find a host in the netrc file matching the url?
+        URL url = new URL(urlValue)
+        
+        // First look for a url that includes the port
+        String hostAndPort = url.host + ':' + url.port
+        NetRCHost netrcHost = netrc.hosts.find { it.machine == hostAndPort }
+        if(!netrcHost) {
+            netrcHost = netrc.hosts.find { it.machine == url.host }
+        }
+        
+        if(netrcHost != null) {
+            log.info("Authorizing URL $url using netrc entry $netrcHost")
+            headers.Authorization = 'Basic ' + "$netrcHost.login:$netrcHost.password".bytes.encodeBase64().toString()
+        }
+    }
+
     static closeQuietly(obj) {
         if(obj == null)
             return
