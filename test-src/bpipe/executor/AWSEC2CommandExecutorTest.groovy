@@ -92,7 +92,7 @@ class AWSEC2CommandExecutorTest {
     }
     
     @Test
-    public void 'resolveTransferPrefix defaults to bpipe/pipelineId'() {
+    public void 'resolveTransferPrefix defaults to bpipe pipelineId'() {
         def awse = new AWSEC2CommandExecutor()
         awse.pipelineId = 'test-pipeline-123'
         
