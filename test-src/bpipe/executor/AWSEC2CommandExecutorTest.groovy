@@ -83,6 +83,70 @@ class AWSEC2CommandExecutorTest {
     
     
     @Test
+    public void 'resolveTransferPrefix uses configured prefix'() {
+        def awse = new AWSEC2CommandExecutor()
+        awse.pipelineId = 'test-pipeline-123'
+        awse.transferPrefix = 'my-custom-prefix'
+        
+        assert awse.resolveTransferPrefix() == 'my-custom-prefix'
+    }
+    
+    @Test
+    public void 'resolveTransferPrefix defaults to bpipe/pipelineId'() {
+        def awse = new AWSEC2CommandExecutor()
+        awse.pipelineId = 'test-pipeline-123'
+        
+        assert awse.resolveTransferPrefix() == 'bpipe/test-pipeline-123'
+    }
+    
+    @Test
+    public void 'validateConfig rejects missing transferBucket for s3 mode'() {
+        def awse = new AWSEC2CommandExecutor()
+        
+        Map s3Config = [
+            keypair: '/tmp/test.pem',
+            accessKey: 'testkey',
+            accessSecret: 'testsecret',
+            user: 'ec2-user',
+            region: 'us-east-1',
+            transferMode: 's3'
+        ]
+        
+        try {
+            awse.createClient(s3Config)
+            fail('Expected exception for missing transferBucket')
+        }
+        catch(Exception e) {
+            assert e.message.contains('transferBucket')
+        }
+    }
+    
+    @Test
+    public void 'validateConfig accepts s3 mode with transferBucket'() {
+        def awse = new AWSEC2CommandExecutor()
+        
+        Map s3Config = [
+            keypair: '/tmp/test.pem',
+            accessKey: 'testkey',
+            accessSecret: 'testsecret',
+            user: 'ec2-user',
+            region: 'us-east-1',
+            transferMode: 's3',
+            transferBucket: 'my-bucket'
+        ]
+        
+        // Should not throw - note: createClient will fail connecting to AWS
+        // but validateConfig (called first) should pass
+        try {
+            awse.createClient(s3Config)
+        }
+        catch(Exception e) {
+            // We expect AWS connection errors, but NOT validation errors
+            assert !e.message.contains('transferBucket') : "Validation should pass when transferBucket is set"
+        }
+    }
+
+    @Test
     public void 'user data calculation'() {
         
         def awse = new AWSEC2CommandExecutor(command: new Command(name: 'test'))
