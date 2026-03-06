@@ -235,7 +235,13 @@ abstract class CloudExecutor implements PersistentExecutor, ForwardHost {
 
     abstract void transferFrom(Map config, List<PipelineFile> fileList) 
 
-    abstract void pullInputsFromS3()
+    /**
+     * Pull staged input files from S3 to the instance. Default implementation is a no-op;
+     * overridden by AWSEC2CommandExecutor when transferMode is 's3'.
+     */
+    void pullInputsFromS3() {
+        // no-op by default
+    }
 
     abstract void startCommand(Command command, Appendable outputLog, Appendable errorLog) 
     
