@@ -110,6 +110,17 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     boolean imdsv2 = null
     
     /**
+     * S3 bucket used for staging file transfers when transferMode is 's3'
+     */
+    String transferBucket
+    
+    /**
+     * Prefix within the S3 bucket for staging files. If not configured,
+     * defaults to "bpipe/<pipelineId>"
+     */
+    String transferPrefix
+    
+    /**
      * Mounted storage associated with this executor or null if no storage associated
      */
     StorageLayer storage
@@ -331,7 +342,14 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             throw new Exception('AWSEC2 executor requires the user configuration setting. Please set this to the id of the user that should be used for SSH commands in your image')
 
         if(!config.containsKey('region')) 
-            throw new Exception('AWSEC2 executor requires the region configuration setting. Please set this to the region in which you would like your instances to launch.')            
+            throw new Exception('AWSEC2 executor requires the region configuration setting. Please set this to the region in which you would like your instances to launch.')
+
+        if(config.getOrDefault('transferMode', 'ssh') == 's3') {
+            if(!config.containsKey('transferBucket'))
+                throw new Exception('AWSEC2 executor requires the transferBucket configuration setting when transferMode is set to \'s3\'.')
+            if(!config.containsKey('instanceProfile'))
+                log.warning('AWSEC2 executor with transferMode \'s3\' typically requires an instanceProfile with S3 access. Consider configuring instanceProfile.')
+        }
      }
     
     @CompileStatic
@@ -341,6 +359,8 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         this.autoShutdown = config.getOrDefault('autoShutdown', this.autoShutdown)
         this.autoStop = config.getOrDefault('autoStop', this.autoStop)
         this.imdsv2 = config.getOrDefault('imdsv2', this.imdsv2)
+        this.transferBucket = (String)config.getOrDefault('transferBucket', this.transferBucket)
+        this.transferPrefix = (String)config.getOrDefault('transferPrefix', this.transferPrefix)
         
         createClient(config)
         
@@ -447,6 +467,8 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     void connectInstance(Map config) {
 
         this.autoShutdown = config.getOrDefault('autoShutdown', this.autoShutdown)
+        this.transferBucket = (String)config.getOrDefault('transferBucket', this.transferBucket)
+        this.transferPrefix = (String)config.getOrDefault('transferPrefix', this.transferPrefix)
         boolean isPublicIp = config.getOrDefault('publicIp', true)
         
         createClient(config)
@@ -756,5 +778,19 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     File getPipelineTmpDir() {
         log.info "Using temp directory for pipeline $pipelineId from: " + tmpDir + " for command: $command"
         new File("$tmpDir/bpipe-aws/$pipelineId/${command?.id}")
+    }
+    
+    /**
+     * Resolve the S3 key prefix to use for staging files. Uses the configured
+     * transferPrefix if set, otherwise defaults to "bpipe/<pipelineId>".
+     * 
+     * @return  the S3 key prefix (without trailing slash)
+     */
+    @CompileStatic
+    String resolveTransferPrefix() {
+        if(transferPrefix != null && !transferPrefix.isEmpty()) {
+            return transferPrefix
+        }
+        return "bpipe/${pipelineId}"
     }
 }

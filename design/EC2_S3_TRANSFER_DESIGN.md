@@ -293,7 +293,7 @@ When using `transferMode: 's3'`:
 
 ### Phase 1: S3 Transfer While Instance Is Running
 
-- [ ] **Step 1: Add `transferBucket` and `transferPrefix` fields to `AWSEC2CommandExecutor`**
+- [x] **Step 1: Add `transferBucket` and `transferPrefix` fields to `AWSEC2CommandExecutor`**
   Add two new `String` fields and a `resolveTransferPrefix()` helper method that returns
   `transferPrefix ?: "bpipe/${pipelineId}"`. Populate these fields from config in
   `acquireInstance()` and `connectInstance()`. Add config validation in `validateConfig()`
