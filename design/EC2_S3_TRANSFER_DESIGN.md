@@ -44,7 +44,9 @@ significant disadvantages:
    script (postamble) because it must run on the instance after the command completes and
    before termination — doing this via SSH from the local side would be fragile if
    connectivity is lost. The instance needs the `aws` CLI and an IAM instance profile with
-   S3 access.
+   S3 access. The `CloudExecutor` base class uses provider-agnostic naming
+   (`pullInputsFromBucket`) so that other cloud providers (e.g. GCP with GCS) can
+   implement the same pattern.
 
 5. **S3 staging cleanup in `cleanup()`**: Staging data is deleted from S3 after successful
    `transferFrom`, preventing accumulation of stale data.
@@ -324,9 +326,10 @@ When using `transferMode: 's3'`:
   or the new `transferToS3()`. Compile and verify existing tests still pass.
 
 - [x] **Step 3: Add S3 input pull via SSH and output push postamble in `startCommand()`**
-  Add a `pullInputsFromS3()` method that executes `aws s3 sync` via SSH to pull staged
-  inputs from S3 to the instance. Call this from `transferFiles()` in `CloudExecutor`
-  when `transferMode == 's3'`. In `startCommand()`, when `transferMode == 's3'`, append
+  Add a `pullInputsFromBucket()` method (overriding the no-op default in `CloudExecutor`)
+  that executes `aws s3 sync` via SSH to pull staged inputs from S3 to the instance.
+  Call this from `transferFiles()` in `CloudExecutor` when `transferMode == 's3'`.
+  In `startCommand()`, when `transferMode == 's3'`, append
   a postamble to `cmdText` that pushes output files to S3 after the command exits
   successfully. The input pull is separate from the command so that transfer failures
   produce distinct errors. Compile and verify.

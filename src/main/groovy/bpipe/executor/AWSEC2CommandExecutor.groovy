@@ -855,8 +855,9 @@ class AWSEC2CommandExecutor extends CloudExecutor {
      * By running this as a separate SSH call (rather than in the command wrapper), transfer
      * failures produce distinct errors that are not confused with command failures.
      */
+    @Override
     @CompileStatic
-    void pullInputsFromS3() {
+    void pullInputsFromBucket() {
         String prefix = resolveTransferPrefix()
         String s3SyncCmd = "aws s3 sync s3://${transferBucket}/${prefix}/inputs/ / --quiet"
         log.info "Pulling inputs from S3 on instance $instanceId: $s3SyncCmd"
