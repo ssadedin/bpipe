@@ -192,7 +192,7 @@ abstract class CloudExecutor implements PersistentExecutor, ForwardHost {
         // For bucket-based transfer mode, pull the staged files down to the instance
         if(config.getOrDefault('transferMode', 'ssh') == 's3') {
             println "$now: Pulling staged inputs from bucket to instance..."
-            this.pullInputsFromBucket()
+            this.pullInputsFromBucket(files)
             println "${new Date()}: BUCKET INPUT PULL COMPLETE"
         }
     }
@@ -239,8 +239,10 @@ abstract class CloudExecutor implements PersistentExecutor, ForwardHost {
      * Pull staged input files from a cloud bucket to the instance. Default implementation
      * is a no-op; overridden by cloud-provider-specific executors (e.g. AWSEC2CommandExecutor
      * for S3) when transferMode requires bucket-based transfer.
+     * 
+     * @param files the list of input files whose staged copies should be pulled to the instance
      */
-    void pullInputsFromBucket() {
+    void pullInputsFromBucket(List<PipelineFile> files) {
         // no-op by default
     }
 

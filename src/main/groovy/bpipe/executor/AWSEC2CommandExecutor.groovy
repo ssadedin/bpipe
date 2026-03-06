@@ -915,18 +915,55 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     }
     
     /**
-     * Execute an SSH command on the remote instance to pull staged input files from S3.
+     * Execute SSH commands on the remote instance to pull staged input files from S3.
      * This is called after the instance is running and SSH-accessible, before startCommand().
      * By running this as a separate SSH call (rather than in the command wrapper), transfer
      * failures produce distinct errors that are not confused with command failures.
+     * <p>
+     * The method first creates the necessary directory structure on the instance (using sudo
+     * since arbitrary absolute paths may not be writable), then downloads each specific file
+     * individually using {@code aws s3 cp} rather than a blanket {@code aws s3 sync}, so
+     * that only the known input files are pulled.
+     * 
+     * @param files the list of input files whose staged copies should be pulled to the instance
      */
     @Override
     @CompileStatic
-    void pullInputsFromBucket() {
+    void pullInputsFromBucket(List<PipelineFile> files) {
         String prefix = resolveTransferPrefix()
-        String s3SyncCmd = "aws s3 sync s3://${transferBucket}/${prefix}/inputs/ / --quiet"
-        log.info "Pulling inputs from S3 on instance $instanceId: $s3SyncCmd"
-        ExecutedProcess result = ssh(s3SyncCmd)
+        
+        // Compute unique parent directories that need to exist on the instance
+        Set<String> dirs = new HashSet<String>()
+        for(PipelineFile f : files) {
+            String parentDir = f.toPath().toAbsolutePath().parent.toString()
+            dirs.add(parentDir)
+        }
+        
+        // Also include output directories so the command can write to them
+        if(command?.outputs) {
+            for(PipelineFile output : command.outputs) {
+                String outputDir = output.toPath().toAbsolutePath().parent.toString()
+                dirs.add(outputDir)
+            }
+        }
+        
+        if(!dirs.isEmpty()) {
+            String mkdirCmd = 'sudo mkdir -p ' + dirs.join(' ') + ' && sudo chmod uga+rwx ' + dirs.join(' ')
+            log.info "Creating directories on instance $instanceId: $mkdirCmd"
+            ssh(mkdirCmd)
+        }
+        
+        // Pull each specific file from S3 individually
+        StringBuilder cpCmds = new StringBuilder()
+        for(PipelineFile f : files) {
+            String absPath = f.toPath().toAbsolutePath().toString()
+            String key = prefix + '/inputs' + absPath
+            cpCmds.append("aws s3 cp 's3://${transferBucket}/${key}' '${absPath}' --quiet\n")
+        }
+        
+        String pullScript = cpCmds.toString()
+        log.info "Pulling ${files.size()} inputs from S3 on instance $instanceId"
+        ExecutedProcess result = ssh("bash -c '${pullScript.replace("'", "'\\''")}'")
         log.info "S3 input pull complete on instance $instanceId (output: ${result.out})"
     }
     

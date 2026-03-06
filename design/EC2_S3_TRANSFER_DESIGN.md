@@ -48,10 +48,19 @@ significant disadvantages:
    (`pullInputsFromBucket`) so that other cloud providers (e.g. GCP with GCS) can
    implement the same pattern.
 
-5. **S3 staging cleanup in `cleanup()`**: Staging data is deleted from S3 after successful
+5. **Explicit file-by-file pull instead of blanket sync**: The `pullInputsFromBucket()`
+   method receives the list of input files and downloads each one individually using
+   `aws s3 cp` rather than `aws s3 sync`. This ensures only the known input files are
+   transferred to the instance — a blanket sync (especially as root) could pull arbitrary
+   content from the bucket, which is a security risk. Before downloading, the method
+   creates the necessary directory structure on the instance using `sudo mkdir -p` and
+   `sudo chmod`, mirroring the approach used by the SSH-based `transferTo()` for rsync.
+   Output directories are also pre-created so the command can write to them.
+
+6. **S3 staging cleanup in `cleanup()`**: Staging data is deleted from S3 after successful
    `transferFrom`, preventing accumulation of stale data.
 
-6. **Use `TransferManager` for uploads**: Rather than raw `putObject()` (which has a 5GB
+7. **Use `TransferManager` for uploads**: Rather than raw `putObject()` (which has a 5GB
    limit), we use the AWS SDK `TransferManager` which automatically handles multipart
    uploads for large files. This is essential since genomics files routinely exceed 5GB.
    The `TransferManager` is created on demand and shut down after use without closing the
