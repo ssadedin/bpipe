@@ -1,0 +1,288 @@
+# EC2 S3-Based File Transfer Design
+
+## Problem
+
+The current mechanism for transferring input files to AWS EC2 instances and retrieving
+output files uses `rsync` (for upload) and `scp` (for download) over SSH. This has two
+significant disadvantages:
+
+1. **Security**: Requires the EC2 security group to allow inbound SSH, which increases
+   the attack surface of the instance.
+2. **Latency**: Files can only be transferred after the instance is running and SSH-accessible,
+   adding wall-clock time to every job.
+
+## Proposed Solution
+
+Introduce an S3-based transfer mode that uses an S3 bucket as a staging area between the
+local machine and the EC2 instance. This will be implemented in two phases.
+
+## Configuration
+
+The feature is activated by setting `transferMode` to `'s3'` alongside the existing
+`transfer: true` setting. A new required parameter `transferBucket` specifies the S3
+bucket to use.
+
+```groovy
+// bpipe.config
+executor = "AWSEC2"
+
+AWSEC2 {
+    // ... existing config (accessKey, accessSecret, region, keypair, user, image, etc.)
+
+    transfer = true
+    transferMode = 's3'              // new: 'ssh' (default/current behaviour) or 's3'
+    transferBucket = 'my-bpipe-staging'  // new: required when transferMode is 's3'
+    transferPrefix = 'bpipe-jobs'    // new: optional, defaults to "bpipe/<pipeline_id>"
+}
+```
+
+When `transferMode` is absent or set to `'ssh'`, the existing rsync/scp behaviour is
+preserved with no changes.
+
+## Architecture Overview
+
+```
+Phase 1 (instance running):
+
+  Local ──s3client.putObject──▶ S3 Bucket ──aws s3 sync──▶ EC2 Instance
+  Local ◀──s3client.getObject── S3 Bucket ◀──aws s3 sync── EC2 Instance
+
+Phase 2 (pre-instance upload):
+
+  Local ──s3client.putObject──▶ S3 Bucket
+                                    │
+                              acquireInstance()
+                                    │
+                               EC2 Instance ──aws s3 sync──▶ local disk
+```
+
+## Phase 1: S3 Transfer While Instance Is Running
+
+### Goal
+
+Replace rsync/scp with S3 as the transfer intermediary, removing the need for SSH-based
+file transfer while keeping the same execution ordering.
+
+### Changes
+
+#### 1. `AWSEC2CommandExecutor` — New Fields
+
+Add fields to track the S3 staging location:
+
+```groovy
+String transferBucket
+String transferPrefix
+```
+
+These are populated from config during `acquireInstance()` or `connectInstance()`.
+
+#### 2. `AWSEC2CommandExecutor.transferTo()` — S3 Upload Path
+
+When `transferMode == 's3'`, instead of using rsync over SSH:
+
+- Use the existing `s3client` field to upload each input file to
+  `s3://<transferBucket>/<transferPrefix>/inputs/<absolute-path>`
+- Use the AWS SDK `TransferManager` (or multipart upload) for files larger than 5GB
+- Preserve the full absolute path as the S3 key so that directory structure is maintained
+  on the remote side
+
+Pseudocode:
+```groovy
+void transferToS3(List<PipelineFile> fileList) {
+    String prefix = resolveTransferPrefix()
+    for(PipelineFile f : fileList) {
+        String key = prefix + '/inputs' + f.toPath().toAbsolutePath().toString()
+        s3client.putObject(transferBucket, key, f.toPath().toFile())
+    }
+}
+```
+
+#### 3. `AWSEC2CommandExecutor.startCommand()` — S3 Pull/Push in Command Wrapper
+
+Modify the generated `cmdText` to include:
+
+- **Preamble**: Pull inputs from S3 before running the user command
+- **Postamble**: Push outputs to S3 after the user command completes
+
+```bash
+# Preamble - pull inputs
+aws s3 sync s3://<bucket>/<prefix>/inputs/ / --quiet
+
+# ... existing command execution ...
+
+# Postamble - push outputs (only on success)
+if [ "$(cat <exitFile>)" = "0" ]; then
+    for output in <output_files>; do
+        aws s3 cp "$output" s3://<bucket>/<prefix>/outputs"$output"
+    done
+fi
+```
+
+The instance must have:
+- The `aws` CLI installed on the AMI
+- An IAM instance profile with `s3:GetObject`, `s3:PutObject`, and `s3:ListBucket`
+  permissions on the transfer bucket
+
+#### 4. `AWSEC2CommandExecutor.transferFrom()` — S3 Download Path
+
+When `transferMode == 's3'`, instead of using scp:
+
+- Use `s3client` to download each output file from
+  `s3://<transferBucket>/<transferPrefix>/outputs/<absolute-path>`
+  to its expected local path
+
+Pseudocode:
+```groovy
+void transferFromS3(Map config, List<PipelineFile> fileList) {
+    String prefix = resolveTransferPrefix()
+    for(PipelineFile f : fileList) {
+        String key = prefix + '/outputs' + f.toPath().toAbsolutePath().toString()
+        S3Object obj = s3client.getObject(transferBucket, key)
+        // Write obj.getObjectContent() to local file
+    }
+}
+```
+
+#### 5. `AWSEC2CommandExecutor.cleanup()` — S3 Staging Cleanup
+
+After `transferFrom` completes successfully, delete the S3 prefix to avoid accumulating
+stale staging data:
+
+```groovy
+void cleanupS3Staging() {
+    String prefix = resolveTransferPrefix()
+    // List and delete all objects under s3://<bucket>/<prefix>/
+}
+```
+
+#### 6. Config Validation
+
+Add validation in `validateConfig()`:
+- If `transferMode == 's3'`, require `transferBucket` to be set
+- Warn if no `instanceProfile` is configured (the instance needs S3 access)
+
+### Files Modified (Phase 1)
+
+| File | Change |
+|------|--------|
+| `AWSEC2CommandExecutor.groovy` | Add `transferBucket`, `transferPrefix` fields |
+| `AWSEC2CommandExecutor.groovy` | Modify `transferTo()` to branch on `transferMode` |
+| `AWSEC2CommandExecutor.groovy` | Modify `transferFrom()` to branch on `transferMode` |
+| `AWSEC2CommandExecutor.groovy` | Modify `startCommand()` to add S3 pull/push to wrapper |
+| `AWSEC2CommandExecutor.groovy` | Add `cleanupS3Staging()`, call from `cleanup()` |
+| `AWSEC2CommandExecutor.groovy` | Add validation for S3 config in `validateConfig()` |
+
+### Estimated Complexity
+
+- ~150-200 lines of new/modified code
+- Low risk: `s3client` already exists, SDK operations are straightforward
+- Main risk: ensuring AMI has `aws` CLI and correct IAM permissions
+
+## Phase 2: Pre-Instance S3 Upload
+
+### Goal
+
+Upload input files to S3 **before** the instance is acquired, so that instance startup
+and file upload happen in parallel (or file upload completes before the instance is even
+requested).
+
+### Changes
+
+#### 1. `CloudExecutor.start()` — Reorder Transfer Step
+
+Currently the flow in `start()` is:
+
+```
+acquireInstance → waitForSSH → mountStorage → transferFiles → startCommand
+```
+
+For S3 transfer mode, change to:
+
+```
+transferFiles → acquireInstance → waitForSSH → mountStorage → startCommand
+```
+
+The change is small because `transferTo` in S3 mode only needs `s3client`, which can be
+created from config without an instance. The `createClient()` method already accepts a
+config map and can be called independently.
+
+Concrete change in `CloudExecutor.start()`:
+
+```groovy
+// Before acquiring instance, do S3 upload if applicable
+if(isS3TransferMode(cfg)) {
+    this.prepareS3Client(cfg)
+    this.transferFiles(cfg, cmd.inputs)
+}
+
+// ... acquire instance, wait for SSH, mount storage ...
+
+// After instance is ready, do SSH transfer if applicable
+if(!isS3TransferMode(cfg)) {
+    this.transferFiles(cfg, cmd.inputs)
+}
+```
+
+#### 2. `AWSEC2CommandExecutor` — Extract Client Creation
+
+Ensure `createClient()` can be called before `acquireInstance()`. Currently it is called
+inside `acquireInstance()`, but it is already a standalone method that takes a config map.
+Add a thin `prepareS3Client()` method that calls `createClient()` if not already called,
+so that `s3client` is available for the pre-upload.
+
+### Files Modified (Phase 2, incremental on Phase 1)
+
+| File | Change |
+|------|--------|
+| `CloudExecutor.groovy` | Reorder `transferFiles` call in `start()` |
+| `CloudExecutor.groovy` | Add `isS3TransferMode()` helper (or make abstract) |
+| `AWSEC2CommandExecutor.groovy` | Add `prepareS3Client()` method |
+
+### Estimated Complexity
+
+- ~20-30 lines of new/modified code on top of Phase 1
+- Low risk: the reordering is straightforward and only affects S3 mode
+
+## Testing Plan
+
+### Unit/Integration Tests
+
+- Test S3 upload/download logic with mocked `s3client`
+- Test that `transferMode` config validation works correctly
+- Test that the command wrapper script includes S3 pull/push commands when in S3 mode
+
+### Functional Tests
+
+Create a new test in `tests/` directory (e.g., `tests/aws_s3_transfer/`) that:
+
+1. Configures an AWSEC2 executor with `transferMode: 's3'`
+2. Runs a simple pipeline that reads an input file and produces an output
+3. Verifies that files are staged through S3 rather than rsync/scp
+
+Note: Full functional testing requires AWS credentials and infrastructure. The test
+should be structured so it can be skipped in environments without AWS access.
+
+### Manual Verification
+
+- Confirm that security groups without SSH inbound still allow file transfer in S3 mode
+- Confirm that Phase 2 pre-upload reduces total job wall-clock time
+- Confirm that S3 staging area is cleaned up after job completion
+- Confirm backward compatibility: `transferMode: 'ssh'` and absent `transferMode` both
+  preserve existing rsync/scp behaviour
+
+## Backward Compatibility
+
+- Fully backward compatible
+- Default `transferMode` is `'ssh'` (or absent), preserving current behaviour
+- No changes to existing config schemas; new keys are only required when `transferMode: 's3'`
+- The `transfer: true` flag remains the master switch for any file transfer
+
+## Prerequisites for Users
+
+When using `transferMode: 's3'`:
+
+1. An S3 bucket must exist and be accessible from both the local machine and the EC2 instance
+2. The EC2 AMI must have the `aws` CLI installed
+3. The EC2 instance must have an IAM instance profile with S3 read/write access to the
+   transfer bucket (configured via the existing `instanceProfile` setting)
+4. The local machine must have S3 access via the configured `accessKey`/`accessSecret`
