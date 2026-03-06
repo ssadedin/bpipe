@@ -1,5 +1,12 @@
 # EC2 S3-Based File Transfer Design
 
+## Objective
+
+Replace the current SSH-based file transfer mechanism (rsync/scp) for AWS EC2 instances
+with an S3-based alternative, using an S3 bucket as a staging area. This removes the
+requirement for SSH-accessible security groups for file transfer and enables uploading
+input files before the instance is running.
+
 ## Problem
 
 The current mechanism for transferring input files to AWS EC2 instances and retrieving
@@ -11,10 +18,32 @@ significant disadvantages:
 2. **Latency**: Files can only be transferred after the instance is running and SSH-accessible,
    adding wall-clock time to every job.
 
-## Proposed Solution
+## Design Overview
 
-Introduce an S3-based transfer mode that uses an S3 bucket as a staging area between the
-local machine and the EC2 instance. This will be implemented in two phases.
+### Key Decisions and Rationale
+
+1. **S3 as intermediary rather than direct instance transfer**: Using S3 decouples the
+   transfer from the instance lifecycle. The local machine uploads to S3 using the AWS SDK
+   (`s3client`, already available in `AWSEC2CommandExecutor`), and the instance pulls from
+   S3 using the `aws` CLI. This avoids needing SSH for transfers entirely.
+
+2. **New `transferMode` config key rather than replacing existing behaviour**: A new
+   `transferMode: 's3'` option is introduced alongside the existing `transfer: true` flag.
+   When absent or set to `'ssh'`, the existing rsync/scp behaviour is preserved unchanged.
+   This ensures full backward compatibility.
+
+3. **Two-phase implementation**: Phase 1 keeps the same execution ordering (transfer after
+   instance is running) but uses S3 instead of SSH. Phase 2 reorders the flow so that S3
+   upload happens before instance acquisition, which is a small incremental change on top
+   of Phase 1.
+
+4. **Instance pulls/pushes via `aws` CLI in the command wrapper**: Rather than having the
+   local machine push files to the instance, the generated command wrapper script includes
+   `aws s3 sync` preamble/postamble commands. This means the instance needs the `aws` CLI
+   and an IAM instance profile with S3 access, but avoids any inbound network requirements.
+
+5. **S3 staging cleanup in `cleanup()`**: Staging data is deleted from S3 after successful
+   `transferFrom`, preventing accumulation of stale data.
 
 ## Configuration
 
@@ -243,33 +272,6 @@ so that `s3client` is available for the pre-upload.
 - ~20-30 lines of new/modified code on top of Phase 1
 - Low risk: the reordering is straightforward and only affects S3 mode
 
-## Testing Plan
-
-### Unit/Integration Tests
-
-- Test S3 upload/download logic with mocked `s3client`
-- Test that `transferMode` config validation works correctly
-- Test that the command wrapper script includes S3 pull/push commands when in S3 mode
-
-### Functional Tests
-
-Create a new test in `tests/` directory (e.g., `tests/aws_s3_transfer/`) that:
-
-1. Configures an AWSEC2 executor with `transferMode: 's3'`
-2. Runs a simple pipeline that reads an input file and produces an output
-3. Verifies that files are staged through S3 rather than rsync/scp
-
-Note: Full functional testing requires AWS credentials and infrastructure. The test
-should be structured so it can be skipped in environments without AWS access.
-
-### Manual Verification
-
-- Confirm that security groups without SSH inbound still allow file transfer in S3 mode
-- Confirm that Phase 2 pre-upload reduces total job wall-clock time
-- Confirm that S3 staging area is cleaned up after job completion
-- Confirm backward compatibility: `transferMode: 'ssh'` and absent `transferMode` both
-  preserve existing rsync/scp behaviour
-
 ## Backward Compatibility
 
 - Fully backward compatible
@@ -286,3 +288,76 @@ When using `transferMode: 's3'`:
 3. The EC2 instance must have an IAM instance profile with S3 read/write access to the
    transfer bucket (configured via the existing `instanceProfile` setting)
 4. The local machine must have S3 access via the configured `accessKey`/`accessSecret`
+
+## Implementation Steps
+
+### Phase 1: S3 Transfer While Instance Is Running
+
+- [ ] **Step 1: Add `transferBucket` and `transferPrefix` fields to `AWSEC2CommandExecutor`**
+  Add two new `String` fields and a `resolveTransferPrefix()` helper method that returns
+  `transferPrefix ?: "bpipe/${pipelineId}"`. Populate these fields from config in
+  `acquireInstance()` and `connectInstance()`. Add config validation in `validateConfig()`
+  to require `transferBucket` when `transferMode == 's3'` and warn if `instanceProfile`
+  is not set. Compile and verify existing tests still pass.
+
+- [ ] **Step 2: Add `transferToS3()` method and branch `transferTo()`**
+  Add a new `transferToS3(List<PipelineFile>)` method that uploads each file to
+  `s3://<transferBucket>/<prefix>/inputs/<absolute-path>` using `s3client.putObject()`.
+  Modify `transferTo()` to check `command.processedConfig.transferMode` and delegate to
+  either the existing rsync logic or the new `transferToS3()`. Compile and verify existing
+  SSH transfer tests still pass.
+
+- [ ] **Step 3: Modify `startCommand()` to add S3 pull/push to command wrapper**
+  When `transferMode == 's3'`, prepend an `aws s3 sync` preamble to `cmdText` that pulls
+  inputs from S3, and append a postamble that pushes output files to S3 after the command
+  exits successfully. The preamble syncs `s3://<bucket>/<prefix>/inputs/` to `/`. The
+  postamble iterates over `command.outputs` and uploads each to
+  `s3://<bucket>/<prefix>/outputs/<absolute-path>`. Compile and verify.
+
+- [ ] **Step 4: Add `transferFromS3()` method and branch `transferFrom()`**
+  Add a new `transferFromS3(Map, List<PipelineFile>)` method that downloads each output
+  file from `s3://<transferBucket>/<prefix>/outputs/<absolute-path>` using
+  `s3client.getObject()` and writes it to the expected local path. Modify `transferFrom()`
+  to branch on `transferMode`. Compile and verify.
+
+- [ ] **Step 5: Add `cleanupS3Staging()` and call from `cleanup()`**
+  Add a method that lists and deletes all objects under `s3://<bucket>/<prefix>/`. Call it
+  from `cleanup()` after `transferFrom` completes successfully (i.e., after
+  `super.cleanup()` in `AWSEC2CommandExecutor.cleanup()`). Compile and verify.
+
+- [ ] **Step 6: Add unit tests for S3 transfer logic**
+  Add tests in `test-src/` that mock `s3client` and verify: (a) `transferToS3` uploads
+  files with correct keys, (b) `transferFromS3` downloads to correct local paths,
+  (c) `cleanupS3Staging` deletes the right prefix, (d) config validation rejects missing
+  `transferBucket` when `transferMode == 's3'`.
+
+### Phase 2: Pre-Instance S3 Upload
+
+- [ ] **Step 7: Add `prepareS3Client()` to `AWSEC2CommandExecutor`**
+  Add a method that calls `createClient(config)` if `s3client` is null, so that the S3
+  client can be initialised before `acquireInstance()` is called. Compile and verify.
+
+- [ ] **Step 8: Add `isS3TransferMode()` helper to `CloudExecutor`**
+  Add a protected method `boolean isS3TransferMode(Map config)` that returns
+  `config.transferMode == 's3'`. This keeps the mode check in one place. Compile and verify.
+
+- [ ] **Step 9: Reorder `CloudExecutor.start()` for S3 pre-upload**
+  Before the `acquireInstance()` block, add a check: if `isS3TransferMode(cfg)`, call
+  `prepareS3Client(cfg)` (via a new abstract/default method on `CloudExecutor`) then
+  `transferFiles(cfg, cmd.inputs)`. Move the existing `transferFiles` call inside an
+  `else` branch so SSH transfer still happens at the original point. Compile and verify
+  existing tests pass.
+
+- [ ] **Step 10: Add functional test for S3 transfer**
+  Create `tests/aws_s3_transfer/test.groovy` and `tests/aws_s3_transfer/run.sh` that
+  configure an AWSEC2 executor with `transferMode: 's3'`, run a simple pipeline, and
+  verify files are staged through S3. The test should skip gracefully if AWS credentials
+  are not available.
+
+### Manual Verification
+
+- [ ] Confirm that security groups without SSH inbound still allow file transfer in S3 mode
+- [ ] Confirm that Phase 2 pre-upload reduces total job wall-clock time
+- [ ] Confirm that S3 staging area is cleaned up after job completion
+- [ ] Confirm backward compatibility: `transferMode: 'ssh'` and absent `transferMode` both
+  preserve existing rsync/scp behaviour
