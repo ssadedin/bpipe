@@ -188,6 +188,13 @@ abstract class CloudExecutor implements PersistentExecutor, ForwardHost {
         now = new Date()
         
         println "$now: TRANSFER COMPLETE (${files.size()} files)"
+        
+        // For S3 transfer mode, pull the staged files down to the instance
+        if(config.getOrDefault('transferMode', 'ssh') == 's3') {
+            println "$now: Pulling staged inputs from S3 to instance..."
+            this.pullInputsFromS3()
+            println "${new Date()}: S3 INPUT PULL COMPLETE"
+        }
     }
      
     
@@ -227,6 +234,8 @@ abstract class CloudExecutor implements PersistentExecutor, ForwardHost {
     abstract void transferTo(List<PipelineFile> files)
 
     abstract void transferFrom(Map config, List<PipelineFile> fileList) 
+
+    abstract void pullInputsFromS3()
 
     abstract void startCommand(Command command, Appendable outputLog, Appendable errorLog) 
     

@@ -591,6 +591,22 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         List<String> shell = command.shell ?: ['bash']
 
         File cmdFile = new File(jobDir, "cmd.sh")
+        String s3OutputPostamble = ''
+        String transferMode = (String)command.processedConfig.getOrDefault('transferMode', 'ssh')
+        if(transferMode == 's3') {
+            String prefix = resolveTransferPrefix()
+            List<String> outputPaths = command.outputs.collect { PipelineFile pf -> pf.toPath().toAbsolutePath().toString() }
+            StringBuilder postamble = new StringBuilder()
+            postamble.append("\n# S3 output push\nBPIPE_EXIT_CODE=\$(cat ${exitFile})\n")
+            postamble.append("if [ \"\$BPIPE_EXIT_CODE\" = \"0\" ]; then\n")
+            for(String outputPath in outputPaths) {
+                String s3Key = prefix + '/outputs' + outputPath
+                postamble.append("    aws s3 cp '${outputPath}' 's3://${transferBucket}/${s3Key}' --quiet\n")
+            }
+            postamble.append("fi\n")
+            s3OutputPostamble = postamble.toString()
+        }
+
         String cmdText = 
         """
             mkdir -p ${new File(exitFile).absoluteFile.parentFile.path}
@@ -606,7 +622,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             command.command.stripIndent() +
         """
             echo \$? > ${exitFile}
-
+            ${s3OutputPostamble}
             BPIPEEOF
         """.stripIndent()
         
@@ -831,6 +847,21 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     File getPipelineTmpDir() {
         log.info "Using temp directory for pipeline $pipelineId from: " + tmpDir + " for command: $command"
         new File("$tmpDir/bpipe-aws/$pipelineId/${command?.id}")
+    }
+    
+    /**
+     * Execute an SSH command on the remote instance to pull staged input files from S3.
+     * This is called after the instance is running and SSH-accessible, before startCommand().
+     * By running this as a separate SSH call (rather than in the command wrapper), transfer
+     * failures produce distinct errors that are not confused with command failures.
+     */
+    @CompileStatic
+    void pullInputsFromS3() {
+        String prefix = resolveTransferPrefix()
+        String s3SyncCmd = "aws s3 sync s3://${transferBucket}/${prefix}/inputs/ / --quiet"
+        log.info "Pulling inputs from S3 on instance $instanceId: $s3SyncCmd"
+        ExecutedProcess result = ssh(s3SyncCmd)
+        log.info "S3 input pull complete on instance $instanceId (output: ${result.out})"
     }
     
     /**
