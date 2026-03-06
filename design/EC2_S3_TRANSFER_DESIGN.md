@@ -300,7 +300,7 @@ When using `transferMode: 's3'`:
   to require `transferBucket` when `transferMode == 's3'` and warn if `instanceProfile`
   is not set. Compile and verify existing tests still pass.
 
-- [ ] **Step 2: Add `transferToS3()` method and branch `transferTo()`**
+- [x] **Step 2: Add `transferToS3()` method and branch `transferTo()`**
   Add a new `transferToS3(List<PipelineFile>)` method that uploads each file to
   `s3://<transferBucket>/<prefix>/inputs/<absolute-path>` using `s3client.putObject()`.
   Modify `transferTo()` to check `command.processedConfig.transferMode` and delegate to
