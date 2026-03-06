@@ -684,6 +684,13 @@ class AWSEC2CommandExecutor extends CloudExecutor {
     @Override
     @CompileStatic
     public void transferTo(List<PipelineFile> fileList) {
+        
+        String transferMode = (String)command.processedConfig.getOrDefault('transferMode', 'ssh')
+        if(transferMode == 's3') {
+            transferToS3(fileList)
+            return
+        }
+        
         assert hostname != null && hostname != ""
 
         // Calculate total size to transfer
@@ -725,6 +732,39 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         double mbPerSec = (totalBytes/1024/1024)/elapsedSecs
 
         log.info sprintf("Transferred %.1fMB in %.1f seconds (%.1f MB/s) to $hostname for job $commandId", totalBytes/1024/1024, elapsedSecs, mbPerSec)
+    }
+    
+    /**
+     * Transfer input files to S3 staging area for the instance to pull from.
+     * Each file is uploaded to s3://<transferBucket>/<prefix>/inputs/<absolute-path>.
+     * 
+     * @param fileList  the list of input files to upload
+     */
+    @CompileStatic
+    void transferToS3(List<PipelineFile> fileList) {
+        
+        String prefix = resolveTransferPrefix()
+        
+        long totalBytes = fileList.sum { PipelineFile f ->
+            f.toPath().toFile().length()
+        } as long
+        
+        log.info "Starting S3 transfer of ${totalBytes/1024/1024}MB to s3://${transferBucket}/${prefix}/inputs/"
+        long startTime = System.currentTimeMillis()
+        
+        for(PipelineFile f : fileList) {
+            File localFile = f.toPath().toFile()
+            String key = prefix + '/inputs' + f.toPath().toAbsolutePath().toString()
+            log.info "Uploading ${localFile} to s3://${transferBucket}/${key}"
+            s3client.putObject(transferBucket, key, localFile)
+        }
+        
+        long endTime = System.currentTimeMillis()
+        double elapsedSecs = (endTime - startTime) / 1000.0d
+        double mbPerSec = elapsedSecs > 0 ? (totalBytes / 1024 / 1024) / elapsedSecs : 0.0d
+        
+        log.info sprintf("S3 transfer complete: %.1fMB in %.1f seconds (%.1f MB/s) for job %s",
+            (double)(totalBytes/1024/1024), elapsedSecs, mbPerSec, commandId)
     }
    
     @Override
