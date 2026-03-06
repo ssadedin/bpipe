@@ -36,6 +36,7 @@ import com.amazonaws.services.ec2.AmazonEC2ClientBuilder
 import com.amazonaws.services.ec2.model.*
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
+import com.amazonaws.services.s3.model.S3Object
 import com.amazonaws.services.s3.transfer.TransferManager
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder
 import com.amazonaws.services.s3.transfer.Upload
@@ -796,9 +797,73 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             (double)(totalBytes/1024/1024), elapsedSecs, mbPerSec, commandId)
     }
    
+    /**
+     * Download output files from S3 staging area to local paths.
+     * Each file is downloaded from s3://<transferBucket>/<prefix>/outputs/<absolute-path>.
+     * 
+     * @param config    the executor config
+     * @param fileList  the list of output files to download
+     */
+    @CompileStatic
+    void transferFromS3(Map config, List<PipelineFile> fileList) {
+        
+        String prefix = resolveTransferPrefix()
+        
+        long totalBytes = 0
+        long startTime = System.currentTimeMillis()
+        
+        for(PipelineFile f : fileList) {
+            String key = prefix + '/outputs' + f.toPath().toAbsolutePath().toString()
+            File localFile = f.toPath().toFile().absoluteFile
+            
+            log.info "Downloading s3://${transferBucket}/${key} to ${localFile}"
+            
+            // Ensure parent directory exists
+            File parentDir = localFile.parentFile
+            if(parentDir != null && !parentDir.exists()) {
+                parentDir.mkdirs()
+            }
+            
+            S3Object s3Object = s3client.getObject(transferBucket, key)
+            try {
+                InputStream objectContent = s3Object.getObjectContent()
+                try {
+                    localFile.withOutputStream { OutputStream out ->
+                        byte[] buffer = new byte[8192]
+                        int bytesRead
+                        while((bytesRead = objectContent.read(buffer)) != -1) {
+                            out.write(buffer, 0, bytesRead)
+                            totalBytes += bytesRead
+                        }
+                    }
+                }
+                finally {
+                    objectContent.close()
+                }
+            }
+            finally {
+                s3Object.close()
+            }
+        }
+        
+        long endTime = System.currentTimeMillis()
+        double elapsedSecs = (endTime - startTime) / 1000.0d
+        double mbPerSec = elapsedSecs > 0 ? (totalBytes / 1024 / 1024) / elapsedSecs : 0.0d
+        
+        log.info sprintf("S3 download complete: %.1fMB in %.1f seconds (%.1f MB/s) for job %s",
+            (double)(totalBytes / 1024 / 1024), elapsedSecs, mbPerSec, commandId)
+    }
+   
     @Override
     @CompileStatic
     public void transferFrom(Map config, List<PipelineFile> fileList) {
+        
+        String transferMode = (String)config.getOrDefault('transferMode', 'ssh')
+        if(transferMode == 's3') {
+            transferFromS3(config, fileList)
+            return
+        }
+        
         assert hostname != null && hostname != ""
         
         Map<String,List<PipelineFile>> dirGroups = fileList.groupBy { it.toPath().toAbsolutePath().parent.toString() }

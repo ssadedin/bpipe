@@ -334,7 +334,7 @@ When using `transferMode: 's3'`:
   successfully. The input pull is separate from the command so that transfer failures
   produce distinct errors. Compile and verify.
 
-- [ ] **Step 4: Add `transferFromS3()` method and branch `transferFrom()`**
+- [x] **Step 4: Add `transferFromS3()` method and branch `transferFrom()`**
   Add a new `transferFromS3(Map, List<PipelineFile>)` method that downloads each output
   file from `s3://<transferBucket>/<prefix>/outputs/<absolute-path>` using
   `s3client.getObject()` and writes it to the expected local path. Modify `transferFrom()`
