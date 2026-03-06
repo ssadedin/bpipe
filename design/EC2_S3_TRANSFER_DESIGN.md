@@ -45,6 +45,12 @@ significant disadvantages:
 5. **S3 staging cleanup in `cleanup()`**: Staging data is deleted from S3 after successful
    `transferFrom`, preventing accumulation of stale data.
 
+6. **Use `TransferManager` for uploads**: Rather than raw `putObject()` (which has a 5GB
+   limit), we use the AWS SDK `TransferManager` which automatically handles multipart
+   uploads for large files. This is essential since genomics files routinely exceed 5GB.
+   The `TransferManager` is created on demand and shut down after use without closing the
+   underlying `s3client`.
+
 ## Configuration
 
 The feature is activated by setting `transferMode` to `'s3'` alongside the existing
@@ -109,9 +115,10 @@ These are populated from config during `acquireInstance()` or `connectInstance()
 
 When `transferMode == 's3'`, instead of using rsync over SSH:
 
-- Use the existing `s3client` field to upload each input file to
-  `s3://<transferBucket>/<transferPrefix>/inputs/<absolute-path>`
-- Use the AWS SDK `TransferManager` (or multipart upload) for files larger than 5GB
+- Use the AWS SDK `TransferManager` (backed by the existing `s3client`) to upload each
+  input file to `s3://<transferBucket>/<transferPrefix>/inputs/<absolute-path>`.
+  `TransferManager` automatically handles multipart uploads for files larger than 5GB,
+  which is essential for large genomics files.
 - Preserve the full absolute path as the S3 key so that directory structure is maintained
   on the remote side
 
@@ -302,10 +309,10 @@ When using `transferMode: 's3'`:
 
 - [x] **Step 2: Add `transferToS3()` method and branch `transferTo()`**
   Add a new `transferToS3(List<PipelineFile>)` method that uploads each file to
-  `s3://<transferBucket>/<prefix>/inputs/<absolute-path>` using `s3client.putObject()`.
-  Modify `transferTo()` to check `command.processedConfig.transferMode` and delegate to
-  either the existing rsync logic or the new `transferToS3()`. Compile and verify existing
-  SSH transfer tests still pass.
+  `s3://<transferBucket>/<prefix>/inputs/<absolute-path>` using `TransferManager` (which
+  automatically handles multipart uploads for files >5GB). Modify `transferTo()` to check
+  `command.processedConfig.transferMode` and delegate to either the existing rsync logic
+  or the new `transferToS3()`. Compile and verify existing tests still pass.
 
 - [ ] **Step 3: Modify `startCommand()` to add S3 pull/push to command wrapper**
   When `transferMode == 's3'`, prepend an `aws s3 sync` preamble to `cmdText` that pulls

@@ -36,6 +36,9 @@ import com.amazonaws.services.ec2.AmazonEC2ClientBuilder
 import com.amazonaws.services.ec2.model.*
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
+import com.amazonaws.services.s3.transfer.TransferManager
+import com.amazonaws.services.s3.transfer.TransferManagerBuilder
+import com.amazonaws.services.s3.transfer.Upload
 
 import bpipe.Command
 import bpipe.CommandStatus
@@ -752,11 +755,21 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         log.info "Starting S3 transfer of ${totalBytes/1024/1024}MB to s3://${transferBucket}/${prefix}/inputs/"
         long startTime = System.currentTimeMillis()
         
-        for(PipelineFile f : fileList) {
-            File localFile = f.toPath().toFile()
-            String key = prefix + '/inputs' + f.toPath().toAbsolutePath().toString()
-            log.info "Uploading ${localFile} to s3://${transferBucket}/${key}"
-            s3client.putObject(transferBucket, key, localFile)
+        TransferManager transferManager = TransferManagerBuilder.standard()
+            .withS3Client(s3client)
+            .build()
+        
+        try {
+            for(PipelineFile f : fileList) {
+                File localFile = f.toPath().toFile()
+                String key = prefix + '/inputs' + f.toPath().toAbsolutePath().toString()
+                log.info "Uploading ${localFile} (${localFile.length()/1024/1024}MB) to s3://${transferBucket}/${key}"
+                Upload upload = transferManager.upload(transferBucket, key, localFile)
+                upload.waitForCompletion()
+            }
+        }
+        finally {
+            transferManager.shutdownNow(false) // false = don't shut down the underlying s3client
         }
         
         long endTime = System.currentTimeMillis()
