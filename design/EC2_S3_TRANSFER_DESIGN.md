@@ -349,7 +349,7 @@ When using `transferMode: 's3'`:
   `s3client.getObject()` and writes it to the expected local path. Modify `transferFrom()`
   to branch on `transferMode`. Compile and verify.
 
-- [ ] **Step 5: Add `cleanupS3Staging()` and call from `cleanup()`**
+- [x] **Step 5: Add `cleanupS3Staging()` and call from `cleanup()`**
   Add a method that lists and deletes all objects under `s3://<bucket>/<prefix>/`. Call it
   from `cleanup()` after `transferFrom` completes successfully (i.e., after
   `super.cleanup()` in `AWSEC2CommandExecutor.cleanup()`). Compile and verify.

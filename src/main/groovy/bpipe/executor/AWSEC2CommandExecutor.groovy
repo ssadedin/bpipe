@@ -36,7 +36,11 @@ import com.amazonaws.services.ec2.AmazonEC2ClientBuilder
 import com.amazonaws.services.ec2.model.*
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
+import com.amazonaws.services.s3.model.DeleteObjectRequest
+import com.amazonaws.services.s3.model.ListObjectsV2Request
+import com.amazonaws.services.s3.model.ListObjectsV2Result
 import com.amazonaws.services.s3.model.S3Object
+import com.amazonaws.services.s3.model.S3ObjectSummary
 import com.amazonaws.services.s3.transfer.TransferManager
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder
 import com.amazonaws.services.s3.transfer.Upload
@@ -231,6 +235,21 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         
         // Must be done before termination to get cloud output files back
         super.cleanup()
+        
+        // Clean up S3 staging area after successful transfer
+        if(transferBucket != null && exitCode != null && exitCode == 0 && transferredFrom) {
+            try {
+                if(s3client == null && command?.processedConfig) {
+                    createClient(command.getConfig(command.inputs))
+                }
+                if(s3client != null) {
+                    cleanupS3Staging()
+                }
+            }
+            catch(Exception e) {
+                log.warning "Failed to clean up S3 staging area for $instanceId: $e"
+            }
+        }
         
         if(autoStop) {
             // by shutting down this way, the instance will live long enough that the user can log in to debug something
@@ -852,6 +871,38 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         
         log.info sprintf("S3 download complete: %.1fMB in %.1f seconds (%.1f MB/s) for job %s",
             (double)(totalBytes / 1024 / 1024), elapsedSecs, mbPerSec, commandId)
+    }
+   
+    /**
+     * Delete all objects under the S3 staging prefix for this job.
+     * Called after outputs have been successfully downloaded to avoid
+     * accumulating stale staging data in the bucket.
+     */
+    @CompileStatic
+    void cleanupS3Staging() {
+        String prefix = resolveTransferPrefix()
+        
+        log.info "Cleaning up S3 staging area s3://${transferBucket}/${prefix}/"
+        
+        int deletedCount = 0
+        
+        ListObjectsV2Request listRequest = new ListObjectsV2Request()
+            .withBucketName(transferBucket)
+            .withPrefix(prefix + '/')
+        
+        ListObjectsV2Result result
+        do {
+            result = s3client.listObjectsV2(listRequest)
+            
+            for(S3ObjectSummary summary : result.getObjectSummaries()) {
+                s3client.deleteObject(new DeleteObjectRequest(transferBucket, summary.getKey()))
+                deletedCount++
+            }
+            
+            listRequest.setContinuationToken(result.getNextContinuationToken())
+        } while(result.isTruncated())
+        
+        log.info "Deleted ${deletedCount} objects from S3 staging area s3://${transferBucket}/${prefix}/"
     }
    
     @Override
