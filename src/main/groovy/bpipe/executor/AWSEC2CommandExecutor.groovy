@@ -891,7 +891,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             .withPrefix(prefix + '/')
         
         ListObjectsV2Result result
-        do {
+        while(true) {
             result = s3client.listObjectsV2(listRequest)
             
             for(S3ObjectSummary summary : result.getObjectSummaries()) {
@@ -900,7 +900,11 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             }
             
             listRequest.setContinuationToken(result.getNextContinuationToken())
-        } while(result.isTruncated())
+
+            if(!result.isTruncated()) {
+                break
+            }
+        }
         
         log.info "Deleted ${deletedCount} objects from S3 staging area s3://${transferBucket}/${prefix}/"
     }
