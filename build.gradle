@@ -260,6 +260,69 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 //    mergeServiceFiles()
 //}
 
+
+/*
+ * Configure tests to be more friendly for agentic coding: keep noise to a minimum unless there
+ * is a failure and then output full detail when something fails to stderr/stdout
+ */
+tasks.withType(Test).configureEach { t ->
+    // Keep Gradle's own console logging brief
+    testLogging {
+        events "failed"
+        exceptionFormat "full"
+        showStandardStreams = false
+    }
+
+    // Buffer output per test descriptor
+    def stdoutByTest = new IdentityHashMap<TestDescriptor, StringBuilder>()
+    def stderrByTest = new IdentityHashMap<TestDescriptor, StringBuilder>()
+
+    onOutput { TestDescriptor descriptor, TestOutputEvent event ->
+        // We only care about atomic tests (methods / iterations), not suite-level noise
+        if (descriptor.parent == null) {
+            return
+        }
+
+        def map = (event.destination == TestOutputEvent.Destination.StdOut) ? stdoutByTest : stderrByTest
+        def buf = map.computeIfAbsent(descriptor) { new StringBuilder() }
+        buf.append(event.message)
+    }
+
+    afterTest { TestDescriptor descriptor, TestResult result ->
+        try {
+            if (result.resultType == TestResult.ResultType.FAILURE) {
+                def stdout = stdoutByTest.remove(descriptor)?.toString()
+                def stderr = stderrByTest.remove(descriptor)?.toString()
+
+                println ""
+                println "---- output for ${descriptor.className}.${descriptor.name} ----"
+
+                if (stdout) {
+                    println "[stdout]"
+                    print stdout
+                    if (!stdout.endsWith("\n")) println()
+                }
+
+                if (stderr) {
+                    println "[stderr]"
+                    print stderr
+                    if (!stderr.endsWith("\n")) println()
+                }
+
+                println "---- end output ----"
+            } else {
+                // passing/skipped: discard buffered output
+                stdoutByTest.remove(descriptor)
+                stderrByTest.remove(descriptor)
+            }
+        } finally {
+            // cleanup in case descriptor object lingers
+            stdoutByTest.remove(descriptor)
+            stderrByTest.remove(descriptor)
+        }
+    }
+}
+
 task bpipeJar(type: Jar, dependsOn: 'compileGroovy') {
     
     from 'build/classes/groovy/main'
