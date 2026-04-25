@@ -595,32 +595,6 @@ then
     exit
 elif [ "$COMMAND" == "run" ];
 then
-    if is_running ;
-    then
-      echo
-      echo "WARNING:  there appears to be a pipeline already running in this directory as process $LAST_PID"
-      echo
-      echo "Running more than one pipeline simultaneously may cause inconsistent results to be returned"
-      echo "or even incorrect files to be used in your pipeline."
-      echo
-      echo "Use 'bpipe stop' to stop an existing pipeline if you want to run another one."
-      echo
-      if [ "$BPIPE_QUIET" == "true" ];
-      then
-          echo "Quiet mode enabled: auto-aborting this pipeline"
-          REPLY=n
-      else
-          read -p "Are you sure you want to continue? (y/n): "
-      fi
-
-      if [ "$REPLY" != y ];
-      then
-        echo
-        echo "Aborting ..."
-        echo
-        exit 1
-      fi
-    fi
     shift 1
 elif [ "$COMMAND" == "agent" ];
 then
