@@ -475,7 +475,27 @@ then
     shift 1
     if [ -e .bpipe/history ];
     then
-        cat .bpipe/history
+        while IFS='' read -r CMD_LINE || [ -n "$CMD_LINE" ]; do
+            # Extract the PID (first tab-separated field)
+            PID=$(printf '%s' "$CMD_LINE" | cut -f1)
+            CMD=$(printf '%s' "$CMD_LINE" | cut -f2-)
+
+            # Build a list of possible timestamp sources (most specific first)
+            TIMESTAMP=""
+            candidates=(".bpipe/logs/${PID}.bpipe.log" "$BPIPE_DB_DIR/jobs/$PID" ".bpipe/history")
+            for candidate in "${candidates[@]}"; do
+                if [ -e "$candidate" ]; then
+                    if $IS_MAC; then
+                        TIMESTAMP=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$candidate")
+                    else
+                        TIMESTAMP=$(date -r "$candidate" +'%Y-%m-%d %H:%M:%S')
+                    fi
+                    break
+                fi
+            done
+
+            printf '%s\t%s\n' "$TIMESTAMP" "$CMD_LINE"
+        done < .bpipe/history
     else
         echo
         echo "No history found"
