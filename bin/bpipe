@@ -475,7 +475,27 @@ then
     shift 1
     if [ -e .bpipe/history ];
     then
-        cat .bpipe/history
+        while IFS='' read -r CMD_LINE || [ -n "$CMD_LINE" ]; do
+            # Extract the PID (first tab-separated field)
+            PID=$(printf '%s' "$CMD_LINE" | cut -f1)
+            CMD=$(printf '%s' "$CMD_LINE" | cut -f2-)
+
+            # Build a list of possible timestamp sources (most specific first)
+            TIMESTAMP=""
+            candidates=(".bpipe/logs/${PID}.bpipe.log" "$BPIPE_DB_DIR/jobs/$PID" ".bpipe/history")
+            for candidate in "${candidates[@]}"; do
+                if [ -e "$candidate" ]; then
+                    if $IS_MAC; then
+                        TIMESTAMP=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$candidate")
+                    else
+                        TIMESTAMP=$(date -r "$candidate" +'%Y-%m-%d %H:%M:%S')
+                    fi
+                    break
+                fi
+            done
+
+            printf '%s\t%s\n' "$TIMESTAMP" "$CMD_LINE"
+        done < .bpipe/history
     else
         echo
         echo "No history found"
@@ -575,32 +595,6 @@ then
     exit
 elif [ "$COMMAND" == "run" ];
 then
-    if is_running ;
-    then
-      echo
-      echo "WARNING:  there appears to be a pipeline already running in this directory as process $LAST_PID"
-      echo
-      echo "Running more than one pipeline simultaneously may cause inconsistent results to be returned"
-      echo "or even incorrect files to be used in your pipeline."
-      echo
-      echo "Use 'bpipe stop' to stop an existing pipeline if you want to run another one."
-      echo
-      if [ "$BPIPE_QUIET" == "true" ];
-      then
-          echo "Quiet mode enabled: auto-aborting this pipeline"
-          REPLY=n
-      else
-          read -p "Are you sure you want to continue? (y/n): "
-      fi
-
-      if [ "$REPLY" != y ];
-      then
-        echo
-        echo "Aborting ..."
-        echo
-        exit 1
-      fi
-    fi
     shift 1
 elif [ "$COMMAND" == "agent" ];
 then

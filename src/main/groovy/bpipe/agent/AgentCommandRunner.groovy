@@ -103,7 +103,7 @@ class AgentCommandRunner implements Runnable {
                     throw errorResponse
                 
                 boolean isRunCommand = (command instanceof RunPipelineCommand || command instanceof ClosurePipelineCommand)
-                String outputMode = isRunCommand ? outputMode : 'reply'
+                String outputMode = isRunCommand ? this.outputMode : 'reply'
 
                 ByteArrayOutputStream bos = null
                 Writer writer = null
@@ -112,15 +112,15 @@ class AgentCommandRunner implements Runnable {
                     writer = new BufferedWriter(bos.newWriter(), 512)
                 }
 
+                if(writer == null)
+                    writer = new NullOutputStream().newWriter()
+
                 Writer out = null
                 if(outputMode == 'both' || outputMode == 'stream') {
                     out = new WorxStreamingPrintStream(this.worxCommandId, writer, worx)
                 }
                 else
                     out = writer
-
-                if(writer==null)
-                    writer = new NullOutputStream().newWriter()
 
                 String result = ""
                 try {
@@ -139,10 +139,31 @@ class AgentCommandRunner implements Runnable {
                         
                         command.out = out
 
-                        command.run(out)
+                        StringWriter captureWriter = new StringWriter()
+                        Writer teeOut = new TeeWriter(out, captureWriter, 4096)
+
+                        long startTime = System.currentTimeMillis()
+                        command.run(teeOut)
+                        long elapsedMs = System.currentTimeMillis() - startTime
                         
-                        if(command instanceof RunPipelineCommand)
+                        if(command instanceof RunPipelineCommand) {
                             exitCode = ((RunPipelineCommand)command).result.exitValue
+                            if(exitCode != 0 && elapsedMs < 3000) {
+                                String captured = captureWriter.toString().trim()
+                                if(captured.length() > 0) {
+                                    String[] lines = captured.split('\n')
+                                    int linesToLog = Math.min(lines.length, 5)
+                                    StringBuilder logOutput = new StringBuilder("Command $worxCommandId failed with exit code $exitCode after ${elapsedMs}ms. Captured output (first $linesToLog lines):\n")
+                                    for(int i = 0; i < linesToLog; ++i) {
+                                        logOutput.append("  > ").append(lines[i]).append('\n')
+                                    }
+                                    log.warning(logOutput.toString())
+                                }
+                                else {
+                                    log.warning("Command $worxCommandId failed with exit code $exitCode after ${elapsedMs}ms with no captured output")
+                                }
+                            }
+                        }
                     }
                     else {
                         command.out = out
@@ -225,7 +246,7 @@ class AgentCommandRunner implements Runnable {
                 
                 if(lock) {
                     log.info "Successfully acquired lock in $command.dir : continuing to run pipeline"
-                    
+
                     // This is here so that if multiple threads are waiting they all have a chance to reattempt the
                     // file lock, ensuring that multiple threads should not grab the lock
                     Thread.sleep(3000)
@@ -234,10 +255,27 @@ class AgentCommandRunner implements Runnable {
                 }
 
                 log.info "Directory $command.dir appears to have a running pipeline: waiting $waitTimeMs to retry"
-                synchronized(waitingForLockObject) {
-                    waitingForLockObject.wait(waitTimeMs)
+
+                // Release the concurrency permit while waiting so that other commands targeting
+                // different directories can proceed. The permit is unconditionally re-acquired
+                // (using acquireUninterruptibly to prevent permit leakage if the thread is
+                // interrupted) before retrying the file lock.
+                if(concurrency != null) {
+                    concurrency.release()
+                    log.info "Released concurrency permit while waiting for directory lock in $command.dir"
                 }
-                
+                try {
+                    synchronized(waitingForLockObject) {
+                        waitingForLockObject.wait(waitTimeMs)
+                    }
+                }
+                finally {
+                    if(concurrency != null) {
+                        concurrency.acquireUninterruptibly()
+                        log.info "Re-acquired concurrency permit after waiting for directory lock in $command.dir"
+                    }
+                }
+
                 waitTimeMs = Math.min(waitTimeMs*2, MAX_LOCK_WAIT_TIME_MS)
             }
         }
@@ -272,5 +310,42 @@ class AgentCommandRunner implements Runnable {
             worx.sendJson("/commandResult/$id", jsonResponse) 
         }
         
+    }
+    
+    @CompileStatic
+    static class TeeWriter extends Writer {
+        
+        Writer first
+        Writer second
+        int maxChars
+        int written = 0
+        
+        TeeWriter(Writer first, Writer second, int maxChars = 4096) {
+            this.first = first
+            this.second = second
+            this.maxChars = maxChars
+        }
+        
+        @Override
+        void write(char[] cbuf, int off, int len) throws IOException {
+            first.write(cbuf, off, len)
+            if(written < maxChars) {
+                int toWrite = Math.min(len, maxChars - written)
+                second.write(cbuf, off, toWrite)
+                written += toWrite
+            }
+        }
+        
+        @Override
+        void flush() throws IOException {
+            first.flush()
+            second.flush()
+        }
+        
+        @Override
+        void close() throws IOException {
+            first.close()
+            second.close()
+        }
     }
 }
