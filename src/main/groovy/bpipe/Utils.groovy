@@ -1022,10 +1022,12 @@ class Utils {
             // seems to be related to hang inside OS / NFS call. Maybe use forwarder for this?
             // p.waitForProcessOutput(out, err)
             
-            TextDumper.consumeProcessOutput((String)(options.source?:'executeCommand'), p, out, err)
-            
+            String source = (String)(options.source?:'executeCommand')
+            Thread outThread = TextDumper.consumeProcessOutputStream(source, p, out)
+            Thread errThread = TextDumper.consumeProcessErrorStream(source, p, err)
+
             log.info "Waiting for process exit: $p (timeout = $options.timeout)"
-            
+
             if(options.timeout) {
                 long startTimeMs = System.currentTimeMillis()
                 long maxTimeMs = (long)options.timeout
@@ -1039,14 +1041,17 @@ class Utils {
                     }
                     Thread.sleep(2000)
                 }
-                
+
                 if(!p.isAlive())
                     result.exitValue = p.exitValue()
             }
             else {
                 result.exitValue = p.waitFor()
             }
-            
+
+            outThread.join()
+            errThread.join()
+
             log.info "Process $p exited with code $result.exitValue"
             result.err = err
             result.out = out
