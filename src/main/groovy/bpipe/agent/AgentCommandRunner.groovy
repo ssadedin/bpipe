@@ -103,7 +103,7 @@ class AgentCommandRunner implements Runnable {
                     throw errorResponse
                 
                 boolean isRunCommand = (command instanceof RunPipelineCommand || command instanceof ClosurePipelineCommand)
-                String outputMode = isRunCommand ? outputMode : 'reply'
+                String outputMode = isRunCommand ? this.outputMode : 'reply'
 
                 ByteArrayOutputStream bos = null
                 Writer writer = null
@@ -112,15 +112,15 @@ class AgentCommandRunner implements Runnable {
                     writer = new BufferedWriter(bos.newWriter(), 512)
                 }
 
+                if(writer == null)
+                    writer = new NullOutputStream().newWriter()
+
                 Writer out = null
                 if(outputMode == 'both' || outputMode == 'stream') {
                     out = new WorxStreamingPrintStream(this.worxCommandId, writer, worx)
                 }
                 else
                     out = writer
-
-                if(writer==null)
-                    writer = new NullOutputStream().newWriter()
 
                 String result = ""
                 try {
