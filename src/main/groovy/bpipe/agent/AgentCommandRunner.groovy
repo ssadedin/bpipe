@@ -246,7 +246,7 @@ class AgentCommandRunner implements Runnable {
                 
                 if(lock) {
                     log.info "Successfully acquired lock in $command.dir : continuing to run pipeline"
-                    
+
                     // This is here so that if multiple threads are waiting they all have a chance to reattempt the
                     // file lock, ensuring that multiple threads should not grab the lock
                     Thread.sleep(3000)
@@ -255,10 +255,27 @@ class AgentCommandRunner implements Runnable {
                 }
 
                 log.info "Directory $command.dir appears to have a running pipeline: waiting $waitTimeMs to retry"
-                synchronized(waitingForLockObject) {
-                    waitingForLockObject.wait(waitTimeMs)
+
+                // Release the concurrency permit while waiting so that other commands targeting
+                // different directories can proceed. The permit is unconditionally re-acquired
+                // (using acquireUninterruptibly to prevent permit leakage if the thread is
+                // interrupted) before retrying the file lock.
+                if(concurrency != null) {
+                    concurrency.release()
+                    log.info "Released concurrency permit while waiting for directory lock in $command.dir"
                 }
-                
+                try {
+                    synchronized(waitingForLockObject) {
+                        waitingForLockObject.wait(waitTimeMs)
+                    }
+                }
+                finally {
+                    if(concurrency != null) {
+                        concurrency.acquireUninterruptibly()
+                        log.info "Re-acquired concurrency permit after waiting for directory lock in $command.dir"
+                    }
+                }
+
                 waitTimeMs = Math.min(waitTimeMs*2, MAX_LOCK_WAIT_TIME_MS)
             }
         }
