@@ -139,10 +139,31 @@ class AgentCommandRunner implements Runnable {
                         
                         command.out = out
 
-                        command.run(out)
+                        StringWriter captureWriter = new StringWriter()
+                        Writer teeOut = new TeeWriter(out, captureWriter, 4096)
+
+                        long startTime = System.currentTimeMillis()
+                        command.run(teeOut)
+                        long elapsedMs = System.currentTimeMillis() - startTime
                         
-                        if(command instanceof RunPipelineCommand)
+                        if(command instanceof RunPipelineCommand) {
                             exitCode = ((RunPipelineCommand)command).result.exitValue
+                            if(exitCode != 0 && elapsedMs < 3000) {
+                                String captured = captureWriter.toString().trim()
+                                if(captured.length() > 0) {
+                                    String[] lines = captured.split('\n')
+                                    int linesToLog = Math.min(lines.length, 5)
+                                    StringBuilder logOutput = new StringBuilder("Command $worxCommandId failed with exit code $exitCode after ${elapsedMs}ms. Captured output (first $linesToLog lines):\n")
+                                    for(int i = 0; i < linesToLog; ++i) {
+                                        logOutput.append("  > ").append(lines[i]).append('\n')
+                                    }
+                                    log.warning(logOutput.toString())
+                                }
+                                else {
+                                    log.warning("Command $worxCommandId failed with exit code $exitCode after ${elapsedMs}ms with no captured output")
+                                }
+                            }
+                        }
                     }
                     else {
                         command.out = out
@@ -272,5 +293,42 @@ class AgentCommandRunner implements Runnable {
             worx.sendJson("/commandResult/$id", jsonResponse) 
         }
         
+    }
+    
+    @CompileStatic
+    static class TeeWriter extends Writer {
+        
+        Writer first
+        Writer second
+        int maxChars
+        int written = 0
+        
+        TeeWriter(Writer first, Writer second, int maxChars = 4096) {
+            this.first = first
+            this.second = second
+            this.maxChars = maxChars
+        }
+        
+        @Override
+        void write(char[] cbuf, int off, int len) throws IOException {
+            first.write(cbuf, off, len)
+            if(written < maxChars) {
+                int toWrite = Math.min(len, maxChars - written)
+                second.write(cbuf, off, toWrite)
+                written += toWrite
+            }
+        }
+        
+        @Override
+        void flush() throws IOException {
+            first.flush()
+            second.flush()
+        }
+        
+        @Override
+        void close() throws IOException {
+            first.close()
+            second.close()
+        }
     }
 }
