@@ -162,7 +162,16 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
      */
     @CompileStatic
     private void triggerBreak(Command cmd, Map cfg) {
-        String msg = command.branch.name ? "Stage $command.name in branch $command.branch.name would execute:\n\n        $cmd.command" : "State $command.name would execute:\n\n        $cmd.command"
+        String msg = command.branch.name ? "Stage $command.name in branch $command.branch.name would execute:\n\n        $cmd.command" : "Stage $command.name would execute:\n\n        $cmd.command"
+
+        // Append container / conda environment info if configured
+        if(cfg.containsKey('container') && cfg.get('container')) {
+            msg += "\n\n        Will execute in container: " + cfg.get('container')
+        }
+        if(cfg.containsKey('conda_env') && cfg.get('conda_env')) {
+            msg += "\n        in conda environment: " + cfg.get('conda_env')
+        }
+
         this.releaseAll()
         if(commandExecutor instanceof LocalCommandExecutor)
             throw new bpipe.PipelineTestAbort(msg)
