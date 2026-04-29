@@ -244,6 +244,181 @@ import java.util.zip.ZipOutputStream
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
+/**
+ * Runs Bpipe functional tests from the tests/ directory and writes JUnit XML reports
+ * to build/test-results/e2eTests/ so Gradle includes them in its HTML test report.
+ *
+ * Test selection:
+ *   testPrefixes  - include tests whose names start with any listed prefix (empty = all)
+ *   excludePrefixes - exclude tests whose names start with any listed prefix (used for Misc group)
+ *   nameFilter    - additional substring filter, set via -Pe2eFilter=<name>
+ */
+class BpipeE2ETest extends DefaultTask {
+
+    @Internal List<String> testPrefixes = []
+    @Internal List<String> excludePrefixes = []
+    @Internal String nameFilter = ''
+
+    /** Maximum number of tests to run in parallel. Default 1 (sequential).
+     *  Set via -Pe2eParallel=N on the command line. */
+    @Internal int maxParallel = 1
+
+    @TaskAction
+    void runTests() {
+        def testsDir = project.file('tests')
+        def reportsDir = project.file('build/test-results/e2eTests')
+        reportsDir.mkdirs()
+
+        def allDirs = testsDir.listFiles()
+                .findAll { it.isDirectory() && it.name =~ /^[A-Za-z]/ && new File(it, 'run.sh').exists() }
+                .sort { it.name }
+
+        def testDirs
+        if (excludePrefixes) {
+            testDirs = allDirs.findAll { dir -> !excludePrefixes.any { dir.name.startsWith(it) } }
+        } else if (testPrefixes) {
+            testDirs = allDirs.findAll { dir -> testPrefixes.any { dir.name.startsWith(it) } }
+        } else {
+            testDirs = allDirs
+        }
+
+        if (nameFilter) {
+            testDirs = testDirs.findAll { it.name.contains(nameFilter) }
+        }
+
+        if (testDirs.isEmpty()) {
+            logger.warn("No e2e tests found (prefixes=${testPrefixes}, exclude=${excludePrefixes}, filter='${nameFilter}')")
+            return
+        }
+
+        def effectiveParallel = Math.max(1, maxParallel)
+        if (effectiveParallel > 1) {
+            logger.lifecycle("Running ${testDirs.size()} e2e test(s) with up to ${effectiveParallel} in parallel...")
+        } else {
+            logger.lifecycle("Running ${testDirs.size()} e2e test(s)...")
+        }
+
+        def results = runTestDirs(testDirs, testsDir, effectiveParallel)
+
+        writeJUnitXml(results, reportsDir)
+
+        def passed = results.count { it.passed }
+        def failed = results.count { !it.passed }
+
+        logger.lifecycle('\n===== E2E Test Summary =====')
+        logger.lifecycle("  Passed: ${passed} / ${results.size()}")
+
+        if (failed > 0) {
+            logger.lifecycle("  Failed: ${failed}")
+            results.findAll { !it.passed }.each { r ->
+                logger.lifecycle("\n----- FAILED: ${r.name} -----")
+                logger.lifecycle(r.output ?: '(no output captured)')
+                logger.lifecycle('-----')
+            }
+            throw new GradleException("${failed} e2e test(s) failed")
+        }
+    }
+
+    private List runTestDirs(List<File> testDirs, File testsDir, int parallelism) {
+
+        // Closure that runs a single test — defined here so it's visible inside
+        // thread-pool closures (Groovy build-script method dispatch doesn't
+        // resolve private methods through nested closure delegates).
+        def execTest = { File testDir ->
+            new File(testDir, '.bpipe').deleteDir()
+
+            def startTime = System.currentTimeMillis()
+
+            def pb = new ProcessBuilder('bash', 'run.sh')
+            pb.directory(testDir)
+            pb.redirectErrorStream(true)
+            pb.environment().put('BASE', testsDir.absolutePath)
+
+            def proc = pb.start()
+            def output = new StringBuffer()
+            def readerThread = Thread.start {
+                proc.inputStream.newReader('UTF-8').eachLine { line -> output.append(line).append('\n') }
+            }
+            def finished = proc.waitFor(300, java.util.concurrent.TimeUnit.SECONDS)
+            if (!finished) {
+                proc.destroyForcibly()
+                output.append('\n[TEST TIMED OUT after 300s]')
+            }
+            readerThread.join(5000)
+            def exitCode = finished ? proc.exitValue() : 1
+            def duration = (System.currentTimeMillis() - startTime) / 1000.0
+
+            // On failure, append the bpipe output log (test.out) which contains the
+            // actual stdout/stderr from the pipeline run — run.sh redirects bpipe's
+            // output there so it doesn't appear in the process stdout we captured above.
+            if (exitCode != 0) {
+                def testOutFile = new File(testDir, 'test.out')
+                if (testOutFile.exists()) {
+                    output.append('\n[test.out contents]\n')
+                    output.append(testOutFile.text)
+                }
+            }
+
+            [name: testDir.name, passed: exitCode == 0, output: output.toString(), duration: duration]
+        }
+
+        if (parallelism <= 1) {
+            // Sequential — original behaviour
+            def results = []
+            testDirs.each { testDir ->
+                def result = execTest(testDir)
+                results << result
+                logger.lifecycle("  ${result.passed ? 'PASSED' : 'FAILED'}: ${result.name} (${String.format('%.1f', result.duration as double)}s)")
+            }
+            return results
+        }
+
+        // Parallel execution
+        def pool = java.util.concurrent.Executors.newFixedThreadPool(parallelism)
+        def futures = testDirs.collect { testDir ->
+            pool.submit({
+                execTest(testDir)
+            } as java.util.concurrent.Callable)
+        }
+
+        def results = []
+        futures.each { future ->
+            def result = future.get(600, java.util.concurrent.TimeUnit.SECONDS)
+            results << result
+            logger.lifecycle("  ${result.passed ? 'PASSED' : 'FAILED'}: ${result.name} (${String.format('%.1f', result.duration as double)}s)")
+        }
+        pool.shutdown()
+        return results
+    }
+
+    private void writeJUnitXml(List results, File reportsDir) {
+        def escapeXml = { String s ->
+            s.replace('&', '&amp;').replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
+        }
+
+        def total = results.size()
+        def failures = results.count { !it.passed }
+        def totalTime = results ? (results.sum { it.duration as double } as double) : 0.0d
+
+        def sb = new StringBuilder()
+        sb << '<?xml version="1.0" encoding="UTF-8"?>\n'
+        sb << "<testsuite name=\"BpipeE2ETests\" tests=\"${total}\" failures=\"${failures}\" time=\"${String.format('%.3f', totalTime)}\">\n"
+        results.each { r ->
+            def eName = escapeXml(r.name as String)
+            def eTime = String.format('%.3f', r.duration as double)
+            if (r.passed) {
+                sb << "  <testcase name=\"${eName}\" classname=\"bpipe.e2e\" time=\"${eTime}\"/>\n"
+            } else {
+                sb << "  <testcase name=\"${eName}\" classname=\"bpipe.e2e\" time=\"${eTime}\">\n"
+                sb << "    <failure message=\"Test ${eName} failed\" type=\"AssertionError\"><![CDATA[${r.output ?: ''}]]></failure>\n"
+                sb << "  </testcase>\n"
+            }
+        }
+        sb << "</testsuite>\n"
+        new File(reportsDir, 'e2e-results.xml').text = sb.toString()
+    }
+}
+
 //task cloudjar(type:ShadowJar) {
 //
 //    archiveName='bpipe-cloud.jar'
@@ -397,6 +572,88 @@ task dist(dependsOn: stage)  {
 
       ant.gzip(destfile:"build/bpipe-${VERSION}.tar.gz", src: "build/bpipe-${VERSION}.tar")
   }
+}
+
+// ===== E2E Test Task Registrations =====
+//
+// Groups are defined by lists of name prefixes. A test directory matches a group if its
+// name starts with any prefix in the list. Exact test names can also be listed when
+// they don't share a common prefix with their peers.
+//
+// Run all tests:           ./gradlew e2eTest
+// Run a single test:       ./gradlew e2eTest -Pe2eFilter=simple
+// Run a group:             ./gradlew e2eTestParallel
+// Run misc (ungrouped):    ./gradlew e2eTestMisc
+
+def e2eTestGroups = [
+    Core:      ['simple', 'succeed', 'background', 'status_command', 'documentation',
+                'pipeline_var', 'pipeline_require', 'wait_for_output', 'when', 'slow',
+                'touch', 'backtick', 'glob', 'add_jar', 'abspath_preserve', 'extensions',
+                'print_created_files', 'remake', 'quiet_and_clean', 'large_number_files',
+                'read_inputs_from_file', 'manual_resolve', 'folderasoutput',
+                'innocuous_output_dir_ref', 'define'],
+    Produce:   ['produce', 'preallocate', 'implicitmultioutput', 'optional_output',
+                'optional_transform_annotation', 'append_output_dir'],
+    Transform: ['transform', 'filter', 'filterlines'],
+    From:      ['from', 'input', 'double_input_ext', 'whole_input_is_extension',
+                'single_input_with_number'],
+    Output:    ['output', 'outputdir', 'outputext', 'outputfolder', 'non_default_output',
+                'prefix', 'dir_option_changes_output_dir', 'outdir_with_following_input',
+                'outputs_from_diff_parallel_stages', 'outputs_listed_in_order',
+                'overlapping_double_ext'],
+    Parallel:  ['parallel', 'consecutive_parallel', 'double_parallel', 'nested_parallel',
+                'huge_nested_parallel', 'huge_parallel', 'middle_parallel_no_inputs',
+                'ordered_input_to_parallel', 'empty_parallel_segment', 'empty_parallel_stage',
+                'param_nested_parallel'],
+    Branch:    ['branch', 'split', 'detached_branch', 'set_branch_name', 'mid_pipeline_split',
+                'parent_branch_variable'],
+    Sample:    ['persample', 'perchromosome', 'per_chromosome', 'chr', 'paired_end',
+                'per_generic_list', 'custom_chr', 'region_as_bed', 'region_flag',
+                'bed', 'prechrinput'],
+    Check:     ['check', 'double_check', 'groovy_check', 'external_error',
+                'undefined_variable', 'missing_input_error', 'mnc_github_bug_264'],
+    Config:    ['config', 'param', 'params_from_file', 'using', 'stage_based_config',
+                'stage_specific_parameter', 'embedded_config', 'environments', 'options',
+                'reference_param_in_config', 'require_with_using', 'cmdlinevars',
+                'custom_db_location', 'custom_filetype', 'withconfig'],
+    Load:      ['load', 'segment', 'external_segment', 'externalstages', 'dependent_modules',
+                'ref_local_in_external', 'reference_loaded_before_run', 'replace_segment',
+                'error_on_load', 'cmd_line_load'],
+    Channels:  ['forward', 'merge_point', 'channels', 'simple_channels', 'accompanies'],
+    Multi:     ['multi', 'two_inputs_double_ext', 'downstream_multiinputs'],
+    Cleanup:   ['cleanup', 'alias', 'intermediate', 'unclean', 'equal_timestamps_cleanup',
+                'preserve'],
+    Resources: ['thread', 'resource_limit', 'maxmem', 'memory_variable', 'sge', 'torque',
+                'rscript', 'file_notifications', 'send_http_json', 'send_to_file',
+                'query_with_outputdir', 'output_branch_report'],
+]
+
+def e2eParallelism = Integer.parseInt(project.findProperty('e2eParallel') ?: '1')
+
+tasks.register('e2eTest', BpipeE2ETest) {
+    group = 'verification'
+    description = 'Run all Bpipe e2e tests (use -Pe2eFilter=<name> to run a specific test, -Pe2eParallel=N for parallel execution)'
+    dependsOn stage
+    nameFilter = project.findProperty('e2eFilter') ?: ''
+    maxParallel = e2eParallelism
+}
+
+e2eTestGroups.each { groupName, prefixes ->
+    tasks.register("e2eTest${groupName}", BpipeE2ETest) {
+        group = 'e2e tests'
+        description = "Run ${groupName} e2e tests"
+        dependsOn stage
+        testPrefixes = prefixes
+        maxParallel = e2eParallelism
+    }
+}
+
+tasks.register('e2eTestMisc', BpipeE2ETest) {
+    group = 'e2e tests'
+    description = 'Run miscellaneous e2e tests not covered by other groups'
+    dependsOn stage
+    excludePrefixes = e2eTestGroups.values().flatten() as List
+    maxParallel = e2eParallelism
 }
 
 wrapper {
