@@ -318,6 +318,10 @@ class Runner {
             def lockChannel = new RandomAccessFile('.bpipe/lock', 'rw').channel
             runLock = lockChannel.tryLock()
             if(runLock.is(null)) {
+                if(System.getenv('BPIPE_QUIET')) {
+                    println "Quiet mode enabled: auto-aborting this pipeline"
+                    exit(1)
+                }
                 String otherPid = new File('.bpipe/run.pid').text
                 println "\n" + " Pipeline in Progress ".center(100,"=") + "\n"
                 println "${new Date()}: Bpipe is locked due to another running pipeline in process ${otherPid}."
