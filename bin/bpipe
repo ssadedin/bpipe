@@ -470,7 +470,11 @@ get_classpath
 : ${SHOWDEBUG:=false}
 : ${LAUNCH_IN_FOREGROUND:=false}
 
-if [ "$COMMAND" == "history" ];
+if [ "$COMMAND" == "completions" ];
+then
+    cat $BPIPE_HOME/bin/bpipe-completion.sh
+    exit
+elif [ "$COMMAND" == "history" ];
 then
     shift 1
     if [ -e .bpipe/history ];
@@ -514,6 +518,7 @@ elif [ "$COMMAND" == "cleanup" ] || \
          [ "$COMMAND" == "install" ] || \
          [ "$COMMAND" == "diagrameditor" ]  || \
          [ "$COMMAND" == "jobs" ]  || \
+         [ "$COMMAND" == "console" ]  || \
          [ "$COMMAND" == "documentation" ];
 then
     launch_in_foreground $*
