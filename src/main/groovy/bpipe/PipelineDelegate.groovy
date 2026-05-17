@@ -140,9 +140,15 @@ class PipelineDelegate {
                 args = (args as List) + [null]
             }
             else
+            if(name == "produce" && !(args[-1] instanceof Closure)) {
+                // No closure provided: the stage body itself acts as the produce body.
+                // Pass all args as files with a null body.
+                args = (args as List) + [null]
+            }
+            else
             if(args.size()<2)
                 throw new IllegalArgumentException("$name requires an argument: please supply a file name or wild card expression matching files to be produced")
-                
+
             def actualArgs = args[0..-2] as List
             if(actualArgs.size() == 1 && actualArgs[0] instanceof List) {
                 actualArgs = actualArgs[0]

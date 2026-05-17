@@ -285,6 +285,11 @@ class PipelineContext {
     * A list of executable closures to be executed when the next produce statement completes
     */
    List<Closure> inputResets = []
+
+   /**
+    * Outputs declared via no-closure produce() that need associating after the stage body finishes
+    */
+   List<List<PipelineFile>> pendingProduces = []
    
    /**
     * The default output is set prior to the body of the a pipeline stage being run.
@@ -1416,6 +1421,31 @@ class PipelineContext {
         // but were the commands that created the outputs modified?
         this.setRawOutput(fixedOutputs)
 
+        // No-closure produce: the stage body itself is the implicit body.
+        // Skip the probe/double-run; instead check up-to-date directly and either
+        // throw StageSkippedException (outputs fresh, aborting the rest of the stage body)
+        // or register for post-stage finalization and return so the body continues.
+        if(body == null) {
+            try {
+                List<PipelineFile> unaliasedInputs = Utils.box(this.@input).collect { aliases[it] }
+                List<PipelineFile> outOfDateOutputs =
+                    Dependencies.theInstance.getOutOfDate(fixedOutputs + globExistingFiles, unaliasedInputs)
+                if(outOfDateOutputs.isEmpty()) {
+                    msg("Skipping steps to create ${Utils.box(out).unique()} because " +
+                        (lastInputs ? "newer than $lastInputs" : "file already exists"))
+                    log.info "Skipping stage-level produce body"
+                    associateOutputsToProduce()
+                    throw new StageSkippedException(fixedOutputs, out)
+                }
+            }
+            finally {
+                endProduce()
+            }
+            DirtyFileManager.instance.add(this.@output)
+            this.pendingProduces << fixedOutputs
+            return out
+        }
+
         // Probing can be nested: ie, an outer function can initiate probe mode
         // and then call this one, so we need to ensure that we restore
         // the state  upon exit
@@ -1610,6 +1640,20 @@ class PipelineContext {
         this.currentFileNameTransform = null
         this.inputResets.each { it() }
         this.inputResets = []
+    }
+
+    /**
+     * Called by PipelineStage after the stage body finishes to finalize any no-closure
+     * produce() registrations. Associates each declared output with the commands that ran.
+     */
+    void finalizePendingProduces() {
+        if(!pendingProduces)
+            return
+        for(List<PipelineFile> outputs in pendingProduces) {
+            this.setRawOutput(outputs)
+            associateOutputsToProduce()
+        }
+        pendingProduces = []
     }
 
     /**

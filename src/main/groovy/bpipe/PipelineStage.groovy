@@ -229,13 +229,14 @@ class PipelineStage {
             while(true) {
                 try {
                     runBody()
+                    context.finalizePendingProduces()
                     break
                 }
                 catch(PipelineDevRetry e) {
                     waitForDevInteraction()
                 }
             }
-                    
+
             succeeded = true
             if(!joiner) {
                 log.info("Stage $displayName returned $context.nextInputs as default inputs for next stage")
@@ -440,10 +441,17 @@ class PipelineStage {
                     bindingVariables.putAll(stageParameters)
                 }
                         
-                List returnedInputs 
+                List returnedInputs
                 Runner.binding.stageLocalVariables.set(bindingVariables)
                 try {
-                    returnedInputs = runWrappedBody()
+                    try {
+                        returnedInputs = runWrappedBody()
+                    }
+                    catch(StageSkippedException e) {
+                        log.info "Stage $stageName: no-closure produce outputs are up-to-date, skipping body"
+                        context.setRawOutput(e.pipelineFiles)
+                        returnedInputs = e.pipelineFiles
+                    }
                     this.context.checkAndClearImplicits()
                     runOutstandingChecks()
                 }
