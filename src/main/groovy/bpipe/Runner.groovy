@@ -550,6 +550,11 @@ class Runner {
              runDelayMs = Integer.parseInt((String)opts['delay']) * 1000L
         }
 
+        if(opts['nochecks'] || Config.userConfig['skipChecks']) {
+            Config.config.skipChecks = true
+            log.info "Skip-checks mode enabled: all pipeline checks will be bypassed"
+        }
+
         initThreads*.join(20000)
         
       
@@ -639,6 +644,7 @@ class Runner {
             s longOpt: 'source', 'Load the given pipeline file(s) before running / executing', args: 1
             e longOpt: 'env', 'Environment to select from alternate configurations in bpipe.config', args: 1
             'L' longOpt: 'interval', 'the default genomic interval to execute pipeline for (samtools format)',args: 1
+            nochecks longOpt: 'no-checks', 'Skip execution of all pipeline checks'
         }
     }
     

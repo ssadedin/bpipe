@@ -79,8 +79,11 @@ class Config {
         breakTriggered : false,
         
         // Branches to run: if empty all branches are run, can be set on command line to limit
-        // to a particular branches 
-        branchFilter: []
+        // to a particular branches
+        branchFilter: [],
+
+        // When true, all pipeline checks are skipped without execution
+        skipChecks: false
     ]
     
     /**

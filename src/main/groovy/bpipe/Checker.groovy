@@ -70,9 +70,14 @@ class Checker {
     void otherwise(Closure otherwiseClause) {
         
         log.info("Evaluating Check $ctx.stageName / $name")
-        
+
         this.executed = true
-        
+
+        if(Config.config.skipChecks) {
+            log.info "Skipping check $ctx.stageName / $name (--no-checks mode)"
+            return
+        }
+
         Check check = getCheck()
         
         log.info "Check name = $check.name"
