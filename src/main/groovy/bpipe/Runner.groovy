@@ -960,12 +960,18 @@ class Runner {
                             .getUncleanFilePaths()
                             .grep { new File(it).exists() }
         if(dirtyFiles) {
+            if(devMode) {
+                log.info "Dev mode: auto-removing ${dirtyFiles.size()} in-progress files from previous run"
+                dirtyFiles.each { new File(it).delete() }
+                DirtyFileManager.theInstance.getUncleanManifests()*.delete()
+                return
+            }
             println "=" * Config.config.columns
             println ""
             println "WARNING: dirty files may be present from a previous run. Please check these paths:"
             println ""
             println dirtyFiles.collect { '\t' + it + '\n' }.join('')
-            
+
             cleanupRequired = false
             throw new PipelineError("Dirty files were found. Please inspect and remove contents of " + CommandManager.UNCLEAN_FILE_DIR + " after being sure the files are OK")
         }
