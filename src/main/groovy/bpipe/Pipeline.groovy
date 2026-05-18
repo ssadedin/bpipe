@@ -1640,6 +1640,20 @@ public class Pipeline implements ResourceRequestor {
             }
         }
 
+        // Detect named channels and add their names as String variables
+        // When a channel is named (e.g. channel(files).named('sample')), the name
+        // becomes accessible as a variable inside pipeline stage closures
+        Map<String, String> channelNames = [:]
+        pipelineBuilder.binding.variables.each { String k, Object v ->
+            if(v instanceof PipelineChannel && ((PipelineChannel)v).name) {
+                String channelName = ((PipelineChannel)v).name
+                if(!typedVariables.containsKey(channelName)) {
+                    channelNames[channelName] = 'java.lang.String'
+                    typedVariables[channelName] = 'java.lang.String'
+                }
+            }
+        }
+
         // Generate the GDSL content (IntelliJ IDEA)
         String gdslContent = GenerateDSLCommand.generateGDSLContent(typedVariables, stageNames)
 
@@ -1664,7 +1678,10 @@ public class Pipeline implements ResourceRequestor {
         println "  Eclipse:       ${dsldFile.absolutePath}"
         println ""
         println "  ${stageNames.size()} pipeline stages"
-        println "  ${typedVariables.size() - stageNames.size()} variables"
+        println "  ${typedVariables.size() - stageNames.size() - channelNames.size()} variables"
+        if(channelNames) {
+            println "  ${channelNames.size()} named channel(s): ${channelNames.keySet().join(', ')}"
+        }
         println ""
         println "Place these files in your project root for IDE support."
         println ""
