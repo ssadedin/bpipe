@@ -22,6 +22,7 @@ import bpipe.Utils
 import bpipe.processors.CondaEnvContainerWrapper
 import bpipe.processors.DockerContainerWrapper
 import bpipe.processors.EnvironmentVariableSetter
+import bpipe.processors.UvEnvWrapper
 import bpipe.processors.MemoryLimitReplacer
 import bpipe.processors.SingularityContainerWrapper
 import bpipe.processors.StorageResolver
@@ -171,6 +172,12 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         if(cfg.containsKey('conda_env') && cfg.get('conda_env')) {
             msg += "\n        in conda environment: " + cfg.get('conda_env')
         }
+        if(cfg.containsKey('uv_env') && cfg.get('uv_env')) {
+            msg += "\n        in uv environment: " + cfg.get('uv_env')
+        }
+        if(cfg.containsKey('uv_project') && cfg.get('uv_project')) {
+            msg += "\n        in uv project: " + cfg.get('uv_project')
+        }
 
         this.releaseAll()
         if(commandExecutor instanceof LocalCommandExecutor)
@@ -214,6 +221,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         List<CommandProcessor> processors = [
             new EnvironmentVariableSetter(), 
             new CondaEnvContainerWrapper(),
+            new UvEnvWrapper(),
             new MemoryLimitReplacer(), 
             new ThreadAllocationReplacer(),
             new StorageResolver(commandExecutor),
