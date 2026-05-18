@@ -522,6 +522,12 @@ elif [ "$COMMAND" == "cleanup" ] || \
          [ "$COMMAND" == "documentation" ];
 then
     launch_in_foreground $*
+elif [ "$COMMAND" == "generate-dsl" ];
+then
+    shift 1
+    COMMAND="run"
+    MODEFLAG="-Dbpipe.mode=generate-dsl"
+    LAUNCH_IN_FOREGROUND=true
 elif [ "$COMMAND" == "log" ];
 then
     shift 1

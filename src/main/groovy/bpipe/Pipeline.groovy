@@ -50,6 +50,7 @@ import java.util.zip.GZIPInputStream
 import org.codehaus.groovy.reflection.CachedMethod;
 import org.codehaus.groovy.runtime.ReverseListIterator
 
+import bpipe.cmd.GenerateDSLCommand
 import bpipe.graph.Graph;
 import bpipe.storage.StorageLayer
 import bpipe.storage.UnknownStoragePipelineFile
@@ -610,6 +611,9 @@ public class Pipeline implements ResourceRequestor {
         else
         if(mode in ["documentation"])
             pipeline.documentation(host, pipelineBuilder, Runner.opts.arguments()[0])
+        else
+        if(mode == "generate-dsl")
+            pipeline.generateDSL(host, pipelineBuilder)
             
         return pipeline;    
     }
@@ -1595,6 +1599,63 @@ public class Pipeline implements ResourceRequestor {
         new ReportGenerator().generateFromTemplate(this,"index.html", outFile)
     }
     
+    /**
+     * Generate a GDSL file for IDE support by introspecting the pipeline's
+     * binding after construction (which evaluates all load() statements).
+     * 
+     * @param host              The host binding object
+     * @param pipelineBuilder   The pipeline closure
+     * @param outputFile        Optional output file path (defaults to "bpipe.gdsl")
+     */
+    void generateDSL(Object host, Closure pipelineBuilder, String outputFile = "bpipe.gdsl") {
+
+        // Construct the pipeline - this evaluates all load() statements
+        constructPipeline(pipelineBuilder)
+
+        // Collect all pipeline stages (closures registered with names)
+        Map<String, String> stageNames = [:]
+        PipelineCategory.closureNames.each { Closure closure, String name ->
+            stageNames[name] = 'groovy.lang.Closure'
+        }
+
+        // Internal variables that should not be exported
+        Set<String> internalVars = [
+            'args', 'BPIPE_NO_EXTERNAL_STAGES', 'this', 'bpipe',
+            'Pipeline', 'PipelineCategory', 'Bpipe', 'Runner'
+        ] as Set
+
+        // Collect all variables from the binding
+        Map<String, String> typedVariables = [:]
+        pipelineBuilder.binding.variables.each { String k, Object v ->
+            if(!k.startsWith('_') && !internalVars.contains(k)) {
+                typedVariables[k] = GenerateDSLCommand.inferType(v)
+            }
+        }
+
+        // Also include variables from the external binding
+        this.externalBinding.variables.each { k, v ->
+            String key = k.toString()
+            if(!key.startsWith('_') && !internalVars.contains(key) && !typedVariables.containsKey(key)) {
+                typedVariables[key] = GenerateDSLCommand.inferType(v)
+            }
+        }
+
+        // Generate the GDSL content
+        String gdslContent = GenerateDSLCommand.generateGDSLContent(typedVariables, stageNames)
+
+        // Write the file
+        File gdslFile = new File(outputFile)
+        gdslFile.text = gdslContent
+
+        println ""
+        println "Generated IDE support file: ${gdslFile.absolutePath}"
+        println "  ${stageNames.size()} pipeline stages"
+        println "  ${typedVariables.size() - stageNames.size()} variables"
+        println ""
+        println "Place this file in your project root for IntelliJ IDEA support."
+        println ""
+    }
+
     def generateCustomReport(String reportName) {
         try {
             def outFile = reportName + ".html"

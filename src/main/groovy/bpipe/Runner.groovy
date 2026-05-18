@@ -102,6 +102,7 @@ class Runner {
                    register <pipeline> <in1> <in2>...
                    diagram <pipeline> <in1> <in2>...
                    diagrameditor <pipeline> <in1> <in2>...
+                   generate-dsl <pipeline> <in1> <in2>...
 
       Options:
     """.stripIndent().trim() + '\n\n'
@@ -220,6 +221,13 @@ class Runner {
         Config.initializePlugins()
         
         def cli 
+        if(mode == "generate-dsl") {
+            log.info("Mode is generate-dsl")
+            cli = runCli
+            configureRunCli(cli)
+            Config.config["mode"] = "generate-dsl"
+        }
+        else
         if(mode == "diagram")  {
             log.info("Mode is diagram")
             cli = configureDiagramCli()
@@ -500,14 +508,14 @@ class Runner {
                            { ToolDatabase.theInstance.init(Config.userConfig) }, 
                            { /* Add event listeners that come directly from configuration */ EventManager.theInstance.configure(Config.userConfig) },
                            { Concurrency.theInstance.initFromConfig() },
-                           { if(!opts['t']) { NotificationManager.theInstance.configure(Config.userConfig); configureReportsFromUserConfig() } },
+                           { if(!opts['t'] && mode != "generate-dsl") { NotificationManager.theInstance.configure(Config.userConfig); configureReportsFromUserConfig() } },
                            { Dependencies.theInstance.preloadOutputGraph() }
                            ].collect{new Thread(it)}
         initThreads*.start()
 
         // If we got this far and are not in test mode, then it's time to 
         // make the logs stick around
-        if(!opts['t']) {
+        if(!opts['t'] && mode != "generate-dsl") {
             Config.config.eraseLogsOnExit = false
             appendCommandToHistoryFile(mode, args, pid)
             
@@ -532,7 +540,7 @@ class Runner {
             Config.region = new RegionValue((String)opts['L'])
         }
         
-        if(opts['t'])
+        if(opts['t'] || mode == "generate-dsl")
             testMode = true
             
         if(opts['D'])
