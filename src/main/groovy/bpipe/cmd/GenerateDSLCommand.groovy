@@ -115,7 +115,7 @@ class GenerateDSLCommand {
         sb.append("    // Pipeline stages (available as both variables and callable methods)\n")
 
         stages.each { String name, String type ->
-            sb.append("    property name: '${escapeGDSL(name)}', type: groovy.lang.Closure\n")
+            sb.append("    property name: '${escapeGDSL(name)}', type: 'groovy.lang.Closure'\n")
         }
 
         sb.append("\n")
@@ -123,38 +123,38 @@ class GenerateDSLCommand {
 
         typedVariables.each { String name, String type ->
             if(!stages.containsKey(name)) {
-                sb.append("    property name: '${escapeGDSL(name)}', type: ${type}\n")
+                sb.append("    property name: '${escapeGDSL(name)}', type: '${type}'\n")
             }
         }
 
         sb.append("\n")
         sb.append("    // Bpipe built-in methods available in pipeline stage bodies\n")
-        sb.append("    method name: 'produce', type: void, params: [outputs: java.lang.Object, body: groovy.lang.Closure]\n")
-        sb.append("    method name: 'transform', type: void, params: [exts: java.lang.Object, body: groovy.lang.Closure]\n")
-        sb.append("    method name: 'filter', type: void, params: [exts: java.lang.Object, body: groovy.lang.Closure]\n")
-        sb.append("    method name: 'forward', type: void, params: [files: java.lang.Object]\n")
-        sb.append("    method name: 'exec', type: void, params: [cmd: java.lang.String]\n")
-        sb.append("    method name: 'exec', type: void, params: [cmd: java.lang.String, config: java.lang.String]\n")
-        sb.append("    method name: 'succeed', type: void, params: [msg: java.lang.String]\n")
-        sb.append("    method name: 'fail', type: void, params: [msg: java.lang.String]\n")
-        sb.append("    method name: 'send', type: void, params: [details: java.util.Map]\n")
-        sb.append("    method name: 'check', type: void, params: [name: java.lang.String, body: groovy.lang.Closure]\n")
-        sb.append("    method name: 'uses', type: void, params: [resources: java.util.Map, body: groovy.lang.Closure]\n")
-        sb.append("    method name: 'requires', type: void, params: [params: java.util.Map]\n")
-        sb.append("    method name: 'var', type: void, params: [defaults: java.util.Map]\n")
-        sb.append("    method name: 'load', type: void, params: [path: java.lang.String]\n")
-        sb.append("    method name: 'segment', type: groovy.lang.Closure, params: [body: groovy.lang.Closure]\n")
-        sb.append("    method name: 'msg', type: void, params: [message: java.lang.String]\n")
-        sb.append("    method name: 'multi', type: void, params: [cmd: java.lang.String]\n")
+        sb.append("    method name: 'produce', type: 'void', params: [outputs: 'java.lang.Object', body: 'groovy.lang.Closure']\n")
+        sb.append("    method name: 'transform', type: 'void', params: [exts: 'java.lang.Object', body: 'groovy.lang.Closure']\n")
+        sb.append("    method name: 'filter', type: 'void', params: [exts: 'java.lang.Object', body: 'groovy.lang.Closure']\n")
+        sb.append("    method name: 'forward', type: 'void', params: [files: 'java.lang.Object']\n")
+        sb.append("    method name: 'exec', type: 'void', params: [cmd: 'java.lang.String']\n")
+        sb.append("    method name: 'exec', type: 'void', params: [cmd: 'java.lang.String', config: 'java.lang.String']\n")
+        sb.append("    method name: 'succeed', type: 'void', params: [msg: 'java.lang.String']\n")
+        sb.append("    method name: 'fail', type: 'void', params: [msg: 'java.lang.String']\n")
+        sb.append("    method name: 'send', type: 'void', params: [details: 'java.util.Map']\n")
+        sb.append("    method name: 'check', type: 'void', params: [name: 'java.lang.String', body: 'groovy.lang.Closure']\n")
+        sb.append("    method name: 'uses', type: 'void', params: [resources: 'java.util.Map', body: 'groovy.lang.Closure']\n")
+        sb.append("    method name: 'requires', type: 'void', params: [params: 'java.util.Map']\n")
+        sb.append("    method name: 'var', type: 'void', params: [defaults: 'java.util.Map']\n")
+        sb.append("    method name: 'load', type: 'void', params: [path: 'java.lang.String']\n")
+        sb.append("    method name: 'segment', type: 'groovy.lang.Closure', params: [body: 'groovy.lang.Closure']\n")
+        sb.append("    method name: 'msg', type: 'void', params: [message: 'java.lang.String']\n")
+        sb.append("    method name: 'multi', type: 'void', params: [cmd: 'java.lang.String']\n")
 
         sb.append("\n")
         sb.append("    // Bpipe implicit variables available in pipeline stage bodies\n")
-        sb.append("    property name: 'input', type: bpipe.PipelineInput\n")
-        sb.append("    property name: 'output', type: bpipe.PipelineOutput\n")
-        sb.append("    property name: 'branch', type: bpipe.Branch\n")
-        sb.append("    property name: 'threads', type: java.lang.Integer\n")
-        sb.append("    property name: 'memory', type: java.lang.Object\n")
-        sb.append("    property name: 'region', type: bpipe.RegionValue\n")
+        sb.append("    property name: 'input', type: 'bpipe.PipelineInput'\n")
+        sb.append("    property name: 'output', type: 'bpipe.PipelineOutput'\n")
+        sb.append("    property name: 'branch', type: 'bpipe.Branch'\n")
+        sb.append("    property name: 'threads', type: 'java.lang.Integer'\n")
+        sb.append("    property name: 'memory', type: 'java.lang.Object'\n")
+        sb.append("    property name: 'region', type: 'bpipe.RegionValue'\n")
         sb.append("}\n")
 
         return sb.toString()
