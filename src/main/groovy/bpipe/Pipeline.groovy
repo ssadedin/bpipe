@@ -1640,19 +1640,33 @@ public class Pipeline implements ResourceRequestor {
             }
         }
 
-        // Generate the GDSL content
+        // Generate the GDSL content (IntelliJ IDEA)
         String gdslContent = GenerateDSLCommand.generateGDSLContent(typedVariables, stageNames)
 
-        // Write the file
+        // Write the GDSL file
         File gdslFile = new File(outputFile)
         gdslFile.text = gdslContent
 
+        // Generate the DSLD content (Eclipse)
+        String dsldOutputFile = outputFile.replaceAll(/\.gdsl$/, '.dsld')
+        if(dsldOutputFile == outputFile) {
+            dsldOutputFile = outputFile + '.dsld'
+        }
+        String dsldContent = GenerateDSLCommand.generateDSLDContent(typedVariables, stageNames)
+
+        // Write the DSLD file
+        File dsldFile = new File(dsldOutputFile)
+        dsldFile.text = dsldContent
+
         println ""
-        println "Generated IDE support file: ${gdslFile.absolutePath}"
+        println "Generated IDE support files:"
+        println "  IntelliJ IDEA: ${gdslFile.absolutePath}"
+        println "  Eclipse:       ${dsldFile.absolutePath}"
+        println ""
         println "  ${stageNames.size()} pipeline stages"
         println "  ${typedVariables.size() - stageNames.size()} variables"
         println ""
-        println "Place this file in your project root for IntelliJ IDEA support."
+        println "Place these files in your project root for IDE support."
         println ""
     }
 
