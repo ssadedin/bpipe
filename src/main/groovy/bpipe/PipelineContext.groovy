@@ -2149,16 +2149,16 @@ class PipelineContext {
                 configObject = Command.getConfig(config, stageName, cmd, this.@input)
 
                 String condaInfo = ""
-                if(configObject && configObject['conda_env']) {
+                if(configObject && configObject['conda_env'] != null) {
                     condaInfo = " in conda environment ${configObject['conda_env']}"
                 }
 
                 String uvInfo = ""
-                if(configObject && configObject['uv_env']) {
+                if(configObject && configObject['uv_env'] != null) {
                     uvInfo = " in uv environment ${configObject['uv_env']}"
                 }
                 else
-                if(configObject && configObject['uv_project']) {
+                if(configObject && configObject['uv_project'] != null) {
                     uvInfo = " in uv project ${configObject['uv_project']}"
                 }
 

@@ -16,6 +16,9 @@ class CondaEnvContainerWrapper implements CommandProcessor {
     public void transform(Command command, List<ResourceUnit> resources) {
         if(!command.processedConfig.containsKey('conda_env'))
             return
+
+        if(command.processedConfig.conda_env == null)
+            return
             
         String condaEnv = (String)command.processedConfig.conda_env
 

@@ -169,13 +169,13 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         if(cfg.containsKey('container') && cfg.get('container')) {
             msg += "\n\n        Will execute in container: " + cfg.get('container')
         }
-        if(cfg.containsKey('conda_env') && cfg.get('conda_env')) {
+        if(cfg.containsKey('conda_env') && cfg.get('conda_env') != null) {
             msg += "\n        in conda environment: " + cfg.get('conda_env')
         }
-        if(cfg.containsKey('uv_env') && cfg.get('uv_env')) {
+        if(cfg.containsKey('uv_env') && cfg.get('uv_env') != null) {
             msg += "\n        in uv environment: " + cfg.get('uv_env')
         }
-        if(cfg.containsKey('uv_project') && cfg.get('uv_project')) {
+        if(cfg.containsKey('uv_project') && cfg.get('uv_project') != null) {
             msg += "\n        in uv project: " + cfg.get('uv_project')
         }
 

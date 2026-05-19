@@ -16,11 +16,15 @@ class UvEnvWrapper implements CommandProcessor {
         if(!command.processedConfig.containsKey('uv_env') && !command.processedConfig.containsKey('uv_project'))
             return
 
+        // Treat null values as unset
+        if(command.processedConfig.uv_env == null && command.processedConfig.uv_project == null)
+            return
+
         Map<String,Object> config = (Map<String,Object>)command.processedConfig
 
         String uv = Utils.resolveExe("uv", "uv", config)
 
-        if(command.processedConfig.containsKey('uv_project')) {
+        if(command.processedConfig.containsKey('uv_project') && command.processedConfig.uv_project != null) {
             // Use "uv run" mode - uv manages the environment automatically
             String projectDir = (String)command.processedConfig.uv_project
 
@@ -29,7 +33,7 @@ class UvEnvWrapper implements CommandProcessor {
             log.info "Configuring uv project environment using command prefix: $prefix"
             command.command = prefix + command.command
         }
-        else {
+        else if(command.processedConfig.uv_env != null) {
             // Use venv activation mode
             String uvEnv = (String)command.processedConfig.uv_env
 
