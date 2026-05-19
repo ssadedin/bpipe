@@ -2153,15 +2153,26 @@ class PipelineContext {
                     condaInfo = " in conda environment ${configObject['conda_env']}"
                 }
 
-                String containerMsg = condaInfo
+                String uvInfo = ""
+                if(configObject && configObject['uv_env']) {
+                    uvInfo = " in uv environment ${configObject['uv_env']}"
+                }
+                else
+                if(configObject && configObject['uv_project']) {
+                    uvInfo = " in uv project ${configObject['uv_project']}"
+                }
+
+                String envInfo = condaInfo + uvInfo
+
+                String containerMsg = envInfo
                 if(configObject?.containsKey('container') && configObject.container) {
                     ConfigObject container = configObject['container']
                     if(container)
-                        containerMsg = "Will execute in container: " + container + condaInfo + '\n'
+                        containerMsg = "Will execute in container: " + container + envInfo + '\n'
                 }
                 else {
-                    if(condaInfo)
-                        containerMsg = "\nWill execute " + condaInfo
+                    if(envInfo)
+                        containerMsg = "\nWill execute " + envInfo
                 }
                 
                 println msg
