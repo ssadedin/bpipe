@@ -704,8 +704,8 @@ class PipelineStage {
     List<PipelineFile> resolveStubOutputs(PipelineDevRetry e) {
         // The PipelineDevRetry may carry the list of missing outputs from the probe
         if(e.missingOutputs) {
-            return (List<PipelineFile>)e.missingOutputs.collect { path ->
-                (PipelineFile)new LocalPipelineFile(path.toString())
+            return (List<PipelineFile>)e.missingOutputs.collect { Object path ->
+                (PipelineFile)new LocalPipelineFile(String.valueOf(path))
             }
         }
         

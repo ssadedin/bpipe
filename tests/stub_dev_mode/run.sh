@@ -10,13 +10,32 @@ rm -rf .bpipe
 bpipe dev test.groovy > test.out 2>&1 &
 BPIPE_PID=$!
 
-# Wait for the dev prompt to appear
-sleep 5
+# Wait for the dev_continue file to be created (signals dev mode is waiting)
+WAIT_COUNT=0
+while [ ! -f .bpipe/dev_continue ] && [ $WAIT_COUNT -lt 30 ]; do
+    sleep 1
+    WAIT_COUNT=$((WAIT_COUNT + 1))
+done
+
+if [ ! -f .bpipe/dev_continue ]; then
+    echo "ERROR: dev_continue file was never created - dev mode did not start"
+    cat test.out
+    exit 1
+fi
+
+# Give it a moment to be ready to read the file
+sleep 2
 
 # Send stub command
 echo "stub" > .bpipe/dev_continue
 
 # Wait for pipeline to complete
+WAIT_COUNT=0
+while kill -0 $BPIPE_PID 2>/dev/null && [ $WAIT_COUNT -lt 30 ]; do
+    sleep 1
+    WAIT_COUNT=$((WAIT_COUNT + 1))
+done
+
 wait $BPIPE_PID 2>/dev/null
 
 # Check that the stub output was created
