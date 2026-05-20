@@ -7,7 +7,7 @@ rm -f *.txt *.csv
 rm -rf .bpipe
 
 # Run bpipe in background with dev mode enabled at hello stage
-bpipe run -d hello test.groovy > test.out 2>&1 &
+bpipe dev test.groovy > test.out 2>&1 &
 BPIPE_PID=$!
 
 # Wait for the dev prompt to appear
