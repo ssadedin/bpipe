@@ -2590,7 +2590,9 @@ class PipelineContext {
       log.info "Checking actual resolved inputs ${Utils.logBig(actualResolvedInputs,'inputs')}"
 
       // Check if any inputs are stubs - if so, automatically stub outputs too
-      if(!probeMode && hasStubInputs(actualResolvedInputs)) {
+      // But only do this silently when NOT in dev mode. In dev mode, let the normal
+      // dev interaction flow handle it so the user gets prompted.
+      if(!probeMode && !Runner.devMode && hasStubInputs(actualResolvedInputs)) {
           log.info "Stub inputs detected for stage $stageName - automatically stubbing outputs"
           createStubOutputs(checkOutputs)
           command.executor = new ProbeCommandExecutor()

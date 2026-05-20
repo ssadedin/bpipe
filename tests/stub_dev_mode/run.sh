@@ -41,6 +41,7 @@ wait $BPIPE_PID 2>/dev/null
 # Check that the stub output was created
 if [ ! -f "hello.txt" ]; then
     echo "ERROR: Stub output file hello.txt was not created"
+    cat test.out
     exit 1
 fi
 

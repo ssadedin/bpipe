@@ -636,6 +636,16 @@ class PipelineStage {
         devResponseFile.text = ''
 
         boolean skipped = Runner.devSkip.contains(stageName)
+        
+        // If inputs to this stage are stubs, automatically propagate stub without prompting
+        if(!skipped && context.hasStubInputs(context.rawInput)) {
+            log.info("Auto-stubbing stage $stageName because inputs are stubs")
+            this.stubbed = true
+            Runner.devSkip << stageName
+            if(PipelineContext.devRetryLock.writeLock().isHeldByCurrentThread())
+                PipelineContext.devRetryLock.writeLock().unlock()
+            return
+        }
 
         if(!skipped)
             Thread.sleep(1200) 
