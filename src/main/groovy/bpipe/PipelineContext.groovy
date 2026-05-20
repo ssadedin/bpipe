@@ -3586,9 +3586,15 @@ class PipelineContext {
     @CompileStatic
     void createStubOutputs(List<PipelineFile> outputs) {
         this.stubMode = true
+        if(!outputs) {
+            log.warning "createStubOutputs called with empty outputs list"
+            return
+        }
         for(PipelineFile out in outputs) {
+            if(out == null)
+                continue
             File f = new File(out.path)
-            if(!f.parentFile.exists())
+            if(f.parentFile != null && !f.parentFile.exists())
                 f.parentFile.mkdirs()
             f.text = ''
             log.info "Created stub output: ${out.path}"

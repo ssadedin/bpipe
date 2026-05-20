@@ -236,7 +236,9 @@ class PipelineStage {
                     waitForDevInteraction()
                     if(this.stubbed) {
                         List<PipelineFile> stubOutputs = resolveStubOutputs(e)
-                        context.createStubOutputs(stubOutputs)
+                        if(stubOutputs) {
+                            context.createStubOutputs(stubOutputs)
+                        }
                         break
                     }
                 }
@@ -714,10 +716,20 @@ class PipelineStage {
             return context.rawOutput
         }
         
-        // Last resort: use inferred outputs
+        // Try inferred outputs
         if(context.allInferredOutputs) {
             return (List<PipelineFile>)context.allInferredOutputs.collect { String path ->
                 (PipelineFile)new LocalPipelineFile(path)
+            }
+        }
+        
+        // Try tracked outputs from the probe
+        if(context.trackedOutputs) {
+            List<PipelineFile> tracked = (List<PipelineFile>)context.trackedOutputs.values().collect { Command cmd ->
+                cmd.outputs
+            }.flatten()
+            if(tracked) {
+                return tracked
             }
         }
         
