@@ -634,6 +634,9 @@ class PipelineStage {
         def pipeline = Pipeline.currentRuntimePipeline.get()
         def devResponseFile = new File('.bpipe/dev_continue')
         devResponseFile.text = ''
+        
+        // Clear any stale console input from a previous stage interaction
+        Utils.lastConsoleLine = null
 
         boolean skipped = Runner.devSkip.contains(stageName)
         
