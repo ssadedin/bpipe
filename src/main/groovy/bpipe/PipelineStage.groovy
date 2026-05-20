@@ -652,8 +652,8 @@ class PipelineStage {
         try {
             if(modifiedPath == null || modifiedPath == devResponseFile.absolutePath) {
                 
-                // Check if the user requested a stub
-                String devResponse = devResponseFile.exists() ? devResponseFile.text.trim() : ''
+                // Check if the user requested a stub - check both console input and file
+                String devResponse = Utils.lastConsoleLine ?: (devResponseFile.exists() ? devResponseFile.text.trim() : '')
                 if(devResponse == 'stub') {
                     log.info("Received stub request for stage $stageName")
                     this.stubbed = true

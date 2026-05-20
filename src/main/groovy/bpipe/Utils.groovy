@@ -1572,14 +1572,23 @@ class Utils {
         }
     }
     
+    /**
+     * Result of the last console poll, if the wait was terminated by console input
+     */
+    public static volatile String lastConsoleLine = null
+
     public static String waitForModified(List<File> paths) {
         if(paths.isEmpty())
             return
+        lastConsoleLine = null
         double lastModifiedMs = paths*.lastModified().max()
         while(paths*.lastModified().max() <= lastModifiedMs) {
             Thread.sleep(500)        
-            if(ConsolePoller.instance.poll() != null)
+            String consoleLine = ConsolePoller.instance.poll()
+            if(consoleLine != null) {
+                lastConsoleLine = consoleLine
                 return null
+            }
         }
         return paths.find { it.lastModified() > lastModifiedMs }.absolutePath
     }
