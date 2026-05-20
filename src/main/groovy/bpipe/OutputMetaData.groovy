@@ -116,6 +116,12 @@ class OutputMetaData implements Serializable {
     boolean knownExists = false
     
     /**
+     * Whether this output is a stub (placeholder) created in dev mode
+     * rather than by actual command execution
+     */
+    boolean stub = false
+    
+    /**
      * Virtual property - not stored
      */
     boolean upToDate = true
@@ -315,6 +321,8 @@ class OutputMetaData implements Serializable {
         fingerprint = p.fingerprint
         accompanies = p.accompanies
         command = p.command
+        
+        this.stub = p.containsKey('stub') ? Boolean.parseBoolean(p.stub) : false
     }
     
 

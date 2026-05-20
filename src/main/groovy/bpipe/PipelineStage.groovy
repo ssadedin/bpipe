@@ -234,6 +234,11 @@ class PipelineStage {
                 }
                 catch(PipelineDevRetry e) {
                     waitForDevInteraction()
+                    if(this.stubbed) {
+                        List<PipelineFile> stubOutputs = resolveStubOutputs(e)
+                        context.createStubOutputs(stubOutputs)
+                        break
+                    }
                 }
             }
 
@@ -616,6 +621,11 @@ class PipelineStage {
     }
     
     /**
+     * Whether this stage was stubbed in dev mode (outputs are placeholders)
+     */
+    boolean stubbed = false
+    
+    /**
      * A dev break has been triggered and a dump of dev information will 
      */
     void waitForDevInteraction() {
@@ -641,6 +651,18 @@ class PipelineStage {
         
         try {
             if(modifiedPath == null || modifiedPath == devResponseFile.absolutePath) {
+                
+                // Check if the user requested a stub
+                String devResponse = devResponseFile.exists() ? devResponseFile.text.trim() : ''
+                if(devResponse == 'stub') {
+                    log.info("Received stub request for stage $stageName")
+                    this.stubbed = true
+                    Runner.devSkip << stageName
+                    if(PipelineContext.devRetryLock.writeLock().isHeldByCurrentThread())
+                        PipelineContext.devRetryLock.writeLock().unlock()
+                    return
+                }
+                
                 log.info("Received indication of dev continue response for $stageName")
                 Config.config.devAt = ((List)Config.config.devAt).grep { it != stageName }
 //                bpipe.Runner.devMode = false
@@ -672,6 +694,35 @@ class PipelineStage {
         }
     }
     
+    
+    /**
+     * Resolve the outputs that should be stubbed for this stage.
+     * Uses the missing outputs from the PipelineDevRetry exception if available,
+     * otherwise falls back to the context's inferred or default outputs.
+     */
+    @CompileStatic
+    List<PipelineFile> resolveStubOutputs(PipelineDevRetry e) {
+        // The PipelineDevRetry may carry the list of missing outputs from the probe
+        if(e.missingOutputs) {
+            return e.missingOutputs.collect { path ->
+                new LocalPipelineFile(path.toString())
+            }
+        }
+        
+        // Fall back to whatever outputs were determined by the context
+        if(context.rawOutput) {
+            return context.rawOutput
+        }
+        
+        // Last resort: use inferred outputs
+        if(context.allInferredOutputs) {
+            return context.allInferredOutputs.collect { String path ->
+                new LocalPipelineFile(path)
+            }
+        }
+        
+        return []
+    }
     
     /**
      * Cleanup output files (ie. move them to trash folder).

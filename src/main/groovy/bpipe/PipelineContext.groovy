@@ -2589,6 +2589,15 @@ class PipelineContext {
 
       log.info "Checking actual resolved inputs ${Utils.logBig(actualResolvedInputs,'inputs')}"
 
+      // Check if any inputs are stubs - if so, automatically stub outputs too
+      if(!probeMode && hasStubInputs(actualResolvedInputs)) {
+          log.info "Stub inputs detected for stage $stageName - automatically stubbing outputs"
+          createStubOutputs(checkOutputs)
+          command.executor = new ProbeCommandExecutor()
+          command.outputs = checkOutputs
+          return command
+      }
+
       associateCommandId(command, checkOutputs)
      
       List<Path> outOfDateOutputs = resolveOutOfDateOutputs(actualResolvedInputs, checkOutputs)
@@ -3542,6 +3551,43 @@ class PipelineContext {
      */
     String getAuto() {
         '__bpipe_auto_value__'
+    }
+    
+    /**
+     * Check if any of the given input files are stubs (placeholders created in dev mode).
+     * When inputs are stubs, downstream stages should automatically stub their outputs too.
+     * 
+     * @param inputs    list of input files to check
+     * @return true if one or more inputs are stubs
+     */
+    @CompileStatic
+    boolean hasStubInputs(List<PipelineFile> inputs) {
+        if(!inputs)
+            return false
+        return Dependencies.instance.withOutputGraph { GraphEntry graph ->
+            inputs.any { PipelineFile inp ->
+                OutputMetaData props = graph.propertiesFor(inp.path)
+                return props?.stub
+            }
+        }
+    }
+    
+    /**
+     * Create stub (placeholder) output files for the current stage.
+     * Each output file is touched (created empty) and marked as a stub in metadata.
+     * 
+     * @param outputs   the list of output files to stub
+     */
+    @CompileStatic
+    void createStubOutputs(List<PipelineFile> outputs) {
+        for(PipelineFile out in outputs) {
+            File f = new File(out.path)
+            if(!f.parentFile.exists())
+                f.parentFile.mkdirs()
+            f.text = ''
+            log.info "Created stub output: ${out.path}"
+        }
+        this.setRawOutput(outputs)
     }
     
     /**
