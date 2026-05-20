@@ -97,6 +97,6 @@ When not running in dev mode, stub files should be treated as out-of-date by `De
 - [x] Implement stub file creation logic (touch files + save metadata with `stub=true`)
 - [x] Wire stub option into `PipelineStage.waitForDevInteraction()` (detect "stub" in response file)
 - [x] Add automatic stub propagation check in `PipelineContext.execImpl()` before command execution
-- [ ] Ensure non-dev mode treats stubs as out-of-date in `Dependencies.getOutOfDate()`
+- [x] Ensure non-dev mode treats stubs as out-of-date in `Dependencies.getOutOfDate()`
 - [ ] Add `bpipe unstub` command to clear stub state and delete stub files
-- [ ] Add functional test in `tests/` directory following existing test conventions
+- [x] Add functional test in `tests/` directory following existing test conventions

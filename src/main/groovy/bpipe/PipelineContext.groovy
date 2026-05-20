@@ -3573,6 +3573,11 @@ class PipelineContext {
     }
     
     /**
+     * Whether this stage's outputs are stubs (set when stub mode is triggered)
+     */
+    boolean stubMode = false
+    
+    /**
      * Create stub (placeholder) output files for the current stage.
      * Each output file is touched (created empty) and marked as a stub in metadata.
      * 
@@ -3580,6 +3585,7 @@ class PipelineContext {
      */
     @CompileStatic
     void createStubOutputs(List<PipelineFile> outputs) {
+        this.stubMode = true
         for(PipelineFile out in outputs) {
             File f = new File(out.path)
             if(!f.parentFile.exists())
@@ -3588,6 +3594,15 @@ class PipelineContext {
             log.info "Created stub output: ${out.path}"
         }
         this.setRawOutput(outputs)
+        
+        // Ensure there is a tracked command so that saveOutputs will persist metadata
+        String commandId = CommandId.newId()
+        Command stubCommand = new Command(id: commandId, command: "<stub>", outputs: outputs)
+        stubCommand.setRawProcessedConfig(storage:'local')
+        this.trackedOutputs[commandId] = stubCommand
+        for(PipelineFile out in outputs) {
+            this.pathToCommandId[out.path] = commandId
+        }
     }
     
     /**

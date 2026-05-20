@@ -100,6 +100,27 @@ class Dependencies {
         if(!outputs)
             return outOfDateOutputs
         
+        // In non-dev mode, stub outputs are always considered out-of-date
+        // so they will be re-executed with real commands
+        if(!Runner.devMode) {
+            GraphEntry graph = this.getOutputGraph()
+            outputGraphLock.readLock().lock()
+            try {
+                for(PipelineFile o in outputs) {
+                    OutputMetaData props = graph.propertiesFor(o.path)
+                    if(props?.stub) {
+                        log.info "Output $o is a stub and not in dev mode: marking as out of date"
+                        outOfDateOutputs.add(o.toPath())
+                    }
+                }
+            }
+            finally {
+                outputGraphLock.readLock().unlock()
+            }
+            if(outOfDateOutputs)
+                return outOfDateOutputs
+        }
+        
         // Outputs are forcibly out of date if specified by remake
         if(!overrideTimestamps.isEmpty()) { 
             // TODO - CLOUD - convert to use nio Path
@@ -355,6 +376,12 @@ class Dependencies {
                 }
 
                 p.setPropertiesFromCommand(o, command, stage, branchPath)
+                
+                // Mark as stub if the context was in stub mode
+                if(context.stubMode) {
+                    p.stub = true
+                }
+                
                 saveOutputMetaData(p)
             }
         }
