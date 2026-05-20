@@ -39,25 +39,25 @@ done
 wait $BPIPE_PID 2>/dev/null
 
 # Check that the stub output was created
-if [ ! -f "test.hello.txt" ]; then
-    echo "ERROR: Stub output file test.hello.txt was not created"
+if [ ! -f "hello.txt" ]; then
+    echo "ERROR: Stub output file hello.txt was not created"
     exit 1
 fi
 
 # Check that the file is empty (stub)
-if [ -s "test.hello.txt" ]; then
-    echo "ERROR: Stub output file test.hello.txt should be empty but has content"
+if [ -s "hello.txt" ]; then
+    echo "ERROR: Stub output file hello.txt should be empty but has content"
     exit 1
 fi
 
 # Check that the downstream output was also created (propagated stub)
-if [ ! -f "test.hello.world.csv" ]; then
-    echo "ERROR: Downstream stub output test.hello.world.csv was not created"
+if [ ! -f "hello.world.csv" ]; then
+    echo "ERROR: Downstream stub output hello.world.csv was not created"
     exit 1
 fi
 
 # Check that the metadata marks it as a stub
-PROP_FILE=$(ls .bpipe/outputs/hello.test.hello.txt.properties 2>/dev/null)
+PROP_FILE=$(ls .bpipe/outputs/hello.hello.txt.properties 2>/dev/null)
 if [ -z "$PROP_FILE" ]; then
     echo "ERROR: No properties file found for stub output"
     exit 1
