@@ -24,6 +24,8 @@ class RegionValue implements Serializable {
     
     int rangeTo = 0
     
+    Set<String> chromosomes = new HashSet<String>()
+    
     RegionValue(String value) {
         this.value = value
         initId()
@@ -38,6 +40,7 @@ class RegionValue implements Serializable {
                 minFrom = (int)s.range.from
             if(s.range.to > maxTo)
                 maxTo = (int)s.range.to
+            this.chromosomes.add(s.name)
         }
         this.rangeFrom = (minFrom == Integer.MAX_VALUE) ? 0 : minFrom
         this.rangeTo = (maxTo == Integer.MIN_VALUE) ? 0 : maxTo
