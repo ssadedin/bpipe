@@ -20,6 +20,10 @@ class RegionValue implements Serializable {
     
     String regions
     
+    int rangeFrom = 0
+    
+    int rangeTo = 0
+    
     RegionValue(String value) {
         this.value = value
         initId()
@@ -27,6 +31,16 @@ class RegionValue implements Serializable {
     
     RegionValue(Iterable<Sequence> sequences) {
         this.value = sequences.collect { Sequence s -> "$s.name:$s.range.from-$s.range.to" }.join(" ")
+        int minFrom = Integer.MAX_VALUE
+        int maxTo = Integer.MIN_VALUE
+        for(Sequence s : sequences) {
+            if(s.range.from < minFrom)
+                minFrom = (int)s.range.from
+            if(s.range.to > maxTo)
+                maxTo = (int)s.range.to
+        }
+        this.rangeFrom = (minFrom == Integer.MAX_VALUE) ? 0 : minFrom
+        this.rangeTo = (maxTo == Integer.MIN_VALUE) ? 0 : maxTo
         initId()
     }
 
@@ -105,5 +119,13 @@ class RegionValue implements Serializable {
     
     String toString() {
         return getRegions()
+    }
+    
+    int getFrom() {
+        return rangeFrom
+    }
+    
+    int getTo() {
+        return rangeTo
     }
 }
