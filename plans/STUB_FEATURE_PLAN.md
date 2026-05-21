@@ -83,7 +83,41 @@ When not running in dev mode, stub files should be treated as out-of-date by `De
 | `Dependencies.getOutOfDate()` | Treat stubs as always out-of-date when not in dev mode |
 | Dev mode UI | Show stub option in prompt, display stub status |
 
-### Edge Cases
+### Stub With File (`stub <file>`)
+
+When the user responds with `stub <file>` instead of plain `stub`, Bpipe copies the specified file
+to the expected output path. Crucially, this output is **not** marked as a stub in metadata. This means:
+
+- Downstream stages see a real file as input, not a stub
+- `hasStubInputs()` returns false for downstream stages
+- Downstream stages proceed through normal dev interaction and actually execute their commands
+- In non-dev mode, the output is treated as up-to-date (it's a real file with real content)
+
+This enables a workflow where the developer provides a sample/example output for one stage and then
+tests that downstream stages actually work correctly with realistic input.
+
+#### Implementation Details
+
+1. **Parsing**: In `waitForDevInteraction()`, if the response starts with "stub " followed by a path,
+   set `stubbedWithFile = <path>` on the PipelineStage (distinct from `stubbed = true`).
+
+2. **File copy**: A new method `PipelineContext.createFileStubOutputs(outputs, sourceFile)`:
+   - Validates source file exists (re-prompts if not)
+   - Copies source to the first output path
+   - If multiple outputs, touches remaining as empty stubs
+   - Does NOT set `stubMode = true`
+   - Creates a tracked command with text `<stub:filename>` for audit trail
+   - Sets raw output on context
+
+3. **Downstream behavior**: Since `stub=false` in metadata, downstream stages behave normally —
+   they pause for dev interaction and execute commands for real.
+
+4. **Edge cases**:
+   - File not found → print error, stay in wait loop, re-prompt
+   - Multiple outputs → copy to first, touch rest as empty stubs (with stub=true)
+   - Relative paths → resolved relative to working directory
+
+### Other Edge Cases
 
 - **Glob outputs in produce**: The probe resolves what files *would* be created. May need user hints for complex globs.
 - **Commands with side effects**: Stubbing assumes the only important outputs are files. Commands that update databases, etc., would not be properly stubbed.
@@ -100,3 +134,9 @@ When not running in dev mode, stub files should be treated as out-of-date by `De
 - [x] Ensure non-dev mode treats stubs as out-of-date in `Dependencies.getOutOfDate()`
 - [ ] Add `bpipe unstub` command to clear stub state and delete stub files
 - [x] Add functional test in `tests/` directory following existing test conventions
+- [ ] Parse `stub <file>` response in `waitForDevInteraction()` — distinguish from plain `stub`
+- [ ] Add `stubbedWithFile` field to `PipelineStage`
+- [ ] Implement `PipelineContext.createFileStubOutputs(outputs, sourceFile)` — copies file, tracks command, does NOT set stubMode
+- [ ] Handle the `stubbedWithFile` case in `PipelineStage.run()` catch block
+- [ ] Add error handling for missing source file (re-prompt)
+- [ ] Update test to cover `stub <file>` scenario
