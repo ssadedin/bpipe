@@ -50,6 +50,7 @@ class RegionSet implements Serializable {
     
     RegionSet(Sequence seq) {
         this.sequences[seq.name] = seq
+        this.chromosomeNames.add(seq.name)
     }
     
     RegionSet(List<Sequence> seqs) {
@@ -492,7 +493,6 @@ class RegionSet implements Serializable {
         for(Map.Entry<String,Sequence> seq in this.sequences) {
             result += seq.value.size()
         }
-        this.sequences.each { result += it.value.size() }
         return result
     }
     
