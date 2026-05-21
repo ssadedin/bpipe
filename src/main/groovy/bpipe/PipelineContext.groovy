@@ -3978,7 +3978,20 @@ class PipelineContext {
         println "${ansi().bold()}Direct Inputs: ${ansi().boldOff()}\n"
 
        this.@input.each { inp ->
-            println "- $inp"
+            boolean isStub = false
+            try {
+                isStub = Dependencies.instance.withOutputGraph { GraphEntry graph ->
+                    OutputMetaData props = graph.propertiesFor(inp.path)
+                    return props?.stub
+                } ?: false
+            }
+            catch(Exception e) {
+                // ignore - graph may not be available
+            }
+            if(isStub)
+                println "- $inp ${ansi().fgYellow()}(stubbed)${ansi().fgDefault()}"
+            else
+                println "- $inp"
         }
         if(this.@input.size()>0)
             println ""
