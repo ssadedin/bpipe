@@ -241,8 +241,8 @@ class RegionSet implements Serializable {
         log.info "Grouping ${results.size()} sequences into $parts groups"
         
         // While the number of parts is too large we should combine smaller ones together
-        if(results.size()>parts)
-            log.info "*** Combining regions to decrease to $parts parts"
+//        if(results.size()>parts)
+//            log.info "*** Combining regions to decrease to $parts parts"
             
         while(results.size() > parts) {
             if(!combineSmallest(results, byChromosome))
@@ -442,7 +442,7 @@ class RegionSet implements Serializable {
             
             results.remove(first)
             results.remove(second)
-            log.info("Combining regions $first and $second to reduce parallelism to ${results.size()+1} (byChromosome)")
+//            log.info("Combining regions $first and $second to reduce parallelism to ${results.size()+1} (byChromosome)")
             results.add(new RegionSet(first.sequences.values() + second.sequences.values()))
             return true
         }
@@ -454,7 +454,7 @@ class RegionSet implements Serializable {
             RegionSet secondSmallest = results.last()
             results.remove(secondSmallest)
 
-            log.info("Combining regions $smallest and $secondSmallest to reduce parallelism to ${results.size()+1}")
+//            log.info("Combining regions $smallest and $secondSmallest to reduce parallelism to ${results.size()+1}")
 
             // Combine the two smallest and add them back in as a single RegionSet
             results.add(new RegionSet(smallest.sequences.values() + secondSmallest.sequences.values()))
