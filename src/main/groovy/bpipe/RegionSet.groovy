@@ -286,10 +286,11 @@ class RegionSet implements Serializable {
         
         RegionSet largest = results.first()
         
-        def (large,small) = largest.splitInTwo(allowSplitRegions)
-        float ratio = (float)large.size() / (float)small.size()
+        def (part1,part2) = largest.splitInTwo(allowSplitRegions)
+        RegionSet large = part1.size() >= part2.size() ? part1 : part2
+        RegionSet small = part1.size() >= part2.size() ? part2 : part1
+        float ratio = small.size() > 0 ? (float)large.size() / (float)small.size() : Float.MAX_VALUE
         
-        assert ratio >= 1.0f : "Ratio of large region to small is > 1 (ratio = $ratio)"
         if(ratio > 0.1 && ratio < 10) {
             results.remove(largest)
             
