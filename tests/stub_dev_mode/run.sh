@@ -24,10 +24,16 @@ if ! grep -q "Waiting for changes" test.out 2>/dev/null; then
 fi
 
 # Give it a moment to be ready to read the file
-sleep 2
+sleep 3
 
 # Send stub command for first stage
 echo "stub" > .bpipe/dev_continue
+
+# Write again after a short delay in case of race condition
+sleep 1
+if kill -0 $BPIPE_PID 2>/dev/null && grep -c "Waiting for changes" test.out 2>/dev/null | grep -q "^1$"; then
+    echo "stub" > .bpipe/dev_continue
+fi
 
 # Wait for the second "Waiting for changes" message (second stage)
 WAIT_COUNT=0

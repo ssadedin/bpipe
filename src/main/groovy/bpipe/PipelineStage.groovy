@@ -633,12 +633,17 @@ class PipelineStage {
     void waitForDevInteraction() {
         def pipeline = Pipeline.currentRuntimePipeline.get()
         def devResponseFile = new File('.bpipe/dev_continue')
-        devResponseFile.text = ''
         
         // Clear any stale console input from a previous stage interaction
         Utils.lastConsoleLine = null
 
         boolean skipped = Runner.devSkip.contains(stageName)
+        
+        // Check if the file already has a response before clearing it
+        // This handles the case where the response was written before we got here
+        String preExistingResponse = (devResponseFile.exists() && devResponseFile.length() > 0) ? devResponseFile.text.trim() : ''
+        
+        devResponseFile.text = ''
         
         if(!skipped)
             Thread.sleep(1200) 
@@ -648,7 +653,11 @@ class PipelineStage {
         
         String modifiedPath = null
         
-
+        if(preExistingResponse) {
+            // Response was already waiting for us
+            modifiedPath = null
+        }
+        else
         if(!skipped)
             modifiedPath = Utils.waitForModified(pathsToCheck)
         else
@@ -658,7 +667,7 @@ class PipelineStage {
             if(modifiedPath == null || modifiedPath == devResponseFile.absolutePath) {
                 
                 // Check if the user requested a stub - check both console input and file
-                String devResponse = Utils.lastConsoleLine ?: (devResponseFile.exists() ? devResponseFile.text.trim() : '')
+                String devResponse = preExistingResponse ?: Utils.lastConsoleLine ?: (devResponseFile.exists() ? devResponseFile.text.trim() : '')
                 
                 // Auto-stub if inputs are stubs and user just pressed enter (empty response)
                 if(!devResponse && context.hasStubInputs(context.rawInput)) {
