@@ -26,8 +26,30 @@ fi
 # Give it a moment to be ready to read the file
 sleep 2
 
-# Send stub command
+# Send stub command for first stage
 echo "stub" > .bpipe/dev_continue
+
+# Wait for the second stage to recreate dev_continue (signals it's waiting again)
+WAIT_COUNT=0
+while [ $WAIT_COUNT -lt 30 ]; do
+    sleep 1
+    WAIT_COUNT=$((WAIT_COUNT + 1))
+    # Check if pipeline already finished
+    if ! kill -0 $BPIPE_PID 2>/dev/null; then
+        break
+    fi
+    # Check if dev_continue was recreated (empty) by the second stage
+    if [ -f .bpipe/dev_continue ] && [ ! -s .bpipe/dev_continue ]; then
+        # Give it a moment to be ready
+        sleep 1
+        break
+    fi
+done
+
+# Send empty response for second stage (auto-stub will kick in since inputs are stubs)
+if kill -0 $BPIPE_PID 2>/dev/null; then
+    echo "" > .bpipe/dev_continue
+fi
 
 # Wait for pipeline to complete
 WAIT_COUNT=0
