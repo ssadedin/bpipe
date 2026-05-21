@@ -39,6 +39,12 @@ class RegionSet implements Serializable {
      */
     Map<String,Sequence> sequences = new TreeMap()
     
+    /**
+     * Cached set of chromosome names present in this RegionSet.
+     * Maintained by addSequence() and removeSequence().
+     */
+    Set<String> chromosomeNames = new HashSet<String>()
+    
     RegionSet() {
     }
     
@@ -100,7 +106,8 @@ class RegionSet implements Serializable {
 //        while(this.sequences.containsKey(name)) {
 //            name = s.name + "." + (++count)       
 //        }
-        this.sequences[s.toString()] = s    
+        this.sequences[s.toString()] = s
+        this.chromosomeNames.add(s.name)
     }
     
     
@@ -214,6 +221,7 @@ class RegionSet implements Serializable {
     Set<RegionSet> group(Map options=[:], int parts) {
         
         boolean allowSplitRegions = options.allowBreaks == null ? true : options.allowBreaks
+        boolean byChromosome = options.byChromosome ? true : false
         
         if(this.id) {
             Set<RegionSet> savedRegions = this.readSavedRegions(options,parts)
@@ -236,7 +244,12 @@ class RegionSet implements Serializable {
             log.info "*** Combining regions to decrease to $parts parts"
             
         while(results.size() > parts) {
-           combineSmallest(results)
+            if(!combineSmallest(results, byChromosome))
+                break
+        }
+        
+        if(byChromosome && results.size() > parts) {
+            log.warning "byChromosome constraint resulted in ${results.size()} parts instead of requested $parts (not enough same-chromosome regions to combine)"
         }
         
         // While number of parts too small, split apart large sequences
@@ -254,7 +267,8 @@ class RegionSet implements Serializable {
             log.info "*** Rebalancing regions due to ${results.first().size()} > 2 x ${results.last().size()}"
             if(!splitLargest(results, allowSplitRegions))
                 break
-            combineSmallest(results)
+            if(!combineSmallest(results, byChromosome))
+                break
         }
         results.eachWithIndex { r,i -> r.name = name + "."+i }
         return results
@@ -373,25 +387,72 @@ class RegionSet implements Serializable {
             throw new IllegalArgumentException("Cannot remove sequence $s from region set $this: sequence not part of region")
             
         this.sequences.remove(entry.key)
+        
+        // Recompute chromosome names since other sequences may share the same chromosome
+        this.chromosomeNames.clear()
+        for(Sequence seq : this.sequences.values()) {
+            this.chromosomeNames.add(seq.name)
+        }
     }
 
     /**
      * Find the two smallest region sets in the results and replace them with a 
      * combined region set that contains the regions in both of them.
+     * 
+     * @param byChromosome  if true, only combine region sets that share at least one chromosome name
+     * @return true if a combination was performed, false if no valid combination exists
      */
-	 void combineSmallest(SortedSet results) {
-        // Find the smallest genome
-		RegionSet smallest = results.last()
-		results.remove(smallest)
+    boolean combineSmallest(SortedSet<RegionSet> results, boolean byChromosome) {
+        if(byChromosome) {
+            NavigableSet<RegionSet> navResults = (NavigableSet<RegionSet>) results
+            Iterator<RegionSet> it = navResults.descendingIterator()
+            
+            Map<String, RegionSet> seen = new HashMap<String, RegionSet>()
+            RegionSet first = null
+            RegionSet second = null
+            
+            while(it.hasNext()) {
+                RegionSet rs = it.next()
+                for(String chr : rs.chromosomeNames) {
+                    if(seen.containsKey(chr)) {
+                        first = rs
+                        second = seen[chr]
+                        break
+                    }
+                }
+                if(first != null)
+                    break
+                for(String chr : rs.chromosomeNames) {
+                    seen[chr] = rs
+                }
+            }
+            
+            if(first == null || second == null) {
+                log.info("No compatible region sets found for combining (byChromosome constraint)")
+                return false
+            }
+            
+            results.remove(first)
+            results.remove(second)
+            log.info("Combining regions $first and $second to reduce parallelism to ${results.size()+1} (byChromosome)")
+            results.add(new RegionSet(first.sequences.values() + second.sequences.values()))
+            return true
+        }
+        else {
+            // Find the smallest genome
+            RegionSet smallest = results.last()
+            results.remove(smallest)
 
-		RegionSet secondSmallest = results.last()
-		results.remove(secondSmallest)
+            RegionSet secondSmallest = results.last()
+            results.remove(secondSmallest)
 
-		log.info("Combining regions $smallest and $secondSmallest to reduce parallelism to ${results.size()+1}")
+            log.info("Combining regions $smallest and $secondSmallest to reduce parallelism to ${results.size()+1}")
 
-		// Combine the two smallest and add them back in as a single RegionSet
-		results.add(new RegionSet(smallest.sequences.values() + secondSmallest.sequences.values()))
-	}
+            // Combine the two smallest and add them back in as a single RegionSet
+            results.add(new RegionSet(smallest.sequences.values() + secondSmallest.sequences.values()))
+            return true
+        }
+    }
      
     private static Pattern ALTERNATE_HAPLOTYPE_PATTERN = ~'.*_hap[0-9]*$'
      
