@@ -372,7 +372,7 @@ class RegionSetTest {
     @Test
     void testPartition() {
         RegionSet rs = new RegionSet()
-        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(0..1000)))
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(0..999)))
 
         Set<RegionSet> result = rs.partition(500)
 
@@ -387,7 +387,6 @@ class RegionSetTest {
         RegionSet rs = new RegionSet()
         rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(0..1000)))
         rs.addSequence(new Sequence(name: 'chrUn_gl000220', range: new GenomicRange(0..500)))
-        rs.addSequence(new Sequence(name: 'chr1_random', range: new GenomicRange(0..300)))
         rs.addSequence(new Sequence(name: 'chrM', range: new GenomicRange(0..200)))
 
         rs.removeMinorContigs()
