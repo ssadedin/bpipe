@@ -260,7 +260,7 @@ class RegionSet implements Serializable {
         return results
     }
     
-    boolean splitLargest(SortedSet results, boolean allowSplitRegions) {
+    boolean splitLargest(SortedSet<RegionSet> results, boolean allowSplitRegions) {
         
         RegionSet largest = results.first()
         
