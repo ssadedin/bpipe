@@ -172,6 +172,31 @@ in two unless there is a greater than 2:1 ratio that cannot be reduced. This way
 to an extremely fine grained level, you can usually rely on Bpipe to preserve whole exons and target
 regions for targeted capture definitions.
 
+**Restricting Splits to Chromosome Boundaries**
+
+By default, when Bpipe combines smaller regions together to reach the target number of parts, it may
+group regions from different chromosomes into the same part. If your downstream tools require that
+each parallel segment only contains regions from a single chromosome, you can use the `byChromosome`
+option:
+
+```groovy
+my_regions.split(byChromosome: true, 10) * [ stage1 + stage2 ]
+```
+
+With `byChromosome: true`, Bpipe will only combine regions that share the same chromosome name. This
+means that the resulting parts will never mix regions from different chromosomes. Note that if the number
+of distinct chromosomes in your region set exceeds the requested number of parts, Bpipe will return
+more parts than requested (since it cannot combine across chromosome boundaries). A warning will be
+logged in this case.
+
+You can combine `byChromosome` with `allowBreaks`:
+
+```groovy
+my_regions.split(byChromosome: true, allowBreaks: false, 10) * [ stage1 + stage2 ]
+```
+
+This ensures that neither cross-chromosome grouping nor intra-region splitting will occur.
+
 When splitting a whole genome, Bpipe will attempt to download definitions of genes and exons from
 UCSC. It will then avoid bisecting the middle of an exon or gene in the created regions (again, unless
 the required granularity cannot be achieved to within a 2:1 ratio between resulting region sizes).
@@ -194,6 +219,12 @@ files containing sha1 fragments to distinguish their names.
 
 The actual regions to be processed can be accessed inside pipeline stages using the `$region` variable, or if
 needed as a BED file, using `$region.bed`.
+
+The `$region` variable also exposes the following properties:
+
+- `$region.from` - the minimum start position across all sequences in the region
+- `$region.to` - the maximum end position across all sequences in the region
+- `$region.chromosomes` - a `Set<String>` of chromosome names included in the region
 
 **Merging Results**
 
