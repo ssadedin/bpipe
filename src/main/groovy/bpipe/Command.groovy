@@ -206,15 +206,15 @@ class Command implements Serializable {
         }
         
         if(cfg.containsKey('container') && (cfg.container instanceof CharSequence)) {
-            def container = Config.userConfig.containers[cfg.container.toString()]
-            if(!container) 
+            def containers = Config.userConfig.containers
+            if(!containers || !(containers instanceof Map) || !((Map)containers).containsKey(cfg.container.toString()))
                 throw new PipelineError("""
                     Command specified container $cfg.container but this could not be resolved to any known configured container type.
-                
+
                     Please configure an entry named $cfg.container in the containers section of your bpipe.config file
                 """)
 
-           cfg.container = Config.userConfig.containers[cfg.container.toString()]
+           cfg.container = ((Map)containers)[cfg.container.toString()]
         }
         
         // Ensure configuration knows its own name
