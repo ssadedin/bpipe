@@ -105,6 +105,13 @@ class Config {
      * Configuration loaded from the local directory
      */
     public static Map<String,Object> userConfig
+
+    /**
+     * Paths to user-editable config files that were loaded during readUserConfig().
+     * Used by dev mode to watch for config file changes and trigger reload.
+     * Excludes the built-in config from $BPIPE_HOME since users don't edit that.
+     */
+    public static List<File> resolvedConfigFiles = []
     
     /**
      * Return an element from the user config (bpipe.config) that is expected to be a List
@@ -296,6 +303,11 @@ class Config {
            log.info "The following stages are configured to be ignored in diagrams: $noDiagramStages"
            Config.noDiagram.addAll(noDiagramStages)
        }
+
+       // Track user-editable config files for dev mode hot-reload (exclude built-in config)
+       resolvedConfigFiles = configFiles.findAll { it.key != 'builtInConfig' && it.value.exists() }
+                                        .collect { it.value }
+       log.info "Resolved user config files for dev mode watching: $resolvedConfigFiles"
     }
     
     private static Map<String,ConfigObject> readParallelConfigs(final ConfigSlurper slurper, Map configFiles) {
@@ -312,6 +324,17 @@ class Config {
         }
     }
     
+    /**
+     * Reload all user config files and replace userConfig with the fresh merged result.
+     * Used by dev mode when a config file modification is detected to pick up changes
+     * without restarting the pipeline.
+     */
+    public static void reloadUserConfig() {
+        log.info "Reloading user configuration files for dev mode"
+        readUserConfig()
+        log.info "User configuration reloaded successfully"
+    }
+
     public static void lockUserConfig() {
         userConfig = userConfig.collectEntries {  k, v ->
             if(v instanceof Map) {

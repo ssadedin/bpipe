@@ -593,7 +593,10 @@ public class Pipeline implements ResourceRequestor {
             
         ToolDatabase.instance.setToolVariables(pipeline.externalBinding)
         
-        Config.lockUserConfig()
+        // In dev mode, config must remain mutable so it can be reloaded when
+        // config files are modified during dev interaction
+        if(!Runner.devMode && !Config.config.devAt)
+            Config.lockUserConfig()
         
         NotificationManager.instance.setChannelVariables(pipeline.externalBinding)
         

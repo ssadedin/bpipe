@@ -648,7 +648,7 @@ class PipelineStage {
         if(!skipped)
             Thread.sleep(1200) 
         
-        List<File> pathsToCheck = Pipeline.allLoadedPaths.collect { new File((String)it) } + [devResponseFile]
+        List<File> pathsToCheck = Pipeline.allLoadedPaths.collect { new File((String)it) } + Config.resolvedConfigFiles + [devResponseFile]
         log.info "Checking paths :" + pathsToCheck
         
         String modifiedPath = null
@@ -688,6 +688,13 @@ class PipelineStage {
 //                bpipe.Runner.devMode = false
                 log.info "After removing, dev stages are now: " + Config.config.devAt
                 Runner.devSkip << stageName 
+            }
+            else
+            if(Config.resolvedConfigFiles*.absolutePath.contains(modifiedPath)) {
+                // Config file was modified - reload config and retry stage with new settings
+                log.info "Config file modified: $modifiedPath - reloading configuration"
+                Config.reloadUserConfig()
+                log.info "Retrying stage $stageName with updated configuration"
             }
             else {
                 Runner.devModified[stageName]= modifiedPath
