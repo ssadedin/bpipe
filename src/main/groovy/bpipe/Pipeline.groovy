@@ -773,6 +773,8 @@ public class Pipeline implements ResourceRequestor {
         
         List<String> inputFiles = Utils.box(inputFile)
         
+        Pipeline previousRootPipeline = Pipeline.rootPipeline
+        
         Pipeline.rootThreadId = Thread.currentThread().id
         this.threadId = Pipeline.rootThreadId
         Pipeline.rootPipeline = this
@@ -804,6 +806,10 @@ public class Pipeline implements ResourceRequestor {
         // as output is not terminated with one by default
         cmdlog << ""
        
+        if(!launch) {
+            Pipeline.rootPipeline = previousRootPipeline
+        }
+        
         return constructedPipeline
     }
 
