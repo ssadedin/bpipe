@@ -779,38 +779,41 @@ public class Pipeline implements ResourceRequestor {
         this.threadId = Pipeline.rootThreadId
         Pipeline.rootPipeline = this
         
-        // We have to manually add all the external variables to the outer pipeline stage
-        initializeBindingWithExternalVariables(pipelineBuilder)
-        
-        initializeBindingWithGenomes(pipelineBuilder)
-        
-         // Add all the pipeline variables to the external binding
-        this.externalBinding.variables += pipelineBuilder.binding.variables
-        
-        def cmdlog = CommandLog.cmdLog
-        startDate = new Date()
-        if(launch) {
-            initializeRunLogs(inputFiles)
-        }
-        
-        Map pipelineStructure = launch ? diagram(host, pipelineBuilder) : null
-        
-        def constructedPipeline = constructPipeline(pipelineBuilder)
-        
-        if(launch) {
-            EventManager.instance.signal(PipelineEvent.STARTED, "Pipeline started", [pipeline:pipelineStructure])
-            launchPipeline(constructedPipeline, inputFiles, startDate)
-        }
+        try {
+            // We have to manually add all the external variables to the outer pipeline stage
+            initializeBindingWithExternalVariables(pipelineBuilder)
+            
+            initializeBindingWithGenomes(pipelineBuilder)
+            
+             // Add all the pipeline variables to the external binding
+            this.externalBinding.variables += pipelineBuilder.binding.variables
+            
+            def cmdlog = CommandLog.cmdLog
+            startDate = new Date()
+            if(launch) {
+                initializeRunLogs(inputFiles)
+            }
+            
+            Map pipelineStructure = launch ? diagram(host, pipelineBuilder) : null
+            
+            def constructedPipeline = constructPipeline(pipelineBuilder)
+            
+            if(launch) {
+                EventManager.instance.signal(PipelineEvent.STARTED, "Pipeline started", [pipeline:pipelineStructure])
+                launchPipeline(constructedPipeline, inputFiles, startDate)
+            }
 
-        // Make sure the command log ends with newline
-        // as output is not terminated with one by default
-        cmdlog << ""
-       
-        if(!launch) {
-            Pipeline.rootPipeline = previousRootPipeline
+            // Make sure the command log ends with newline
+            // as output is not terminated with one by default
+            cmdlog << ""
+           
+            return constructedPipeline
         }
-        
-        return constructedPipeline
+        finally {
+            if(!launch) {
+                Pipeline.rootPipeline = previousRootPipeline
+            }
+        }
     }
 
     
