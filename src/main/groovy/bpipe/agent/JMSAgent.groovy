@@ -182,24 +182,30 @@ class JMSAgent extends Agent {
         }
         
         log.info "Processing command: " + commandAttributes
-        AgentCommandRunner runner = this.processCommand(commandAttributes) {
-            // Callback invoked when command actually gets to execute
+
+        // Declare runner before the closure so the closure can capture it by reference.
+        // The closure runs on the runner thread, which is only scheduled after processCommand
+        // returns and runner is assigned, so runner is guaranteed to be non-null when the
+        // closure executes.
+        AgentCommandRunner runner
+        runner = this.processCommand(commandAttributes) {
+            // This onRun callback executes on the runner thread, before command.run() is called.
+            // Reply setup (setupHookReply / setupDirectReply) MUST happen here rather than after
+            // processCommand returns, because setupHookReply sets command.onDirectoryConfigured,
+            // which is invoked from inside command.run(). Doing it after processCommand returns
+            // races with the runner thread reaching that callback point.
             acknowledgeRun(message)
-        }
-        
 
-        if(replyToValue) {
-
-            log.info "ReplyTo set on message: will send message when complete"
-            
-            // Write out the completion listener
-            BpipeCommand command = runner.command
-            if(command instanceof RunPipelineCommand) {
-                if(config.getOrDefault('replyMode', 'hook') == 'hook') {
-                    setupHookReply(commandAttributes, replyToValue, command, message)
-                }
-                else {
-                    setupDirectReply(commandAttributes, (RunPipelineCommand)command, message, runner)
+            if(replyToValue) {
+                log.info "ReplyTo set on message: will send message when complete mode = hook"
+                BpipeCommand cmd = runner.command
+                if(cmd instanceof RunPipelineCommand) {
+                    if(config.getOrDefault('replyMode', 'hook') == 'hook') {
+                        setupHookReply(commandAttributes, replyToValue, (RunPipelineCommand)cmd, message)
+                    }
+                    else {
+                        setupDirectReply(commandAttributes, (RunPipelineCommand)cmd, message, runner)
+                    }
                 }
             }
         }
