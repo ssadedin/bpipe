@@ -46,26 +46,28 @@ class StatsCommand extends BpipeCommand {
         
 
 
-        cli.with { 
+        cli.with {
             all 'Show aggregate results for all runs of this pipeline', required: false
+            stage 'Show one row per instance of the named stage', args:1, argName:'name'
         }
         def opts = this.parse()
         
         // hack: need to refactor out to be set in constructor
         this.out = out;
         
-        List<File> resultFiles 
+        List<File> resultFiles
         if(opts.all) {
             resultFiles = new File(".bpipe/results").listFiles().grep { it.name.endsWith('.xml') }
         }
         else {
-            String pid = this.args ? this.args[0] : this.getLastLocalPID()
-            
+            List<String> positional = (opts.arguments() ?: []) as List<String>
+            String pid = positional ? positional[0] : this.getLastLocalPID()
+
             if(pid == null) {
                 out.println "\nNo Bpipe run could be found in this directory\n"
                 System.exit(1)
             }
-            
+
             resultFiles = [getResultFile(pid)]
         }
         
@@ -115,6 +117,12 @@ class StatsCommand extends BpipeCommand {
         long pipelineEndTimeMs =  doms[-1].endDateTime.text() ? toDate(doms[-1].endDateTime).time : System.currentTimeMillis()
         long pipelineTotalMs = pipelineEndTimeMs - pipelineStartTimeMs
 
+        if(opts.stage) {
+            renderStageInstances((String)opts.stage, doms, toDate, pipelineStartTimeMs, pipelineTotalMs)
+            out.println ""
+            return
+        }
+
         List<List> stats = doms.collect { dom ->dom.commands.command }.sum().groupBy {  cmdNode ->
             cmdNode.stage.text()
         }.collect { stage, cmds ->
@@ -148,40 +156,19 @@ class StatsCommand extends BpipeCommand {
             }.max() - pipelineStartTimeMs 
             
             double mean = times.isEmpty() ? 0 : times.sum() / times.size()
-            int timingWidth = 60
 
-            Closure formatTiming = { 
-                if(minStartRel<0)
-                    return ''
+            String timing = (minStartRel < 0) ? '' : formatTimingBar(minStartRel, maxEnd, pipelineTotalMs, 60)
 
-                String bar 
-                int barWidth = (int)(timingWidth * ((maxEnd-minStartRel) / pipelineTotalMs))
-                if(barWidth <=0)
-                    barWidth = 1
-                if(barWidth == 1) {
-                    bar = "H"
-                }
-                else
-                if(barWidth == 2) {
-                    bar = "├┤"
-                }
-                else  {
-                    bar = '├' + '─'*(barWidth-2) + '┤'
-                }
-                
-                (" ") * (int)(timingWidth * (minStartRel / pipelineTotalMs)) + bar
-            }
-            
-            def cores = valid.collect { cmd -> cmd.resources?.procs }.find { it }?: "-" 
-            
+            def cores = valid.collect { cmd -> cmd.resources?.procs }.find { it }?: "-"
+
             return [
-             stage, 
-             cmds.size(), 
+             stage,
+             cmds.size(),
              formatTimeSpan(times.min()?.toLong()),
-             formatTimeSpan(mean), formatTimeSpan(times.max()), 
+             formatTimeSpan(mean), formatTimeSpan(times.max()),
              cores,
              ((times.sum()?:0) / 1000.0).toLong(),
-             formatTiming()
+             timing
             ]
         }
         .grep { it != null }
@@ -203,5 +190,77 @@ class StatsCommand extends BpipeCommand {
         TimeCategory.minus(new Date(longTime), new Date(0)).toString()
                 .replaceAll('\\.[0-9]{1,} seconds$',' seconds')
                 .replaceAll('minutes,.* seconds$',' minutes')
+    }
+
+    String formatTimingBar(long startRel, long endRel, long pipelineTotalMs, int width) {
+        if(pipelineTotalMs <= 0)
+            return ''
+
+        int barWidth = (int)(width * ((endRel - startRel) / (double)pipelineTotalMs))
+        if(barWidth <= 0)
+            barWidth = 1
+
+        String bar
+        if(barWidth == 1)
+            bar = "H"
+        else if(barWidth == 2)
+            bar = "├┤"
+        else
+            bar = '├' + '─'*(barWidth-2) + '┤'
+
+        (" ") * (int)(width * (startRel / (double)pipelineTotalMs)) + bar
+    }
+
+    void renderStageInstances(String stageName, List<GPathResult> doms, Closure<Date> toDate,
+                              long pipelineStartTimeMs, long pipelineTotalMs) {
+
+        def allCmdsRaw = doms.collect { dom -> dom.commands.command }.sum()
+        List allCmds = allCmdsRaw ? allCmdsRaw.collect { it } : []
+
+        List matching = allCmds.findAll { cmd ->
+            cmd.stage.text() == stageName && !cmd.start.text().startsWith('1970')
+        }
+
+        if(matching.isEmpty()) {
+            Set<String> available = (allCmds.collect { it.stage.text() } as Set).findAll { it }
+            out.println ""
+            out.println "No instances found for stage: ${stageName}"
+            if(available) {
+                out.println ""
+                out.println "Available stages:"
+                available.sort().each { out.println "  - ${it}" }
+            }
+            out.println ""
+            System.exit(1)
+        }
+
+        matching = matching.sort { toDate(it.start).time }
+
+        List<List> rows = matching.collect { cmd ->
+            long startMs = toDate(cmd.start).time
+            long endMs = toDate(cmd.end).time
+            long startRel = startMs - pipelineStartTimeMs
+            long endRel = endMs - pipelineStartTimeMs
+            long durMs = endMs - startMs
+
+            String branch = cmd.branch.text() ?: '-'
+            String cores = cmd.resources?.procs?.text() ?: '-'
+            String exit = cmd.exitCode.text() ?: '-'
+            String content = cmd.content.text() ?: ''
+            String commandPreview = content.readLines().find { it.trim() } ?: ''
+            commandPreview = commandPreview.trim()
+            if(commandPreview.size() > 50)
+                commandPreview = commandPreview[0..46] + '...'
+
+            String timing = formatTimingBar(startRel, endRel, pipelineTotalMs, 60)
+
+            return [branch, formatTimeSpan(startRel), formatTimeSpan(durMs), cores, exit, timing, commandPreview]
+        }
+
+        out.println ""
+        out.println " Stage: ${stageName} — ${matching.size()} instance${matching.size() == 1 ? '' : 's'}"
+        out.println ""
+
+        Utils.table(["Branch","Start","Duration","Cores","Exit","Timing","Command"], rows, indent:1)
     }
 }
