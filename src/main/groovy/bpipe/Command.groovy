@@ -30,6 +30,7 @@ import groovy.util.logging.Log;
 import java.nio.file.Path
 
 import bpipe.executor.CommandExecutor
+import bpipe.executor.CommandUtilisation
 import bpipe.executor.ProbeCommandExecutor;;
 
 @Log
@@ -121,6 +122,13 @@ class Command implements Serializable {
     File dir
     
     transient List<CommandDependency> dependencies
+
+    /**
+     * Actual resource utilisation captured after the command completed,
+     * populated by executors implementing {@link bpipe.executor.UtilisationCapturingExecutor}.
+     * Null when the executor does not support utilisation capture.
+     */
+    CommandUtilisation utilisation
 
     @CompileStatic
     Map getConfig(List<PipelineFile> inputs) {

@@ -1102,6 +1102,27 @@ public class Pipeline implements ResourceRequestor {
                                 procs cmd.rawProcessedConfig?.procs
                                 memory cmd.rawProcessedConfig?.memory
                             }
+                            if(cmd.utilisation != null) {
+                                def u = cmd.utilisation
+                                Map utilAttrs = [:]
+                                if(u.source) utilAttrs.source = u.source
+                                if(u.capturedAtMs) utilAttrs.capturedAtMs = u.capturedAtMs
+                                utilisation(utilAttrs) {
+                                    if(u.elapsedSeconds != null) elapsedSeconds(u.elapsedSeconds)
+                                    if(u.cpuSecondsTotal != null) cpuSecondsTotal(u.cpuSecondsTotal)
+                                    if(u.coresUsed != null) coresUsed(u.coresUsed)
+                                    if(u.maxRssBytes != null) maxRssBytes(u.maxRssBytes)
+                                    if(u.maxVmemBytes != null) maxVmemBytes(u.maxVmemBytes)
+                                    if(u.state) state(u.state)
+                                    if(u.extras) {
+                                        extras {
+                                            u.extras.each { k, v ->
+                                                extra(key: k, value: v)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             if(cmd.inputs) {
                                 inputs {
                                     cmd.inputs.each { PipelineFile pf ->

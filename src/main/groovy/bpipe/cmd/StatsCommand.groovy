@@ -142,40 +142,54 @@ class StatsCommand extends BpipeCommand {
         List<List> stats = doms.collect { dom ->dom.commands.command }.sum().groupBy {  cmdNode ->
             cmdNode.stage.text()
         }.collect { stage, cmds ->
-            
+
             // Failed commands do not accurately reflect the time taken, so
             // only count commands that succeeded
             List succeeded = cmds.grep { cmd ->
                 cmd.exitCode.text() == "0"
             }
-            
+
             List valid = succeeded.grep { cmd ->
                 // Bug where start times not initialised can have caused historical entries to have this
                 !cmd.start.text().startsWith('1970')
             }
-            
+
             if(valid.isEmpty()) {
                 return null
             }
 
-            List<Long> times = valid.collect { cmd ->  
-                long startTimeMs = toDate(cmd.start).time 
+            List<Long> times = valid.collect { cmd ->
+                long startTimeMs = toDate(cmd.start).time
                 startTimeMs == 0 ? 0 : toDate(cmd.end).time - startTimeMs
             }
-            
+
             List<Long> startTimes = valid.collect { cmd -> def t = toDate(cmd.start).time; return t;  }
             long minStart = startTimes.min()
             long minStartRel = minStart != null ?  minStart - pipelineStartTimeMs : -1
-            long maxEnd = valid.collect { cmd ->  
+            long maxEnd = valid.collect { cmd ->
                 long startTimeMs = toDate(cmd.start).time;
                 return  startTimeMs == 0 ? 0 : toDate(cmd.end).time
-            }.max() - pipelineStartTimeMs 
-            
+            }.max() - pipelineStartTimeMs
+
             double mean = times.isEmpty() ? 0 : times.sum() / times.size()
 
             String timing = (minStartRel < 0) ? '' : formatTimingBar(minStartRel, maxEnd, pipelineTotalMs, 60)
 
             def cores = valid.collect { cmd -> cmd.resources?.procs }.find { it }?: "-"
+
+            // Utilisation: mean cores used across instances
+            List<Double> coresUsedVals = valid.collect { cmd ->
+                String cu = cmd.utilisation?.coresUsed?.text()
+                (cu && cu.isDouble()) ? cu.toDouble() : null
+            }.findAll { it != null }
+            String used = coresUsedVals ? String.format('%.1f', coresUsedVals.sum() / coresUsedVals.size()) : '-'
+
+            // Peak memory: max across instances
+            List<Long> rssVals = valid.collect { cmd ->
+                String rss = cmd.utilisation?.maxRssBytes?.text()
+                (rss && rss.isLong()) ? rss.toLong() : null
+            }.findAll { it != null }
+            String peakMem = rssVals ? Utils.humanBytes(rssVals.max()) : '-'
 
             List<Long> instanceBytes = valid.collect { sumInputBytes(it) }.findAll { it != null }
             String inputs = instanceBytes ? Utils.humanBytes((Long)instanceBytes.sum()) : '-'
@@ -186,6 +200,8 @@ class StatsCommand extends BpipeCommand {
              formatTimeSpan(times.min()?.toLong()),
              formatTimeSpan(mean), formatTimeSpan(times.max()),
              cores,
+             used,
+             peakMem,
              ((times.sum()?:0) / 1000.0).toLong(),
              inputs,
              timing
@@ -193,7 +209,7 @@ class StatsCommand extends BpipeCommand {
         }
         .grep { it != null }
 
-        Utils.table(["Stage","Count","Min","Mean","Max", "Cores","Weight","Inputs","Timing"], stats, indent:1)
+        Utils.table(["Stage","Count","Min","Mean","Max", "Cores","Used","Peak Mem","Weight","Inputs","Timing"], stats, indent:1)
 
         out.println ""
     }
@@ -287,6 +303,13 @@ class StatsCommand extends BpipeCommand {
 
             String branch = cmd.branch.text() ?: '-'
             String cores = cmd.resources?.procs?.text() ?: '-'
+
+            // Utilisation columns
+            String cuText = cmd.utilisation?.coresUsed?.text()
+            String used = (cuText && cuText.isDouble()) ? String.format('%.1f', cuText.toDouble()) : '-'
+            String rssText = cmd.utilisation?.maxRssBytes?.text()
+            String peakMem = (rssText && rssText.isLong()) ? Utils.humanBytes(rssText.toLong()) : '-'
+
             String exit = inProgress ? '…' : exitText
             String duration = inProgress ? (formatTimeSpan(durMs) + '+') : formatTimeSpan(durMs)
             Long instanceBytes = sumInputBytes(cmd)
@@ -299,13 +322,13 @@ class StatsCommand extends BpipeCommand {
 
             String timing = formatTimingBar(startRel, endRel, pipelineTotalMs, 60)
 
-            return [branch, formatTimeSpan(startRel), duration, cores, inputs, exit, timing, commandPreview]
+            return [branch, formatTimeSpan(startRel), duration, cores, used, peakMem, inputs, exit, timing, commandPreview]
         }
 
         out.println ""
         out.println " Stage: ${stageName} — ${matching.size()} instance${matching.size() == 1 ? '' : 's'}"
         out.println ""
 
-        Utils.table(["Branch","Start","Duration","Cores","Inputs","Exit","Timing","Command"], rows, indent:1)
+        Utils.table(["Branch","Start","Duration","Cores","Used","Peak Mem","Inputs","Exit","Timing","Command"], rows, indent:1)
     }
 }

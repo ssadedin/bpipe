@@ -27,9 +27,11 @@ package bpipe
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import bpipe.executor.CommandExecutor
+import bpipe.executor.CommandUtilisation
 import bpipe.executor.CustomCommandExecutor
 import bpipe.executor.LocalCommandExecutor;
 import bpipe.executor.ThrottledDelegatingCommandExecutor;
+import bpipe.executor.UtilisationCapturingExecutor;
 
 /**
  * Manages execution, persistence and stopping of commands executed
@@ -299,7 +301,26 @@ class CommandManager {
             
          if(e instanceof ThrottledDelegatingCommandExecutor)
             e = e.commandExecutor
-        
+
+        // Capture utilisation before cleanup, which may delete accounting data
+        if(e instanceof UtilisationCapturingExecutor) {
+            def utilisationConfig = Config.userConfig.utilisation
+            if(utilisationConfig?.enabled != false) {
+                try {
+                    cmd.utilisation = ((UtilisationCapturingExecutor)e).captureUtilisation()
+                    if(cmd.utilisation != null) {
+                        log.info "Captured utilisation for command ${cmd.id}: cores=${cmd.utilisation.coresUsed}, rss=${cmd.utilisation.maxRssBytes}, state=${cmd.utilisation.state}"
+                    }
+                    else {
+                        log.info "No utilisation data available for command ${cmd.id}"
+                    }
+                }
+                catch(Exception ex) {
+                    log.warning("Failed to capture utilisation for command ${cmd.id}: ${ex.message}")
+                }
+            }
+        }
+
         e.cleanup()
             
 		if(!commandIds.containsKey(e))
