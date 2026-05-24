@@ -108,9 +108,9 @@ class StatsCommand extends BpipeCommand {
         doms.each { dom ->
             dom.commands.command.each { cmdNode ->
                 if(cmdNode.start.text().startsWith('1970')) return
-                if(cmdNode.end.text().startsWith('1970')) return
                 long startMs = toDate(cmdNode.start).time
-                long endMs = toDate(cmdNode.end).time
+                boolean endIsEpoch = cmdNode.end.text().startsWith('1970')
+                long endMs = endIsEpoch ? nowMs : toDate(cmdNode.end).time
                 if(endMs <= startMs) return
                 String procsText = cmdNode.resources?.procs?.text()
                 long procs = (procsText && procsText.isLong()) ? procsText.toLong() : 1L
