@@ -1102,6 +1102,22 @@ public class Pipeline implements ResourceRequestor {
                                 procs cmd.rawProcessedConfig?.procs
                                 memory cmd.rawProcessedConfig?.memory
                             }
+                            if(cmd.inputs) {
+                                inputs {
+                                    cmd.inputs.each { PipelineFile pf ->
+                                        Map attrs = [path: pf.toString()]
+                                        try {
+                                            long sz = pf.length()
+                                            if(sz > 0)
+                                                attrs.bytes = sz
+                                        }
+                                        catch(Exception ignore) {
+                                            // size unavailable (cloud path / missing / unsupported) — emit path only
+                                        }
+                                        input(attrs)
+                                    }
+                                }
+                            }
                             exitCode(cmd.exitCode)
                         }
                    }

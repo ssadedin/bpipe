@@ -103,13 +103,29 @@ class StatsCommand extends BpipeCommand {
         }
 
         String overallStatus = (doms.every { it.succeeded.text() == "true"} ? successMessage : "Failed")
-        
+
+        long totalCpuTimeMs = 0
+        doms.each { dom ->
+            dom.commands.command.each { cmdNode ->
+                if(cmdNode.start.text().startsWith('1970')) return
+                if(cmdNode.end.text().startsWith('1970')) return
+                long startMs = toDate(cmdNode.start).time
+                long endMs = toDate(cmdNode.end).time
+                if(endMs <= startMs) return
+                String procsText = cmdNode.resources?.procs?.text()
+                long procs = (procsText && procsText.isLong()) ? procsText.toLong() : 1L
+                totalCpuTimeMs += (endMs - startMs) * procs
+            }
+        }
+
         String runTime = formatTimeSpan(totalTimeMs)
+        String cpuTime = formatTimeSpan(totalCpuTimeMs)
         out.println ""
         out.println(" " + " Pipeline $overallStatus ".center(Config.config.columns-2,"="))
         out.println(("| Started: " + doms[0].startDateTime.text()).padRight(Config.config.columns-1) + "|")
         out.println(("| Ended: " + doms[-1].endDateTime.text()).padRight(Config.config.columns-1) + "|")
         out.println(("| Run Time: " + runTime).padRight(Config.config.columns-1) + "|")
+        out.println(("| Total CPU Time: " + cpuTime + "  (cores × elapsed)").padRight(Config.config.columns-1) + "|")
         out.println (" " + "="*(Config.config.columns-2))
         out.println ""
         
@@ -161,6 +177,9 @@ class StatsCommand extends BpipeCommand {
 
             def cores = valid.collect { cmd -> cmd.resources?.procs }.find { it }?: "-"
 
+            List<Long> instanceBytes = valid.collect { sumInputBytes(it) }.findAll { it != null }
+            String inputs = instanceBytes ? Utils.humanBytes((Long)instanceBytes.sum()) : '-'
+
             return [
              stage,
              cmds.size(),
@@ -168,14 +187,31 @@ class StatsCommand extends BpipeCommand {
              formatTimeSpan(mean), formatTimeSpan(times.max()),
              cores,
              ((times.sum()?:0) / 1000.0).toLong(),
+             inputs,
              timing
             ]
         }
         .grep { it != null }
-        
-        Utils.table(["Stage","Count","Min","Mean","Max", "Cores","Weight","Timing"], stats, indent:1)
-        
+
+        Utils.table(["Stage","Count","Min","Mean","Max", "Cores","Weight","Inputs","Timing"], stats, indent:1)
+
         out.println ""
+    }
+
+    Long sumInputBytes(cmdNode) {
+        def inputs = cmdNode.inputs?.input
+        if(!inputs || inputs.size() == 0)
+            return null
+        long total = 0
+        boolean any = false
+        inputs.each { inp ->
+            String b = inp.@bytes.text()
+            if(b) {
+                total += b.toLong()
+                any = true
+            }
+        }
+        return any ? total : null
     }
     
     String formatTimeSpan(t) {
@@ -253,6 +289,8 @@ class StatsCommand extends BpipeCommand {
             String cores = cmd.resources?.procs?.text() ?: '-'
             String exit = inProgress ? '…' : exitText
             String duration = inProgress ? (formatTimeSpan(durMs) + '+') : formatTimeSpan(durMs)
+            Long instanceBytes = sumInputBytes(cmd)
+            String inputs = instanceBytes != null ? Utils.humanBytes(instanceBytes) : '-'
             String content = cmd.content.text() ?: ''
             String commandPreview = content.readLines().find { it.trim() } ?: ''
             commandPreview = commandPreview.trim()
@@ -261,13 +299,13 @@ class StatsCommand extends BpipeCommand {
 
             String timing = formatTimingBar(startRel, endRel, pipelineTotalMs, 60)
 
-            return [branch, formatTimeSpan(startRel), duration, cores, exit, timing, commandPreview]
+            return [branch, formatTimeSpan(startRel), duration, cores, inputs, exit, timing, commandPreview]
         }
 
         out.println ""
         out.println " Stage: ${stageName} — ${matching.size()} instance${matching.size() == 1 ? '' : 's'}"
         out.println ""
 
-        Utils.table(["Branch","Start","Duration","Cores","Exit","Timing","Command"], rows, indent:1)
+        Utils.table(["Branch","Start","Duration","Cores","Inputs","Exit","Timing","Command"], rows, indent:1)
     }
 }

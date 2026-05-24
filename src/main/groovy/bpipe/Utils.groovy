@@ -1153,8 +1153,24 @@ class Utils {
     }
     
     static Pattern TRIM_SECONDS = ~',[^,]*?seconds$'
-    
+
     static Pattern TRIM_ZEROS = ~'\\.000 seconds$'
+
+    private static final String[] BYTE_UNITS = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB']
+
+    static String humanBytes(Long bytes) {
+        if(bytes == null)
+            return '-'
+        if(bytes < 1024L)
+            return "${bytes} B"
+        double value = bytes.doubleValue()
+        int unit = 0
+        while(value >= 1024.0 && unit < BYTE_UNITS.length - 1) {
+            value /= 1024.0
+            unit++
+        }
+        return String.format('%.1f %s', value, BYTE_UNITS[unit])
+    }
     
     static void table(Map options = [:], List<String> headers, List<List> rows) {
         
