@@ -119,7 +119,7 @@ class StatsCommand extends BpipeCommand {
         }
 
         String runTime = formatTimeSpan(totalTimeMs)
-        String cpuTime = formatTimeSpan(totalCpuTimeMs)
+        String cpuTime = totalCpuTimeMs > 0 ? String.format('%.1f CPU hours', totalCpuTimeMs / 3600000.0d) : '-'
         out.println ""
         out.println(" " + " Pipeline $overallStatus ".center(Config.config.columns-2,"="))
         out.println(("| Started: " + doms[0].startDateTime.text()).padRight(Config.config.columns-1) + "|")
