@@ -236,16 +236,23 @@ class StatsCommand extends BpipeCommand {
 
         matching = matching.sort { toDate(it.start).time }
 
+        long nowMs = System.currentTimeMillis()
+
         List<List> rows = matching.collect { cmd ->
             long startMs = toDate(cmd.start).time
             long endMs = toDate(cmd.end).time
+            String exitText = cmd.exitCode.text() ?: '-'
+            boolean inProgress = cmd.end.text().startsWith('1970') || endMs <= startMs || exitText == '-1'
+
+            long effectiveEndMs = inProgress ? nowMs : endMs
             long startRel = startMs - pipelineStartTimeMs
-            long endRel = endMs - pipelineStartTimeMs
-            long durMs = endMs - startMs
+            long endRel = effectiveEndMs - pipelineStartTimeMs
+            long durMs = effectiveEndMs - startMs
 
             String branch = cmd.branch.text() ?: '-'
             String cores = cmd.resources?.procs?.text() ?: '-'
-            String exit = cmd.exitCode.text() ?: '-'
+            String exit = inProgress ? '…' : exitText
+            String duration = inProgress ? (formatTimeSpan(durMs) + '+') : formatTimeSpan(durMs)
             String content = cmd.content.text() ?: ''
             String commandPreview = content.readLines().find { it.trim() } ?: ''
             commandPreview = commandPreview.trim()
@@ -254,7 +261,7 @@ class StatsCommand extends BpipeCommand {
 
             String timing = formatTimingBar(startRel, endRel, pipelineTotalMs, 60)
 
-            return [branch, formatTimeSpan(startRel), formatTimeSpan(durMs), cores, exit, timing, commandPreview]
+            return [branch, formatTimeSpan(startRel), duration, cores, exit, timing, commandPreview]
         }
 
         out.println ""
