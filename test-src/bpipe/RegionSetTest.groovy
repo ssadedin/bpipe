@@ -367,6 +367,31 @@ class RegionSetTest {
         assertEquals(2, result.size())
     }
 
+    // ===== Rebalancing Tests =====
+
+    @Test
+    void testRebalancingSplitsMultipleLargeRegionsOfSameSize() {
+        // Simulate the scenario: two large regions (~1Mb) and many small ones
+        RegionSet rs = new RegionSet()
+        rs.addSequence(new Sequence(name: 'chr8', range: new GenomicRange(0..1000000)))
+        rs.addSequence(new Sequence(name: 'chr6', range: new GenomicRange(0..1000000)))
+        // Add several small regions
+        (1..10).each { i ->
+            rs.addSequence(new Sequence(name: "chr${10+i}".toString(), range: new GenomicRange(0..100000)))
+        }
+
+        Set<RegionSet> result = rs.group(12)
+
+        assert result.size() == 12
+
+        // The largest region should have been split, so no single part should be close to 1Mb
+        long maxSize = result.max { it.size() }.size()
+        long minSize = result.min { it.size() }.size()
+
+        // The largest should be no more than 4x the smallest after rebalancing
+        assert maxSize < 4 * minSize : "Rebalancing failed: max=${maxSize}, min=${minSize}, ratio=${maxSize/minSize}"
+    }
+
     // ===== Partition Tests =====
 
     @Test

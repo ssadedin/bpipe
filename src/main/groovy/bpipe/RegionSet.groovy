@@ -264,14 +264,14 @@ class RegionSet implements Serializable {
         
         // While number of parts too uneven, split largest part, invoke
         // above loop again to reduce down 
-        long lastLargestSize = -1
+        RegionSet lastSplit = null
         while(results.first().size() > 2*results.last().size()) {
-            long currentLargestSize = results.first().size()
-            if(currentLargestSize == lastLargestSize) {
+            RegionSet current = results.first()
+            if(current.is(lastSplit)) {
                 log.info "*** Rebalancing not making progress, stopping"
                 break
             }
-            lastLargestSize = currentLargestSize
+            lastSplit = current
             log.info "*** Rebalancing regions due to ${results.first().size()} > 2 x ${results.last().size()}"
             if(!splitLargest(results, allowSplitRegions))
                 break
