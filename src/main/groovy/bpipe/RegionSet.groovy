@@ -322,7 +322,7 @@ class RegionSet implements Serializable {
      * It is possible no split is possible that will return a balanced result 
      * in which case the algorithm gives up and returns the unbalanced split.
      */
-    List splitInTwo(boolean allowSplitSequences) {
+    List<RegionSet> splitInTwo(boolean allowSplitSequences) {
         List<Sequence> ordered = ([] + sequences.values()).sort { it.size() }.reverse()
         
         // Start by sorting the regions into two piles by ordering by size
@@ -339,15 +339,15 @@ class RegionSet implements Serializable {
             else
                 result2.addSequence(s)
         }
+       
+        if(!allowSplitSequences)
+            return [result1,result2]
         
         // Make a second set of ordered sequences from result1
         // We expect result1 to be bigger, so we will even up the piles
         // by splitting regions from result1 and giving them to result2
         List<Sequence> ordered2 = ([] + result1.sequences.values()).sort { it.size() }.reverse()
-        
-        if(!allowSplitSequences)
-            return [result1,result2]
-        
+
         log.info("Will check ${ordered2.size()} regions to reassign to other split in case of size bias")
         
         // This loop exits when every sequence from result1 has been tried as a 
