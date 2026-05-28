@@ -1095,6 +1095,13 @@ public class Pipeline implements ResourceRequestor {
                             id(cmd.id)
                             stage(cmd.name)
                             branch(cmd.branch?.name?:"")
+                            def regionVal = cmd.branch?.properties?.region
+                            if(regionVal instanceof RegionValue && !regionVal.isEmpty()) {
+                                region {
+                                    size(regionVal.totalSize)
+                                    id(regionVal.id)
+                                }
+                            }
                             content(cmd.command)
                             start(new Date(cmd.startTimeMs).format(DATE_FORMAT))
                             end(new Date(cmd.stopTimeMs).format(DATE_FORMAT))

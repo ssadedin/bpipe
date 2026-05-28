@@ -244,6 +244,16 @@ class StatsCommand extends BpipeCommand {
                 .replaceAll('minutes,.* seconds$',' minutes')
     }
 
+    String formatBases(long bases) {
+        if(bases >= 1_000_000_000L)
+            return String.format('%.2f Gbp', bases / 1_000_000_000.0d)
+        if(bases >= 1_000_000L)
+            return String.format('%.1f Mbp', bases / 1_000_000.0d)
+        if(bases >= 1_000L)
+            return String.format('%.1f Kbp', bases / 1_000.0d)
+        return "${bases} bp"
+    }
+
     String formatTimingBar(long startRel, long endRel, long pipelineTotalMs, int width) {
         if(pipelineTotalMs <= 0)
             return ''
@@ -310,6 +320,15 @@ class StatsCommand extends BpipeCommand {
             String rssText = cmd.utilisation?.maxRssBytes?.text()
             String peakMem = (rssText && rssText.isLong()) ? Utils.humanBytes(rssText.toLong()) : '-'
 
+            // Region: show size in bp if available
+            String regionText = '-'
+            def regionNode = cmd.region
+            if(regionNode) {
+                String sizeText = regionNode.size?.text()
+                if(sizeText && sizeText.isLong() && sizeText.toLong() > 0L)
+                    regionText = formatBases(sizeText.toLong())
+            }
+
             String exit = inProgress ? '…' : exitText
             String duration = inProgress ? (formatTimeSpan(durMs) + '+') : formatTimeSpan(durMs)
             Long instanceBytes = sumInputBytes(cmd)
@@ -322,13 +341,13 @@ class StatsCommand extends BpipeCommand {
 
             String timing = formatTimingBar(startRel, endRel, pipelineTotalMs, 60)
 
-            return [branch, formatTimeSpan(startRel), duration, cores, used, peakMem, inputs, exit, timing, commandPreview]
+            return [branch, formatTimeSpan(startRel), duration, cores, used, peakMem, regionText, inputs, exit, timing, commandPreview]
         }
 
         out.println ""
         out.println " Stage: ${stageName} — ${matching.size()} instance${matching.size() == 1 ? '' : 's'}"
         out.println ""
 
-        Utils.table(["Branch","Start","Duration","Cores","Used","Peak Mem","Inputs","Exit","Timing","Command"], rows, indent:1)
+        Utils.table(["Branch","Start","Duration","Cores","Used","Peak Mem","Region","Inputs","Exit","Timing","Command"], rows, indent:1)
     }
 }
