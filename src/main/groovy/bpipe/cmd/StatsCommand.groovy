@@ -296,7 +296,12 @@ class StatsCommand extends BpipeCommand {
             System.exit(1)
         }
 
-        matching = matching.sort { toDate(it.start).time }
+        matching = matching.sort { cmd ->
+            long startMs = toDate(cmd.start).time
+            long endMs = toDate(cmd.end).time
+            boolean inProgress = cmd.end.text().startsWith('1970') || endMs <= startMs || cmd.exitCode.text() == '-1'
+            -(inProgress ? nowMs - startMs : endMs - startMs)
+        }
 
         long nowMs = System.currentTimeMillis()
 
