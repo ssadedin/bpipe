@@ -32,6 +32,9 @@ import bpipe.executor.CustomCommandExecutor
 import bpipe.executor.LocalCommandExecutor;
 import bpipe.executor.ThrottledDelegatingCommandExecutor;
 import bpipe.executor.UtilisationCapturingExecutor;
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
 
 /**
  * Manages execution, persistence and stopping of commands executed
@@ -201,16 +204,19 @@ class CommandManager {
      * Looks in the file system for known commands and iterates over them all,
      * stopping each one.
      */
-    int stopAll() { 
-        int count = 0
-        List<Command> stoppedCommands = []
+    int stopAll() {
+        int parallelism = (int)Config.userConfig.getOrDefault('stopParallelism', 4)
+        long staggerMs = (long)Config.userConfig.getOrDefault('stopStaggerMs', 100L)
+
+        // First pass: deserialise all commands before starting any stops
+        List<List> commandsToStop = []
         commandDir.eachFileMatch(~/[0-9]+/) { File f ->
             log.info "Loading command info from $f.absolutePath"
-            CommandExecutor exec
-            Command cmd
+            CommandExecutor exec = null
+            Command cmd = null
             try {
-                f.withObjectInputStream { 
-                    exec = it.readObject() 
+                f.withObjectInputStream {
+                    exec = it.readObject()
                     log.info "Stopping command $exec"
                     try {
                         cmd = it.readObject()
@@ -219,51 +225,76 @@ class CommandManager {
                         log.info "Unable to read command details for $f.absolutePath : maybe legacy pipeline directory?"
                     }
                 }
-                
+
                 if(exec != null) {
                     if(exec instanceof PooledExecutor && exec.poolConfig.get('persistent',false)) {
                         println "Command $cmd.id is persistent command: ignoring"
                     }
                     else {
-                        safeStopExecutor(cmd, exec)
-                        
-                        if(cmd)
-                            stoppedCommands << cmd
-                        println "Successfully stopped command $cmd.id ($exec)"
+                        commandsToStop << [f, exec, cmd]
                     }
                 }
                 else {
                     println "WARNING: stored command $f.absolutePath had null executor (internal error)"
                 }
             }
-            catch(PipelineError e) {
-              System.err.println("WARNING: $cmd.id\n\n${Utils.indent(e.message)}\n\nNote: this may occur if the job is already stopped; use 'bpipe cleancommands' to clear old commands.")      
-            }
             catch(Throwable t) {
-              System.err.println("An unexpected error occured while stopping command: $exec.\n\n${Utils.indent(t.message)}\n\nThe job may already be stopped; use 'bpipe cleancommands' to clear old commands.")      
-            }            
-            try {
-                cleanup(f.name)
+                System.err.println("An unexpected error occured while loading command: $exec.\n\n${Utils.indent(t.message)}\n\nThe job may already be stopped; use 'bpipe cleancommands' to clear old commands.")
             }
-            catch(Exception e) {
-                log.severe "Failed to clean up command object $f.name: " + e
-            }
-            ++count
         }
-        log.info "Successfully stopped $count commands"
-        
+
+        // Second pass: stop commands in parallel, staggering submissions to avoid scheduler bursts
+        List<Command> stoppedCommands = Collections.synchronizedList([])
+        ExecutorService pool = Executors.newFixedThreadPool(parallelism)
+        List<Future> futures = []
+
+        commandsToStop.eachWithIndex { entry, int i ->
+            if(i > 0 && staggerMs > 0)
+                Thread.sleep(staggerMs)
+            File f = entry[0]
+            CommandExecutor exec = entry[1]
+            Command cmd = entry[2]
+            futures << pool.submit({
+                try {
+                    safeStopExecutor(cmd, exec)
+                    if(cmd)
+                        stoppedCommands << cmd
+                    println "Successfully stopped command $cmd.id ($exec)"
+                }
+                catch(PipelineError e) {
+                    System.err.println("WARNING: $cmd.id\n\n${Utils.indent(e.message)}\n\nNote: this may occur if the job is already stopped; use 'bpipe cleancommands' to clear old commands.")
+                }
+                catch(Throwable t) {
+                    System.err.println("An unexpected error occured while stopping command: $exec.\n\n${Utils.indent(t.message)}\n\nThe job may already be stopped; use 'bpipe cleancommands' to clear old commands.")
+                }
+                finally {
+                    try {
+                        cleanup(f.name)
+                    }
+                    catch(Exception e) {
+                        log.severe "Failed to clean up command object $f.name: " + e
+                    }
+                }
+            } as Runnable)
+        }
+
+        pool.shutdown()
+        futures*.get()
+
+        log.info "Successfully stopped ${stoppedCommands.size()} commands"
+
         for(Command cmd in stoppedCommands) {
             try {
                 Utils.cleanup(cmd.outputs)
             }
             catch(Exception e) {
-                def msg = "Failed to cleanup one or more commands from $cmd.outputs: " + e.toString()               
+                def msg = "Failed to cleanup one or more commands from $cmd.outputs: " + e.toString()
                 log.info msg
                 println "WARNING: $msg"
             }
         }
-        
-        return count
+
+        return stoppedCommands.size()
     }
 
     private void safeStopExecutor(Command cmd, CommandExecutor exec) {

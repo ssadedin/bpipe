@@ -45,6 +45,23 @@ jobs to launch this will make your whole pipeline take 9000 seconds to get start
 need to balance the value of this setting against the capabilities and robustness of the
 system the jobs are running on.
 
+### Parallel Stop Behaviour
+
+When Bpipe stops a pipeline (via `bpipe stop` or Ctrl-C), it issues stop commands to all
+running jobs. By default, up to 4 stop requests are sent concurrently, with a 100 ms delay
+between each submission to avoid bursting the scheduler.
+
+You can tune both values in your `bpipe.config`:
+
+```groovy
+stopParallelism=8    // number of concurrent stop requests (default: 4)
+stopStaggerMs=50     // milliseconds between each stop submission (default: 100)
+```
+
+Raise `stopParallelism` if you have many jobs to cancel and want them stopped faster. Raise
+`stopStaggerMs` (or lower `stopParallelism`) if your scheduler is sensitive to sudden bursts of
+cancel requests.
+
 ### File Watcher Setting
 
 By default Bpipe uses [inotify](https://en.wikipedia.org/wiki/Inotify) to allow it to be
