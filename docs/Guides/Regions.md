@@ -227,6 +227,63 @@ cand do this by using the `padding` option when loading the BED file:
 bed_file = bed("test.bed",padding:20)
 ```
 
+## Sequential Splitting of BED Regions
+
+The default `split` behaviour groups regions by size — it assembles each group from wherever in
+the genome it needs to in order to fill that group to the target size. This works well for
+maximising load balance, but it can cause problems for tools that depend on genomic locality.
+For example, some variant callers perform better when all the regions they process are on the
+same chromosome and close together, because they can share reference data or phasing context
+across those regions. Mixing regions from different chromosomes in a single group breaks that
+assumption.
+
+For these cases, `split` accepts a `sequential: true` option. Instead of the default
+size-balancing strategy, Bpipe walks regions in chromosome and position order and fills each
+group with geographically adjacent regions only:
+
+```groovy
+bed_file = bed("test.bed")
+
+hello = {
+    exec """
+        fancy_caller --regions $region.bed $input.bam > $output.vcf
+    """
+}
+
+run {
+    bed_file.split(sequential: true, 30) * [ hello ]
+}
+```
+
+Sequential splitting always respects chromosome boundaries — a group will never contain
+regions from more than one chromosome. The target number of parts is a soft target; the actual
+count may be slightly higher if chromosome boundaries or other constraints prevent the groups
+from filling evenly.
+
+When a region straddles the fill-to-target boundary (the group is ≥75% full and the next
+region would push it past 125% of the target size), Bpipe splits that region at the exact fill
+point so the group sizes stay close to the target.
+
+### Limiting Groups by Physical Distance
+
+Sometimes you want to go further and keep regions not just on the same chromosome, but also
+within a certain physical distance of each other. This is useful for tools that stream through
+a BAM file: if your regions are spread across an entire chromosome they may span many gigabases
+and force the tool to scan large gaps.
+
+The `maxDistance` option (in base pairs) forces a new group whenever the gap between two
+adjacent regions exceeds the given value, even if the current group hasn't reached its target
+size yet:
+
+```groovy
+run {
+    bed_file.split(sequential: true, maxDistance: 5_000_000, 30) * [ hello ]
+}
+```
+
+Here, any gap larger than 5 Mb between consecutive regions triggers a group boundary.
+`maxDistance` only makes sense together with `sequential: true`.
+
 
 
 
