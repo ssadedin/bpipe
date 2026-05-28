@@ -120,10 +120,116 @@ class RegionSet implements Serializable {
     }
     
     /**
-     * A synonym for {@link #group(int)}
+     * A synonym for {@link #group(int)}.
+     * When options.sequential is true, delegates to {@link #splitSequential}.
      */
     Set<RegionSet> split(Map options=[:], int parts) {
+        if (options.sequential)
+            return new LinkedHashSet<RegionSet>(splitSequential(options, parts))
         group(options, parts)
+    }
+
+    /**
+     * Split this RegionSet into sequential parts, keeping genomically adjacent regions
+     * together. Unlike {@link #group}, this algorithm never mixes chromosomes within a
+     * part and walks the genome in sorted order.
+     *
+     * A new part is started when any of the following is true:
+     *   - a chromosome boundary is crossed
+     *   - the gap to the next region exceeds options.maxDistance (if provided)
+     *   - the current part is ≥75% of the target size and the next region would push it
+     *     above 125% of the target (in which case the region is split at the exact
+     *     fill-to-target point; the remainder begins the next part)
+     *
+     * @param options  optional map; supports maxDistance (int, bp)
+     * @param parts    target number of parts (may be exceeded to honour constraints)
+     * @return         list of RegionSets in genomic order
+     */
+    List<RegionSet> splitSequential(Map options=[:], int parts) {
+        if (sequences.isEmpty())
+            return []
+
+        long totalSize = size()
+        if (totalSize == 0)
+            return [this]
+
+        long targetSize = Math.max(1L, totalSize.intdiv(parts))
+        int maxDistance = (options.maxDistance != null) ? (int)options.maxDistance : Integer.MAX_VALUE
+
+        List<Sequence> ordered = new ArrayList<Sequence>(sequences.values())
+        ordered.sort { a, b ->
+            int cmp = a.name <=> b.name
+            cmp != 0 ? cmp : a.range.from <=> b.range.from
+        }
+
+        List<RegionSet> result = []
+        RegionSet current = new RegionSet()
+        long currentSize = 0L
+        String currentChrom = null
+        Sequence lastSeq = null
+
+        for (Sequence seq in ordered) {
+            boolean chromBoundary = currentChrom != null && seq.name != currentChrom
+            boolean distanceSplit = !chromBoundary && lastSeq != null &&
+                                    (seq.range.from - lastSeq.range.to) > maxDistance
+
+            if ((chromBoundary || distanceSplit) && !current.sequences.isEmpty()) {
+                result.add(current)
+                current = new RegionSet()
+                currentSize = 0L
+                lastSeq = null
+            }
+
+            currentChrom = seq.name
+            long seqSize = (long)seq.size()
+            Sequence addedToCurrent
+
+            if (currentSize * 4L >= targetSize * 3L) {
+                long combined = currentSize + seqSize
+                if (combined * 4L > targetSize * 5L) {
+                    long remaining = targetSize - currentSize
+                    if (remaining > 0L && remaining < seqSize) {
+                        int splitPoint = seq.range.from + (int)remaining
+                        Sequence firstHalf = new Sequence(name: seq.name, range: new GenomicRange(seq.range.from..splitPoint))
+                        Sequence secondHalf = new Sequence(name: seq.name, range: new GenomicRange(splitPoint..seq.range.to))
+                        current.addSequence(firstHalf)
+                        result.add(current)
+                        current = new RegionSet()
+                        current.addSequence(secondHalf)
+                        currentSize = (long)secondHalf.size()
+                        addedToCurrent = secondHalf
+                    }
+                    else {
+                        // Already over target (remaining ≤ 0) or seq is tiny relative to remaining
+                        result.add(current)
+                        current = new RegionSet()
+                        current.addSequence(seq)
+                        currentSize = seqSize
+                        addedToCurrent = seq
+                    }
+                }
+                else {
+                    current.addSequence(seq)
+                    result.add(current)
+                    current = new RegionSet()
+                    currentSize = 0L
+                    addedToCurrent = null
+                }
+            }
+            else {
+                current.addSequence(seq)
+                currentSize += seqSize
+                addedToCurrent = seq
+            }
+
+            lastSeq = addedToCurrent
+        }
+
+        if (!current.sequences.isEmpty())
+            result.add(current)
+
+        result.eachWithIndex { r, i -> r.name = (name ?: '') + '.' + i }
+        return result
     }
     
     Set<RegionSet> partition(int sizeBp) {

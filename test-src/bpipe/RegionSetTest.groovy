@@ -464,6 +464,141 @@ class RegionSetTest {
         assertFalse(rs.overlaps('chr2'))
     }
 
+    // ===== Sequential Split Tests =====
+
+    @Test
+    void testSequentialSplitGroupsAdjacentRegions() {
+        // 4 equal regions on chr1, split into 2
+        // target = 1000, expect first two regions in part 1, last two in part 2
+        RegionSet rs = new RegionSet()
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(0..300)))
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(400..700)))
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(800..1000)))
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(1100..1300)))
+
+        List<RegionSet> result = rs.splitSequential(2)
+
+        assert result.size() == 2
+        // All sequences must remain on chr1
+        result.each { assert it.chromosomeNames == ['chr1'] as Set }
+        // Total size preserved
+        assert result.sum { it.size() } as long == rs.size()
+    }
+
+    @Test
+    void testSequentialSplitChromosomeBoundaryForcesNewPart() {
+        // chr1 and chr2 must never be in the same part
+        RegionSet rs = new RegionSet()
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(0..500)))
+        rs.addSequence(new Sequence(name: 'chr2', range: new GenomicRange(0..500)))
+
+        // Even if we request 1 part, chromosome boundary forces 2
+        List<RegionSet> result = rs.splitSequential(1)
+
+        assert result.size() == 2
+        assert result.every { it.chromosomeNames.size() == 1 }
+    }
+
+    @Test
+    void testSequentialSplitMultipleChromosomesEachSeparate() {
+        RegionSet rs = new RegionSet()
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(0..1000)))
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(2000..3000)))
+        rs.addSequence(new Sequence(name: 'chr2', range: new GenomicRange(0..1000)))
+        rs.addSequence(new Sequence(name: 'chr2', range: new GenomicRange(2000..3000)))
+
+        List<RegionSet> result = rs.splitSequential(2)
+
+        // Exactly 2 parts (one per chromosome)
+        assert result.size() == 2
+        result.each { assert it.chromosomeNames.size() == 1 }
+        Set<String> chrs = result.collectMany { it.chromosomeNames.toList() } as Set
+        assert chrs == ['chr1', 'chr2'] as Set
+    }
+
+    @Test
+    void testSequentialSplitRegionSplitAtBoundary() {
+        // One accumulation region (0-800) then a large region (800-2000).
+        // target = 1000; when we reach 800 (≥750) and the large region would push to 2000 (>1250),
+        // the large region should be split at position 800+200=1000.
+        RegionSet rs = new RegionSet()
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(0..800)))
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(800..2000)))
+
+        List<RegionSet> result = rs.splitSequential(2)
+
+        assert result.size() == 2
+        // Total size preserved
+        assert result.sum { it.size() } as long == rs.size()
+        // First part should contain 1000 bp (0..800 + 800..1000)
+        assert result[0].size() == 1000L
+    }
+
+    @Test
+    void testSequentialSplitMaxDistanceForcesNewPart() {
+        // Two chr1 regions far apart; maxDistance=1000 should force a split between them
+        RegionSet rs = new RegionSet()
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(0..100)))
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(50000..50100)))
+
+        List<RegionSet> result = rs.splitSequential([maxDistance: 1000], 1)
+
+        assert result.size() == 2
+        assert result[0].sequences.size() == 1
+        assert result[1].sequences.size() == 1
+    }
+
+    @Test
+    void testSequentialSplitMaxDistanceNoSplitWhenClose() {
+        // Two chr1 regions close together; gap < maxDistance, so they stay in one part
+        RegionSet rs = new RegionSet()
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(0..100)))
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(200..300)))
+
+        List<RegionSet> result = rs.splitSequential([maxDistance: 1000], 1)
+
+        assert result.size() == 1
+        assert result[0].sequences.size() == 2
+    }
+
+    @Test
+    void testSequentialSplitMaxDistanceAndChromosomeBothTrigger() {
+        // chr1: two close regions then a big gap; chr2: one region
+        // maxDistance=1000 should keep the close pair together, split from the distant one,
+        // and chromosome boundary always separates chr2
+        RegionSet rs = new RegionSet()
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(0..100)))
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(200..300)))
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(100000..100100)))
+        rs.addSequence(new Sequence(name: 'chr2', range: new GenomicRange(0..100)))
+
+        List<RegionSet> result = rs.splitSequential([maxDistance: 1000], 2)
+
+        // chr1-close, chr1-distant, chr2 → 3 parts
+        assert result.size() == 3
+        result.each { assert it.chromosomeNames.size() == 1 }
+    }
+
+    @Test
+    void testSequentialSplitViaOptions() {
+        // Verify that split(sequential:true, N) delegates to splitSequential
+        RegionSet rs = new RegionSet()
+        rs.addSequence(new Sequence(name: 'chr1', range: new GenomicRange(0..500)))
+        rs.addSequence(new Sequence(name: 'chr2', range: new GenomicRange(0..500)))
+
+        Set<RegionSet> result = rs.split(sequential: true, 1)
+
+        assert result.size() == 2
+        result.each { assert it.chromosomeNames.size() == 1 }
+    }
+
+    @Test
+    void testSequentialSplitEmptyRegionSet() {
+        RegionSet rs = new RegionSet()
+        List<RegionSet> result = rs.splitSequential(4)
+        assert result.isEmpty()
+    }
+
     // ===== Region Value Tests =====
 
     @Test
