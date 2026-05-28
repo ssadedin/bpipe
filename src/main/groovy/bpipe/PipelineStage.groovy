@@ -682,6 +682,10 @@ class PipelineStage {
                         PipelineContext.devRetryLock.writeLock().unlock()
                     return
                 }
+                else
+                if(devResponse == 'debug') {
+                    context.debug()
+                }
                 
                 log.info("Received indication of dev continue response for $stageName")
                 Config.config.devAt = ((List)Config.config.devAt).grep { it != stageName }
