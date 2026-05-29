@@ -28,6 +28,7 @@ package bpipe
 import groovy.sql.Sql
 import groovy.util.logging.Log
 
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
@@ -96,6 +97,13 @@ class SQLiteOutputMetaDataStore implements OutputMetaDataStore {
     private final int flushIntervalMs
 
     private final LinkedBlockingQueue<OutputMetaData> writeQueue = new LinkedBlockingQueue<>()
+
+    /**
+     * In-memory set of all known output paths — populated at loadAll() time and
+     * updated on every save().  Allows exists() to answer without acquiring any
+     * lock or hitting the database.
+     */
+    private final Set<String> knownPaths = Collections.newSetFromMap(new ConcurrentHashMap<>())
 
     private Thread flushThread
 
@@ -201,6 +209,8 @@ class SQLiteOutputMetaDataStore implements OutputMetaDataStore {
 
     @Override
     void save(OutputMetaData p) {
+        if(p.outputPath)
+            knownPaths.add(p.outputPath)
         writeQueue.offer(p)
     }
 
@@ -209,8 +219,10 @@ class SQLiteOutputMetaDataStore implements OutputMetaDataStore {
      * migration path and unit tests; bypasses the async queue.
      */
     void saveAll(List<OutputMetaData> records) {
-        if(records)
+        if(records) {
+            records.each { if(it.outputPath) knownPaths.add(it.outputPath) }
             insertBatch(records)
+        }
     }
 
     @Override
@@ -218,8 +230,11 @@ class SQLiteOutputMetaDataStore implements OutputMetaDataStore {
         List<OutputMetaData> result = []
         db.eachRow('SELECT * FROM outputs') { row ->
             OutputMetaData omd = rowToMetaData(row)
-            if(omd != null)
+            if(omd != null) {
                 result << omd
+                if(omd.outputPath)
+                    knownPaths.add(omd.outputPath)
+            }
         }
         return result.sort { it.timestamp }
     }
@@ -271,15 +286,8 @@ class SQLiteOutputMetaDataStore implements OutputMetaDataStore {
     }
 
     @Override
-    synchronized boolean exists(OutputMetaData p) {
-        if(!p.outputPath)
-            return false
-        // Also check the pending-write queue so callers get a consistent view
-        // of records that have been enqueued but not yet flushed.
-        if(writeQueue.any { it.outputPath == p.outputPath })
-            return true
-        def row = db.firstRow('SELECT COUNT(*) AS cnt FROM outputs WHERE outputPath = ?', [p.outputPath])
-        return ((row?.cnt ?: 0) as int) > 0
+    boolean exists(OutputMetaData p) {
+        return p.outputPath ? knownPaths.contains(p.outputPath) : false
     }
 
     @Override

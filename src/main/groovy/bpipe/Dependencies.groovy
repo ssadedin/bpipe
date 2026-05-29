@@ -65,7 +65,21 @@ class Dependencies {
      */
     Map<String,Long> overrideTimestamps = [:]
 
-    OutputMetaDataStore store = new PropertyFileOutputMetaDataStore()
+    private volatile OutputMetaDataStore _store = null
+
+    OutputMetaDataStore getStore() {
+        if(_store != null)
+            return _store
+        synchronized(this) {
+            if(_store == null)
+                _store = OutputMetaDataStoreFactory.create()
+            return _store
+        }
+    }
+
+    void setStore(OutputMetaDataStore s) {
+        _store = s
+    }
 
     @CompileStatic
     static Dependencies getTheInstance() {
@@ -273,12 +287,17 @@ class Dependencies {
      * Called from Runner's parallel init-thread block so the graph is ready before
      * the first pipeline stage runs.
      */
-    synchronized void initStore(OutputMetaDataStore newStore) {
-        this.store = newStore
-        if(this.outputGraph == null) {
-            Utils.time("Preload output graph") {
-                List<OutputMetaData> records = newStore.loadAll()
-                if(!records.isEmpty()) {
+    void initStore(OutputMetaDataStore newStore) {
+        // loadAll() can be slow (full table scan or property-file scan); run it
+        // outside the Dependencies lock so other synchronized methods are not blocked
+        // during startup.  SQLiteOutputMetaDataStore.loadAll() is synchronized on the
+        // store instance to protect the single JDBC connection from the flush thread.
+        List<OutputMetaData> records = newStore.loadAll()
+
+        synchronized(this) {
+            this._store = newStore
+            if(this.outputGraph == null && !records.isEmpty()) {
+                Utils.time("Preload output graph") {
                     this.outputGraph = computeOutputGraph(records)
                     this.outputGraph.index(records.size() * 2)
                 }

@@ -247,6 +247,7 @@ class PropertyFileOutputMetaDataStore implements OutputMetaDataStore {
         !file.name.startsWith('.') &&
         !file.isDirectory() &&
         !file.name.equals('outputGraph.ser') &&
-        !file.name.equals('outputGraph2.ser')
+        !file.name.equals('outputGraph2.ser') &&
+        !file.name.equals('outputs.db')
     }
 }
