@@ -509,7 +509,7 @@ class Runner {
                            { /* Add event listeners that come directly from configuration */ EventManager.theInstance.configure(Config.userConfig) },
                            { Concurrency.theInstance.initFromConfig() },
                            { if(!opts['t'] && mode != "generate-dsl") { NotificationManager.theInstance.configure(Config.userConfig); configureReportsFromUserConfig() } },
-                           { Dependencies.theInstance.preloadOutputGraph() }
+                           { Dependencies.theInstance.initStore(OutputMetaDataStoreFactory.create()) }
                            ].collect{new Thread(it)}
         initThreads*.start()
 

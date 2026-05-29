@@ -49,11 +49,6 @@ import bpipe.storage.LocalPipelineFile
 @Log
 class Dependencies {
     
-    /**
-     * The file to which the output graph is saved between runs
-     */
-    final static File OUTPUT_GRAPH_CACHE_FILE = new File(".bpipe/outputs/outputGraph2.ser")
-    
     ReentrantReadWriteLock outputGraphLock = new ReentrantReadWriteLock()
     
     GraphEntry outputGraph
@@ -273,33 +268,24 @@ class Dependencies {
         return missing
     }
     
-    synchronized saveOutputGraphCache() {
-		
-		if(!OUTPUT_GRAPH_CACHE_FILE.parentFile.exists()) {
-			OUTPUT_GRAPH_CACHE_FILE.parentFile.mkdirs()
-		}
-		
-        OUTPUT_GRAPH_CACHE_FILE.withObjectOutputStream { oos ->
-            oos << outputGraph
-        }
-    }
-    
     /**
-     * Attempt to load the output graph from previously saved serialized form, if it is available
-     * @return
+     * Set the active store and eagerly build the in-memory output graph from it.
+     * Called from Runner's parallel init-thread block so the graph is ready before
+     * the first pipeline stage runs.
      */
-    synchronized preloadOutputGraph() {
-        if(OUTPUT_GRAPH_CACHE_FILE.exists()) {
-            Utils.time("Read cached output graph") {
-                outputGraph = OUTPUT_GRAPH_CACHE_FILE.withObjectInputStream { it.readObject() }
-                outputGraph.index(5000)
+    synchronized void initStore(OutputMetaDataStore newStore) {
+        this.store = newStore
+        if(this.outputGraph == null) {
+            Utils.time("Preload output graph") {
+                List<OutputMetaData> records = newStore.loadAll()
+                if(!records.isEmpty()) {
+                    this.outputGraph = computeOutputGraph(records)
+                    this.outputGraph.index(records.size() * 2)
+                }
             }
         }
-        else {
-            log.info "No cached output graph ($OUTPUT_GRAPH_CACHE_FILE.name) available: will be computed from property files"
-        }
     }
-    
+
     @CompileStatic
     synchronized GraphEntry getOutputGraph() {
         if(this.outputGraph == null) {
@@ -322,14 +308,8 @@ class Dependencies {
     void reset() {
         this.outputGraph = null
     }
-    
-    void flushOutputGraphCache() {
-        if(OUTPUT_GRAPH_CACHE_FILE.exists()) {
-            log.info "Deleting output graph cache file $OUTPUT_GRAPH_CACHE_FILE.absolutePath"
-            OUTPUT_GRAPH_CACHE_FILE.delete()
-        }
-    }
-    
+
+
     /**
      * For each output file created in the context, save information
      * about it such that it can be reliably loaded by this same stage
@@ -393,7 +373,6 @@ class Dependencies {
     
 	@CompileStatic
     void saveOutputMetaData(OutputMetaData p) {
-        flushOutputGraphCache()
         store.save(p)
         
         // If there is a cached outputgraph, update it

@@ -1975,8 +1975,8 @@ public class Pipeline implements ResourceRequestor {
         def graph = Dependencies.instance.outputGraph
         List<PipelineFile> leaves = Dependencies.instance.findLeaves(graph)*.values.flatten()*.outputFile
         
-        Utils.time("Save output graph") {
-            Dependencies.instance.saveOutputGraphCache()
+        Utils.time("Flush output store") {
+            Dependencies.instance.store.flush()
         }
         
         List<String> all = formatOutputFiles(leaves)
