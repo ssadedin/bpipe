@@ -54,6 +54,17 @@ interface OutputMetaDataStore {
     boolean exists(OutputMetaData p)
 
     /**
+     * If a record already exists for the given output, populate {@code p} with the
+     * previously-stored values before the caller overwrites them with new command data.
+     * This preserves fields (e.g. {@code cleaned}, {@code preserve}) that may have been
+     * set outside the normal command-execution flow.
+     * <p>
+     * Backends that use upsert semantics (e.g. SQLite INSERT OR REPLACE) may implement
+     * this as a no-op because the upsert correctly replaces only the fields supplied.
+     */
+    void load(OutputMetaData p)
+
+    /**
      * Flush any buffered writes to durable storage. Must be called before the
      * process exits to ensure all enqueued records are persisted.
      * Implementations with fully synchronous write paths may treat this as a no-op.

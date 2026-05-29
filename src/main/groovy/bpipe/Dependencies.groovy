@@ -372,9 +372,7 @@ class Dependencies {
 
                 this.outputFilesGenerated << o
 
-                if(store.exists(p)) {
-                    p.read()
-                }
+                store.load(p)
 
                 p.setPropertiesFromCommand(o, command, stage, branchPath)
                 

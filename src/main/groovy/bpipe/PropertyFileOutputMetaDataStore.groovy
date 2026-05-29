@@ -75,6 +75,13 @@ class PropertyFileOutputMetaDataStore implements OutputMetaDataStore {
     }
 
     @Override
+    void load(OutputMetaData p) {
+        if(p.exists()) {
+            p.read()
+        }
+    }
+
+    @Override
     void flush() {
         // Property files are written synchronously; nothing to flush.
     }
