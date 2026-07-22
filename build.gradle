@@ -622,7 +622,7 @@ def e2eTestGroups = [
     Load:      ['load', 'segment', 'external_segment', 'externalstages', 'dependent_modules',
                 'ref_local_in_external', 'reference_loaded_before_run', 'replace_segment',
                 'error_on_load', 'cmd_line_load'],
-    Channels:  ['forward', 'merge_point', 'channels', 'simple_channels', 'accompanies'],
+    Channels:  ['forward', 'merge_point', 'channels', 'simple_channels', 'accompanies', 'channel_outputs'],
     Multi:     ['multi', 'two_inputs_double_ext', 'downstream_multiinputs'],
     Cleanup:   ['cleanup', 'alias', 'intermediate', 'unclean', 'equal_timestamps_cleanup',
                 'preserve'],
