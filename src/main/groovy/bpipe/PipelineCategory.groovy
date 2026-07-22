@@ -883,6 +883,11 @@ class PipelineCategory {
                 String childName = nameParts.join('_')
 
                 Pipeline child = parent.fork(branchPoint, childName, forkId, pipelineChannel)
+                
+                List<PipelineStage> channelStages = []
+                if(pipelineChannel)
+                    channelStages = child.createChannelPriorityStages(childName, pipelineChannel)
+                
                 forkId = child.id
                 currentStage.children << child
                 if(mergePoint)
@@ -891,7 +896,7 @@ class PipelineCategory {
                 threads << new BranchRunner(parent, child, files, childName, segmentClosure, applyName)
 
                 PipelineStage dummyPriorStage = parent.createDummyStage(files)
-                threads << new BranchRunner(parent, child, [dummyPriorStage], childName, segmentClosure, applyName)
+                threads << new BranchRunner(parent, child, (List<PipelineStage>)[dummyPriorStage, *channelStages], childName, segmentClosure, applyName)
                 childPipelines << child
             }
         }

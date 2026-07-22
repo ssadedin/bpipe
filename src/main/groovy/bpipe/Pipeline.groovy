@@ -1255,12 +1255,7 @@ public class Pipeline implements ResourceRequestor {
         p.stages = new ArrayList<PipelineStage>(this.stages)
 
         if(pipelineChannel) {
-
             p.branch.properties[pipelineChannel.name] = childName
-
-            List<PipelineStage> channelStages = createChannelPriorityStages(childName, pipelineChannel)
-            
-            p.stages.addAll(channelStages)
         }
 
         this.children << p
@@ -1279,7 +1274,7 @@ public class Pipeline implements ResourceRequestor {
      *          inputs that would otherwise be resolved.
      */
     @CompileStatic
-    private List<PipelineStage> createChannelPriorityStages(String branchName, PipelineChannel pipelineChannel) {
+    List<PipelineStage> createChannelPriorityStages(String branchName, PipelineChannel pipelineChannel) {
         List<PipelineStage> inChannel = this.stages.findAll { stage ->
             log.info "Checking stage $stage.stageName with branch $stage.context.branch.name for input to channel branch $branchName, properties: " + stage.context.branch.properties
             return stage.context.branch.belongsToChannel(pipelineChannel)
