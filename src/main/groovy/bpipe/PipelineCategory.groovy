@@ -893,8 +893,6 @@ class PipelineCategory {
                 if(mergePoint)
                     child.setMergePoint(currentStage)
 
-                threads << new BranchRunner(parent, child, files, childName, segmentClosure, applyName)
-
                 PipelineStage dummyPriorStage = parent.createDummyStage(files)
                 threads << new BranchRunner(parent, child, (List<PipelineStage>)[dummyPriorStage, *channelStages], childName, segmentClosure, applyName)
                 childPipelines << child
