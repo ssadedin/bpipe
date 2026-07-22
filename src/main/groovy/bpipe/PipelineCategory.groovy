@@ -717,7 +717,7 @@ class PipelineCategory {
                     child.branch.metadata = metadata
                     forkId = child.id
                     forkStage.children << child
-                    threads << new BranchRunner(parent, child, [], childName, segmentClosure, true)
+                    threads << new BranchRunner(parent, child, (List<PipelineStage>)[], childName, segmentClosure, true)
                     childPipelines << child
                 }
             }
@@ -887,7 +887,11 @@ class PipelineCategory {
                 currentStage.children << child
                 if(mergePoint)
                     child.setMergePoint(currentStage)
+
                 threads << new BranchRunner(parent, child, files, childName, segmentClosure, applyName)
+
+                PipelineStage dummyPriorStage = parent.createDummyStage(files)
+                threads << new BranchRunner(parent, child, [dummyPriorStage], childName, segmentClosure, applyName)
                 childPipelines << child
             }
         }

@@ -37,7 +37,7 @@ class BranchRunner implements Runnable {
     
     final Pipeline child
     
-    final List<PipelineFile> files
+    final List<PipelineStage> priorStages
     
     final String childName
     
@@ -45,11 +45,11 @@ class BranchRunner implements Runnable {
     
     final boolean applyName
     
-    public BranchRunner(Pipeline parent, Pipeline child, List<PipelineFile> files, String childName, Closure segmentClosure, boolean applyName) {
+    public BranchRunner(Pipeline parent, Pipeline child, List<PipelineStage> priorStages, String childName, Closure segmentClosure, boolean applyName) {
         super();
         this.parent = parent;
         this.child = child;
-        this.files = files;
+        this.priorStages = priorStages;
         this.childName = childName;
         this.segmentClosure = segmentClosure;
         this.applyName = applyName;
@@ -58,14 +58,13 @@ class BranchRunner implements Runnable {
     @Override
     public void run() {
         try {
-            // First we make a "dummy" stage that contains the inputs
-            // to the next stage as outputs.  This allows later logic
-            // to find these "inputs" correctly when it expects to see
-            // all "inputs" reflected as some output of an earlier stage
-            PipelineStage dummyPriorStage = parent.createDummyStage(files)
-            child.addStage(dummyPriorStage)
+            for(PipelineStage stage in priorStages) {
+                child.addStage(stage)
+            }
             child.initBranch(childName, !applyName)
             child.branch.setParent(parent.branch)
+            
+            List<PipelineFile> files = priorStages.isEmpty() ? [] : (List<PipelineFile>)Utils.box(priorStages[-1].context.@output)
             child.runSegment(files, segmentClosure)
             child.finished = true
         }
