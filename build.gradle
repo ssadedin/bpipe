@@ -574,6 +574,175 @@ task dist(dependsOn: stage)  {
   }
 }
 
+// ===== SDKMAN! Publishing =====
+//
+// Publishes a release to SDKMAN! using the vendor API at https://vendors.sdkman.io.
+//
+// Credentials are read from the sdkmanConsumerKey / sdkmanConsumerToken Gradle properties,
+// falling back to the SDKMAN_CONSUMER_KEY / SDKMAN_CONSUMER_TOKEN environment variables.
+// NOTE: the project gradle.properties is checked into version control, so prefer putting the
+// real values in ~/.gradle/gradle.properties (Gradle merges both, home taking precedence).
+//
+// The release must already be uploaded to GitHub before publishing: SDKMAN only stores the
+// URL, it does not host the archive. SDKMAN unpacks with unzip, so the URL must point at the
+// .zip distribution, not the .tar.gz.
+//
+// Tasks:
+//   sdkmanRelease      - register the version with SDKMAN (does not change the default)
+//   sdkmanDefault      - make the version the default that 'sdk install bpipe' installs
+//   sdkmanAnnounce     - announce the release on the SDKMAN broadcast channel
+//   sdkmanMajorRelease - release + default + announce (the normal full release)
+//   sdkmanMinorRelease - release + announce, leaving the default version unchanged
+//
+// Overridable with -PsdkmanVersion=, -PsdkmanUrl=, -PsdkmanCandidate=, -PsdkmanHashtag=
+// Add -PsdkmanDryRun to print the requests that would be made without sending them.
+// Add -PsdkmanSkipUrlCheck to skip verifying that the release URL is downloadable.
+
+project.ext {
+    SDKMAN_API = 'https://vendors.sdkman.io'
+    sdkmanCandidate = project.findProperty('sdkmanCandidate') ?: 'bpipe'
+    sdkmanVersion = project.findProperty('sdkmanVersion') ?: VERSION
+    sdkmanHashtag = project.findProperty('sdkmanHashtag') ?: 'bpipe'
+}
+
+project.ext.sdkmanUrl = project.findProperty('sdkmanUrl') ?:
+    "https://github.com/ssadedin/bpipe/releases/download/${project.ext.sdkmanVersion}/bpipe-${project.ext.sdkmanVersion}.zip"
+
+/**
+ * Resolve the SDKMAN vendor credentials, failing with a helpful message if they are not set
+ */
+def sdkmanCredentials() {
+    String key = project.findProperty('sdkmanConsumerKey') ?: System.getenv('SDKMAN_CONSUMER_KEY')
+    String token = project.findProperty('sdkmanConsumerToken') ?: System.getenv('SDKMAN_CONSUMER_TOKEN')
+
+    if(!key || !token) {
+        throw new GradleException(
+            "SDKMAN credentials not found.\n\n" +
+            "Set sdkmanConsumerKey and sdkmanConsumerToken in ~/.gradle/gradle.properties\n" +
+            "(preferred - the project gradle.properties is in version control), or set the\n" +
+            "SDKMAN_CONSUMER_KEY and SDKMAN_CONSUMER_TOKEN environment variables."
+        )
+    }
+
+    return [key: key, token: token]
+}
+
+/**
+ * Send a request to the SDKMAN vendor API, throwing a GradleException if it does not succeed
+ */
+def sdkmanRequest(String method, String path, Map body) {
+
+    String json = groovy.json.JsonOutput.toJson(body)
+
+    if(project.hasProperty('sdkmanDryRun')) {
+        logger.lifecycle("[sdkman dry run] $method ${SDKMAN_API}$path")
+        logger.lifecycle("[sdkman dry run] $json")
+        return
+    }
+
+    def creds = sdkmanCredentials()
+
+    HttpURLConnection conn = (HttpURLConnection)new URL(SDKMAN_API + path).openConnection()
+    conn.requestMethod = method
+    conn.doOutput = true
+    conn.connectTimeout = 30000
+    conn.readTimeout = 60000
+    conn.setRequestProperty('Consumer-Key', creds.key)
+    conn.setRequestProperty('Consumer-Token', creds.token)
+    conn.setRequestProperty('Content-Type', 'application/json')
+    conn.setRequestProperty('Accept', 'application/json')
+
+    conn.outputStream.withWriter('UTF-8') { it << json }
+
+    int code = conn.responseCode
+    String response = (code >= 400 ? conn.errorStream : conn.inputStream)?.getText('UTF-8')
+
+    if(code >= 400)
+        throw new GradleException("SDKMAN $method $path failed with HTTP $code: ${response ?: '(no response body)'}")
+
+    logger.lifecycle("SDKMAN $method $path succeeded (HTTP $code) ${response ?: ''}")
+}
+
+/**
+ * Verify that the release archive is actually downloadable before registering it with SDKMAN,
+ * since a bad URL results in a broken release that has to be cleaned up manually
+ */
+def sdkmanCheckUrl(String url) {
+
+    if(project.hasProperty('sdkmanSkipUrlCheck') || project.hasProperty('sdkmanDryRun')) {
+        logger.lifecycle("Skipping check of release URL $url")
+        return
+    }
+
+    logger.lifecycle("Checking release URL is downloadable: $url")
+
+    HttpURLConnection conn = (HttpURLConnection)new URL(url).openConnection()
+    conn.requestMethod = 'HEAD'
+    conn.instanceFollowRedirects = true
+    conn.connectTimeout = 30000
+    conn.readTimeout = 60000
+
+    int code = conn.responseCode
+    if(code != 200) {
+        throw new GradleException(
+            "The release URL $url returned HTTP $code.\n\n" +
+            "Upload the distribution archive to the GitHub release before publishing to SDKMAN,\n" +
+            "or override the URL with -PsdkmanUrl=<url>. Use -PsdkmanSkipUrlCheck to bypass this check."
+        )
+    }
+}
+
+tasks.register('sdkmanRelease') {
+    group = 'publishing'
+    description = "Register version ${project.ext.sdkmanVersion} of Bpipe with SDKMAN (does not change the default version)"
+    doLast {
+        sdkmanCheckUrl(sdkmanUrl)
+        sdkmanRequest('POST', '/release', [
+            candidate: sdkmanCandidate,
+            version  : sdkmanVersion,
+            url      : sdkmanUrl,
+            platform : 'UNIVERSAL'
+        ])
+    }
+}
+
+tasks.register('sdkmanDefault') {
+    group = 'publishing'
+    description = "Make version ${project.ext.sdkmanVersion} the default version installed by SDKMAN"
+    mustRunAfter 'sdkmanRelease'
+    doLast {
+        sdkmanRequest('PUT', '/default', [
+            candidate: sdkmanCandidate,
+            version  : sdkmanVersion
+        ])
+    }
+}
+
+tasks.register('sdkmanAnnounce') {
+    group = 'publishing'
+    description = "Announce version ${project.ext.sdkmanVersion} on the SDKMAN broadcast channel"
+    mustRunAfter 'sdkmanRelease', 'sdkmanDefault'
+    doLast {
+        sdkmanRequest('POST', '/announce/struct', [
+            candidate: sdkmanCandidate,
+            version  : sdkmanVersion,
+            hashtag  : sdkmanHashtag
+        ])
+    }
+}
+
+tasks.register('sdkmanMajorRelease') {
+    group = 'publishing'
+    description = "Publish version ${project.ext.sdkmanVersion} to SDKMAN, make it the default and announce it"
+    dependsOn 'sdkmanRelease', 'sdkmanDefault', 'sdkmanAnnounce'
+}
+
+tasks.register('sdkmanMinorRelease') {
+    group = 'publishing'
+    description = "Publish version ${project.ext.sdkmanVersion} to SDKMAN and announce it, leaving the default version unchanged"
+    dependsOn 'sdkmanRelease', 'sdkmanAnnounce'
+}
+
 // ===== E2E Test Task Registrations =====
 //
 // Groups are defined by lists of name prefixes. A test directory matches a group if its
