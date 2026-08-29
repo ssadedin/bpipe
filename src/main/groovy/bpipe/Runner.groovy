@@ -145,6 +145,13 @@ class Runner {
      */
     public static Set<String> devSkip = [] as Set
     
+    /**
+     * Set while dev mode is re-evaluating a pipeline script that the user has edited.
+     * Used to suppress any run statement in the re-evaluated script, since reloading
+     * the code must not launch another pipeline.
+     */
+    public static boolean codeReloadInProgress = false
+    
     public static Map<String, String> devModified = [:]
     
     public static boolean cleanupRequired = false

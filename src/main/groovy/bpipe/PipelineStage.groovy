@@ -230,15 +230,27 @@ class PipelineStage {
                 try {
                     runBody()
                     context.finalizePendingProduces()
+
+                    // In dev mode, inputs that could not be resolved are substituted with
+                    // placeholders so that the stage can be evaluated as far as the command it
+                    // would have run.  If the body finished without ever getting that far then
+                    // break here instead, so that placeholder inputs are never handed on to the
+                    // next stage.
+                    if(context.hasUnresolvedInputs() && context.devInteractive) {
+                        log.info "Stage $stageName completed its body with unresolved inputs - breaking for dev interaction"
+                        context.printMissingInputDevBreak()
+                        throw new InputMissingDevRetry("Stage $stageName could not resolve one or more of its inputs")
+                    }
+
                     break
                 }
                 catch(PipelineDevRetry e) {
-                    waitForDevInteraction()
-                    if(this.stubbed) {
-                        List<PipelineFile> stubOutputs = resolveStubOutputs(e)
-                        if(stubOutputs) {
-                            context.createStubOutputs(stubOutputs)
-                        }
+                    if(e instanceof InputMissingDevRetry) {
+                        // This break is raised outside of the normal command display, so the
+                        // stage context has to be shown here instead
+                        context.printMissingInputDevBreak()
+                    }
+                    if(handleDevRetry(e)) {
                         break
                     }
                 }
@@ -623,6 +635,25 @@ class PipelineStage {
     }
     
     /**
+     * Wait for the user to interact with this stage after a dev retry has been
+     * triggered, and stub the outputs of the stage if they requested that.
+     *
+     * @return true if the stage was stubbed, and so is complete, false if the body
+     *         of the stage should be retried
+     */
+    boolean handleDevRetry(PipelineDevRetry e) {
+        waitForDevInteraction()
+        if(this.stubbed) {
+            List<PipelineFile> stubOutputs = resolveStubOutputs(e)
+            if(stubOutputs) {
+                context.createStubOutputs(stubOutputs)
+            }
+            return true
+        }
+        return false
+    }
+
+    /**
      * Whether this stage was stubbed in dev mode (outputs are placeholders)
      */
     boolean stubbed = false
@@ -648,7 +679,7 @@ class PipelineStage {
         if(!skipped)
             Thread.sleep(1200) 
         
-        List<File> pathsToCheck = Pipeline.allLoadedPaths.collect { new File((String)it) } + Config.resolvedConfigFiles + [devResponseFile]
+        List<File> pathsToCheck = Pipeline.allLoadedPaths.collect { new File((String)it) } + Config.resolvedConfigFiles + resolveMainScripts() + [devResponseFile]
         log.info "Checking paths :" + pathsToCheck
         
         String modifiedPath = null
@@ -704,11 +735,25 @@ class PipelineStage {
                 Runner.devModified[stageName]= modifiedPath
                 Pipeline.allLoadedPaths.remove(modifiedPath)
                 Runner.binding.readOnly = false
-                GroovyShell shell = Pipeline.load(modifiedPath, false)
-                Runner.binding.readOnly = true
+                Runner.codeReloadInProgress = true
+                GroovyShell shell
+                try {
+                    shell = Pipeline.load(modifiedPath, false)
+                }
+                finally {
+                    Runner.codeReloadInProgress = false
+                    Runner.binding.readOnly = true
+                }
                 Pipeline.allLoadedPaths.add(modifiedPath)
-                this.body = (Closure)shell.getVariable(stageName)
-                log.info "Reloaded $stageName from $modifiedPath"
+
+                Closure reloadedBody = (Closure)shell.getVariable(stageName)
+                if(reloadedBody) {
+                    this.body = reloadedBody
+                    log.info "Reloaded $stageName from $modifiedPath"
+                }
+                else {
+                    log.warning("Stage $stageName was not defined in reloaded file $modifiedPath - continuing with existing code")
+                }
                 log.info "Retrying due to dev retry"
             }
             
@@ -718,11 +763,37 @@ class PipelineStage {
             pipeline.nameApplied = originalNameApplied
             context.@defaultOutput = originalDefaultOutput
             context.@output = originalOutput
+
+            // A from() clause in the previous pass of the body replaces the direct inputs
+            // of the stage, and any inputs that could not be resolved have been substituted
+            // with placeholders.  Put the stage back to the inputs it was given, so that the
+            // retried body resolves everything from scratch.
+            if(originalInputs)
+                context.setRawInput((List)originalInputs)
+
             initializeStage(pipeline)
         }
         finally {
             devResponseFile.delete()
         }
+    }
+    
+    /**
+     * The script(s) the pipeline was launched from, as long as they are local files.
+     * These are watched during dev mode, so that the user can edit the pipeline they
+     * are developing and have the stage reload.
+     */
+    List<File> resolveMainScripts() {
+        String scriptPath = Config.config.script
+        if(!scriptPath)
+            return []
+
+        File scriptFile = new File(scriptPath)
+        if(!scriptFile.isFile() && Runner.scriptDirectory) {
+            scriptFile = new File(Runner.scriptDirectory, scriptPath)
+        }
+
+        return scriptFile.isFile() ? [scriptFile] : []
     }
     
     

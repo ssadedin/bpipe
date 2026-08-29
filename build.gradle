@@ -798,6 +798,7 @@ def e2eTestGroups = [
     Resources: ['thread', 'resource_limit', 'maxmem', 'memory_variable', 'sge', 'torque',
                 'rscript', 'file_notifications', 'send_http_json', 'send_to_file',
                 'query_with_outputdir', 'output_branch_report'],
+    Dev:       ['dev_', 'stub_dev'],
 ]
 
 def e2eParallelism = Integer.parseInt(project.findProperty('e2eParallel') ?: '1')

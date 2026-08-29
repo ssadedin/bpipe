@@ -48,6 +48,7 @@ import bpipe.storage.LocalFileSystemStorageLayer
 import bpipe.storage.LocalPipelineFile
 import bpipe.storage.StorageLayer
 import bpipe.storage.UnknownStoragePipelineFile
+import bpipe.storage.UnresolvedInputPipelineFile
 
 /**
 * This context defines implicit functions and variables that are
@@ -276,6 +277,36 @@ class PipelineContext {
    boolean probeMode = false
    
    /**
+    * Inputs that this stage asked for but that could not be resolved to real files.
+    * <p>
+    * These are only collected when running interactively in dev mode, where the
+    * unresolved inputs are substituted with placeholders so that the stage can be
+    * evaluated as far as the command it would have executed.  The command is then
+    * displayed along with an explanation of what could not be resolved, and the user
+    * gets the usual opportunity to fix the pipeline and retry the stage.
+    */
+   List<UnresolvedInput> unresolvedInputs = []
+   
+   /**
+    * An additional error message reported when inputs could not be resolved, used
+    * in cases where the missing input cannot be attributed to a specific spec.
+    */
+   String unresolvedInputMessage = null
+   
+   /**
+    * A command that was rendered with markers in place of inputs that could not be
+    * resolved, kept so that it can be displayed if the stage breaks without ever
+    * reaching the normal dev mode command display.
+    */
+   String unresolvedCommand = null
+   
+   /**
+    * Pattern matching the markers rendered in place of input references that could
+    * not be resolved while evaluating a command in dev mode.
+    */
+   final static String UNRESOLVED_MARKER_PATTERN = /<unresolved:[^>]*>/
+   
+   /**
     * The name for this segment of the pipeline.  The name is blank by default but 
     * is non-blank when pipeline branches are created from chromosomes or file name matches.
     */
@@ -352,6 +383,13 @@ class PipelineContext {
         this.inferredOutputs = []
         this.allInferredOutputs = []
         this.allResolvedInputs = []
+        this.unresolvedInputs = []
+        this.unresolvedInputMessage = null
+        this.unresolvedCommand = null
+
+        // Placeholders substituted for unresolved inputs in dev mode must never carry
+        // over into a retry of the stage, or they would be treated as real inputs.
+        removeUnresolvedInputPlaceholders()
         this.internalOutputs = []
         this.pendingGlobOutputs = []
         this.allUsedInputWrappers = new TreeMap()
@@ -1973,7 +2011,7 @@ class PipelineContext {
     @CompileStatic
     void exec(GString cmd) {
         checkAndClearImplicits(cmd)
-        exec(cmd, true)
+        exec(renderOrMarkUnresolvedInputs(cmd), true)
     }
     
     /**
@@ -1984,7 +2022,7 @@ class PipelineContext {
     @CompileStatic
     void exec(GString cmd, String config) {
         checkAndClearImplicits(cmd)
-        exec(cmd, true, config)
+        exec(renderOrMarkUnresolvedInputs(cmd), true, config)
     }
     
     /**
@@ -2130,6 +2168,8 @@ class PipelineContext {
                 commandReferencedOutputs.each { outPath ->
                     prettyCmd = prettyCmd.replaceAll(outPath, "${ansi().fgRed()}$outPath${ansi().fgDefault()}")
                 }
+
+                prettyCmd = highlightUnresolvedInputs(prettyCmd)
                 
                 // __bpipe_lazy_resource_threads__
                 String threadsMsg = ''
@@ -2193,6 +2233,8 @@ class PipelineContext {
                     if(configObject.containsKey(key.toLowerCase()))
                         println((key.take(11).padRight(12)) + ": " + configObject[key.toLowerCase()])
                 }
+
+                printUnresolvedInputsInfo()
 
                 println "\n${ansi().fgBlue()}Waiting for changes or <enter> to continue ....${ansi().fgDefault()}\n"
                 
@@ -2603,7 +2645,7 @@ class PipelineContext {
       associateCommandId(command, checkOutputs)
      
       List<Path> outOfDateOutputs = resolveOutOfDateOutputs(actualResolvedInputs, checkOutputs)
-      if(!probeMode && checkOutputs && !outOfDateOutputs) {
+      if(!probeMode && checkOutputs && !outOfDateOutputs && !hasUnresolvedInputs()) {
           command.outputs = checkOutputs.unique(false) // TODO: unique { it.path } ?
           return createUpToDateExecutor(command, checkOutputs)
       }
@@ -3237,6 +3279,16 @@ class PipelineContext {
     private checkForMissingInputs(orig, List exts, List resolvedInputs) {
         List missingInputs = resolvedInputs.findIndexValues { it == null }
         if(missingInputs) {
+
+            // In dev mode, don't abort the stage: substitute placeholders for the inputs
+            // that could not be found, so that the stage gets as far as the command it
+            // would have run.  That command is then displayed along with the list of
+            // unresolved inputs, and the user can fix the pipeline and retry the stage.
+            if(devInteractive) {
+                markInputsUnresolved(orig, exts, resolvedInputs, missingInputs)
+                return
+            }
+
             String branchHierarchy = branch.hierarchy()
             String branchInfo = branchHierarchy ? "\n\nIn branch:\n\n" + branchHierarchy : ""
             if(exts.size()>1)
@@ -3991,6 +4043,9 @@ class PipelineContext {
             if(isStub)
                 println "- $inp ${ansi().fgYellow()}(stubbed)${ansi().fgDefault()}"
             else
+            if(inp instanceof UnresolvedInputPipelineFile)
+                println "- $inp ${ansi().fgRed()}(could not be resolved)${ansi().fgDefault()}"
+            else
                 println "- $inp"
         }
         if(this.@input.size()>0)
@@ -4009,6 +4064,220 @@ class PipelineContext {
         }
         if(props)
             println ""
+    }
+
+    /**
+     * Whether this stage is being run interactively in dev mode, ie. whether errors
+     * that would normally abort the whole pipeline should instead break the stage, so
+     * that the user can fix the pipeline and retry it.
+     * <p>
+     * Once the user chooses to continue past a stage, that stage is added to the list
+     * of dev-skipped stages, at which point normal (aborting) behaviour resumes. This
+     * means a missing input is only ever tolerated interactively: a run the user
+     * decides to press on with still fails with the usual error.
+     */
+    boolean isDevInteractive() {
+        if(Runner.devSkip.contains(stageName))
+            return false
+
+        return Runner.devMode || (Config.config.devAt ? Config.config.devAt.contains(stageName) : false)
+    }
+
+    /**
+     * Whether any inputs of this stage could not be resolved while running in dev mode
+     */
+    boolean hasUnresolvedInputs() {
+        !unresolvedInputs.isEmpty() || unresolvedInputMessage != null
+    }
+
+    /**
+     * Pause the writing of command output while a dev mode prompt is being displayed,
+     * so that the prompt is not interleaved with the output of commands running in
+     * other branches.
+     */
+    void lockDevRetry() {
+        if(!devRetryLock.isWriteLockedByCurrentThread())
+            devRetryLock.writeLock().lock()
+    }
+
+    /**
+     * Removes any placeholder inputs substituted in dev mode from the state of this
+     * context.  Called whenever the stage is initialized, so that a retry of the stage
+     * resolves its inputs from scratch.
+     */
+    void removeUnresolvedInputPlaceholders() {
+        if(this.@input?.any { it instanceof UnresolvedInputPipelineFile }) {
+            log.info "Removing unresolved input placeholders from direct inputs of stage $stageName"
+            this.@input = this.@input.findAll { !(it instanceof UnresolvedInputPipelineFile) }
+        }
+
+        resolutionInputs.each { List inputs ->
+            inputs.removeAll { it instanceof UnresolvedInputPipelineFile }
+        }
+    }
+
+    /**
+     * Records the inputs that could not be resolved, substituting a placeholder file in
+     * place of each one, so that evaluation of the stage can continue as far as the
+     * command it would have executed.
+     *
+     * @param orig            the input specification(s) the user asked for
+     * @param exts            the specification(s) after expansion of any file type mappings
+     * @param resolvedInputs  the inputs resolved for each spec, null where not resolved
+     * @param missingIndices  the indices of the specs that could not be resolved
+     */
+    void markInputsUnresolved(orig, List exts, List resolvedInputs, List missingIndices) {
+        List requested = Utils.box(orig)
+
+        missingIndices.each { Object indexObject ->
+            int index = ((Number)indexObject).intValue()
+
+            String spec = String.valueOf(index < requested.size() ? requested[index] : exts[index])
+
+            unresolvedInputs << new UnresolvedInput(spec, "requested by from('${spec}')")
+
+            resolvedInputs[index] = [new UnresolvedInputPipelineFile(spec)]
+
+            log.info "Dev mode: substituting placeholder for unresolved input $spec in stage $stageName"
+        }
+    }
+
+    /**
+     * Converts the given command into its final string form.
+     * <p>
+     * If an input reference inside the command cannot be resolved, and this stage is
+     * being run interactively in dev mode, the reference is rendered as a marker and
+     * recorded as unresolved, so that the attempted command can still be shown to the
+     * user. Otherwise the original error is thrown.
+     */
+    String renderOrMarkUnresolvedInputs(GString cmd) {
+        try {
+            return cmd.toString()
+        }
+        catch(InputMissingError e) {
+            if(!devInteractive)
+                throw e
+
+            log.info "Dev mode: an input reference in a command of stage $stageName could not be resolved: $e.message"
+
+            String rendered = renderUnresolvedInputs(cmd)
+
+            if(unresolvedInputs.isEmpty()) {
+                // The failure could not be attributed to a specific reference within
+                // the command, so keep the message for display alongside the command
+                unresolvedInputMessage = e.message
+            }
+
+            // Keep the command around in case the stage breaks without ever reaching
+            // the normal dev mode command display
+            unresolvedCommand = rendered
+
+            return rendered
+        }
+    }
+
+    /**
+     * Renders the given GString, replacing any embedded value that fails to resolve
+     * with a marker naming the input that was asked for.
+     */
+    String renderUnresolvedInputs(GString cmd) {
+        String[] parts = cmd.strings
+        Object[] values = cmd.values
+
+        StringBuilder b = new StringBuilder()
+
+        for(int i = 0; i < values.length; i++) {
+            b.append(parts[i])
+
+            Object value = values[i]
+
+            try {
+                b.append(value instanceof GString ? renderUnresolvedInputs((GString)value) : String.valueOf(value))
+            }
+            catch(InputMissingError e) {
+                String spec = value instanceof PipelineInput ? (value.extensionPrefix ?: 'input') : String.valueOf(value)
+
+                unresolvedInputs << new UnresolvedInput(spec, "referenced as \$input.$spec in the command of stage $stageName")
+
+                b.append("<unresolved:$spec>")
+            }
+        }
+
+        b.append(parts[parts.length - 1])
+
+        return b.toString()
+    }
+
+    /**
+     * Colourises the markers rendered in place of input references that could not be
+     * resolved, so that they stand out when the attempted command is displayed in dev
+     * mode.
+     * <p>
+     * Note that placeholder inputs substituted for unresolved <code>from</code> specs
+     * are not marked up here, as they are already displayed as inputs of the stage.
+     */
+    String highlightUnresolvedInputs(String cmd) {
+        if(!hasUnresolvedInputs())
+            return cmd
+
+        Matcher m = Pattern.compile(UNRESOLVED_MARKER_PATTERN).matcher(cmd)
+        StringBuffer marked = new StringBuffer()
+        while(m.find()) {
+            m.appendReplacement(marked, Matcher.quoteReplacement(ansi().fgRed().toString() + m.group() + ansi().fgDefault().toString()))
+        }
+        m.appendTail(marked)
+
+        return marked.toString()
+    }
+
+    /**
+     * Prints an explanation of the inputs that could not be resolved for this stage,
+     * along with the options available to the user. Called from within the dev mode
+     * command display, so the prompt to wait for user interaction is printed by the
+     * caller.
+     */
+    void printUnresolvedInputsInfo() {
+        if(!hasUnresolvedInputs())
+            return
+
+        println "${ansi().fgRed()}${ansi().bold()}ERROR: " + (unresolvedInputs.size() == 1
+                    ? "The following input could not be resolved:"
+                    : "The following inputs could not be resolved:") + "${ansi().boldOff()}${ansi().fgDefault()}\n"
+
+        unresolvedInputs.each { UnresolvedInput ui ->
+            println "    " + (ui.spec ?: '').padRight(32) + "${ansi().fgYellow()}${ui.source}${ansi().fgDefault()}"
+        }
+
+        if(unresolvedInputMessage) {
+            println "\n${ansi().fgRed()}$unresolvedInputMessage${ansi().fgDefault()}"
+        }
+
+        println """
+        This stage cannot be run until the input(s) listed above can be found.  You can:
+
+          * fix the pipeline (or the input files) and save - this stage will reload and retry
+          * press <enter> to fail this stage with the usual missing input error
+          * type 'stub' to create empty placeholder outputs for this stage and move on
+        """.stripIndent()
+    }
+
+    /**
+     * Displays the context of a stage that could not resolve its inputs, for the cases
+     * where the normal command display was not reached - ie. the failure happened while
+     * assembling the stage rather than at the start of a command.
+     */
+    void printMissingInputDevBreak() {
+        lockDevRetry()
+
+        printDevContextInfo()
+
+        if(unresolvedCommand) {
+            println "Stage $stageName would execute:\n\n        ${highlightUnresolvedInputs(unresolvedCommand)}\n"
+        }
+
+        printUnresolvedInputsInfo()
+
+        println "\n${ansi().fgBlue()}Waiting for changes or <enter> to continue ....${ansi().fgDefault()}\n"
     }
 }
 
