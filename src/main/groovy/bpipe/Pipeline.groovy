@@ -1513,8 +1513,17 @@ public class Pipeline implements ResourceRequestor {
         }
 
         loadedPaths << f
+        loadedScriptFiles.add(f)
         return shell
     }
+
+    /**
+     * Every script file loaded via {@link #load(String, boolean)} during this
+     * invocation, whether from a pipeline's top-level statements or from within
+     * a stage. Unlike {@link #loadedPaths} this is never drained, so it remains
+     * available to consumers such as the ctags generator in generate-dsl mode.
+     */
+    static Set<File> loadedScriptFiles = new HashSet()
     
     /**
      * Map of custom file types (extension => list of mappings)
@@ -1735,10 +1744,54 @@ public class Pipeline implements ResourceRequestor {
         File dsldFile = new File(dsldOutputFile)
         dsldFile.text = dsldContent
 
+        // Generate the ctags support files for editors that don't understand
+        // GDSL/DSLD descriptors (vim, emacs, etc). A stub source file provides
+        // the anchor lines and the tags file points at them, both in Exuberant
+        // Ctags format.
+        String ctagsSourceOutputFile = outputFile.replaceAll(/\.gdsl$/, '.stub.groovy')
+        if(ctagsSourceOutputFile == outputFile) {
+            ctagsSourceOutputFile = outputFile + '.stub.groovy'
+        }
+        String tagsOutputFile = outputFile.replaceAll(/\.gdsl$/, '.tags')
+        if(tagsOutputFile == outputFile) {
+            tagsOutputFile = outputFile + '.tags'
+        }
+
+        // The tags file references the stub file; both live side by side, so the
+        // stub's basename as seen from the tags file's directory is what editors need.
+        //
+        // Stages and variables the user defined are resolved to their real location
+        // in the pipeline script (or a loaded library) so that tag navigation opens
+        // the actual definition. Bpipe's own built-in methods etc. have no such
+        // definition and remain anchored in the stub file.
+        List<File> definitionFiles = []
+        if(Config.config.script) {
+            definitionFiles << new File(Config.config.script as String)
+        }
+        // Use the never-drained registry of scripts loaded via load(), since
+        // Pipeline.loadedPaths is emptied by stage discovery before this runs.
+        definitionFiles.addAll(Pipeline.loadedScriptFiles.findAll { it != null && it.exists() })
+
+        Map<String,String> ctagsContent = GenerateDSLCommand.generateCtagsContent(
+            typedVariables,
+            stageNames,
+            new File(ctagsSourceOutputFile).name,
+            definitionFiles,
+            new File(tagsOutputFile).parentFile)
+
+        // Write the ctags stub source file
+        File ctagsSourceFile = new File(ctagsSourceOutputFile)
+        ctagsSourceFile.text = ctagsContent.stub
+
+        // Write the ctags tags file
+        File tagsFile = new File(tagsOutputFile)
+        tagsFile.text = ctagsContent.tags
+
         println ""
         println "Generated IDE support files:"
-        println "  IntelliJ IDEA: ${gdslFile.absolutePath}"
-        println "  Eclipse:       ${dsldFile.absolutePath}"
+        println "  IntelliJ IDEA:    ${gdslFile.absolutePath}"
+        println "  Eclipse:          ${dsldFile.absolutePath}"
+        println "  Ctags (vim/emacs): ${tagsFile.absolutePath}"
         println ""
         println "  ${stageNames.size()} pipeline stages"
         println "  ${typedVariables.size() - stageNames.size() - channelNames.size()} variables"
@@ -1747,6 +1800,8 @@ public class Pipeline implements ResourceRequestor {
         }
         println ""
         println "Place these files in your project root for IDE support."
+        println "For ctags-based editors, point your tag search at ${tagsFile.name}"
+        println "(the companion ${ctagsSourceFile.name} file provides the tag anchor lines)."
         println ""
     }
 
