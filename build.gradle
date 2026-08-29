@@ -801,6 +801,7 @@ def e2eTestGroups = [
                 'rscript', 'file_notifications', 'send_http_json', 'send_to_file',
                 'query_with_outputdir', 'output_branch_report'],
     Storage:   ['sqlite_output_tracking'],
+    Dev:       ['dev_', 'stub_dev'],
 ]
 
 def e2eParallelism = Integer.parseInt(project.findProperty('e2eParallel') ?: '1')

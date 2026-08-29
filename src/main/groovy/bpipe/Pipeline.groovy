@@ -561,6 +561,13 @@ public class Pipeline implements ResourceRequestor {
      */
     static def run(def inputFile, Object host, Closure pipelineBuilder) {
         
+        if(Runner.codeReloadInProgress) {
+            // Dev mode re-evaluates pipeline scripts the user has edited.  Reloading the
+            // code of a stage must not cause the pipeline to be launched again.
+            log.info "Ignoring call to run() while reloading pipeline code in dev mode"
+            return null
+        }
+        
         if(Config.config.mode in ["run","retry","resume","remake"] && !Runner.testMode) { 
             ExecutorPool.startPools(ExecutorFactory.instance, Config.userConfig, false, true) 
         }  
