@@ -70,6 +70,7 @@ class Dependencies {
      */
     Map<String,Long> overrideTimestamps = [:]
     
+    OutputMetaDataStore store = new PropertyFileOutputMetaDataStore()
     
     @CompileStatic
     static Dependencies getTheInstance() {
@@ -363,7 +364,7 @@ class Dependencies {
                 if(!timestamps.containsKey(o.path)) { 
                     // TODO - CLOUD - comparing just the paths will get confused if the same path exists on two
                     // storage providers
-                    if(p.exists() || this.outputFilesGenerated.contains(o) || context.@input.any { it.path == o.path}) {
+                    if(store.exists(p) || this.outputFilesGenerated.contains(o) || context.@input.any { it.path == o.path}) {
                         log.info "Not overwriting meta data for $o because it was not created or modified by stage ${context.stageName}"
                         continue
                     }
@@ -371,8 +372,8 @@ class Dependencies {
                 
                 this.outputFilesGenerated << o
                 
-                if(p.exists()) {
-                    p.read()
+                if(store.exists(p)) {
+                    store.load(p)
                 }
 
                 p.setPropertiesFromCommand(o, command, stage, branchPath)
@@ -395,7 +396,7 @@ class Dependencies {
 	@CompileStatic
     void saveOutputMetaData(OutputMetaData p) {
         flushOutputGraphCache()
-        p.save()
+        store.save(p)
         
         // If there is a cached outputgraph, update it
         if(outputGraph != null) {
@@ -821,39 +822,9 @@ class Dependencies {
      * @return
      */
     List<OutputMetaData> scanOutputFolder() {
-        int concurrency = (int)(Config.userConfig?.getOrDefault('outputScanConcurrency',5)?:5)
-        List result = []
-        Utils.time("Output folder scan (concurrency=$concurrency)") {
-            
-            List<File> files = 
-               (List)new File(OutputMetaData.OUTPUT_METADATA_DIR)
-                   .listFiles()
-                   .findAll { isOutputMetaFile(it)  } 
-                                
-            if(files.isEmpty())
-                return files
-                    
-            GParsPool.withPool(concurrency) { 
-                result.addAll(files.collectParallel { File f ->
-                    OutputMetaData.fromFile(f)
-                }.grep { it != null }.sort { it.timestamp })
-            }
-        }
-        return result
+        return store.loadAll()
     }
     
-    /**
-     * Return true if a file could be a valid output property file
-     * 
-     * Ignores files starting with ., added as a convenience because I occasionally
-     * edit files in output folder when debugging, and known files in the output folder that
-     * are not meta files.
-     */
-    @CompileStatic
-    boolean isOutputMetaFile(File file) {
-        !file.name.startsWith(".") && !file.isDirectory() && !file.name.equals("outputGraph.ser") && !file.name.equals("outputGraph2.ser")        
-    }
-
     /**
      * Return a list of GraphEntry objects whose outputs
      * do not appear as inputs for any other entries. These
