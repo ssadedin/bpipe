@@ -79,6 +79,12 @@ class PropertyFileOutputMetaDataStore implements OutputMetaDataStore {
     }
     
     @Override
+    List<OutputMetaData> loadAncestryChain(String canonicalPath) {
+        // Not supported for property files; caller falls back to full graph build
+        return null
+    }
+    
+    @Override
     void flush() {
         // no-op: property files are written synchronously
     }

@@ -286,6 +286,8 @@ class Runner {
         else 
         if(mode == "query") {
             log.info("Showing dependency graph for " + args)
+            readUserConfig()
+            Dependencies.theInstance.initStore(OutputMetaDataStoreFactory.create())
             new bpipe.cmd.QueryCommand(args as List).run(System.out)
             exit(0)
         }         

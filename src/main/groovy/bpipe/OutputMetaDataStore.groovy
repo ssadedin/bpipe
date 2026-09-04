@@ -66,4 +66,15 @@ interface OutputMetaDataStore {
      * Release any resources held by this store (connections, threads, etc.).
      */
     void close()
+    
+    /**
+     * Walk the ancestry chain of an output from external inputs down to the
+     * specified output, returning a list of {@link OutputMetaData} ordered from
+     * root (earliest ancestor) to the target output.
+     * <p>
+     * Returns an empty list if the output is not found.  Returns null if this
+     * store does not support ancestry traversal (caller should fall back to
+     * full graph build in that case).
+     */
+    List<OutputMetaData> loadAncestryChain(String canonicalPath)
 }

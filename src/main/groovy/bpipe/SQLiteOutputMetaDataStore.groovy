@@ -44,7 +44,10 @@ import bpipe.storage.StorageLayer
  * pipeline stages do not block on database I/O.  At pipeline completion,
  * {@link #flush()} drains the queue synchronously.
  * <p>
- * The schema is a single flat table matching the fields of {@link OutputMetaData}.
+ * The schema uses a flat {@code outputs} table matching the fields of
+ * {@link OutputMetaData}, plus {@code output_inputs} (input→output edges)
+ * and {@code output_parents} (pre-computed parent-child edges in the DAG)
+ * for efficient ancestry traversal.
  * 
  * @see OutputMetaDataStore
  * @see OutputMetaDataStoreFactory
@@ -147,6 +150,26 @@ class SQLiteOutputMetaDataStore implements OutputMetaDataStore {
         db.execute("CREATE INDEX IF NOT EXISTS idx_outputs_commandId ON outputs(commandId)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_outputs_stageName ON outputs(stageName)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_outputs_outputPath ON outputs(outputPath)")
+        
+        // Input edges: which inputs each output consumes
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS output_inputs (
+                output_canonical_path TEXT NOT NULL,
+                input_canonical_path  TEXT NOT NULL,
+                PRIMARY KEY (output_canonical_path, input_canonical_path)
+            )
+        """)
+        db.execute("CREATE INDEX IF NOT EXISTS idx_oi_input ON output_inputs(input_canonical_path)")
+        
+        // Pre-computed parent edges: which inputs are themselves outputs of other stages
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS output_parents (
+                output_canonical_path  TEXT NOT NULL,
+                parent_canonical_path  TEXT NOT NULL,
+                PRIMARY KEY (output_canonical_path, parent_canonical_path)
+            )
+        """)
+        db.execute("CREATE INDEX IF NOT EXISTS idx_op_parent ON output_parents(parent_canonical_path)")
     }
     
     /**
@@ -190,48 +213,89 @@ class SQLiteOutputMetaDataStore implements OutputMetaDataStore {
     }
     
     /**
-     * Insert or replace a batch of metadata entries in a single transaction.
+     * Insert or replace a batch of metadata entries in a single transaction,
+     * also updating the input and parent edge tables.
      */
     private void insertBatch(List<OutputMetaData> batch) {
-        db.withBatch("""
-            INSERT OR REPLACE INTO outputs (
-                canonicalPath, outputPath, stageName, stageId, commandId,
-                branchPath, inputs, command, tools, fingerprint,
-                timestamp, startTimeMs, createTimeMs, stopTimeMs,
-                preserve, intermediate, cleaned, stub,
-                accompanies, storage, basePath
-            ) VALUES (
-                ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?,
-                ?, ?, ?, ?,
-                ?, ?, ?, ?,
-                ?, ?, ?
-            )
-        """) { stmt ->
-            for(OutputMetaData p in batch) {
-                stmt.addBatch(
-                    p.canonicalPath ?: p.outputPath,
-                    p.outputPath,
-                    p.stageName,
-                    p.stageId,
-                    p.commandId,
-                    p.branchPath ?: '',
-                    p.inputs ? p.inputs.join(',') : '',
-                    p.command,
-                    p.tools ?: '',
-                    p.fingerprint,
-                    p.timestamp ?: 0L,
-                    p.startTimeMs ?: 0L,
-                    p.createTimeMs ?: 0L,
-                    p.stopTimeMs ?: 0L,
-                    p.preserve ? 1 : 0,
-                    p.intermediate ? 1 : 0,
-                    p.cleaned ? 1 : 0,
-                    p.stub ? 1 : 0,
-                    p.accompanies,
-                    p.storage ? p.storage.name : 'local',
-                    p.basePath
+        db.withTransaction {
+            // 1. Insert/replace main output rows
+            db.withBatch("""
+                INSERT OR REPLACE INTO outputs (
+                    canonicalPath, outputPath, stageName, stageId, commandId,
+                    branchPath, inputs, command, tools, fingerprint,
+                    timestamp, startTimeMs, createTimeMs, stopTimeMs,
+                    preserve, intermediate, cleaned, stub,
+                    accompanies, storage, basePath
+                ) VALUES (
+                    ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?,
+                    ?, ?, ?, ?,
+                    ?, ?, ?
                 )
+            """) { stmt ->
+                for(OutputMetaData p in batch) {
+                    stmt.addBatch(
+                        p.canonicalPath ?: p.outputPath,
+                        p.outputPath,
+                        p.stageName,
+                        p.stageId,
+                        p.commandId,
+                        p.branchPath ?: '',
+                        p.inputs ? p.inputs.join(',') : '',
+                        p.command,
+                        p.tools ?: '',
+                        p.fingerprint,
+                        p.timestamp ?: 0L,
+                        p.startTimeMs ?: 0L,
+                        p.createTimeMs ?: 0L,
+                        p.stopTimeMs ?: 0L,
+                        p.preserve ? 1 : 0,
+                        p.intermediate ? 1 : 0,
+                        p.cleaned ? 1 : 0,
+                        p.stub ? 1 : 0,
+                        p.accompanies,
+                        p.storage ? p.storage.name : 'local',
+                        p.basePath
+                    )
+                }
+            }
+            
+            // 2. Update input edges: delete old, insert new
+            for(OutputMetaData p in batch) {
+                String outputPath = p.canonicalPath ?: p.outputPath
+                db.execute("DELETE FROM output_inputs WHERE output_canonical_path = ?", outputPath)
+                db.execute("DELETE FROM output_parents WHERE output_canonical_path = ?", outputPath)
+            }
+            
+            db.withBatch("""
+                INSERT INTO output_inputs (output_canonical_path, input_canonical_path)
+                VALUES (?, ?)
+            """) { stmt ->
+                for(OutputMetaData p in batch) {
+                    String outputPath = p.canonicalPath ?: p.outputPath
+                    for(inp in p.inputs ?: []) {
+                        stmt.addBatch(outputPath, Utils.canonicalFileFor(inp).path)
+                    }
+                }
+            }
+            
+            // 3. Build parent edges: for each output, its inputs that exist as other outputs
+            // become parent-child edges in the DAG
+            db.withBatch("""
+                INSERT OR REPLACE INTO output_parents (output_canonical_path, parent_canonical_path)
+                VALUES (?, ?)
+            """) { stmt ->
+                for(OutputMetaData p in batch) {
+                    String outputPath = p.canonicalPath ?: p.outputPath
+                    for(inp in p.inputs ?: []) {
+                        String inputPath = Utils.canonicalFileFor(inp).path
+                        def row = db.firstRow("SELECT 1 FROM outputs WHERE canonicalPath = ?", inputPath)
+                        if(row) {
+                            stmt.addBatch(outputPath, inputPath)
+                        }
+                    }
+                }
             }
         }
     }
@@ -282,6 +346,49 @@ class SQLiteOutputMetaDataStore implements OutputMetaDataStore {
         // Then check database
         def row = db.firstRow("SELECT 1 FROM outputs WHERE outputPath = ?", p.outputPath)
         return row != null
+    }
+    
+    @Override
+    List<OutputMetaData> loadAncestryChain(String canonicalPath) {
+        List<OutputMetaData> result = []
+        
+        // Walk chain: find the target, then recursively find parents
+        String currentPath = canonicalPath
+        while(currentPath != null) {
+            def row = db.firstRow("SELECT * FROM outputs WHERE canonicalPath = ?", currentPath)
+            if(row == null) {
+                // Also try outputPath as fallback
+                row = db.firstRow("SELECT * FROM outputs WHERE outputPath = ?", currentPath)
+            }
+            if(row == null)
+                break
+            
+            OutputMetaData omd = rowToOutputMetaData(row)
+            result.add(0, omd) // prepend so result is root→target
+            
+            // Walk up to find the parent that is itself an output
+            // The parent is the first input that exists in the outputs table
+            currentPath = null
+            for(inp in omd.inputs) {
+                String inputPath = Utils.canonicalFileFor(inp).path
+                // Check output_parents table
+                def opRow = db.firstRow(
+                    "SELECT parent_canonical_path FROM output_parents WHERE output_canonical_path = ? AND parent_canonical_path = ?",
+                    omd.canonicalPath, inputPath)
+                if(opRow != null) {
+                    currentPath = inputPath
+                    break
+                }
+                // Fallback: direct check
+                def checkRow = db.firstRow("SELECT 1 FROM outputs WHERE canonicalPath = ?", inputPath)
+                if(checkRow != null) {
+                    currentPath = inputPath
+                    break
+                }
+            }
+        }
+        
+        return result
     }
     
     @Override
