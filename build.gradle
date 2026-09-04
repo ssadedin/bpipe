@@ -107,6 +107,8 @@ dependencies {
     
     implementation group: 'com.squareup.okhttp3', name: 'okhttp', version: '4.9.3'
     
+    implementation group: 'org.xerial', name: 'sqlite-jdbc', version: '3.46.1.3'
+    
     implementation group: 'com.google.cloud', name: 'google-cloud-nio', version: '0.62.0-alpha'
     implementation group: 'com.amazonaws', name: 'aws-java-sdk-ec2', version: '1.12.25'
     implementation group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.12.25'

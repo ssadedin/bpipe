@@ -49,11 +49,6 @@ import bpipe.storage.LocalPipelineFile
 @Log
 class Dependencies {
     
-    /**
-     * The file to which the output graph is saved between runs
-     */
-    final static File OUTPUT_GRAPH_CACHE_FILE = new File(".bpipe/outputs/outputGraph2.ser")
-    
     ReentrantReadWriteLock outputGraphLock = new ReentrantReadWriteLock()
     
     GraphEntry outputGraph
@@ -70,7 +65,48 @@ class Dependencies {
      */
     Map<String,Long> overrideTimestamps = [:]
     
+    /**
+     * The store used for persisting output metadata.
+     * <p>
+     * Defaults to the legacy property-file backend so that code paths which
+     * run before {@link #initStore(OutputMetaDataStore)} is called (e.g. unit tests)
+     * still work.  {@link Runner} calls {@code initStore()} at startup to configure
+     * the actual backend (usually SQLite).
+     */
     OutputMetaDataStore store = new PropertyFileOutputMetaDataStore()
+    
+    /**
+     * Whether {@link #initStore(OutputMetaDataStore)} has been explicitly called.
+     * Used by {@link #scanOutputFolder()} to auto-initialize if needed.
+     */
+    boolean storeInitialized = false
+    
+    /**
+     * Initialise the store and eagerly load the output graph.
+     * <p>
+     * Called once at startup from {@link Runner}.
+     */
+    synchronized void initStore(OutputMetaDataStore s) {
+        // Close the previous store if it was a different one (e.g. SQLite)
+        if(this.store != null && this.store != s) {
+            this.store.close()
+        }
+        this.store = s
+        this.storeInitialized = true
+        
+        // Preload the output graph from the store
+        List<OutputMetaData> outputMetaDataFiles = store.loadAll()
+        if(outputMetaDataFiles.isEmpty()) {
+            // Seed the output graph with a first stage of inputs that are
+            // essentially dummy "outputs" created from the pipeline raw inputs
+            def inps = Pipeline.rootPipeline?.stages?.getAt(0)?.context?.@input
+            if(inps == null)
+                inps = []
+            outputMetaDataFiles = ((List<PipelineFile>)Utils.box(inps)).collect { OutputMetaData.fromInputFile(it) }
+        }
+        this.outputGraph = computeOutputGraph(outputMetaDataFiles)
+        this.outputGraph.index(outputMetaDataFiles.size()*2)
+    }
     
     @CompileStatic
     static Dependencies getTheInstance() {
@@ -273,32 +309,6 @@ class Dependencies {
         return missing
     }
     
-    synchronized saveOutputGraphCache() {
-		
-		if(!OUTPUT_GRAPH_CACHE_FILE.parentFile.exists()) {
-			OUTPUT_GRAPH_CACHE_FILE.parentFile.mkdirs()
-		}
-		
-        OUTPUT_GRAPH_CACHE_FILE.withObjectOutputStream { oos ->
-            oos << outputGraph
-        }
-    }
-    
-    /**
-     * Attempt to load the output graph from previously saved serialized form, if it is available
-     * @return
-     */
-    synchronized preloadOutputGraph() {
-        if(OUTPUT_GRAPH_CACHE_FILE.exists()) {
-            Utils.time("Read cached output graph") {
-                outputGraph = OUTPUT_GRAPH_CACHE_FILE.withObjectInputStream { it.readObject() }
-                outputGraph.index(5000)
-            }
-        }
-        else {
-            log.info "No cached output graph ($OUTPUT_GRAPH_CACHE_FILE.name) available: will be computed from property files"
-        }
-    }
     
     @CompileStatic
     synchronized GraphEntry getOutputGraph() {
@@ -321,13 +331,6 @@ class Dependencies {
     
     void reset() {
         this.outputGraph = null
-    }
-    
-    void flushOutputGraphCache() {
-        if(OUTPUT_GRAPH_CACHE_FILE.exists()) {
-            log.info "Deleting output graph cache file $OUTPUT_GRAPH_CACHE_FILE.absolutePath"
-            OUTPUT_GRAPH_CACHE_FILE.delete()
-        }
     }
     
     /**
@@ -395,7 +398,6 @@ class Dependencies {
     
 	@CompileStatic
     void saveOutputMetaData(OutputMetaData p) {
-        flushOutputGraphCache()
         store.save(p)
         
         // If there is a cached outputgraph, update it
@@ -539,6 +541,9 @@ class Dependencies {
                 println "Moved $removedCount files consuming " + ((float)removedSize)/1024.0/1024.0 + " MB of space"
             }
         }
+        
+        // Ensure any pending metadata updates are persisted (critical for SQLite async backend)
+        store.flush()
     }
     
     long removeOutputFile(OutputMetaData outputFileOutputMetaData, boolean trash=false) {
@@ -593,6 +598,10 @@ class Dependencies {
                 println "\nOutput $output.outputPath is already preserved"
             }
         }
+        
+        // Ensure any pending metadata updates are persisted (critical for SQLite async backend)
+        store.flush()
+        
         println "\n$count files were preserved"
     }
    
@@ -822,6 +831,11 @@ class Dependencies {
      * @return
      */
     List<OutputMetaData> scanOutputFolder() {
+        // If the store hasn't been explicitly initialized (e.g. cleanup, query, preserve commands),
+        // auto-initialize it so the correct backend is used
+        if(!storeInitialized) {
+            initStore(OutputMetaDataStoreFactory.create())
+        }
         return store.loadAll()
     }
     

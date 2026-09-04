@@ -52,6 +52,13 @@ class PropertyFileOutputMetaDataStore implements OutputMetaDataStore {
     }
     
     @Override
+    void saveAll(List<OutputMetaData> items) {
+        for(OutputMetaData p in items) {
+            p.save()
+        }
+    }
+    
+    @Override
     void update(OutputMetaData p) {
         p.save()
     }
@@ -120,6 +127,8 @@ class PropertyFileOutputMetaDataStore implements OutputMetaDataStore {
      */
     @CompileStatic
     static boolean isOutputMetaFile(File file) {
-        !file.name.startsWith(".") && !file.isDirectory() && !file.name.equals("outputGraph.ser") && !file.name.equals("outputGraph2.ser")        
+        !file.name.startsWith(".") && !file.isDirectory() &&
+        !file.name.equals("outputGraph.ser") && !file.name.equals("outputGraph2.ser") &&
+        !file.name.equals("outputs.db")
     }
 }

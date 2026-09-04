@@ -23,6 +23,14 @@ interface OutputMetaDataStore {
     void save(OutputMetaData p)
     
     /**
+     * Persist multiple metadata entries in a single batch operation.
+     * <p>
+     * For the property-file backend this calls {@link #save(OutputMetaData)} in a loop.
+     * For the SQLite backend this performs a bulk insert bypassing the async queue.
+     */
+    void saveAll(List<OutputMetaData> items)
+    
+    /**
      * Update an existing metadata entry (e.g. preserve or cleaned status changes).
      * The default implementation delegates to {@link #save(OutputMetaData)}.
      */

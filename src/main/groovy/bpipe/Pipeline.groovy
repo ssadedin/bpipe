@@ -1967,12 +1967,15 @@ public class Pipeline implements ResourceRequestor {
     void summarizeOutputs(List stages) {
         
         Dependencies.instance.reset()
+        
+        // Flush any pending metadata writes before querying the graph
+        // (critical for the SQLite async backend — ensures all data is persisted)
+        Utils.time("Flush output metadata") {
+            Dependencies.instance.store?.flush()
+        }
+        
         def graph = Dependencies.instance.outputGraph
         List<PipelineFile> leaves = Dependencies.instance.findLeaves(graph)*.values.flatten()*.outputFile
-        
-        Utils.time("Save output graph") {
-            Dependencies.instance.saveOutputGraphCache()
-        }
         
         List<String> all = formatOutputFiles(leaves)
         

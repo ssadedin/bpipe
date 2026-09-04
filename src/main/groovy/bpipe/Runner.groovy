@@ -509,7 +509,7 @@ class Runner {
                            { /* Add event listeners that come directly from configuration */ EventManager.theInstance.configure(Config.userConfig) },
                            { Concurrency.theInstance.initFromConfig() },
                            { if(!opts['t'] && mode != "generate-dsl") { NotificationManager.theInstance.configure(Config.userConfig); configureReportsFromUserConfig() } },
-                           { Dependencies.theInstance.preloadOutputGraph() }
+                           { Dependencies.theInstance.initStore(OutputMetaDataStoreFactory.create()) }
                            ].collect{new Thread(it)}
         initThreads*.start()
 
@@ -997,6 +997,8 @@ class Runner {
         def opt = cli.parse(args)
         
         readUserConfig()
+        
+        Dependencies.theInstance.initStore(OutputMetaDataStoreFactory.create())
        
         if(opt.y) {
             Config.userConfig.prompts.handler = { msg -> return "y"}
@@ -1018,6 +1020,7 @@ class Runner {
             cli.usage()
             exit(1)
         }
+        Dependencies.theInstance.initStore(OutputMetaDataStoreFactory.create())
         Dependencies.instance.preserve(opt.arguments())
         exit(0)
     }
