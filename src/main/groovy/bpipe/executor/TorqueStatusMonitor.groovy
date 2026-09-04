@@ -84,6 +84,10 @@ class TorqueStatusMonitor extends TimerTask {
                 
                 if(state.state != lastState) {
                     command.status = state.state.toString()
+                    // Set startTimeMs when the job transitions to RUNNING
+                    if(state.state == CommandStatus.RUNNING && command.startTimeMs < 0) {
+                        command.startTimeMs = System.currentTimeMillis()
+                    }
                     command.save()
                     lastState = state.state
                 }

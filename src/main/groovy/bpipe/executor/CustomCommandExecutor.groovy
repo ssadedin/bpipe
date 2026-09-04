@@ -391,8 +391,13 @@ class CustomCommandExecutor implements PersistentExecutor, ForwardHost {
             if(status != lastStatus)
                 log.info "Poll returned new status for command $commandId: $status"
                 
-            if(this.command)
+            if(this.command) {
                 this.command.status = status
+                // Set startTimeMs when the job transitions to RUNNING
+                if(status == CommandStatus.RUNNING.name() && this.command.startTimeMs < 0) {
+                    this.command.startTimeMs = System.currentTimeMillis()
+                }
+            }
                 
             lastStatus = status
             
