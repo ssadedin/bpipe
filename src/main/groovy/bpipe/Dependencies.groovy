@@ -705,7 +705,7 @@ class Dependencies {
                 List<OutputMetaData> dependenciesOnParents = entry.getParentDependencies(out)
                 out.maxTimestamp = (long)(dependenciesOnParents*.maxTimestamp.flatten() + out.timestamp).max()
                     
-                log.info "Maxtimestamp for $out.outputFile = $out.maxTimestamp"
+                // Maxtimestamp log removed for performance with large numbers of outputs
                 
             }
         }

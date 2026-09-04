@@ -121,9 +121,9 @@ class QueryCommand extends BpipeCommand {
             return
         }
         
-        // Fallback: full graph build from all metadata
+        // Fallback: full graph build from all metadata (skip up-to-date checks — display only)
         List<OutputMetaData> outputs = deps.scanOutputFolder()
-        GraphEntry graph = deps.computeOutputGraph(outputs)
+        GraphEntry graph = deps.computeOutputGraph(outputs, null, null, [], false)
         List results = []
         for(String arg in outputFiles) {
             GraphEntry filtered = graph.filter(arg)
@@ -227,9 +227,9 @@ class QueryCommand extends BpipeCommand {
     void showWholeDependencyGraph(PrintWriter out) {
         Dependencies deps = Dependencies.instance
         
-        // Start by scanning the output folder for dependency files
+        // Start by scanning the output folder for dependency files (skip up-to-date checks — display only)
         List<OutputMetaData> outputs = deps.scanOutputFolder()
-        GraphEntry graph = deps.computeOutputGraph(outputs)
+        GraphEntry graph = deps.computeOutputGraph(outputs, null, null, [], false)
         out.println "\nDependency graph is: \n\n" + graph.dump()
     }
 }

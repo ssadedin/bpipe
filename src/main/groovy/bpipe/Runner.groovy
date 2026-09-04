@@ -287,7 +287,11 @@ class Runner {
         if(mode == "query") {
             log.info("Showing dependency graph for " + args)
             readUserConfig()
-            Dependencies.theInstance.initStore(OutputMetaDataStoreFactory.create())
+            // Lightweight init: open the store without building the full dependency graph.
+            // QueryCommand uses the ancestry chain which needs only the DB connection.
+            OutputMetaDataStore qStore = OutputMetaDataStoreFactory.create()
+            Dependencies.theInstance.store = qStore
+            Dependencies.theInstance.storeInitialized = true
             new bpipe.cmd.QueryCommand(args as List).run(System.out)
             exit(0)
         }         
