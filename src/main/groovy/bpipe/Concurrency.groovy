@@ -114,6 +114,16 @@ class Concurrency {
     Map<String,Semaphore> resourceAllocations = initResourceAllocations()    
     
     /**
+     * Limits on the number of instances of a single stage that may run at once,
+     * as declared with the <code>@concurrency</code> annotation.
+     * <p>
+     * These are keyed on the closure the annotation was applied to, since that
+     * object is shared by every instance of the stage, unlike the contexts and
+     * stages created as the pipeline runs.
+     */
+    Map<Object,StageLimiter> stageLimits = Collections.synchronizedMap([:])
+
+    /**
      * List of known resource requestors
      */
     List<ResourceRequestor> registeredResourceRequestors = Collections.synchronizedList([])
@@ -611,6 +621,37 @@ class Concurrency {
        this.resourceAllocations.put(resourceName, new Semaphore(amount))
    }
    
+   /**
+    * Look up the limiter controlling how many instances of the given stage can
+    * run at once, creating it the first time the stage is seen.
+    * <p>
+    * The stage is identified by the object its <code>@concurrency</code> annotation
+    * was declared on (the stage closure), so that two stages with the same name but
+    * declared in different places get separate limits.
+    * <p>
+    * @param stage        the object identifying the stage declaration
+    * @param stageName    the name of the stage, used for messages only
+    * @param maxInstances the maximum number of instances allowed to run at once
+    */
+   StageLimiter getStageLimiter(Object stage, String stageName, int maxInstances) {
+       
+       synchronized(stageLimits) {
+           StageLimiter limiter = stageLimits[stage]
+           
+           if(limiter == null) {
+               limiter = new StageLimiter(stageName, maxInstances)
+               stageLimits[stage] = limiter
+               log.info "Stage $stageName is limited to a maximum of $maxInstances concurrent instance(s)"
+               
+               if(maxInstances > (int)Config.config.maxThreads) {
+                   log.info "Stage $stageName is limited to $maxInstances instances, but the pipeline is running with only ${Config.config.maxThreads} threads, so the limit will never be reached. Use -n to increase overall concurrency."
+               }
+           }
+           
+           return limiter
+       }
+   }
+   
    void initFromConfig(boolean override=true) {
        
        if(!Config.userConfig.limits) 
@@ -628,4 +669,96 @@ class Concurrency {
    static Concurrency getTheInstance() {
        return Concurrency.instance
    }
+}
+
+/**
+ * Limits the number of instances of a single pipeline stage declaration that
+ * are executing at any one time.
+ * <p>
+ * Instances are created by the <code>@concurrency</code> annotation, and are
+ * handed out by {@link Concurrency#getStageLimiter(Object,String,int)}. Each one
+ * consists of a semaphore with a fixed number of permits, which stage instances
+ * acquire before running and release when they finish.
+ *
+ * @author ssadedin@mcri.edu.au
+ */
+class StageLimiter {
+
+    /**
+     * Name of the stage this limits, used for log and status messages
+     */
+    final String stageName
+
+    /**
+     * The maximum number of instances allowed to run at once
+     */
+    final int maxInstances
+
+    /**
+     * The permits controlling access: note this is created "fair" so that
+     * instances waiting the longest are the ones let in, preventing a stage
+     * from being starved by a continuous stream of new instances.
+     */
+    final Semaphore semaphore
+
+    /**
+     * The number of instances currently executing
+     */
+    private final AtomicInteger running = new AtomicInteger(0)
+
+    /**
+     * The number of instances currently blocked waiting for a slot
+     */
+    private final AtomicLong waiting = new AtomicLong(0)
+
+    StageLimiter(String stageName, int maxInstances) {
+        this.stageName = stageName
+        this.maxInstances = maxInstances
+        this.semaphore = new Semaphore(maxInstances, true)
+    }
+
+    int getNumRunning() {
+        running.get()
+    }
+
+    long getNumWaiting() {
+        waiting.get()
+    }
+
+    /**
+     * Wait for a slot to run in, then mark this instance as running.
+     *
+     * @return the number of milliseconds spent waiting, which is 0 if a slot
+     *         was available immediately
+     */
+    long acquire() {
+        long startTimeMs = System.currentTimeMillis()
+
+        if(!semaphore.tryAcquire()) {
+            waiting.incrementAndGet()
+            try {
+                semaphore.acquire()
+            }
+            finally {
+                waiting.decrementAndGet()
+            }
+        }
+
+        running.incrementAndGet()
+
+        return System.currentTimeMillis() - startTimeMs
+    }
+
+    /**
+     * Give up the slot acquired by {@link #acquire()} so that another instance
+     * of the stage can run.
+     */
+    void release() {
+        running.decrementAndGet()
+        semaphore.release()
+    }
+
+    String toString() {
+        "$stageName: ${running.get()}/$maxInstances running, ${waiting.get()} waiting"
+    }
 }

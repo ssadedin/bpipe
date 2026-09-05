@@ -1970,6 +1970,67 @@ class PipelineContext {
         }
     }
     
+    /**
+     * Executes the given stage body, ensuring that no more than the specified
+     * number of instances of the stage run at the same time.
+     * <p>
+     * <b>Note</b>: This is a "magic" method invoked by the <code>@concurrency</code>
+     * annotation. See {@link bpipe.ast.BpipeConcurrencyASTTransformation} for how the
+     * annotation is turned into a call to this method.
+     * 
+     * @param maxInstances the maximum number of instances of this stage allowed to
+     *                     execute concurrently
+     * @param body         the body of the annotated pipeline stage
+     */
+    Object concurrency(Object maxInstances, Closure body) {
+        
+        int limit = parseConcurrencyLimit(maxInstances)
+        
+        // The owner of the wrapped closure is the closure the annotation was declared
+        // on.  That object is shared by all instances of the stage, so it identifies
+        // the declaration the limit applies to.  The wrapped closure itself is created
+        // anew each time the stage runs, so it can't be used as the key.
+        Object declaration = (body.owner instanceof Closure) ? body.owner : body
+        
+        StageLimiter limiter = Concurrency.instance.getStageLimiter(declaration, stageName, limit)
+        
+        long waitMs = limiter.acquire()
+        
+        if(waitMs > 0) {
+            log.info "Stage $stageName waited $waitMs ms for a concurrency slot: $limiter"
+        }
+        
+        try {
+            return body()
+        }
+        finally {
+            limiter.release()
+        }
+    }
+    
+    /**
+     * Converts the value given in a <code>@concurrency</code> annotation into the
+     * number of instances it refers to.
+     */
+    private int parseConcurrencyLimit(Object maxInstances) {
+        
+        int limit
+        
+        try {
+            limit = (maxInstances instanceof Number) ? ((Number)maxInstances).intValue() 
+                                                     : Integer.parseInt(String.valueOf(maxInstances).trim())
+        }
+        catch(NumberFormatException e) {
+            throw new PipelineError("The @concurrency annotation on stage $stageName specifies '$maxInstances', which is not a number. Please specify the maximum number of instances, eg @concurrency(4)")
+        }
+        
+        if(limit < 1) {
+            throw new PipelineError("The @concurrency annotation on stage $stageName specifies $limit instances. Please specify a number of 1 or more")
+        }
+        
+        return limit
+    }
+    
     @CompileStatic
     void exec(GString cmd) {
         checkAndClearImplicits(cmd)
