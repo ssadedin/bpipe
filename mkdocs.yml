@@ -19,6 +19,7 @@ nav:
   - Chr: Language/Chr.md
   - Cleanup: Language/CleanupStatement.md
   - Config: Language/Config.md
+  - Concurrency: Language/Concurrency.md
   - Debug: Language/Debug.md
   - Directories: Language/Directories.md
   - Doc: Language/Doc.md
