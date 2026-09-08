@@ -83,19 +83,25 @@ abstract class StorageLayer implements Serializable {
         if(name == null || name == 'local')
             return new LocalFileSystemStorageLayer()
         
-        ConfigObject storageConfig = 
-            (ConfigObject)bpipe.Config.userConfig['filesystems']
-                        .getOrDefault(name, null)
+        Map filesystems = (Map)bpipe.Config.userConfig.getOrDefault('filesystems', null)
         
+        if(filesystems == null)
+            throw new bpipe.PipelineError(
+                "A storage named '${name}' was referenced, but no filesystems block was found in your configuration.\n\n" +
+                "Please add a filesystems entry to your bpipe.config file with an entry for '${name}'.")
+        
+        ConfigObject storageConfig = 
+            (ConfigObject)filesystems.getOrDefault(name, null)
+                        
+        if(storageConfig == null)
+            throw new bpipe.PipelineError(
+                "The value ${name} (${name?.class?.name}) was supplied as storage, but could not be found in your configuration.\n\n" + 
+                "Please add a filesystems entry to your bpipe.config file with an entry for ${name}")
+
         // We inherit the region value (but not others) from the main config
         if(('region' in bpipe.Config.userConfig) && !storageConfig.containsKey('region')) {
             storageConfig.region = bpipe.Config.userConfig.region
         }
-                        
-        if(storageConfig == null)
-            throw new bpipe.PipelineError(
-                "The value ${name} (${name?.class?.name})was supplied as storage, but could not be found in your configuration.\n\n" + 
-                "Please add a filesystems entry to your bpipe.config file with an entry for ${name}")
             
         String storageType = storageConfig.getOrDefault('type', name)
            
