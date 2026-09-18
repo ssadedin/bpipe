@@ -76,7 +76,6 @@ launch_in_foreground() {
     LAUNCH_MODE="$1"
     shift 1
     exec java $EXTRA_BPIPE_JVM_OPTS \
-             -noverify \
               -classpath "$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*:$CP:$BPIPE_JAR" \
               $BPIPEDEBUG \
               -Dbpipe.home="$JVM_BPIPE_HOME" \
@@ -746,7 +745,7 @@ fi
 LAUNCH_CMD='
    printf $$ > .bpipe.'$LAUNCHER_PID'.run.pid &
    exec java -Xmx'${MAX_JAVA_MEM}' \
-             '${HEADLESS_FLAG}' -noverify \
+             '${HEADLESS_FLAG}' \
              -XX:+TieredCompilation \
              -classpath "'"$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*:$CP"'" '$BPIPEDEBUG_FLAGS' '$MODEFLAG' '$TIMING_INFO_FLAGS' \
              -Dbpipe.pid='$LAUNCHER_PID' \
