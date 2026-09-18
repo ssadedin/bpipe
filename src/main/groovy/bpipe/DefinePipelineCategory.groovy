@@ -454,9 +454,6 @@ class DefinePipelineCategory {
         return c
     }
     
-    
-    String branchSeparator = stageSeparator
-        
     /**
      * Implements the syntax for splitting the pipeline into multiple
      * parallel paths.
