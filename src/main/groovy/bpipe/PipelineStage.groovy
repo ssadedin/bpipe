@@ -794,6 +794,7 @@ class PipelineStage {
         }
     }
 
+    /*
      * The script(s) the pipeline was launched from, as long as they are local files.
      * These are watched during dev mode, so that the user can edit the pipeline they
      * are developing and have the stage reload.

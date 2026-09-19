@@ -519,6 +519,18 @@ class PipelineCategory {
                             
                             PipelineStage dummyPriorStage = createFilteredInputStage(chr, Utils.box(childInputs), pipeline)
                             child.addStage(dummyPriorStage)
+
+                            if(pipelineChannel) {
+                                List<PipelineStage> channelStages = []
+                                channelStages = child.createChannelPriorityStages(String.valueOf(chr),pipelineChannel)
+                                
+//                                println "Resolved priority stages for channel $pipelineChannel branch $chr: " + channelStages
+                                channelStages.each  { child.addStage(it) }
+                                
+                                if(channelStages.size()>0)
+                                    childInputs = (List<PipelineFile>)channelStages[-1].context.nextInputs 
+                            }
+ 
                             child.runSegment(childInputs, segmentClosure)
                         }
                         catch(Exception e) {

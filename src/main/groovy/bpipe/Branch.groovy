@@ -117,7 +117,7 @@ class Branch extends Expando implements Serializable {
     @CompileStatic
     boolean belongsToChannel(final PipelineChannel channel) {
         Branch check = this
-        while(!check.is(null) && !check.@pipelineChannel.is(channel))
+        while(!check.is(null) && !check.@pipelineChannel.is(channel) && (check.@pipelineChannel?.name!=channel.name))
             check = check.parent
         return !check.is(null)
     }
