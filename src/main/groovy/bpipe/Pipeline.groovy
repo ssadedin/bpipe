@@ -937,6 +937,11 @@ public class Pipeline implements ResourceRequestor {
         if(!failed) {
             summarizeOutputs(stages)
         }
+        
+        // Ensure any buffered metadata writes are persisted before the process exits
+        // (critical for the async SQLite backend where the daemon flush thread may be
+        // killed by JVM shutdown before draining the queue)
+        Dependencies.instance.store.flush()
     }
     
     @CompileStatic

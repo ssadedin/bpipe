@@ -37,13 +37,17 @@ import groovy.util.logging.Log
  * {@link OutputMetaData#save()} / {@link OutputMetaData#read()} / 
  * {@link Dependencies#scanOutputFolder()} without changing semantics.
  * <p>
- * Once the SQLite backend is stable this class will be retained as the
- * migration source and as a configurable fallback.
+ * @deprecated The SQLite backend ({@link SQLiteOutputMetaDataStore}) is now the
+ *             default and recommended backend. This class is retained as the
+ *             migration source and as a configurable fallback via
+ *             {@code outputMetaData.backend = "properties"}. It may be removed
+ *             in a future release.
  * 
  * @author simon.sadedin@mcri.edu.au
  */
 @Log
 @CompileStatic
+@Deprecated
 class PropertyFileOutputMetaDataStore implements OutputMetaDataStore {
     
     @Override

@@ -59,6 +59,9 @@ class OutputMetaDataStoreFactory {
         log.info "Creating output metadata store with backend: $backend"
         
         if(backend == 'properties') {
+            log.warning "Using legacy property-file backend for output metadata. " +
+                "SQLite is the recommended backend for better performance with large pipelines. " +
+                "Set outputMetaData.backend = 'sqlite' in your bpipe.config to switch."
             return new PropertyFileOutputMetaDataStore()
         }
         
