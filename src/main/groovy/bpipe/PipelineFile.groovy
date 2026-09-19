@@ -179,6 +179,21 @@ class PipelineFile implements Serializable {
     }
    
     @Override
+    boolean equals(Object o) {
+        if(this.is(o))
+            return true
+        if(!(o instanceof PipelineFile))
+            return false
+        PipelineFile other = (PipelineFile)o
+        return this.path == other.path
+    }
+    
+    @Override
+    int hashCode() {
+        return path.hashCode()
+    }
+
+    @Override
     String toString() {
         path
     }
