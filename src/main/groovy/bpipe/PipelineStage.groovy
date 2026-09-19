@@ -641,8 +641,10 @@ class PipelineStage {
         
         // Check if the file already has a response before clearing it
         // This handles the case where the response was written before we got here
-        String preExistingResponse = (devResponseFile.exists() && devResponseFile.length() > 0) ? devResponseFile.text.trim() : ''
+        String preExistingResponse = readDevResponseSafe(devResponseFile)
         
+        // Ensure the .bpipe directory exists before writing to the dev response file
+        devResponseFile.parentFile.mkdirs()
         devResponseFile.text = ''
         
         if(!skipped)
@@ -667,7 +669,7 @@ class PipelineStage {
             if(modifiedPath == null || modifiedPath == devResponseFile.absolutePath) {
                 
                 // Check if the user requested a stub - check both console input and file
-                String devResponse = preExistingResponse ?: Utils.lastConsoleLine ?: (devResponseFile.exists() ? devResponseFile.text.trim() : '')
+                String devResponse = preExistingResponse ?: Utils.lastConsoleLine ?: readDevResponseSafe(devResponseFile)
                 
                 // Auto-stub if inputs are stubs and user just pressed enter (empty response)
                 if(!devResponse && context.hasStubInputs(context.rawInput)) {
@@ -722,6 +724,20 @@ class PipelineStage {
         }
         finally {
             devResponseFile.delete()
+        }
+    }
+    
+    /**
+     * Safely read the dev response file, returning empty string if the file
+     * doesn't exist or is inaccessible.
+     */
+    private static String readDevResponseSafe(File devResponseFile) {
+        try {
+            return devResponseFile.exists() ? devResponseFile.text.trim() : ''
+        }
+        catch(IOException e) {
+            log.info "Could not read dev response file: ${e.message}"
+            return ''
         }
     }
     
