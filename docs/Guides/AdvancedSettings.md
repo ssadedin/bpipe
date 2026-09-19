@@ -79,6 +79,40 @@ instead, by setting in the `bpipe.config` file:
 usePollerFileWatcher=true
 ```
 
+### Output Metadata Backend
+
+Bpipe uses a metadata store to persist information about pipeline outputs (timestamps, inputs,
+ stage names, etc.). Two backends are available:
+
+| Backend | Description |
+|---------|-------------|
+| `sqlite`  (default) | A single SQLite database at `.bpipe/outputs/outputs.db`. Much faster for pipelines with tens of thousands of outputs because it avoids the per-file overhead of the legacy backend. Writes are asynchronous (batched and flushed by a background thread) so high-concurrency pipelines are not blocked on I/O. |
+| `properties` | The legacy backend that stores one `.properties` file per output. Included as a fallback. |
+
+Select the backend in `bpipe.config`:
+
+```groovy
+outputMetaData {
+    backend = "sqlite"       // "sqlite" (default) or "properties"
+    flushIntervalMs = 200    // how often the async flush thread wakes up (ms)
+    batchSize = 100          // max rows per batch INSERT
+}
+```
+
+On first use with the `sqlite` backend, Bpipe automatically migrates any existing legacy
+property files into the database. The property files are left in place as a backup.
+
+If you need to revert to the property-file backend entirely (e.g., due to NFS locking issues):
+
+```groovy
+outputMetaData {
+    backend = "properties"
+}
+```
+
+**Note**: Changing backends does not automatically transfer data between formats. A pipeline run
+will create metadata using whichever backend is active.
+
 
 ### Post Command Hook
 
