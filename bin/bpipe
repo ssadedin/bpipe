@@ -32,6 +32,9 @@ BUILDDATE=0
 # as otherwise Java can default to extreme amounts (gigabytes)
 : ${MAX_JAVA_MEM:="256m"}
 
+# AppCDS support: set to "false" to disable AppCDS even on Java 17+
+: ${BPIPE_APPCDS:="true"}
+
 # Default location for bpipe database
 : ${BPIPE_DB_DIR:="$HOME/.bpipedb"}
 
@@ -51,6 +54,186 @@ BPIPE_SHOW_TIMINGS=${BPIPE_SHOW_TIMINGS:-false}
 #----------------------------------------------------------
 tmsg() {
     [ "$BPIPE_SHOW_TIMINGS" == "true" ] && { echo `date +'%M:%S.%N'`" $1"; }
+}
+
+#----------------------------------------------------------
+# Detect the major version of the Java runtime.
+# Sets JAVA_MAJOR_VERSION to an integer (e.g. 11, 17, 21).
+# Returns 0 if detection succeeded, 1 otherwise.
+#----------------------------------------------------------
+get_java_major_version() {
+    if [ ! -z "$JAVA_MAJOR_VERSION" ]; then
+        return 0
+    fi
+    local ver
+    ver=$(java -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+)(\.[0-9]+)*.*"/\1/')
+    if [[ "$ver" =~ ^[0-9]+$ ]]; then
+        JAVA_MAJOR_VERSION=$ver
+        return 0
+    fi
+    JAVA_MAJOR_VERSION=0
+    return 1
+}
+
+#----------------------------------------------------------
+# Compute an MD5/SHA fingerprint of the classpath string.
+# This is used to detect when the classpath changes so that
+# the AppCDS archive can be regenerated.
+# Sets CP_FINGERPRINT to the hash value.
+#----------------------------------------------------------
+fingerprint_classpath() {
+    if command -v md5sum > /dev/null 2>&1; then
+        CP_FINGERPRINT=$(echo -n "$CP:$BPIPE_JAR" | md5sum | awk '{print $1}')
+    elif command -v md5 > /dev/null 2>&1; then
+        CP_FINGERPRINT=$(echo -n "$CP:$BPIPE_JAR" | md5)
+    elif command -v shasum > /dev/null 2>&1; then
+        CP_FINGERPRINT=$(echo -n "$CP:$BPIPE_JAR" | shasum | awk '{print $1}')
+    else
+        CP_FINGERPRINT="unknown"
+    fi
+}
+
+#----------------------------------------------------------
+# Determine the directory to store AppCDS files.
+# Prefers $BPIPE_HOME/lib if writable, otherwise falls
+# back to $HOME/.bpipe/appcds/.
+# Sets APPCDS_DIR.
+#----------------------------------------------------------
+get_appcds_dir() {
+    if [ -w "$BPIPE_HOME/lib" ]; then
+        APPCDS_DIR="$BPIPE_HOME/lib/appcds"
+    else
+        APPCDS_DIR="$HOME/.bpipe/appcds"
+    fi
+}
+
+#----------------------------------------------------------
+# Generate the AppCDS shared archive.
+# This performs two phases:
+#   1. Run a trivial Bpipe invocation to dump the loaded
+#      class list.
+#   2. Use the class list to create a shared archive (.jsa).
+#
+# The classpath fingerprint is stored alongside the archive
+# so we can detect when it becomes stale.
+#
+# Returns 0 on success, 1 on failure.
+#----------------------------------------------------------
+generate_appcds() {
+    get_appcds_dir
+    mkdir -p "$APPCDS_DIR"
+
+    local classlist="$APPCDS_DIR/bpipe.classlist"
+    local archive="$APPCDS_DIR/bpipe.jsa"
+    local fpfile="$APPCDS_DIR/bpipe.classpath.fp"
+
+    echo "Generating AppCDS class list ..."
+
+    # Phase 1: generate class list with a trivial invocation
+    java -Xmx${MAX_JAVA_MEM} \
+         -Xshare:off \
+         -XX:DumpLoadedClassList="$classlist" \
+         -classpath "$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*:$CP:$BPIPE_JAR" \
+         -Dbpipe.home="$JVM_BPIPE_HOME" \
+         -Dbpipe.mode=help \
+         org.codehaus.groovy.tools.GroovyStarter \
+         --classpath "$BPIPE_JAR" \
+         --main bpipe.Runner9 > /dev/null 2>&1
+
+    if [ ! -f "$classlist" ]; then
+        echo "WARNING: AppCDS class list generation failed."
+        return 1
+    fi
+
+    echo "Generating AppCDS shared archive ..."
+
+    # Phase 2: create the shared archive from the class list
+    java -Xmx${MAX_JAVA_MEM} \
+         -Xshare:dump \
+         -XX:SharedClassListFile="$classlist" \
+         -XX:SharedArchiveFile="$archive" \
+         -classpath "$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*:$CP:$BPIPE_JAR" \
+         > /dev/null 2>&1
+
+    if [ ! -f "$archive" ]; then
+        echo "WARNING: AppCDS archive generation failed."
+        return 1
+    fi
+
+    # Store the classpath fingerprint so we can detect staleness
+    fingerprint_classpath
+    echo "$CP_FINGERPRINT" > "$fpfile"
+
+    echo "AppCDS archive created at $archive"
+    return 0
+}
+
+#----------------------------------------------------------
+# Check if the existing AppCDS archive is still valid
+# (i.e. the classpath hasn't changed since it was created).
+# Returns 0 if valid, 1 if stale or missing.
+#----------------------------------------------------------
+is_appcds_valid() {
+    get_appcds_dir
+    local archive="$APPCDS_DIR/bpipe.jsa"
+    local fpfile="$APPCDS_DIR/bpipe.classpath.fp"
+
+    if [ ! -f "$archive" ]; then
+        return 1
+    fi
+
+    if [ ! -f "$fpfile" ]; then
+        return 1
+    fi
+
+    fingerprint_classpath
+    local stored_fp
+    stored_fp=$(cat "$fpfile" 2>/dev/null)
+
+    if [ "$CP_FINGERPRINT" != "$stored_fp" ]; then
+        return 1
+    fi
+
+    return 0
+}
+
+#----------------------------------------------------------
+# Set up the APPCDS_FLAGS variable for use in java launch
+# commands. This is conditional on:
+#   - BPIPE_APPCDS not being "false"
+#   - Java major version >= 17
+#   - A valid archive existing (or being auto-generated)
+#
+# After this function, APPCDS_FLAGS will either contain
+# the -XX:SharedArchiveFile flag or be empty.
+#----------------------------------------------------------
+setup_appcds() {
+    APPCDS_FLAGS=""
+
+    # Disabled by user?
+    if [ "$BPIPE_APPCDS" == "false" ]; then
+        return
+    fi
+
+    # Check Java version
+    get_java_major_version
+    if [ "$JAVA_MAJOR_VERSION" -lt 17 ] 2>/dev/null; then
+        return
+    fi
+
+    # Check if archive exists and is valid
+    if is_appcds_valid; then
+        get_appcds_dir
+        APPCDS_FLAGS="-XX:SharedArchiveFile=$APPCDS_DIR/bpipe.jsa"
+        return
+    fi
+
+    # Auto-generate on first run
+    generate_appcds > /dev/null 2>&1
+    if is_appcds_valid; then
+        get_appcds_dir
+        APPCDS_FLAGS="-XX:SharedArchiveFile=$APPCDS_DIR/bpipe.jsa"
+    fi
 }
 
 IS_MAC=false
@@ -76,6 +259,7 @@ launch_in_foreground() {
     LAUNCH_MODE="$1"
     shift 1
     exec java $EXTRA_BPIPE_JVM_OPTS \
+              $APPCDS_FLAGS \
               -classpath "$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*:$CP:$BPIPE_JAR" \
               $BPIPEDEBUG \
               -Dbpipe.home="$JVM_BPIPE_HOME" \
@@ -466,6 +650,9 @@ tmsg " Determining class path"
 get_classpath
 
 
+# Set up AppCDS if available (Java 17+ only)
+setup_appcds
+
 : ${SHOWDEBUG:=false}
 : ${LAUNCH_IN_FOREGROUND:=false}
 
@@ -505,6 +692,27 @@ then
         echo
     fi
     exit
+elif [ "$COMMAND" == "appcds" ];
+then
+    shift 1
+    get_classpath
+    get_java_major_version
+    if [ "$JAVA_MAJOR_VERSION" -lt 17 ] 2>/dev/null; then
+        echo "ERROR: AppCDS requires Java 17 or above (detected Java $JAVA_MAJOR_VERSION)."
+        exit 1
+    fi
+    if [ "$1" == "clear" ]; then
+        get_appcds_dir
+        if [ -d "$APPCDS_DIR" ]; then
+            rm -rf "$APPCDS_DIR"
+            echo "AppCDS archive cleared."
+        else
+            echo "No AppCDS archive found."
+        fi
+        exit 0
+    fi
+    generate_appcds
+    exit $?
 elif [ "$COMMAND" == "cleanup" ] || \
          [ "$COMMAND" == "register" ] || \
          [ "$COMMAND" == "status" ] || \
@@ -747,6 +955,7 @@ LAUNCH_CMD='
    exec java -Xmx'${MAX_JAVA_MEM}' \
              '${HEADLESS_FLAG}' \
              -XX:+TieredCompilation \
+             '$APPCDS_FLAGS' \
              -classpath "'"$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*:$CP"'" '$BPIPEDEBUG_FLAGS' '$MODEFLAG' '$TIMING_INFO_FLAGS' \
              -Dbpipe.pid='$LAUNCHER_PID' \
              -Dbpipe.home='"$JVM_BPIPE_HOME"' \
