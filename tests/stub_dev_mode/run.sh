@@ -85,15 +85,15 @@ if [ ! -f "hello.world.csv" ]; then
     exit 1
 fi
 
-# Check that the metadata marks it as a stub
-PROP_FILE=$(ls .bpipe/outputs/hello.hello.txt.properties 2>/dev/null)
-if [ -z "$PROP_FILE" ]; then
-    echo "ERROR: No properties file found for stub output"
+# Check that the metadata marks it as a stub (SQLite backend)
+STUB_VAL=$(python3 -c "import sqlite3; conn = sqlite3.connect('.bpipe/outputs/outputs.db'); cursor = conn.execute(\"SELECT stub FROM outputs WHERE outputPath='hello.txt'\"); row = cursor.fetchone(); print(row[0] if row else 'none'); conn.close()")
+if [ "$STUB_VAL" = "none" ]; then
+    echo "ERROR: No metadata found for stub output in database"
     exit 1
 fi
 
-if ! grep -q "stub=true" "$PROP_FILE"; then
-    echo "ERROR: Properties file does not contain stub=true"
+if [ "$STUB_VAL" != "1" ]; then
+    echo "ERROR: Metadata indicates stub=$STUB_VAL, expected 1"
     exit 1
 fi
 
