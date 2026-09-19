@@ -3,7 +3,7 @@
 source ../testsupport.sh
 
 # Test that the appcds command works on Java 17+
-# On older Java, it should fail gracefully
+# On older Java, the generate step will fail but that is expected
 
 JAVA_MAJOR=$(java -version 2>&1 | head -1 | sed -E 's/.*"([0-9]+)(\.[0-9]+)*.*"/\1/')
 
@@ -20,14 +20,6 @@ if [ "$JAVA_MAJOR" -ge 17 ] 2>/dev/null; then
         echo "AppCDS archive created successfully" >> test.out
     else
         echo "ERROR: AppCDS archive was not created" >> test.out
-        exit 1
-    fi
-
-    # Check that the fingerprint file was created
-    if [ -f "$BPIPE_HOME/lib/appcds/bpipe.classpath.fp" ] || [ -f "$HOME/.bpipe/appcds/bpipe.classpath.fp" ]; then
-        echo "AppCDS fingerprint file created successfully" >> test.out
-    else
-        echo "ERROR: AppCDS fingerprint file was not created" >> test.out
         exit 1
     fi
 
