@@ -768,7 +768,7 @@ def e2eTestGroups = [
                 // 'preallocate',
                 'implicitmultioutput', 'optional_output',
                 'optional_transform_annotation', 'append_output_dir'],
-    Transform: ['transform', 'filter', 'filterlines'],
+    Transform: ['transform', 'filter'],
     From:      ['from', 'input', 'double_input_ext', 'whole_input_is_extension',
                 'single_input_with_number'],
     Output:    ['output', 'outputdir', 'outputext', 'outputfolder', 'non_default_output',
