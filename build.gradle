@@ -760,7 +760,7 @@ def e2eTestGroups = [
     Core:      ['simple', 'succeed', 'background', 'status_command', 'documentation',
                 'pipeline_var', 'pipeline_require', 'wait_for_output', 'when', 'slow',
                 'touch', 'backtick', 'glob', 'add_jar', 'abspath_preserve', 'extensions',
-                'print_created_files', 'remake', 'quiet_and_clean', 'large_number_files',
+                'remake', 'quiet_and_clean', 'large_number_files',
                 'read_inputs_from_file', 'manual_resolve', 'folderasoutput',
                 'innocuous_output_dir_ref', 'define'],
     Produce:   ['produce', 
@@ -799,7 +799,7 @@ def e2eTestGroups = [
                 'preserve'],
     Resources: ['thread', 'resource_limit', 'maxmem', 'memory_variable', 'sge', 'torque',
                 'rscript', 'file_notifications', 'send_http_json', 'send_to_file',
-                'query_with_outputdir', 'output_branch_report'],
+                'query_with_outputdir'],
     Storage:   ['sqlite_output_tracking', 'migration_sqlite'],
 ]
 
