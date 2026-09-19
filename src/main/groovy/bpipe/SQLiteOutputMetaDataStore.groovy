@@ -269,7 +269,7 @@ class SQLiteOutputMetaDataStore implements OutputMetaDataStore {
             }
             
             db.withBatch("""
-                INSERT INTO output_inputs (output_canonical_path, input_canonical_path)
+                INSERT OR REPLACE INTO output_inputs (output_canonical_path, input_canonical_path)
                 VALUES (?, ?)
             """) { stmt ->
                 for(OutputMetaData p in batch) {
