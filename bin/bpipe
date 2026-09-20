@@ -127,11 +127,33 @@ generate_appcds() {
 }
 
 #----------------------------------------------------------
+# Attempt to find the pipeline script from the remaining
+# command line arguments. Scans for the first argument
+# ending in .groovy or .bpipe. Sets PIPELINE_SCRIPT_DIR
+# to the canonical directory containing the script, or
+# empty if not found.
+#----------------------------------------------------------
+resolve_pipeline_script_dir() {
+    PIPELINE_SCRIPT_DIR=""
+    for arg in "$@"; do
+        case "$arg" in
+            *.groovy|*.bpipe)
+                if [ -f "$arg" ]; then
+                    PIPELINE_SCRIPT_DIR=$(cd "$(dirname "$arg")" 2>/dev/null && pwd)
+                fi
+                return
+                ;;
+        esac
+    done
+}
+
+#----------------------------------------------------------
 # Set up the APPCDS_FLAGS variable for use in java launch
-# commands. If an AppCDS archive exists and BPIPE_APPCDS is
-# not "false", the flag is set. The JVM's -Xshare:auto
-# (default on Java 17+) will silently ignore the archive
-# if it is incompatible.
+# commands. Checks for a dynamic archive (from training)
+# next to the pipeline script first, then falls back to
+# the base archive. The JVM's -Xshare:auto (default on
+# Java 17+) will silently ignore the archive if it is
+# incompatible.
 #
 # After this function, APPCDS_FLAGS will either contain
 # the -XX:SharedArchiveFile flag or be empty.
@@ -144,6 +166,22 @@ setup_appcds() {
         return
     fi
 
+    # Check for dynamic archive next to the pipeline script
+    resolve_pipeline_script_dir "$@"
+    if [ ! -z "$PIPELINE_SCRIPT_DIR" ]; then
+        if [ -f "$PIPELINE_SCRIPT_DIR/.bpipe-appcds/dynamic.jsa" ]; then
+            APPCDS_FLAGS="-XX:SharedArchiveFile=$PIPELINE_SCRIPT_DIR/.bpipe-appcds/dynamic.jsa"
+            return
+        fi
+    fi
+
+    # Also check current directory for dynamic archive
+    if [ -f ".bpipe-appcds/dynamic.jsa" ]; then
+        APPCDS_FLAGS="-XX:SharedArchiveFile=$PWD/.bpipe-appcds/dynamic.jsa"
+        return
+    fi
+
+    # Fall back to base archive
     get_appcds_dir
     if [ -f "$APPCDS_DIR/bpipe.jsa" ]; then
         APPCDS_FLAGS="-XX:SharedArchiveFile=$APPCDS_DIR/bpipe.jsa"
@@ -565,7 +603,8 @@ get_classpath
 
 
 # Set up AppCDS if available (Java 17+ only)
-setup_appcds
+# Pass remaining args so we can locate the pipeline script for dynamic archives
+setup_appcds "$@"
 
 : ${SHOWDEBUG:=false}
 : ${LAUNCH_IN_FOREGROUND:=false}
@@ -610,17 +649,112 @@ elif [ "$COMMAND" == "appcds" ];
 then
     shift 1
     if [ "$1" == "clear" ]; then
+        # Clear base archive
         get_appcds_dir
         if [ -d "$APPCDS_DIR" ]; then
             rm -rf "$APPCDS_DIR"
-            echo "AppCDS archive cleared."
+            echo "AppCDS base archive cleared."
         else
-            echo "No AppCDS archive found."
+            echo "No AppCDS base archive found."
+        fi
+        # Also clear any dynamic archive relative to a pipeline script if provided
+        if [ ! -z "$2" ]; then
+            SCRIPT_DIR=$(cd "$(dirname "$2")" 2>/dev/null && pwd)
+            if [ ! -z "$SCRIPT_DIR" ] && [ -d "$SCRIPT_DIR/.bpipe-appcds" ]; then
+                rm -rf "$SCRIPT_DIR/.bpipe-appcds"
+                echo "AppCDS dynamic archive cleared from $SCRIPT_DIR"
+            fi
         fi
         exit 0
+    elif [ "$1" == "train" ]; then
+        shift 1
+        if [ -z "$1" ]; then
+            echo "Usage: bpipe appcds train <pipeline.groovy> [inputs...] [run-options]"
+            echo ""
+            echo "Runs the pipeline once to generate a dynamic AppCDS archive"
+            echo "that includes classes from user libraries specified in bpipe.config."
+            echo "The archive is stored next to the pipeline script."
+            exit 1
+        fi
+
+        # Step 1: Preflight - resolve paths via Java using Bpipe's own CLI parser
+        PREFLIGHT_MANIFEST=".bpipe/appcds-preflight.$$"
+        mkdir -p .bpipe
+
+        echo "Running AppCDS preflight to resolve pipeline configuration ..."
+
+        java -Xmx${MAX_JAVA_MEM} \
+             -classpath "$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*:$CP:$BPIPE_JAR" \
+             -Dbpipe.home="$JVM_BPIPE_HOME" \
+             -Dbpipe.mode=appcds-preflight \
+             org.codehaus.groovy.tools.GroovyStarter \
+             --classpath "$BPIPE_JAR" \
+             --main bpipe.Runner9 "$@" "$PREFLIGHT_MANIFEST"
+
+        if [ ! -f "$PREFLIGHT_MANIFEST" ]; then
+            echo "ERROR: AppCDS preflight failed - could not resolve pipeline configuration."
+            exit 1
+        fi
+
+        # Read the resolved values
+        source "$PREFLIGHT_MANIFEST"
+        rm -f "$PREFLIGHT_MANIFEST"
+
+        echo "  Pipeline directory: $APPCDS_PIPELINE_DIR"
+        echo "  Archive path:       $APPCDS_ARCHIVE_PATH"
+        if [ ! -z "$APPCDS_RESOLVED_LIBS" ]; then
+            echo "  User libraries:     $APPCDS_RESOLVED_LIBS"
+        fi
+
+        # Ensure the archive directory exists
+        mkdir -p "$(dirname "$APPCDS_ARCHIVE_PATH")"
+
+        # Step 2: Ensure base archive exists (generates if needed)
+        get_appcds_dir
+        if [ ! -f "$APPCDS_DIR/bpipe.jsa" ]; then
+            echo ""
+            generate_appcds
+            echo ""
+        fi
+
+        BASE_ARCHIVE_FLAG=""
+        if [ -f "$APPCDS_DIR/bpipe.jsa" ]; then
+            BASE_ARCHIVE_FLAG="-XX:SharedArchiveFile=$APPCDS_DIR/bpipe.jsa"
+        fi
+
+        # Step 3: Training run - execute the pipeline with dynamic archive capture
+        echo "Running training pipeline to capture dynamic class data ..."
+        echo ""
+
+        java -Xmx${MAX_JAVA_MEM} \
+             ${HEADLESS_FLAG:--Djava.awt.headless=true} \
+             $BASE_ARCHIVE_FLAG \
+             -XX:ArchiveClassesAtExit="$APPCDS_ARCHIVE_PATH" \
+             -classpath "$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*:$CP:$BPIPE_JAR" \
+             -Dbpipe.home="$JVM_BPIPE_HOME" \
+             -Dbpipe.pid=$$ \
+             -Dbpipe.version=$VERSION \
+             -Dbpipe.builddate=$BUILDDATE \
+             org.codehaus.groovy.tools.GroovyStarter \
+             --classpath "$BPIPE_JAR" \
+             --main bpipe.Runner9 "$@"
+
+        TRAIN_EXIT=$?
+
+        if [ -f "$APPCDS_ARCHIVE_PATH" ]; then
+            echo ""
+            echo "AppCDS dynamic archive created at $APPCDS_ARCHIVE_PATH"
+            echo "Future runs of this pipeline will automatically use the cached class data."
+        else
+            echo ""
+            echo "WARNING: Dynamic archive was not created. The training run may have failed."
+        fi
+
+        exit $TRAIN_EXIT
+    else
+        generate_appcds
+        exit $?
     fi
-    generate_appcds
-    exit $?
 elif [ "$COMMAND" == "cleanup" ] || \
          [ "$COMMAND" == "register" ] || \
          [ "$COMMAND" == "status" ] || \

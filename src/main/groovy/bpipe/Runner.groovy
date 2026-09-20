@@ -103,6 +103,7 @@ class Runner {
                    diagram <pipeline> <in1> <in2>...
                    diagrameditor <pipeline> <in1> <in2>...
                    generate-dsl <pipeline> <in1> <in2>...
+                   appcds [train <pipeline> <in1> <in2>... | clear [<pipeline>]]
 
       Options:
     """.stripIndent().trim() + '\n\n'
@@ -216,6 +217,11 @@ class Runner {
         if(mode == "agent")  {
            runAgent(args)
            return 
+        }
+        
+        if(mode == "appcds-preflight") {
+            AppCDSPreflight.run(args)
+            exit(0)
         }
         
         if(mode == "touch") {
