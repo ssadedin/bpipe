@@ -509,7 +509,7 @@ public class Pipeline implements ResourceRequestor {
         
         if(System.getenv("BPIPE_LIB")) {
             def pipeFolders = System.getenv("BPIPE_LIB").split(Utils.isWindows()?";":":").collect { new File(it) }
-            GroovyShell shell = new GroovyShell(pipelineBuilder.binding)
+            GroovyShell shell = new GroovyShell(Runner.class.classLoader.rootLoader, pipelineBuilder.binding)
             loadExternalStagesFromPaths(shell, pipeFolders, true, true)        
         }
 
@@ -1497,7 +1497,7 @@ public class Pipeline implements ResourceRequestor {
             Pipeline pipeline = currentRuntimePipeline.get()
             Binding binding = new Binding()
             binding.variables = Runner.binding.variables.clone()
-            shell = new GroovyShell(binding)
+            shell = new GroovyShell(Runner.class.classLoader.rootLoader, binding)
             
             // Note: do not cache - different branches may need to load the same file
             // which caching would prevent
@@ -1508,7 +1508,7 @@ public class Pipeline implements ResourceRequestor {
             }
         }
         else  {
-            shell = new GroovyShell(Runner.binding)
+            shell = new GroovyShell(Runner.class.classLoader.rootLoader, Runner.binding)
             loadExternalStagesFromPaths(shell, [f])
         }
 
