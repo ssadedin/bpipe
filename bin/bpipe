@@ -38,6 +38,9 @@ BUILDDATE=0
 # Default location for bpipe database
 : ${BPIPE_DB_DIR:="$HOME/.bpipedb"}
 
+# JDK 17+ module system requires --add-opens for reflective access used by some libraries (e.g. ActiveMQ)
+BPIPE_ADD_OPENS="--add-opens java.base/sun.security.ssl=ALL-UNNAMED"
+
 # Pattern used to parse log files when tailing
 TAIL_PATTERN='s/\[[*.0-9a-zA-Z_-]*\(\.\{0,1\}[0-9]*\)\{1,\}\]'$'\t//g' 
 
@@ -210,7 +213,7 @@ esac
 launch_in_foreground() {
     LAUNCH_MODE="$1"
     shift 1
-    exec java $EXTRA_BPIPE_JVM_OPTS \
+    exec java $EXTRA_BPIPE_JVM_OPTS $BPIPE_ADD_OPENS \
               $APPCDS_FLAGS \
               -classpath "$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*:$CP:$BPIPE_JAR" \
               $BPIPEDEBUG \
@@ -998,6 +1001,7 @@ LAUNCH_CMD='
              '${HEADLESS_FLAG}' \
              -XX:+TieredCompilation \
              '$APPCDS_FLAGS' \
+             $BPIPE_ADD_OPENS \
              -classpath "'"$BPIPE_HOME/local-lib/slf4j/*:$BPIPE_HOME/lib/slf4j/*:$CP"'" '$BPIPEDEBUG_FLAGS' '$MODEFLAG' '$TIMING_INFO_FLAGS' \
              -Dbpipe.pid='$LAUNCHER_PID' \
              -Dbpipe.home='"$JVM_BPIPE_HOME"' \
