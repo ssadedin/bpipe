@@ -513,6 +513,10 @@ class Runner {
         def pipelineArgs = null
         String pipelineSrc
         if(mode == "execute") {
+            if(opt['source']) {
+                Config.config.script = ((String)opt['source']).split(',')[0]
+                scriptDirectory = new File((String)Config.config.script).canonicalFile.parentFile.path
+            }
             pipelineSrc = Pipeline.PIPELINE_IMPORTS + loadArgs + ' Bpipe.run { ' + opt.arguments()[0] + '}'
         }
         else {

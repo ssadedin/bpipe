@@ -1326,7 +1326,7 @@ public class Pipeline implements ResourceRequestor {
     }
     
     private void loadExternalStages() {
-        GroovyShell shell = new GroovyShell(externalBinding)
+        GroovyShell shell = new GroovyShell(Runner.class.classLoader.rootLoader, externalBinding)
         def pipeFolders = [new File(System.properties["user.home"], "bpipes")]
         if(System.getenv("BPIPE_LIB")) {
             pipeFolders = System.getenv("BPIPE_LIB").split(Utils.isWindows()?";":":").collect { new File(it) }
