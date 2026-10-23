@@ -415,6 +415,10 @@ class Runner {
         // needs to come first
         Config.config.script = opt.arguments()[0]
         
+        if(mode == "execute" && opt['source']) {
+            Config.config.script = ((String)opt['source']).split(',')[0]
+        }
+        
         scriptDirectory = new File((String)Config.config.script).canonicalFile.parentFile.path     
 
         Config.config.pguid = Utils.sha1(canonicalRunDirectory +'$'+Config.config.pid+'$'+Config.config.script) 
@@ -513,10 +517,6 @@ class Runner {
         def pipelineArgs = null
         String pipelineSrc
         if(mode == "execute") {
-            if(opt['source']) {
-                Config.config.script = ((String)opt['source']).split(',')[0]
-                scriptDirectory = new File((String)Config.config.script).canonicalFile.parentFile.path
-            }
             pipelineSrc = Pipeline.PIPELINE_IMPORTS + loadArgs + ' Bpipe.run { ' + opt.arguments()[0] + '}'
         }
         else {
