@@ -83,7 +83,7 @@ class Runner {
 	
     final static String DEFAULT_HELP = """
         bpipe [run|test|debug|touch|execute] [options] <pipeline> <in1> <in2>...
-                   retry [job id] [test]
+                   retry [-p param=value] [job id] [test]
                    remake <file1> <file2>...
                    resume
                    stop [preallocated]
@@ -1063,69 +1063,102 @@ class Runner {
     /**
      * Parse the arguments from the retry command to see if the user has 
      * specified a job or test mode, then find the relevant command
-     * from history and return it
+     * from history and return it.
+     * <p>
+     * Parameters supplied to the retry command (for example
+     * {@code bpipe retry -p FOO=bar}) are merged into the parameters of the
+     * previous command, replacing any previous value for the same parameter.
      * 
      * @param args  arguments passed to retry 
      * @return  a list with 2 elements, [ <command>, <arguments> ]
      */
     static List parseRetryArgs(args) {
-        
+
         // They come in as an array, but there are some things that don't work
         // on arrays in groovy ... (native java list operations)
         args = args as List
-        
+
         String notFoundMsg = """
-            
+
             No previous Bpipe command seems to have been run in this directory.
 
             """.stripIndent()
-            
-            
+
+
         String usageMsg = """
-           Usage: bpipe retry [jobid] [test]
+           Usage: bpipe retry [-p param=value] [jobid] [test]
         """.stripIndent()
-        
+
         def historyFile = new File(".bpipe/history")
         if(!historyFile.exists()) {
             System.err.println(notFoundMsg);
             exit(1)
         }
-        
+
         def historyLines = historyFile.readLines()
         if(!historyLines) {
             System.err.println(notFoundMsg);
             exit(1)
         }
-        
+
+        // Separate the parameters supplied to retry from the positional
+        // job id / test / dev arguments. This is done manually rather than
+        // with a CliBuilder because CliBuilder stops parsing options at the
+        // first positional argument, and users naturally write the job id or
+        // "test" before -p (for example: bpipe retry test -p FOO=bar).
+        List retryArgs = []
+        List<String> retryParams = []
+        for(int i = 0; i < args.size(); ++i) {
+            String arg = args[i]
+            if(arg == "-p" || arg == "--param") {
+                if(i + 1 >= args.size()) {
+                    System.err.println "\nMissing value for the $arg option\n" + usageMsg
+                    exit(1)
+                }
+                retryParams.add(args[++i])
+            }
+            else
+            if(arg.startsWith("--param=")) {
+                retryParams.add(arg.substring("--param=".length()))
+            }
+            else
+            if(arg.startsWith("-p") && arg.length() > 2 && !arg.startsWith("--")) {
+                retryParams.add(arg.substring(2))
+            }
+            else {
+                retryArgs.add(arg)
+            }
+        }
+
         String commandLine = null
         boolean testMode = false
         boolean devMode = false
-        if(!args) {
+        if(!retryArgs) {
             commandLine = historyLines[-1]
         }
         else {
-            if(args[0] == "test") {
+            if(retryArgs[0] == "test") {
                 testMode = true
-                args.remove(0)
-            }
-            
-            if(args[0] == "dev") {
-                devMode = true
-                new Thread(ConsolePoller.instance).start()
-                args.remove(0)
+                retryArgs.remove(0)
             }
 
-            if(args) {
-                if(args[0].isInteger()) {
-                  commandLine = historyLines.reverse().find { it.startsWith(args[0] + "\t") }
+            if(retryArgs && retryArgs[0] == "dev") {
+                devMode = true
+                new Thread(ConsolePoller.instance).start()
+                retryArgs.remove(0)
+            }
+
+            if(retryArgs) {
+                if(retryArgs[0].isInteger()) {
+                  commandLine = historyLines.reverse().find { it.startsWith(retryArgs[0] + "\t") }
                 }
                 else {
                     System.err.println "\nJob ID could not be parsed as integer\n" + usageMsg
                     exit(1)
                 }
-                
+
                 if(commandLine == null) {
-                    System.err.println "\nCould not find a previous Bpipe run with id ${args[0]}. Please use 'bpipe history' to check for valid run ids.\n" + usageMsg
+                    System.err.println "\nCould not find a previous Bpipe run with id ${retryArgs[0]}. Please use 'bpipe history' to check for valid run ids.\n" + usageMsg
                     exit(1)
                 }
             }
@@ -1133,28 +1166,110 @@ class Runner {
                 commandLine = historyLines[-1]
             }
         }
-        
+
         // Trim off the job id
         if(commandLine.matches("^[0-9]{1,6}.*\$"))
             commandLine = commandLine.substring(commandLine.indexOf("\t")+1)
-        
+
         // Remove leading "bpipe" and "run" arguments
         def parsed = (commandLine =~ /bpipe ([a-z]*) (.*)$/)
         if(!parsed)
             throw new PipelineError("Internal error: failed to understand format of command from history:\n\n$commandLine\n")
-            
-        args = Utils.splitShellArgs(parsed[0][2]) 
-        
+
+        args = Utils.splitShellArgs(parsed[0][2])
+
+        if(retryParams)
+            args = mergeRetryParams(args, retryParams)
+
         if(testMode)
             args = ["-t"] + args
 
         def command = parsed[0][1]
         if(command == "dev")
             command = "run"
-        
+
         return [ command,  args]
     }
-    
+
+    /**
+     * Merge parameters supplied to a retry command into the arguments copied
+     * from the previous command.
+     * <p>
+     * A new parameter replaces an existing parameter with the same key, and is
+     * otherwise inserted alongside the existing parameters. File references
+     * (parameters of the form {@code @file}) are preserved as-is.
+     *
+     * @param args        arguments from the previous command
+     * @param newParams   parameter key/value pairs supplied to retry
+     * @return the merged argument list
+     */
+    static List mergeRetryParams(List args, List<String> newParams) {
+
+        Map<String,String> overrides = [:]
+        newParams.each { String param ->
+            param.split(",", -1).each { String value ->
+                def entry = BpipeParamsBinding.parseParam(value)
+                if(entry)
+                    overrides[entry.key] = value
+            }
+        }
+
+        if(!overrides)
+            return args
+
+        Set<String> mergedKeys = [] as Set
+        List result = []
+        for(int i = 0; i < args.size(); ++i) {
+            String arg = args[i]
+            String option = null
+            String paramValue = null
+
+            if(arg == "-p" || arg == "--param") {
+                option = arg
+                if(i + 1 < args.size())
+                    paramValue = args[++i]
+            }
+            else
+            if(arg.startsWith("--param=")) {
+                option = "--param="
+                paramValue = arg.substring("--param=".length())
+            }
+            else
+            if(arg.startsWith("-p") && !arg.startsWith("--")) {
+                option = "-p"
+                paramValue = arg.substring(2)
+            }
+
+            if(paramValue == null) {
+                result.add(arg)
+                continue
+            }
+
+            List<String> values = paramValue.split(",", -1) as List
+            List<String> merged = values.collect { String value ->
+                def entry = BpipeParamsBinding.parseParam(value)
+                if(entry && overrides.containsKey(entry.key)) {
+                    mergedKeys.add(entry.key)
+                    return overrides[entry.key]
+                }
+                return value
+            }
+
+            if(option == "--param=")
+                result.add(option + merged.join(","))
+            else {
+                result.add(option)
+                result.add(merged.join(","))
+            }
+        }
+
+        List<String> additional = overrides.findAll { key, value -> !mergedKeys.contains(key) }.values().toList()
+        if(additional)
+            result.addAll(0, additional.collectMany { [ "-p", it ] })
+
+        return result
+    }
+
     /**
      * Add a line to the current history file with information about
      * this run. The current command is stored in .bpipe/lastcmd

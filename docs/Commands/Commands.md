@@ -4,7 +4,7 @@
 Bpipe Version 0.9.8.6   Built on Wed Oct 22 16:06:17 EST 2014
 
 usage: bpipe [run|test|debug|execute] [options] <pipeline> <in1> <in2>...
-             retry [test]
+             retry [-p <param=value>] [test]
              stop
              history
              log
