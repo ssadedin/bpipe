@@ -332,7 +332,11 @@ class OutputMetaData implements Serializable {
             this.canonicalPath = Utils.canonicalFileFor(this.outputFile.path)
         }
         else {
-            this.canonicalPath = p.canonicalPath
+            // Cached canonical path in the property file is an optimisation to avoid
+            // the (potentially slow) canonical file computation, but it may be absent
+            // in old-format or truncated files - in which case recompute it rather than
+            // leaving it null (a null canonicalPath later crashes GraphEntry.index())
+            this.canonicalPath = (p.canonicalPath != null) ? p.canonicalPath : Utils.canonicalFileFor(this.outputFile.path)
         }
     }
     

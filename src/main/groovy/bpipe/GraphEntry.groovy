@@ -108,6 +108,14 @@ class GraphEntry implements Serializable {
             depthFirst { GraphEntry e ->
                 if(!e.values.is(null) && !e.values.isEmpty()) {
                     for(OutputMetaData p in e.values) {
+                        // OutputMetaData loaded from a truncated / half-written property
+                        // file (eg. pipeline hard killed mid-save) or from an old format
+                        // may have a null canonicalPath. Such entries cannot be indexed,
+                        // so skip them here; this matches the null-outputFile guard in
+                        // entryForCanonicalPath() and means those lookups simply miss the
+                        // index and are treated as "no metadata" rather than crashing.
+                        if(p.canonicalPath == null)
+                            continue
                         indexTmp[(String)p.canonicalPath] = e
                     }
                 }
