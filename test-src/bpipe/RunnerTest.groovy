@@ -123,4 +123,41 @@ class RunnerTest {
         assert Runner.parseMemoryOption("4") == 4
     }
     
+    @Test
+    void testMergeRetryParams() {
+        // No new parameters means the previous arguments are unchanged
+        assertEquals([ '-p', 'a=1', 'pipeline.groovy' ],
+                     Runner.mergeRetryParams([ '-p', 'a=1', 'pipeline.groovy' ], []))
+
+        // An existing parameter is overridden in place and a new one is added
+        assertEquals([ '-p', 'a=updated', '-p', 'b=2', 'pipeline.groovy' ],
+                     Runner.mergeRetryParams([ '-p', 'a=original', '-p', 'b=2', 'pipeline.groovy' ],
+                                             [ 'a=updated' ]))
+
+        // Values attached to -p and comma separated parameters are also handled
+        assertEquals([ '-p', 'a=updated,c=3', '-p', 'b=2', 'pipeline.groovy' ],
+                     Runner.mergeRetryParams([ '-pa=original,c=3', '-p', 'b=2', 'pipeline.groovy' ],
+                                             [ 'a=updated' ]))
+
+        // Long option forms are preserved
+        assertEquals([ '--param=a=updated', '--param=b=2', 'pipeline.groovy' ],
+                     Runner.mergeRetryParams([ '--param=a=original', '--param=b=2', 'pipeline.groovy' ],
+                                             [ 'a=updated' ]))
+
+        // Comma separated parameters supplied to retry are merged individually
+        assertEquals([ '-p', 'a=updated,b=changed', 'pipeline.groovy' ],
+                     Runner.mergeRetryParams([ '-p', 'a=original,b=2', 'pipeline.groovy' ],
+                                             [ 'a=updated,b=changed' ]))
+
+        // A comma separated new parameter can add a key alongside existing ones
+        assertEquals([ '-p', 'c=3', '-p', 'b=2,a=updated', 'pipeline.groovy' ],
+                     Runner.mergeRetryParams([ '-p', 'b=2,a=original', 'pipeline.groovy' ],
+                                             [ 'a=updated,c=3' ]))
+
+        // File parameter references are not treated as key/value parameters
+        assertEquals([ '-p', 'a=updated', '-p', '@params.txt' ],
+                     Runner.mergeRetryParams([ '-p', 'a=original', '-p', '@params.txt' ],
+                                             [ 'a=updated' ]))
+    }
+
 }
