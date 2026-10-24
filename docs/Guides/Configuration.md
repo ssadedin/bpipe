@@ -138,6 +138,15 @@ environments {
 }
 ```
 
+If you usually run in the same environment, you can set the `BPIPE_DEFAULT_ENVIRONMENT` environment
+variable instead of passing `--env` every time. An explicit `--env` flag still takes precedence over
+the environment variable:
+
+```bash
+export BPIPE_DEFAULT_ENVIRONMENT=prod
+bpipe run pipeline.groovy input.fastq.gz   # same as: bpipe run --env prod ...
+```
+
 ### Bootstrap Configuration
 
 The ability to use many different configuration files, and capability of utilising arbitrary 
