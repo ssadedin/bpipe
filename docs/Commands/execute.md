@@ -24,6 +24,16 @@ the Bpipe lib directory (by default, `~/bpipes`, or you can set the
 `$BPIPE_LIB` environment variable to change it. Alternatively, supply the `-s` option
 to cause Bpipe to load pipeline stages from a file explicitly.
 
+A file loaded with `-s` may be a complete pipeline script: any `run { ... }` statement
+it contains is ignored, so only the pipeline given on the command line is executed. This
+lets you run individual stages of an existing pipeline, eg:
+
+```bash
+  bpipe execute -s pipeline.groovy hello
+```
+
+The same applies to files loaded with `-s` by the [run](run) command.
+
 ## Example 1 - Run an Ad Hoc Pipeline
 
 Create a file called `stages.groovy` with the following contents:
