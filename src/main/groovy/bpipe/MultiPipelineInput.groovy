@@ -38,7 +38,7 @@ import groovy.util.logging.Log;
  *  
  * @author ssadedin
  */
-@Log
+@Log(value="LOGGER")
 class MultiPipelineInput extends PipelineInput implements Iterable {
     
     MultiPipelineInput(List<PipelineFile> input, List<PipelineStage> stages, Aliases aliases) {
@@ -91,7 +91,7 @@ class MultiPipelineInput extends PipelineInput implements Iterable {
             mp.currentFilter = this.currentFilter
             if(result instanceof PipelineInput)
                 mp.extensionPrefix = result.extensionPrefix
-            log.info("Resolved inputs: " + this.resolvedInputs.hashCode() + " child resolved inputs " + mp.resolvedInputs.hashCode())
+            LOGGER.info("Resolved inputs: " + this.resolvedInputs.hashCode() + " child resolved inputs " + mp.resolvedInputs.hashCode())
             return mp
         }
     }

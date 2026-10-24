@@ -47,7 +47,7 @@ import groovy.util.logging.Log;
  */
 class PipelineInput {
     
-    private static Logger log = Logger.getLogger('PipelineInput')
+    private static Logger LOGGER = Logger.getLogger('PipelineInput')
     
     /**
      * Support implicit cast to String when creating File objects
@@ -237,7 +237,7 @@ class PipelineInput {
         assert rawResolvedInput instanceof PipelineFile
         
         def result = this.aliases[rawResolvedInput]
-        log.info "Adding resolved input $result (raw input = $rawResolvedInput)"
+        LOGGER.info "Adding resolved input $result (raw input = $rawResolvedInput)"
         this.addResolvedInputs([rawResolvedInput])
         return result
 	}
@@ -342,9 +342,9 @@ class PipelineInput {
 	            throw new InputMissingError("Unable to locate one or more specified inputs from pipeline with the following extension(s):\n\n" + missingExts*.padLeft(15," ").join("\n"))
 	            
             if(filesWithExts.size()<20)
-                log.info "Found files with exts $exts : $filesWithExts"
+                LOGGER.info "Found files with exts $exts : $filesWithExts"
             else
-                log.info "Found ${filesWithExts.size()} files with exts $exts : starting with ${filesWithExts.take(10)} ..."
+                LOGGER.info "Found ${filesWithExts.size()} files with exts $exts : starting with ${filesWithExts.take(10)} ..."
 
 	        return (List<PipelineFile>)filesWithExts.flatten().unique()
         }
@@ -399,10 +399,10 @@ class PipelineInput {
             
             Pattern regexPattern = ~regex
             
-            log.info "Resolving inputs matching pattern $regex"
+            LOGGER.info "Resolving inputs matching pattern $regex"
             for(s in reverseOutputs) {
 
-	            //log.info("Checking " + Utils.logBig(s, 'outputs'))
+	            //LOGGER.info("Checking " + Utils.logBig(s, 'outputs'))
                         
                 List<PipelineFile> o = checkMatch(s, wholeMatch)
                 if(!o.isEmpty())
@@ -435,13 +435,13 @@ class PipelineInput {
      */
     @CompileStatic
     def propertyMissing(String name) {
-		log.info "Searching for missing Property: $name"
+		LOGGER.info "Searching for missing Property: $name"
         List<PipelineFile> resolved
         InputMissingError ime
         try {
             
             if(name =="dir") {
-                log.info "Trying to resolve input as directory ...."
+                LOGGER.info "Trying to resolve input as directory ...."
                 resolved = resolveInputAsDirectory()
                 if(!resolved) 
                     throw new PipelineError("Expected a directory as input, but no current input to this stage was a directory: \n" + Utils.box(input).join("\n"))
@@ -458,7 +458,7 @@ class PipelineInput {
             mapToCommandValue(resolved)
         }
         catch(InputMissingError e) {
-            log.fine("No input resolved for property $name: returning child PipelineInput for possible double extension resolution")
+            LOGGER.fine("No input resolved for property $name: returning child PipelineInput for possible double extension resolution")
             resolved = this.resolvedInputs
             ime = e
         }
@@ -529,14 +529,14 @@ class PipelineInput {
             
             List<List<PipelineFile>> outputsToAdd = []
             if(stage.context.nextInputs != null) {
-                log.fine "nextInputs are $stage.context.nextInputs" 
+                LOGGER.fine "nextInputs are $stage.context.nextInputs" 
                 List nextInputs = Utils.box(stage.context.nextInputs) as List
                 outputsToAdd.add(nextInputs)
             }
             
             List outputs = Utils.box(stage.context.@output)  as List
             if(!outputs.isEmpty()) {
-                log.fine "Outputs in search from $stage.stageName $outputs"            
+                LOGGER.fine "Outputs in search from $stage.stageName $outputs"            
                 outputsToAdd.add(outputs)
             }
            
@@ -546,7 +546,7 @@ class PipelineInput {
                     List filtered = pipelineInps.grep { PipelineFile pf ->
                         myBranch.hasParentWithName(pf.sourceBranch.name)
                     }
-                    log.info "Filtered $pipelineInps to $filtered from stage ${stage.hashCode()} based on source branches ${pipelineInps*.sourceBranch}"
+                    LOGGER.info "Filtered $pipelineInps to $filtered from stage ${stage.hashCode()} based on source branches ${pipelineInps*.sourceBranch}"
                     return filtered
                 }
             }
@@ -569,7 +569,7 @@ class PipelineInput {
         // that we know nothing about
         List<PipelineFile> previousInputs = (List<PipelineFile>)LocalPipelineFile.from(Utils.box(stages[0].context.rawInput) as List)
 
-        log.info "Supplementing with outputs from previous inputs: " + previousInputs
+        LOGGER.info "Supplementing with outputs from previous inputs: " + previousInputs
 
         reverseOutputs.add(previousInputs)
             
@@ -579,9 +579,9 @@ class PipelineInput {
             List originalInputs = LocalPipelineFile.from(Utils.box(stages[0].originalInputs) as List)
 
             if(originalInputs.size()<20)
-                log.info "Supplementing with original outputs: " + originalInputs
+                LOGGER.info "Supplementing with original outputs: " + originalInputs
             else
-                log.info "Supplementing with ${originalInputs.size()} original outputs"
+                LOGGER.info "Supplementing with ${originalInputs.size()} original outputs"
 
   	        reverseOutputs.add((List<PipelineFile>)originalInputs)
         }
@@ -599,7 +599,7 @@ class PipelineInput {
         
         for(inps in resolutionStack.reverse()) {
            if(inps) {
-//               log.fine "Add input from resolutionStack resolution chain: " + inps
+//               LOGGER.fine "Add input from resolutionStack resolution chain: " + inps
                reverseOutputs.add(0,(List<PipelineFile>)inps) 
            }
         }
@@ -609,7 +609,7 @@ class PipelineInput {
         // then it will go with those rather than searching backwards for a previous match
         for(inps in inputInputs.reverse()) {
            if(inps) {
-//               log.info "Add input from PipelineInput resolution chain: " + inps
+//               LOGGER.info "Add input from PipelineInput resolution chain: " + inps
                reverseOutputs.add(0,(List<PipelineFile>)inps) 
            }
         }
