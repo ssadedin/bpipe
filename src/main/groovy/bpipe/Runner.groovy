@@ -512,7 +512,7 @@ class Runner {
             new WorxEventListener().start()
         }
         
-        String loadArgs = opt['source'] ? '\n'+((String)opt['source']).split(',').collect { "load '$it'\n"}.join("") : ""
+        String loadArgs = opt['source'] ? '\n'+((String)opt['source']).split(',').collect { "bpipe.Pipeline.loadSource('$it')\n"}.join("") : ""
         
         def pipelineArgs = null
         String pipelineSrc

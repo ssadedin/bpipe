@@ -22,6 +22,7 @@
   <tr><td>-m</td><td>Limit memory usage to specified amount in MB (0.9.8+)</td></tr>
   <tr><td>-l</td><td>Specify a custom limit (0.9.8+)</td></tr>
   <tr><td>-p</td><td>Specify a parameter (variable) value</td></tr>
+  <tr><td>-s</td><td>Load pipeline stages from the given file(s) (comma separated) before running. Any `run` statement in these files is ignored</td></tr>
 </table>
 
 ## Description

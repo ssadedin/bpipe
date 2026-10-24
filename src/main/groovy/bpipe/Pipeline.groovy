@@ -567,7 +567,16 @@ public class Pipeline implements ResourceRequestor {
             log.info "Ignoring call to run() while reloading pipeline code in dev mode"
             return null
         }
-        
+
+        if(sourceLoadInProgress) {
+            // Files given with -s / --source are loaded only for their stage definitions;
+            // the pipeline to run comes from the main script (or the command line, for
+            // execute). Honouring a run statement here would launch a second pipeline and
+            // leave the config locked for the real one.
+            log.info "Ignoring call to run() in a script loaded via -s / --source"
+            return null
+        }
+
         if(Config.config.mode in ["run","retry","resume","remake"] && !Runner.testMode) { 
             ExecutorPool.startPools(ExecutorFactory.instance, Config.userConfig, false, true) 
         }  
@@ -1468,7 +1477,31 @@ public class Pipeline implements ResourceRequestor {
     static Map<String,RegionSet> genomes = [:]
     
     static Map<String, Map<String,Integer>> genomeChromosomeSizes = [:]
-    
+
+    /**
+     * Set while a script supplied via the -s / --source option is being loaded,
+     * so that {@link #run} can ignore any run statement it contains. This allows
+     * a complete pipeline script (stages plus <code>run { ... }</code>) to be used
+     * as a source of stages, eg: <code>bpipe execute -s pipeline.groovy hello</code>
+     */
+    static boolean sourceLoadInProgress = false
+
+    /**
+     * Load a script supplied via the -s / --source option. Identical to
+     * {@link #load(String, boolean)}, except that any run statement in the
+     * script (or in scripts it loads) is ignored.
+     */
+    static synchronized GroovyShell loadSource(String path) {
+        boolean wasLoadingSource = sourceLoadInProgress
+        sourceLoadInProgress = true
+        try {
+            return load(path)
+        }
+        finally {
+            sourceLoadInProgress = wasLoadingSource
+        }
+    }
+
     /**
      * Include pipeline stages from the specified path into the pipeline
      * @param path
