@@ -83,6 +83,11 @@ class SSHCommandExecutor implements CommandExecutor, ForwardHost {
      */
     protected List<String> keypairArgs
 
+    /**
+     * Portable /dev/null device
+     */
+    String nullDevice = System.getProperty("os.name").startsWith("Windows") ? "NUL" : "/dev/null";
+
     @Override
     public void start(Map inputCfg, Command cmd, Appendable outputLog, Appendable errorLog) {
         
@@ -156,7 +161,7 @@ class SSHCommandExecutor implements CommandExecutor, ForwardHost {
         
         this.keypairArgs = cmd.processedConfig.ssh_executor?.keypair ? ["-i", inputCfg.ssh_executor?.keypair] : []
         
-        List sshCommand = ["ssh","-oStrictHostKeyChecking=no", *keypairArgs, this.user + '@' + this.hostname,"bash"]
+        List sshCommand = ["ssh","-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=" + this.nullDevice, *keypairArgs, this.user + '@' + this.hostname,"bash"]
         
         log.info "Launching command saved in $cmdFile using: " + sshCommand.join(' ')
         
@@ -260,7 +265,7 @@ class SSHCommandExecutor implements CommandExecutor, ForwardHost {
         if(keypairArgs)
             sshOptions.addAll(keypairArgs)
         
-        List<String> sshCommand = ["ssh","-oStrictHostKeyChecking=no", *sshOptions, user + '@' +hostname,cmd]*.toString()
+        List<String> sshCommand = ["ssh","-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=" + nullDevice, *sshOptions, user + '@' +hostname,cmd]*.toString()
         
         Map execOptions = [:]
         if(options.commandTimeout)
@@ -314,7 +319,7 @@ class SSHCommandExecutor implements CommandExecutor, ForwardHost {
         
         dirGroups.each { dir, dirFiles ->
             log.info "Transfer $dirFiles to $hostname ..."
-            List sshCommand = ["rsync", "-r", "-e", "ssh -oStrictHostKeyChecking=no ${keypairArgs?.join(' ')?:''}", *dirFiles*.toString(), user + '@' +hostname+':'+dir]*.toString()
+            List sshCommand = ["rsync", "-r", "-e", "ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=${nullDevice} ${keypairArgs?.join(' ')?:''}", *dirFiles*.toString(), user + '@' +hostname+':'+dir]*.toString()
             Utils.executeCommand((List<Object>)sshCommand, throwOnError: true)        
         }
     }
@@ -330,7 +335,7 @@ class SSHCommandExecutor implements CommandExecutor, ForwardHost {
             dirFiles.each { 
                 def fileExpr = "$user@$hostname:$dir/$it.name"
                 log.info("Transfer $fileExpr")
-                List sshCommand = ["scp","-oStrictHostKeyChecking=no", *keypairArgs, fileExpr, dir]*.toString()
+                List sshCommand = ["scp","-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=" + nullDevice, *keypairArgs, fileExpr, dir]*.toString()
                 Utils.executeCommand((List<Object>)sshCommand, throwOnError: true)        
             }
         }
@@ -442,7 +447,7 @@ class SSHCommandExecutor implements CommandExecutor, ForwardHost {
             [ remote: remoteErrorPath,  local: stdErr, logger: errorLog ],
         ].each { conn ->
             
-            List<String> sshCommand = ["ssh","-oStrictHostKeyChecking=no", *keypairArgs, user + '@' +hostname, "cd $workingDirectory && tail -f -n 0 -c +${conn.local.length()} -n 1 ${conn.remote}"]*.toString()
+            List<String> sshCommand = ["ssh","-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=" + nullDevice, *keypairArgs, user + '@' +hostname, "cd $workingDirectory && tail -f -n 0 -c +${conn.local.length()} -n 1 ${conn.remote}"]*.toString()
 
             log.info "Connecting logs to $conn.local via ${sshCommand.join(' ')}"
             ProcessBuilder pb = new ProcessBuilder(sshCommand)

@@ -97,6 +97,11 @@ class AWSEC2CommandExecutor extends CloudExecutor {
      */
     String runningCommand
     
+    /**
+     * Portable /dev/null device
+     */
+    String nullDevice = System.getProperty("os.name").startsWith("Windows") ? "NUL" : "/dev/null";
+
     protected transient AmazonEC2 ec2
     
     protected transient AmazonS3 s3client
@@ -131,7 +136,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             [ remote: remoteErrorPath,  local: stdErr, logger: errorLog ],
         ].each { conn ->
             
-            List<String> sshCommand = ["ssh","-oStrictHostKeyChecking=no", "-i", keypair, user + '@' +hostname, "tail -f -n 0 -c +${conn.local.length()} -n 1 ${conn.remote}"]*.toString()
+            List<String> sshCommand = ["ssh","-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=" + nullDevice, "-i", keypair, user + '@' +hostname, "tail -f -n 0 -c +${conn.local.length()} -n 1 ${conn.remote}"]*.toString()
 
             log.info "Connecting logs to $conn.local via ${sshCommand.join(' ')}"
             ProcessBuilder pb = new ProcessBuilder(sshCommand)
@@ -589,7 +594,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
         
         log.info "Executing AWS wrapper command:\n\n=====\n$cmdText\n=======\n"
         
-        List sshCommand = ["ssh","-oStrictHostKeyChecking=no", "-i", keypair, this.user + '@' + this.hostname,"bash"]
+        List sshCommand = ["ssh","-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=" + this.nullDevice, "-i", keypair, this.user + '@' + this.hostname,"bash"]
 
         log.info "Launching command saved in $cmdFile using: " + sshCommand.join(' ')
         
@@ -646,7 +651,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             sshOptions.add("-vvv")
         }
         
-        List<String> sshCommand = ["ssh","-oStrictHostKeyChecking=no", *sshOptions, "-i", keypair, user + '@' +hostname,cmd]*.toString()
+        List<String> sshCommand = ["ssh","-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=" + nullDevice, *sshOptions, "-i", keypair, user + '@' +hostname,cmd]*.toString()
         
         Map execOptions = [:]
         if(options.commandTimeout)
@@ -690,7 +695,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
                 "rsync",
                 "-r",
                 "-e",
-                "ssh -oStrictHostKeyChecking=no -i $keypair",
+                "ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=${nullDevice}, -i $keypair",
                 *dirFiles*.toString(),
                 user + '@' +hostname+':'+dir
             ]*.toString()
@@ -718,7 +723,7 @@ class AWSEC2CommandExecutor extends CloudExecutor {
             dirFiles.each { 
                 def fileExpr = "$user@$hostname:$dir/$it.name"
                 log.info("Transfer $fileExpr")
-                List sshCommand = ["scp","-oStrictHostKeyChecking=no", "-i", keypair, fileExpr, dir]*.toString()
+                List sshCommand = ["scp","-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=" + nullDevice, "-i", keypair, fileExpr, dir]*.toString()
                 Utils.executeCommand((List<Object>)sshCommand, throwOnError: true)        
             }
         }
