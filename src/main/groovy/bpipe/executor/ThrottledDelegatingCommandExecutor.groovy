@@ -25,6 +25,7 @@ import bpipe.processors.EnvironmentVariableSetter
 import bpipe.processors.UvEnvWrapper
 import bpipe.processors.MemoryLimitReplacer
 import bpipe.processors.SingularityContainerWrapper
+import bpipe.processors.StagingProcessor
 import bpipe.processors.StorageResolver
 import bpipe.processors.ThreadAllocationReplacer
 import bpipe.storage.StorageLayer
@@ -225,6 +226,7 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
             new MemoryLimitReplacer(), 
             new ThreadAllocationReplacer(),
             new StorageResolver(commandExecutor),
+            new StagingProcessor(),
         ]
         
         String containerType = ((Map)cmd.processedConfig.container)?.type
