@@ -3,6 +3,10 @@ package bpipe.staging
 import java.nio.file.Path
 import java.nio.file.Paths
 
+import bpipe.layers.CommandLayer
+import bpipe.layers.CommandLayers
+import bpipe.layers.ShellHook
+
 import groovy.transform.CompileStatic
 
 /**
@@ -52,62 +56,50 @@ class DirectoryStagingArea extends StagingArea {
         return stageDir + canonical.normalize().toString()
     }
 
+    /**
+     * Stages files in the {@link CommandLayer#JOB} layer: the area is on the compute host,
+     * so copying must happen there, outside any container the command runs in.
+     */
     @Override
-    String wrap(StagingPlan plan, String commandText) {
-
+    void addHooks(StagingPlan plan, CommandLayers layers) {
         if(plan.isEmpty())
-            return commandText
-
+            return
+        layers.add(CommandLayer.JOB, new ShellHook(name: "staging:$name", pre: stageIn(plan), post: stageOut(plan)))
+    }
+    
+    private String stageIn(StagingPlan plan) {
         StringBuilder b = new StringBuilder()
-
-        b.append('(\n')
-
-        b.append(stageOutFunction(plan))
-        b.append("trap '__bpipe_stage_out \$?' EXIT\n")
-
-        List<String> dirs = (plan.inputs.values() + plan.outputs.values()).collect {
-            Paths.get(it).parent.toString()
+        
+        List<String> dirs = (plan.inputs.values() + plan.outputs.values()).collect { 
+            Paths.get(it).parent.toString() 
         }.unique()
-
+        
         b.append("mkdir -p ${dirs.collect { shellQuote(it) }.join(' ')} || ")
          .append("{ echo ${shellQuote('Bpipe staging: failed to create staging directory ' + plan.stageDir)} >&2; exit 1; }\n")
-
+        
         plan.inputs.each { String canonical, String staged ->
             b.append("cp -p ${shellQuote(canonical)} ${shellQuote(staged)} || ")
              .append("{ echo ${shellQuote('Bpipe staging: failed to stage input ' + canonical + ' to ' + staged)} >&2; exit 1; }\n")
         }
-
-        b.append(commandText)
-        if(!commandText.endsWith('\n'))
-            b.append('\n')
-        b.append(')\n')
-
         return b.toString()
     }
-
+    
     /**
-     * A shell function, run on exit of the staged command, that moves outputs back
-     * if the command succeeded and always removes the stage directory.
-     * <p>
-     * Every statement is guarded so that errexit (bash -e) cannot interrupt cleanup.
+     * Moves outputs back if the command succeeded, and always removes the stage directory
      */
-    private String stageOutFunction(StagingPlan plan) {
+    private String stageOut(StagingPlan plan) {
         StringBuilder b = new StringBuilder()
-        b.append('__bpipe_stage_out() {\n')
-        b.append('    __bpipe_rc=$1\n')
         if(plan.outputs) {
-            b.append('    if [ "$__bpipe_rc" -eq 0 ]; then\n')
+            b.append('if [ "$__bpipe_rc" -eq 0 ]; then\n')
             plan.outputs.each { String canonical, String staged ->
                 String dir = Paths.get(canonical).parent.toString()
-                b.append("        if [ -e ${shellQuote(staged)} ]; then ")
+                b.append("    if [ -e ${shellQuote(staged)} ]; then ")
                  .append("mkdir -p ${shellQuote(dir)} && mv -f ${shellQuote(staged)} ${shellQuote(canonical)} || ")
                  .append("{ echo ${shellQuote('Bpipe staging: failed to return output ' + canonical)} >&2; __bpipe_rc=1; }; fi\n")
             }
-            b.append('    fi\n')
+            b.append('fi\n')
         }
-        b.append("    rm -rf ${shellQuote(plan.stageDir)} || true\n")
-        b.append('    exit $__bpipe_rc\n')
-        b.append('}\n')
+        b.append("rm -rf ${shellQuote(plan.stageDir)}\n")
         return b.toString()
     }
 }

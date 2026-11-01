@@ -15,8 +15,8 @@ import groovy.util.logging.Log
 
 /**
  * Applies the staging area configured for a command (the <code>staging</code> attribute):
- * rewrites paths of staged files and wraps the command with the shell that moves them
- * into and out of the area.
+ * rewrites paths of staged files and adds the shell hooks that move them into and out
+ * of the area.
  * <p>
  * After {@link #transform}, {@link #area} and {@link #plan} are set if the command is staged,
  * for use by host-side staging hooks.
@@ -56,5 +56,7 @@ class StagingProcessor implements CommandProcessor {
         log.info "Command $command.id staged in area $area.name with ${plan.inputs.size()} inputs and ${plan.outputs.size()} outputs"
 
         command.command = staged.command
+        
+        area.addHooks(plan, command.layers)
     }
 }

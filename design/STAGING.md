@@ -55,7 +55,8 @@ commands {
 ThrottledDelegatingCommandExecutor.doStart
   prepareCommand → runProcessors
       ... existing processors (env, conda, uv, memory, threads, StorageResolver)
-      StagingProcessor              ← plans staging, rewrites paths, wraps the command
+      StagingProcessor              ← plans staging, rewrites paths, adds JOB-layer hooks
+  render layer hooks                ← CommandLayers.render around the final command text
   [test mode break]                 ← bpipe test shows the staged command, nothing is moved
   area.beforeStart(plan)            ← host-side hook (no-op for 'directory'; S3 upload later)
   commandExecutor.start
@@ -90,41 +91,21 @@ Tools that read `x.bam` from scratch look for `x.bam.bai` or `x.bai` next to it 
 
 This uses a fixed list of extensions, not a prefix wildcard, so that `x.bam` does not drag in `x.fastq.gz`, `x.sorted.bam` and so on.
 
-**4. Wrapping: a subshell with an EXIT trap.**
-The wrapped command looks like this:
+**4. Staging is expressed as shell hooks on command layers (see *Command Layers* below).**
+A directory area adds one hook to the `JOB` layer. Its *pre* part creates the staging directories and copies inputs in. Its *post* part moves declared outputs back if `$__bpipe_rc` is 0, then always removes the stage directory.
 
-```bash
-(
-__bpipe_stage_out() {
-    __bpipe_rc=$1
-    if [ "$__bpipe_rc" -eq 0 ]; then
-        # for every declared output: move back if it was produced in the staging area
-        if [ -e '<staged out>' ]; then mkdir -p '<canonical dir>' && mv -f '<staged out>' '<canonical out>' || { echo "Bpipe staging: failed to return output <canonical out>" >&2; __bpipe_rc=1; }; fi
-    fi
-    rm -rf '<stage dir>' || true
-    exit $__bpipe_rc
-}
-trap '__bpipe_stage_out $?' EXIT
-mkdir -p '<staged dirs of inputs and outputs>' || { echo "Bpipe staging: ..." >&2; exit 1; }
-cp -p '<canonical in>' '<staged in>' || { echo "Bpipe staging: failed to stage input <canonical in>" >&2; exit 1; }
-<original command>
-)
-```
-
-- The **subshell** keeps the trap and staging state contained. Executors that write their exit file in the same shell as the command (for example the AWS `cmd.sh` heredoc) record the exit status *after* stage-out has finished.
-- The **EXIT trap** catches normal completion, an explicit `exit` in the command, and errexit (`bash -e` is used by the local executor). Every command in the trap uses `&&`/`||`/`if`, so errexit cannot cut cleanup short.
-- **Exit status:** a failure to stage in or stage out fails the command with a clear message on stderr. Otherwise the command's own exit status is kept.
-- **Outputs** are moved back with `mv` (copy and delete across filesystems) only when the command succeeded. They are always deleted otherwise.
+- A failure to stage in or stage out fails the command with a clear message on stderr. Otherwise the command's own exit status is kept.
+- Outputs are moved back with `mv` (copy and delete across filesystems) only when the command succeeded. They are always deleted otherwise.
 
 **5. `StagingProcessor` placement.**
-It runs after `StorageResolver`, so `{bpipe:...}` storage tokens are already resolved, and wraps everything the earlier processors produced (for example conda activation). If a container is configured as well, the result is a `PipelineError` in v1.
+It runs after `StorageResolver`, so `{bpipe:...}` storage tokens are already resolved. It rewrites the command text and registers its hooks; `ThrottledDelegatingCommandExecutor.runProcessors()` renders all hooks around the final text once every processor has run. If a container is configured as well, the result is a `PipelineError` until containers become layer boundaries (step 7).
 
 **6. Area types are pluggable.**
 `StagingArea` (abstract) holds the configured `name`, plus:
 
 - `plan(Command, rewrittenInputs)` → `StagingPlan`: canonical-to-staged path maps for inputs (including companions) and outputs, and the stage directory.
 - `String stagedPath(Path canonical, Command cmd)`: how a canonical path is presented to the command (`/scratch/.../abs/path` for a directory; `s3://bucket/prefix/abs/path` for S3 inputs).
-- `String wrap(StagingPlan plan, String commandText)`: the prologue and epilogue.
+- `void addHooks(StagingPlan plan, CommandLayers layers)`: registers the shell hooks that stage files in and out.
 - `beforeStart(plan)`, `afterComplete(plan, exitCode)`: host-side hooks that do nothing by default.
 
 `StagingAreas.create(name)` builds an area from `stagingAreas.<name>.type` (`directory` → `DirectoryStagingArea`, later `s3` → `S3StagingArea`). S3 inputs map to URLs, while S3 outputs map to a local directory on the instance and are uploaded by the epilogue. So the S3 area reuses the directory area's output handling.
@@ -135,6 +116,26 @@ It runs after `StorageResolver`, so `{bpipe:...}` storage tokens are already res
 - A command that installs its own EXIT trap replaces Bpipe's, so stage-out does not run (the outputs are then missing and the command is failed by Bpipe's output checks).
 - Free space on scratch is not checked.
 
+## Command Layers
+
+Staging needs shell to run in different places: copying on the compute host, outside any container; and (for S3) work in the Bpipe process itself. Rather than special-casing this, commands get an explicit layer model that any processor can contribute hooks to:
+
+```
+HOST   Bpipe JVM                         ← host hooks (step 8): beforeStart / afterComplete
+  └─ executor boundary (SSH, sbatch, local fork)
+JOB    job shell on the compute host     ← CommandLayer.JOB hooks
+  └─ context boundary (container; step 7)
+INNER  where the command runs            ← CommandLayer.INNER hooks
+         └─ command text
+```
+
+- `bpipe.layers.ShellHook` has `pre` and `post` shell (see its javadoc for the contract). Pre hooks run in registration order and must `exit` non-zero on failure. Post hooks run on any exit, in reverse order, with errexit off, and see and may change the exit status in `$__bpipe_rc`. All hook shell must be POSIX `sh`.
+- `bpipe.layers.CommandLayers` (a transient field on `Command`) collects hooks per layer and renders them: each layer that has hooks becomes a subshell with an EXIT trap running its post hooks, then its pre hooks, then the inner layer. A layer with no hooks renders as its inner part unchanged, so commands without hooks are exactly as before.
+- The subshell keeps the trap contained. Executors that write the exit status in the same shell after the command (for example the AWS `cmd.sh` heredoc) record it after the post hooks have finished.
+- Tested under `bash` and `dash`, with and without `-e`: ordering, exit-status propagation through both layers, a post hook failing the command, a failing pre hook skipping the command while post hooks still run, and heredocs in hooks and command.
+
+Today `JOB` and `INNER` run in the same shell, because the container wrappers replace `command.shell` and so run *everything* inside the container. In step 7 the wrappers become boundaries: the `JOB` layer runs in the default shell and launches the container with the `INNER` layer fed in via a quoted heredoc. Mounts that hooks need (for example the staging area root) are added to the container automatically.
+
 ## Implementation Checklist
 
 - [x] **1. Config + `StagingArea`/`StagingAreas`/`DirectoryStagingArea` + path mapping.** Unit tests: staged path layout, relative/absolute/`..` normalisation, unknown area or type errors.
@@ -144,9 +145,12 @@ It runs after `StorageResolver`, so `{bpipe:...}` storage tokens are already res
 - [x] **5. `StagingProcessor` wired into `ThrottledDelegatingCommandExecutor.runProcessors()`**, plus the container check. Functional tests:
   - `tests/staging_scratch`: a staged stage and an unstaged stage in one pipeline; the output is correct; stdout shows the command saw scratch paths; a companion index was present on scratch; the stage dir was removed; a re-run skips both stages.
   - `tests/staging_scratch_fail`: the command fails; the stage dir is removed; no canonical output.
-- [ ] **6. S3 area:** the `ObjectStore` abstraction, `S3StagingArea`, host-side hooks in `ThrottledDelegatingCommandExecutor` (upload in `beforeStart`, download in `afterComplete`), the `aws s3 cp` epilogue, and cleanup on pipeline success. Carries over the decisions from `design/S3_TRANSFER_MODE.md` (dedup, `instanceProfile`, `AWS_REGION`, cleanup policy).
-- [ ] **7. Validate S3 staging with the AWS EC2 executor and `transfer=false`** (needs real AWS). Record any executor-specific changes that turned out to be needed.
-- [ ] **8. Docs:** `docs/Guides/` page for staging.
+- [x] **6. Command layer model.** `ShellHook`, `CommandLayer`, `CommandLayers` (rendering), rendered in `runProcessors()`; directory staging moved from a hand-built wrapper onto a `JOB` hook. Unit tests in `test-src/bpipe/layers/CommandLayersTest.groovy`.
+- [ ] **7. Containers as layer boundaries.** Docker / Singularity contribute a launcher and mounts instead of replacing `command.shell`; the staging area root is mounted automatically; the AWS `/tmp/bpipe-aws` mount moves out of `DockerContainerWrapper` into a mount contribution. Lift the staging + container restriction. Add Docker functional tests first (there are none automated today). Review stopping containerised local jobs (container naming plus `docker rm -f`).
+- [ ] **8. Host hooks** (`beforeStart` / `afterComplete`) in `ThrottledDelegatingCommandExecutor`.
+- [ ] **9. S3 area:** the `ObjectStore` abstraction, `S3StagingArea` (upload in `beforeStart`, `aws s3 cp` of outputs as a `JOB` post hook, download in `afterComplete`), and cleanup on pipeline success. Carries over the decisions from `design/S3_TRANSFER_MODE.md` (dedup, `instanceProfile`, `AWS_REGION`, cleanup policy), plus credentials inside containers (the IMDSv2 hop limit for Docker on EC2).
+- [ ] **10. Validate S3 staging with the AWS EC2 executor and `transfer=false`** (needs real AWS). Record any executor-specific changes that turned out to be needed.
+- [ ] **11. Docs:** `docs/Guides/` page for staging.
 
 ### Prototype notes (steps 1–5)
 
@@ -158,6 +162,7 @@ It runs after `StorageResolver`, so `{bpipe:...}` storage tokens are already res
 
 ## Open Points
 
-- Container support: should the prologue run inside the container (scratch must be mounted) or outside it (the container must mount scratch and run in it)? Deferred.
+- Container support: decided. Staging runs in the `JOB` layer, outside the container, and the area root is mounted into it (step 7).
+- User-configurable hooks (for example `pre_command` / `post_command` for the `JOB` or `INNER` layer, generalising the template-only `post_cmd`): not yet in scope.
 - Whether `bpipe test` should show the staged command or the original one. v1 shows the staged one, because it is what will actually run.
-- Reconnecting to a running command after Bpipe restarts: harmless for directory areas (all in-job); for S3, `afterComplete` must also run on that path (step 6).
+- Reconnecting to a running command after Bpipe restarts: harmless for directory areas (all in-job); for S3, `afterComplete` must also run on that path (step 9).

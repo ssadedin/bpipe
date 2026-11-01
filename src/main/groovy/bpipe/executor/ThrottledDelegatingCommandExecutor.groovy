@@ -19,6 +19,7 @@ import bpipe.PipelineDevRetry
 import bpipe.ResourceUnit;
 import bpipe.Runner
 import bpipe.Utils
+import bpipe.layers.CommandLayers
 import bpipe.processors.CondaEnvContainerWrapper
 import bpipe.processors.DockerContainerWrapper
 import bpipe.processors.EnvironmentVariableSetter
@@ -217,8 +218,10 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
     }
 
     private runProcessors(Command cmd) {
-        
-        
+
+        if(cmd.layers == null) // not persisted, so absent on a command that was reloaded
+            cmd.layers = new CommandLayers()
+
         List<CommandProcessor> processors = [
             new EnvironmentVariableSetter(), 
             new CondaEnvContainerWrapper(),
@@ -247,6 +250,12 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         
         for(CommandProcessor processor in processors) {
             processor.transform(cmd, resources)
+        }
+
+        // Hooks contributed by processors are rendered around the final command text
+        if(!cmd.layers.isEmpty()) {
+            cmd.command = cmd.layers.render(cmd.command)
+            log.info "Rendered command $cmd.id with layer hooks:\n$cmd.command"
         }
     }
     

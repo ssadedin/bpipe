@@ -77,6 +77,12 @@ class Command implements Serializable {
     String configName
     
     /**
+     * Shell hooks contributed by command processors, rendered into {@link #command}
+     * once all processors have run. Not persisted: only needed while preparing the command.
+     */
+    transient bpipe.layers.CommandLayers layers = new bpipe.layers.CommandLayers()
+    
+    /**
      * When the command was initiated (eg: queued in a queuing system)
      */
     long createTimeMs

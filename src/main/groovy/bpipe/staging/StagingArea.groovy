@@ -2,6 +2,8 @@ package bpipe.staging
 
 import java.nio.file.Path
 
+import bpipe.layers.CommandLayers
+
 import groovy.transform.CompileStatic
 
 /**
@@ -50,10 +52,10 @@ abstract class StagingArea implements Serializable {
     abstract String stagedOutputPath(String stageDir, Path canonical)
 
     /**
-     * @return  the command text wrapped with the shell that stages files in before
-     *          and out after it runs
+     * Add the shell hooks that move the planned files into the area before the command
+     * and out of it afterwards.
      */
-    abstract String wrap(StagingPlan plan, String commandText)
+    abstract void addHooks(StagingPlan plan, CommandLayers layers)
 
     /**
      * Called in the Bpipe process before the command is started

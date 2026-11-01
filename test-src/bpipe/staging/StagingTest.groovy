@@ -8,6 +8,8 @@ import org.junit.Before
 import org.junit.Test
 
 import bpipe.PipelineError
+import bpipe.layers.CommandLayer
+import bpipe.layers.CommandLayers
 import bpipe.PipelineFile
 import bpipe.storage.LocalFileSystemStorageLayer
 
@@ -163,7 +165,7 @@ class StagingTest {
         assert staged.plan.inputs.keySet() == [bam.path, "${bam.path}.bai".toString()] as Set
         assert staged.plan.inputs[bam.path] == stageDir + bam.path
         assert staged.plan.outputs == [(out.path): stageDir + out.path]
-        assert staged.command.contains("cat ${stageDir}${bam.path} > ${stageDir}${out.path}")
+        assert staged.command == "cat ${stageDir}${bam.path} > ${stageDir}${out.path}"
     }
 
     @Test
@@ -177,7 +179,7 @@ class StagingTest {
             String stageDir = area.stageDir('1', '2')
             StagingPlanner.StagedCommand staged = StagingPlanner.stage(area, stageDir, "cat $rel", [rel], [])
             assert staged.plan.inputs == [(cwdFile.canonicalPath): stageDir + cwdFile.canonicalPath]
-            assert staged.command.contains("cat $stageDir$cwdFile.canonicalPath\n")
+            assert staged.command == "cat $stageDir$cwdFile.canonicalPath"
         }
         finally {
             cwdFile.delete()
@@ -190,6 +192,20 @@ class StagingTest {
         StagingPlanner.StagedCommand staged = StagingPlanner.stage(area, area.stageDir('1', '2'), "cat $missing", [missing], [])
         assert staged.plan.isEmpty()
         assert staged.command == "cat $missing"
+        
+        CommandLayers layers = new CommandLayers()
+        area.addHooks(staged.plan, layers)
+        assert layers.isEmpty() : 'no hooks should be added when nothing is staged'
+    }
+    
+    @Test
+    void 'directory staging runs in the job layer'() {
+        PipelineFile input = file('in.txt', 'hello')
+        StagingPlanner.StagedCommand staged = StagingPlanner.stage(area, area.stageDir('1', '2'), "cat $input", [input], [])
+        CommandLayers layers = new CommandLayers()
+        area.addHooks(staged.plan, layers)
+        assert layers.getHooks(CommandLayer.JOB)*.name == ['staging:scratch']
+        assert layers.getHooks(CommandLayer.INNER).isEmpty()
     }
 
     // ---------- execution of the wrapped command ----------
@@ -197,8 +213,10 @@ class StagingTest {
     Map runStaged(String command, List<PipelineFile> inputs, List<PipelineFile> outputs, List<String> shell) {
         String stageDir = area.stageDir('1', '2')
         StagingPlanner.StagedCommand staged = StagingPlanner.stage(area, stageDir, command, inputs, outputs)
+        CommandLayers layers = new CommandLayers()
+        area.addHooks(staged.plan, layers)
         Process p = new ProcessBuilder(shell).redirectErrorStream(true).start()
-        p.outputStream.withWriter { it << staged.command }
+        p.outputStream.withWriter { it << layers.render(staged.command) }
         String output = p.inputStream.text
         int exit = p.waitFor()
         return [exit: exit, output: output, stageDir: new File(stageDir), plan: staged.plan]

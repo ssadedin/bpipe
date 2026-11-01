@@ -9,8 +9,8 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 
 /**
- * Works out which of a command's files to stage, rewrites the command to use the
- * staged paths and wraps it with the staging shell of the area.
+ * Works out which of a command's files to stage and rewrites the command to use the
+ * staged paths.
  * <p>
  * Only local files are candidates. Inputs are staged if their path appears as a whole
  * token in the command (see {@link StagingPathRewriter}) and they are regular files;
@@ -23,7 +23,13 @@ import groovy.util.logging.Log
 class StagingPlanner {
 
     static class StagedCommand {
+        
         StagingPlan plan
+        
+        /**
+         * The command text with staged paths substituted (hooks are added separately,
+         * see {@link StagingArea#addHooks})
+         */
         String command
     }
 
@@ -60,7 +66,7 @@ class StagingPlanner {
 
         log.info "Staging plan for area $area.name: $plan"
 
-        return new StagedCommand(plan: plan, command: area.wrap(plan, rewritten.text))
+        return new StagedCommand(plan: plan, command: rewritten.text)
     }
 
     private static void addInput(StagingPlan plan, StagingArea area, Path input) {
