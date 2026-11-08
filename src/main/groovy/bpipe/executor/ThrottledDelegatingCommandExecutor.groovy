@@ -134,6 +134,12 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         if(bpipe.Runner.testMode || bpipe.Config.config.breakTriggered) {
             triggerBreak(cmd, cfg)
         }
+
+        if(cmd.staging != null) {
+            startStaged(cfg, cmd)
+            this.command.save()
+            return
+        }
         
         Semaphore lock = commandExecutor.getLaunchLock() ?: jobLaunchLock        
         lock.acquire()
@@ -159,6 +165,43 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
     } 
 
     /**
+     * Satisfy the command's outputs by copying staged files instead of running it.
+     * <p>
+     * By the time this is called the command has been through all of its normal processing:
+     * resources have been allocated and $threads / $memory substituted, environment, conda and
+     * container wrappers applied, beforeRun hooks run. Errors in any of that surface just as
+     * they would for a real run. Only the execution of the command itself is replaced: the
+     * resolved command is printed and recorded as {@link Command#originalCommand}, and a script
+     * copying the staged files is run instead. The copy always runs locally, since there is no
+     * reason to submit a file copy to a cluster (and the staging directory may not be visible there).
+     * <p>
+     * The resources allocated to the command are held until the copy completes and are
+     * released in the usual way by {@link #waitFor}.
+     */
+    @CompileStatic
+    private void startStaged(Map cfg, Command cmd) {
+
+        cmd.originalCommand = cmd.command
+
+        String stageInfo = cmd.branch?.name ? "Stage $cmd.name in branch $cmd.branch.name" : "Stage $cmd.name"
+        String msg = "$stageInfo using staged outputs from ${cmd.staging.stagedDirs.join(', ')} instead of executing:\n\n        $cmd.command\n"
+        log.info msg
+        if(outputLog instanceof bpipe.OutputLog) {
+            ((bpipe.OutputLog)outputLog).buffer(msg)
+            ((bpipe.OutputLog)outputLog).flush()
+        }
+        else
+            println msg
+
+        cmd.command = cmd.staging.toScript(cmd.originalCommand)
+
+        log.info "Replacing executor $commandExecutor with local executor to copy staged outputs for command $cmd.id"
+        this.commandExecutor = new LocalCommandExecutor()
+
+        commandExecutor.start(cfg, cmd, outputLog, errorLog)
+    }
+
+    /**
      * Throw an exception indicating the pipeline is aborting due to user initiated break
      */
     @CompileStatic
@@ -177,6 +220,9 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         }
         if(cfg.containsKey('uv_project') && cfg.get('uv_project') != null) {
             msg += "\n        in uv project: " + cfg.get('uv_project')
+        }
+        if(cmd.staging != null) {
+            msg += "\n\n        (outputs would be copied from staged directory ${cmd.staging.stagedDirs.join(', ')} instead)"
         }
 
         this.releaseAll()

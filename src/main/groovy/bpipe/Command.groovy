@@ -130,6 +130,21 @@ class Command implements Serializable {
      */
     CommandUtilisation utilisation
 
+    /**
+     * If set, this command's outputs are to be copied from staged files instead of
+     * executing it (see {@link StagedOutputs}). Determined when the command is created,
+     * but only acted on at launch time by
+     * {@link bpipe.executor.ThrottledDelegatingCommandExecutor}, so that all the
+     * late-bound processing of the command is still exercised.
+     */
+    StagingPlan staging
+
+    /**
+     * For a staged command: the fully resolved command that would have been executed,
+     * before it was replaced with the script that copies the staged outputs.
+     */
+    String originalCommand
+
     @CompileStatic
     Map getConfig(List<PipelineFile> inputs) {
 

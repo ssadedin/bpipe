@@ -120,6 +120,12 @@ class OutputMetaData implements Serializable {
      * rather than by actual command execution
      */
     boolean stub = false
+
+    /**
+     * If this output was created by copying a staged file instead of running the
+     * command (see {@link StagedOutputs}), the staging directory it came from; otherwise null
+     */
+    String stagedFrom
     
     /**
      * Virtual property - not stored
@@ -158,6 +164,10 @@ class OutputMetaData implements Serializable {
         
         this.command = command.command
         this.commandId = command.id
+
+        // Always set (including to null) so that a real execution clears any
+        // previous staged status loaded from the existing meta data
+        this.stagedFrom = command.staging?.sourceFor(o)
         this.branchPath = branchPath
         this.stageId = stage.id
         
@@ -323,6 +333,9 @@ class OutputMetaData implements Serializable {
         command = p.command
         
         this.stub = p.containsKey('stub') ? Boolean.parseBoolean(p.stub) : false
+
+        // Note: null values are saved as the string "null" by save()
+        this.stagedFrom = (p.stagedFrom && p.stagedFrom != 'null') ? p.stagedFrom : null
     }
     
 

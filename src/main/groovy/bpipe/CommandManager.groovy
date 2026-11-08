@@ -186,7 +186,15 @@ class CommandManager {
      */
     @CompileStatic
     Command createExecutor(Command cmd, Map cfg, OutputLog outputLog) {
-        
+
+        // A staged command never starts its configured executor (the copy of the staged files
+        // is run locally at launch time), so it must not take a pre-allocated executor: that
+        // would consume a slot in the pool that is never fed a command.
+        if(cmd.staging != null) {
+            cmd.executor = executorFactory.createExecutor(cfg)
+            return cmd
+        }
+
         cmd = ExecutorPool.requestExecutor(cmd, cfg, outputLog)
         if(cmd.executor) {
             log.info "Using pre-allocated executor of type ${cmd.executor.class.name}"
@@ -353,11 +361,15 @@ class CommandManager {
         }
 
         e.cleanup()
-            
-		if(!commandIds.containsKey(e))
+
+        // The wrapper's delegate may have been replaced after launch (staged commands
+        // are run by a local executor, rescheduled commands by a new executor),
+        // in which case the command is registered under the wrapper
+        String commandId = commandIds.containsKey(e) ? commandIds[e] : commandIds[cmd.executor]
+		if(commandId == null)
 			throw new IllegalStateException("Attempt to clean up commmand $e that was not launched by this command manager / context")
-			
-		this.cleanup(this.commandIds[e])
+
+		this.cleanup(commandId)
 	}
 	
     /**
