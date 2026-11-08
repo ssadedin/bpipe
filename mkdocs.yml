@@ -80,6 +80,7 @@ nav:
   - Resource Managers: Guides/ResourceManagers.md
   - Tool Version Database: Guides/ToolVersionDatabase.md
   - Trash: Guides/Trash.md
+  - Staged Outputs: Guides/StagedOutputs.md
   - Development Setup: Guides/DevelopmentSetup.md
   - Documentation Style: Guides/DocumentationStyle.md
   - Implementing A Resource Manager: Guides/ImplementingAResourceManager.md

@@ -2721,8 +2721,15 @@ class PipelineContext {
           return command
       } 
       
+      // If running with staged outputs, determine whether this command's outputs can all
+      // be copied from staged files. Note that this only records the plan: the command still
+      // goes through all the normal processing (resource allocation, config, container wrapping
+      // etc) and is only substituted with the copy at launch time by ThrottledDelegatingCommandExecutor
+      command.staging = StagedOutputs.plan(stageName, checkOutputs.unique(false))
+
       // Check the command for versions of tools it uses
-      if(!Runner.testMode) { // Don't execute tool probes if the user is just testing the pipeline
+      // Note: tool probes actually run the tools, which a staged command is avoiding
+      if(!Runner.testMode && !command.staging) { // Don't execute tool probes if the user is just testing the pipeline
         def toolsDiscovered = ToolDatabase.instance.probe(cmd)
           
         // Add the tools to our documentation

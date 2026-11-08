@@ -34,6 +34,9 @@ lets you run individual stages of an existing pipeline, eg:
 
 The same applies to files loaded with `-s` by the [run](run) command.
 
+Combined with `--staged`, this allows part of a pipeline to be developed or tested with
+expensive stages replaced by staged outputs (see [Staged Outputs](../Guides/StagedOutputs.md)).
+
 ## Example 1 - Run an Ad Hoc Pipeline
 
 Create a file called `stages.groovy` with the following contents:

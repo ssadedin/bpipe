@@ -157,7 +157,26 @@ class Dependencies {
             if(outOfDateOutputs)
                 return outOfDateOutputs
         }
-        
+
+        // Outputs that were copied from staged files must be regenerated if this run does not
+        // stage them from the same place, and outputs that are staged in this run must be
+        // replaced if they did not come from (the current version of) the staged file.
+        // Note: the check applies even when staging is not enabled, so that dummy data
+        // from a staged run never silently flows into a real run.
+        GraphEntry stagingGraph = this.getOutputGraph()
+        outputGraphLock.readLock().lock()
+        try {
+            List<PipelineFile> stagedOutOfDate = StagedOutputs.findOutOfDate(outputs) { PipelineFile o ->
+                stagingGraph.propertiesFor(o.path)
+            }
+            outOfDateOutputs.addAll(stagedOutOfDate*.toPath())
+        }
+        finally {
+            outputGraphLock.readLock().unlock()
+        }
+        if(outOfDateOutputs)
+            return outOfDateOutputs
+
         // Outputs are forcibly out of date if specified by remake
         if(!overrideTimestamps.isEmpty()) { 
             // TODO - CLOUD - convert to use nio Path

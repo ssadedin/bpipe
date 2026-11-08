@@ -142,11 +142,17 @@ class SQLiteOutputMetaDataStore implements OutputMetaDataStore {
                 intermediate    INTEGER DEFAULT 0,
                 cleaned         INTEGER DEFAULT 0,
                 stub            INTEGER DEFAULT 0,
+                stagedFrom      TEXT,
                 accompanies     TEXT,
                 storage         TEXT,
                 basePath        TEXT
             )
         """)
+        // Columns added after the initial schema: add them to databases created by older versions
+        List<String> existingColumns = db.rows("PRAGMA table_info(outputs)").collect { it.name }
+        if(!('stagedFrom' in existingColumns))
+            db.execute("ALTER TABLE outputs ADD COLUMN stagedFrom TEXT")
+
         db.execute("CREATE INDEX IF NOT EXISTS idx_outputs_commandId ON outputs(commandId)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_outputs_stageName ON outputs(stageName)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_outputs_outputPath ON outputs(outputPath)")
@@ -225,13 +231,13 @@ class SQLiteOutputMetaDataStore implements OutputMetaDataStore {
                     branchPath, inputs, command, tools, fingerprint,
                     timestamp, startTimeMs, createTimeMs, stopTimeMs,
                     preserve, intermediate, cleaned, stub,
-                    accompanies, storage, basePath
+                    accompanies, storage, basePath, stagedFrom
                 ) VALUES (
                     ?, ?, ?, ?, ?,
                     ?, ?, ?, ?, ?,
                     ?, ?, ?, ?,
                     ?, ?, ?, ?,
-                    ?, ?, ?
+                    ?, ?, ?, ?
                 )
             """) { stmt ->
                 for(OutputMetaData p in batch) {
@@ -256,7 +262,8 @@ class SQLiteOutputMetaDataStore implements OutputMetaDataStore {
                         p.stub ? 1 : 0,
                         p.accompanies,
                         p.storage ? p.storage.name : 'local',
-                        p.basePath
+                        p.basePath,
+                        p.stagedFrom
                     )
                 }
             }
@@ -444,6 +451,7 @@ class SQLiteOutputMetaDataStore implements OutputMetaDataStore {
         p.intermediate = row.intermediate == 1
         p.cleaned = row.cleaned == 1
         p.stub = row.stub == 1
+        p.stagedFrom = row.stagedFrom
         p.accompanies = row.accompanies
         p.storage = StorageLayer.create(row.storage ?: 'local')
         p.basePath = row.basePath

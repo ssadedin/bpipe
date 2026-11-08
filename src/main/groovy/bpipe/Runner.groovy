@@ -458,6 +458,20 @@ class Runner {
         if(opts['d']) {
             Config.config.defaultOutputDirectory = opts['d']
         }
+
+        try {
+            if(opts['staged']) {
+                StagedOutputs.configure(opts['staged'])
+            }
+            else
+            if(Config.userConfig.containsKey('staged')) {
+                StagedOutputs.configure(Config.userConfig.staged)
+            }
+        }
+        catch(PipelineError e) {
+            System.err.println "\nERROR: $e.message\n"
+            exit(1)
+        }
         
         if(opts['n']) {
             log.info "Maximum threads specified as ${opts['n']}"
@@ -676,6 +690,7 @@ class Runner {
             e longOpt: 'env', 'Environment to select from alternate configurations in bpipe.config', args: 1
             'L' longOpt: 'interval', 'the default genomic interval to execute pipeline for (samtools format)',args: 1
             nochecks longOpt: 'no-checks', 'Skip execution of all pipeline checks'
+            staged longOpt: 'staged', 'Copy outputs from staging directory (comma separated for several) instead of running commands that create them', args: 1
         }
     }
     
