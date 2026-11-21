@@ -176,6 +176,26 @@ containers {
 When configured this way, Bpipe will add the required instructions to bind the paths into your
 container.
 
+By default, the storage is bound at the same path inside the container as on the host. To bind it
+at a different location, set `container_path` on the file system:
+
+```groovy
+filesystems {
+    reference_data {
+        type='bind'
+        base='/storage/reference_data'
+        container_path='/refs'
+    }
+}
+```
+
+This makes `/storage/reference_data` on the host appear as `/refs` inside the container
+(`-v /storage/reference_data:/refs` for docker, `-B /storage/reference_data:/refs` for singularity).
+`container_path` must be an absolute path.
+
+**Note**: Bpipe does not translate paths in your commands. When `container_path` differs from `base`,
+commands running in the container must refer to files using the container path (e.g. `/refs/hg38.fa`).
+
 
 ## Specifying Platform
 

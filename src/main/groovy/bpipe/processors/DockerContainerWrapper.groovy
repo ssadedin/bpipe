@@ -57,7 +57,7 @@ class DockerContainerWrapper implements CommandProcessor {
             
             BindStorageLayer layer = (BindStorageLayer)StorageLayer.create(name)
 
-            ["-v", "$layer.base:$layer.base"]
+            ["-v", "$layer.base:$layer.containerTarget"]
         }
         .unique()
         .sum()

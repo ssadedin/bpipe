@@ -65,4 +65,19 @@ class SingularityContainerTest {
         assert binds.contains('/tmp/foo')
         
     }
+
+    @Test
+    public void 'storage is bound to configured container path'() {
+        
+        Config.userConfig = [ filesystems : [
+            mappedstorage: [ type: 'bind', base: '/tmp/foo', container_path: '/refs']
+        ]]
+        
+        command.rawProcessedConfig = config + [container:config.container+[storage:'mappedstorage']]
+        scw.transform(command, [])
+        
+        def binds = command.shell.findIndexValues { it == '-B' }.collect { command.shell[it+1] }
+        assert binds.size() == 2
+        assert binds.contains('/tmp/foo:/refs')
+    }
 }

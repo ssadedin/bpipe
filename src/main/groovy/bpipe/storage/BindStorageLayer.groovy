@@ -17,7 +17,39 @@ import groovy.util.logging.Log
 @Log
 class BindStorageLayer extends StorageLayer {
     
+    /**
+     * The path of the storage on the host (ie: the source of the bind mount)
+     */
     String base
+    
+    /**
+     * Optional path at which the storage should appear inside the container. If
+     * not set, the storage is bound at the same path as on the host ({@link #base}).
+     * <p>
+     * Named with an underscore so that it maps directly from the <code>container_path</code>
+     * attribute in the <code>filesystems</code> config block (see {@link StorageLayer#create}).
+     * <p>
+     * Note: Bpipe does not rewrite paths in commands to account for this mapping. When a
+     * different container path is configured, commands must refer to files under the storage
+     * using the container path.
+     */
+    String container_path
+    
+    /**
+     * @return  the path at which this storage should be mounted inside a container
+     */
+    String getContainerTarget() {
+        if(!container_path)
+            return base
+
+        // Both docker and singularity require the target of a bind mount to be absolute
+        if(!container_path.startsWith('/'))
+            throw new bpipe.PipelineError(
+                "The container_path '$container_path' configured for filesystem '$name' is not an absolute path. " + 
+                "Please set container_path for this filesystem to an absolute path.")
+
+        return container_path
+    }
 
     @Override
     public boolean exists(String path) {

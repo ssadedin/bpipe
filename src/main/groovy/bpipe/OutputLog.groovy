@@ -115,10 +115,14 @@ class OutputLog implements Appendable {
     
     void bufferLine(String line) {
 
-        // Update rolling tail buffer
-        tailBuffer.addLast(line)
-        if(tailBuffer.size() > maxTailLines) {
-            tailBuffer.removeFirst()
+        // Update rolling tail buffer. This is locked because the tail is read by other
+        // threads (eg: to summarise errors when a command fails) while output may still be
+        // arriving from the thread that forwards the command's output
+        synchronized(tailBuffer) {
+            tailBuffer.addLast(line)
+            if(tailBuffer.size() > maxTailLines) {
+                tailBuffer.removeFirst()
+            }
         }
         
         // In dev mode, no output log at all, just print raw output
@@ -161,8 +165,16 @@ class OutputLog implements Appendable {
         return this;
     }
 
-    Iterable<String> getLastTailLines() {
-        return tailBuffer
+    /**
+     * @return  a snapshot of the last lines output. A copy is returned, rather than the
+     *          live buffer, so that callers can safely iterate it while output continues to
+     *          be appended concurrently (iterating the live ArrayDeque would throw
+     *          ConcurrentModificationException).
+     */
+    List<String> getLastTailLines() {
+        synchronized(tailBuffer) {
+            return new ArrayList<String>(tailBuffer)
+        }
     }
 }
  
