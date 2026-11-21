@@ -69,6 +69,65 @@ real run, and the printed command is the fully resolved one. The copy itself is
 always run locally, even if the command is configured for a cluster or cloud
 executor.
 
+## Index Files
+
+Many tools write an index file alongside their output, often without declaring it as an output
+of the stage. For example, a stage might run `samtools index` on the BAM it creates in the same
+command. When a command is staged, Bpipe also copies known index files for each of its outputs,
+if they are present **in the same staging directory** as the output. They do not need to be
+declared outputs.
+
+For each index extension, Bpipe looks for both common naming forms: the extension appended to
+the full file name (`sample.bam.bai`) and the extension replacing the file's own extension
+(`sample.bai`). Index files are copied after the file they index, so they are never older than it.
+A missing index file is not an error.
+
+The default index types are:
+
+| Output extension | Index extensions |
+|---|---|
+| `bam` | `bai`, `csi` |
+| `cram` | `crai` |
+| `vcf` | `idx` |
+| `vcf.gz` | `tbi`, `csi` |
+| `bcf` | `csi` |
+| `bed.gz`, `gff.gz`, `gff3.gz`, `gtf.gz` | `tbi` |
+| `fa`, `fasta` | `fai` |
+| `fa.gz`, `fasta.gz` | `fai`, `gzi` |
+
+When an output matches several extensions, the longest wins (for example, `vcf.gz` rather than `gz`).
+
+To add or change index types, set `staging.indexes` in `bpipe.config`. Your entries are merged
+with the defaults by extension, so you only need to list what is different. An empty list turns
+off index copying for that type:
+
+```groovy
+staging {
+    indexes = [
+        dat: ['didx'],    // add a new type
+        bam: ['bai'],     // only copy .bai (not .csi) for BAM files
+        cram: []          // never copy CRAM indexes
+    ]
+}
+```
+
+The copied index files are listed after the staging message:
+
+```
+Stage align using staged outputs from /data/staged instead of executing:
+
+        bwa mem ... | samtools sort -o sample.bam - && samtools index sample.bam
+
+        (also copying staged index files: sample.bam.bai)
+```
+
+In test mode (`-t`), they are listed after the `(outputs would be copied ...)` line as
+`(with index files: ...)`.
+
+**Note**: index files are not outputs, so Bpipe does not track them for dependencies. If you
+change only a staged index file, it is not copied again until the file it indexes is re-staged
+(for example, after you change the staged file or remove the output).
+
 ## Staged outputs in later runs
 
 Outputs created from staged files are recorded as such in Bpipe's output meta

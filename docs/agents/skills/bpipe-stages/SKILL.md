@@ -310,7 +310,23 @@ bpipe run --staged test_data/qc_fail,test_data/baseline pipeline.groovy ...   # 
 - **It is all or nothing per command.** A command is staged only if *every* one of its outputs
   has a staged file. If only some do, Bpipe prints `WARNING: stage X has staged files for only
   some of its outputs ...` and runs the command for real. When you see that warning, add the
-  missing files (secondary outputs such as `.bai`, `.tbi` and `.idx` are easy to forget).
+  missing files (secondary *declared* outputs such as `.bai`, `.tbi` and `.idx` are easy to forget).
+- **Index files come along automatically.** When a command is staged, known index files for its
+  outputs are copied too if they are in the same staging directory as the output, even when they
+  are not declared outputs (for example, a `.bai` written by `samtools index` inside the same
+  `exec`). Both naming forms are found: `x.bam.bai` and `x.bai`. The defaults are
+  `bam`→`bai`/`csi`, `cram`→`crai`, `vcf`→`idx`, `vcf.gz`→`tbi`/`csi`, `bcf`→`csi`,
+  `bed.gz`/`gff.gz`/`gff3.gz`/`gtf.gz`→`tbi`, `fa`/`fasta`→`fai`, and `fa.gz`/`fasta.gz`→`fai`/`gzi`.
+  Add or override types in `bpipe.config`. Entries are merged with the defaults by extension, and
+  an empty list turns one off:
+
+  ```groovy
+  staging {
+      indexes = [ dat: ['didx'], bam: ['bai'] ]   // bam: [] would stop copying BAM indexes
+  }
+  ```
+  A missing index is not an error. The copied indexes are listed after the staging message
+  (`(also copying staged index files: ...)`).
 - **Only the command itself is skipped.** Config, `$threads`/`$memory`, `uses`/`-n`/`-m`
   throttling, containers, conda and env settings are all still resolved. So a staged run still
   catches config errors, a missing `memory` entry for `$memory`, and similar problems. The copy
@@ -332,7 +348,8 @@ bpipe run --staged test_data/qc_fail,test_data/baseline pipeline.groovy ...   # 
   does not stage them from the same directory, so dummy data never leaks into a real run.
   Switching between scenario directories just works.
 - `-t` shows what would be staged without creating anything:
-  `(outputs would be copied from staged directory ...)` follows each staged command.
+  `(outputs would be copied from staged directory ...)` follows each staged command, followed by
+  `(with index files: ...)` when there are any.
 - **Limitations:** only outputs inside the run directory and on local storage can be staged.
   Glob outputs (`produce('*.vcf')`) cannot be staged. Staging is decided per *command*, so a
   stage with several `exec`s can have some commands staged and others run for real.

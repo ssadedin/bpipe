@@ -65,6 +65,29 @@ class StagingPlan implements Serializable {
     Map<String,String> sources = [:]
 
     /**
+     * Index files to copy along with each output: canonical output path => (canonical
+     * index path => staged index file). These are not outputs of the command, so they
+     * are not tracked in output meta data or dependencies: they are simply copied if
+     * present, immediately after the file they index (see {@link StagedOutputs#findStagedIndexes}).
+     */
+    Map<String,LinkedHashMap<String,String>> indexes = [:]
+
+    /**
+     * @return  the paths (relative to the run directory where possible) of the index
+     *          files that will be copied, for display
+     */
+    List<String> getIndexFiles() {
+        List<String> result = []
+        if(indexes == null) // plan serialized by a version without index support
+            return result
+        for(Map<String,String> outputIndexes in indexes.values()) {
+            for(String path in outputIndexes.keySet())
+                result << (StagedOutputs.relativePath(path) ?: path)
+        }
+        return result
+    }
+
+    /**
      * Distinct staging directories that contributed to this plan, for display
      */
     List<String> getStagedDirs() {
@@ -104,6 +127,12 @@ class StagingPlan implements Serializable {
             else {
                 lines << "mkdir -p ${quote(new File(output).parent)}".toString()
                 lines << "cp ${quote(staged)} ${quote(output)}".toString()
+
+                // Indexes are copied after the file they index, so that they end up newer
+                // than it (tools such as samtools warn about an index older than its file)
+                indexes?.get(output)?.each { String index, String stagedIndex ->
+                    lines << "cp ${quote(stagedIndex)} ${quote(index)}".toString()
+                }
             }
         }
         return lines.join('\n') + '\n'
@@ -130,6 +159,10 @@ class StagingPlan implements Serializable {
  * specific data features (e.g. QC failures) to downstream stages without needing full
  * end-to-end data that produces them.
  * <p>
+ * When an output is copied, known index files for it (eg: <code>.bai</code> for a
+ * <code>.bam</code>) that are present alongside it in the same staging directory are copied
+ * too, even though they are not declared outputs (see {@link #findStagedIndexes}).
+ * <p>
  * Outputs created from staged files are marked in their output meta data
  * ({@link OutputMetaData#stagedFrom}), so that a subsequent run that does not use the
  * same staging directory treats them as out of date rather than silently reusing
@@ -139,6 +172,103 @@ class StagingPlan implements Serializable {
  */
 @Log
 class StagedOutputs {
+
+    /**
+     * Default index file extensions, by the extension of the file they index. User
+     * configuration (<code>staging { indexes = [...] }</code> in bpipe.config) is merged
+     * over these by extension, so that adding one type does not lose the others, and an
+     * empty list disables one.
+     * <p>
+     * Each index extension is tried in both common naming conventions: appended to the full
+     * file name (<code>x.bam.bai</code>) and replacing the matched extension
+     * (<code>x.bai</code>). Since an index is only copied if it exists, trying a convention
+     * that is not used for a type is harmless.
+     */
+    final static Map<String,List<String>> DEFAULT_INDEXES = [
+        'bam'      : ['bai', 'csi'],
+        'cram'     : ['crai'],
+        'vcf'      : ['idx'],
+        'vcf.gz'   : ['tbi', 'csi'],
+        'bcf'      : ['csi'],
+        'bed.gz'   : ['tbi'],
+        'gff.gz'   : ['tbi'],
+        'gff3.gz'  : ['tbi'],
+        'gtf.gz'   : ['tbi'],
+        'fa'       : ['fai'],
+        'fasta'    : ['fai'],
+        'fa.gz'    : ['fai', 'gzi'],
+        'fasta.gz' : ['fai', 'gzi'],
+    ].asImmutable()
+
+    /**
+     * @return  the index extensions to look for, keyed by the extension of the
+     *          file they index: the defaults merged with any user configuration
+     */
+    static Map<String,List<String>> getIndexExtensions() {
+
+        Map<String,List<String>> result = new LinkedHashMap<String,List<String>>(DEFAULT_INDEXES)
+
+        // Note: userConfig is null if no configuration has been loaded (eg: in unit tests)
+        Map userConfig = Config.userConfig
+        Object staging = userConfig?.containsKey('staging') ? userConfig.get('staging') : null
+        if(!(staging instanceof Map) || !((Map)staging).containsKey('indexes'))
+            return result
+
+        Object configured = ((Map)staging).get('indexes')
+        if(!(configured instanceof Map))
+            throw new PipelineError("The staging.indexes setting in bpipe.config should be a map of file extension => list of index extensions, eg: [bam: ['bai']], but was: $configured")
+
+        ((Map)configured).each { ext, indexExts ->
+            List<String> values = (indexExts instanceof Collection) ? ((Collection)indexExts)*.toString() : (indexExts == null ? [] : [indexExts.toString()])
+            result[stripDot(ext.toString())] = values.collect { stripDot(it) }.grep { it }
+        }
+
+        return result
+    }
+
+    @CompileStatic
+    private static String stripDot(String ext) {
+        ext.trim().replaceAll('^\\.', '')
+    }
+
+    /**
+     * Find index files for a staged output that are present in the same staging directory as it.
+     *
+     * @param output        the output being staged
+     * @param stagedFile    the staged file that the output will be copied from
+     * @param indexExts     index extensions, as returned by {@link #getIndexExtensions}
+     *
+     * @return  map of canonical index path => staged index file, in the order they were looked up
+     */
+    @CompileStatic
+    static LinkedHashMap<String,String> findStagedIndexes(PipelineFile output, File stagedFile, Map<String,List<String>> indexExts) {
+
+        LinkedHashMap<String,String> result = new LinkedHashMap()
+        if(stagedFile.isDirectory())
+            return result
+
+        File outputFile = new File(canonicalPath(output))
+        String name = outputFile.name
+
+        // Most specific (longest) matching extension wins, eg: vcf.gz rather than gz
+        String ext = indexExts.keySet()
+            .findAll { String e -> name.endsWith('.' + e) && name.length() > e.length() + 1 }
+            .max { String e -> e.length() }
+
+        if(ext == null || !indexExts[ext])
+            return result
+
+        String stem = name.substring(0, name.length() - ext.length() - 1)
+        for(String indexExt in indexExts[ext]) {
+            for(String indexName in [name + '.' + indexExt, stem + '.' + indexExt]) {
+                File stagedIndex = new File(stagedFile.parentFile, indexName)
+                if(stagedIndex.isFile()) {
+                    result[new File(outputFile.parentFile, indexName).path] = stagedIndex.path
+                }
+            }
+        }
+        return result
+    }
 
     /**
      * Configure the staging directories from a comma separated list (the <code>--staged</code>
@@ -191,6 +321,7 @@ class StagedOutputs {
 
         if(!missing) {
             log.info "All outputs ${outputs} of command in stage $stageName are staged: will copy from staging directories"
+            addIndexes(plan, outputs)
             return plan
         }
 
@@ -205,6 +336,24 @@ class StagedOutputs {
             log.info "No staged files for outputs $outputs of stage $stageName"
         }
         return null
+    }
+
+    /**
+     * Add index files for each of the plan's outputs. An index that is itself a declared
+     * output of the command is already part of the plan, and is not added again.
+     */
+    @CompileStatic
+    private static void addIndexes(StagingPlan plan, List<PipelineFile> outputs) {
+        Map<String,List<String>> indexExts = getIndexExtensions()
+        for(PipelineFile output in outputs) {
+            String canonical = canonicalPath(output)
+            LinkedHashMap<String,String> indexes = findStagedIndexes(output, new File(plan.files[canonical]), indexExts)
+            indexes.keySet().removeAll(plan.files.keySet())
+            if(indexes) {
+                log.info "Staged index files for $output: ${indexes.values()}"
+                plan.indexes[canonical] = indexes
+            }
+        }
     }
 
     /**
