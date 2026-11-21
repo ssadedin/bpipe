@@ -1104,9 +1104,10 @@ class Utils {
             String result = (e.ctx ? " $e.ctx.stageName $branch " : "").center(width,"-") + "\n\n" + e.message + "\n"
             
             if(e instanceof CommandFailedException) {
-                OutputLog o = e.getCommand().outputLog
-                if(o?.getLastTailLines()) {
-                    result += "\n\nTrailing lines:${ansi().fgRed()}\n\n    " + o.getLastTailLines().join('\n    ')  + ansi().fgDefault() + '\n'
+                // Take a single snapshot so the check and the output see the same lines
+                List<String> tailLines = e.getCommand().outputLog?.getLastTailLines()
+                if(tailLines) {
+                    result += "\n\nTrailing lines:${ansi().fgRed()}\n\n    " + tailLines.join('\n    ')  + ansi().fgDefault() + '\n'
                 }
                 else {
                     result += "\nNo output recorded from command\n"
