@@ -185,6 +185,9 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
 
         String stageInfo = cmd.branch?.name ? "Stage $cmd.name in branch $cmd.branch.name" : "Stage $cmd.name"
         String msg = "$stageInfo using staged outputs from ${cmd.staging.stagedDirs.join(', ')} instead of executing:\n\n        $cmd.command\n"
+        List<String> indexFiles = cmd.staging.indexFiles
+        if(indexFiles)
+            msg += "\n        (also copying staged index files: ${indexFiles.join(', ')})\n"
         log.info msg
         if(outputLog instanceof bpipe.OutputLog) {
             ((bpipe.OutputLog)outputLog).buffer(msg)
@@ -223,6 +226,8 @@ class ThrottledDelegatingCommandExecutor implements CommandExecutor {
         }
         if(cmd.staging != null) {
             msg += "\n\n        (outputs would be copied from staged directory ${cmd.staging.stagedDirs.join(', ')} instead)"
+            if(cmd.staging.indexFiles)
+                msg += "\n        (with index files: ${cmd.staging.indexFiles.join(', ')})"
         }
 
         this.releaseAll()
