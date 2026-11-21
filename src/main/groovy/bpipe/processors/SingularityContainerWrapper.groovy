@@ -46,7 +46,9 @@ class SingularityContainerWrapper implements CommandProcessor {
             
             BindStorageLayer layer = (BindStorageLayer)StorageLayer.create(name)
 
-            ["-B", layer.base]
+            // Keep the plain form when the paths are the same, to preserve existing behaviour
+            String target = layer.containerTarget
+            ["-B", target == layer.base ? layer.base : "$layer.base:$target".toString()]
         }
         .unique()
         .sum()
