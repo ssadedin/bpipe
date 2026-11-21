@@ -1182,7 +1182,7 @@ class PipelineCategory {
                       
                         if(t instanceof SummaryErrorException) {
                             
-                            assert t.summarisedErrors.every { (!it instanceof SummaryErrorException) }
+                            assert t.summarisedErrors.every { !(it instanceof SummaryErrorException) }
                             return t.summarisedErrors*.message.join("\n")
                         }
                         
