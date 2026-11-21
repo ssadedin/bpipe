@@ -425,6 +425,13 @@ class Runner {
 
         log.info "=================== GUID=${Config.config.pguid} PID=$pid (${Config.config.pid}) =============="
         
+        // Set by the bpipe launcher script when it loads .bpipe.env files, so that it
+        // can be seen where default environment variables came from
+        String envFilesLoaded = System.getenv('BPIPE_ENV_FILES_LOADED')
+        if(envFilesLoaded) {
+            log.info "Environment variables loaded from .bpipe.env files: $envFilesLoaded"
+        }
+        
         // add all user specified parameters to the binding
         if(opt['params']) {  // <-- note: ending with the 's' character the 'param' option, will force to return it as list of string
             log.info "Adding CLI parameters: ${opt['params']}"
@@ -440,6 +447,7 @@ class Runner {
         else {
             def localEnv = System.getenv('BPIPE_DEFAULT_ENVIRONMENT')
             if(localEnv) {
+                log.info "Using environment $localEnv from BPIPE_DEFAULT_ENVIRONMENT"
                 Config.config.environment = localEnv
             }
         }

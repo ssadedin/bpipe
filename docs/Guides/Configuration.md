@@ -147,6 +147,52 @@ export BPIPE_DEFAULT_ENVIRONMENT=prod
 bpipe run pipeline.groovy input.fastq.gz   # same as: bpipe run --env prod ...
 ```
 
+This can also be set in a `.bpipe.env` file (see below), so that a particular directory or pipeline
+always uses a given environment.
+
+### Default Environment Variables (`.bpipe.env`)
+
+You can set default environment variables for Bpipe by creating a file called `.bpipe.env` in:
+
+- the directory you run Bpipe from, and / or
+- the directory containing the pipeline script
+
+For example:
+
+```bash
+# .bpipe.env
+BPIPE_DEFAULT_ENVIRONMENT=prod
+MAX_JAVA_MEM=1g
+export REFERENCE="/data/references/hg38.fa"   # 'export' is optional
+```
+
+These variables are set before Bpipe starts, so they apply to Bpipe itself (for example,
+`BPIPE_DEFAULT_ENVIRONMENT` and `MAX_JAVA_MEM`) and are inherited by the commands your pipeline runs.
+
+The values are *defaults*: a variable that is already set in your environment is never changed.
+When both files exist, the one in the run directory takes precedence:
+
+    variables already set  >  ./.bpipe.env  >  <pipeline directory>/.bpipe.env
+
+The file is read, not executed as a shell script, and supports a simple format:
+
+- `KEY=value` lines, optionally prefixed with `export `
+- blank lines and lines starting with `#` are ignored
+- for unquoted values, a trailing ` # comment` is removed
+- values may be wrapped in double or single quotes; the content between the quotes is used
+  exactly as written (there is no variable expansion or escape processing)
+
+Bpipe records which files and variables were loaded in `.bpipe/bpipe.log`.
+
+The pipeline directory is found by looking for the first argument ending in `.groovy` or `.bpipe` on the
+command line, so it is not found for commands that do not name the pipeline script (for example,
+`bpipe retry` or `bpipe resume`). For those, only the run directory's `.bpipe.env` is loaded.
+
+To disable loading `.bpipe.env` files, set `BPIPE_ENV_FILES=false`.
+
+**Note**: `.bpipe.env` files are often specific to a user or system, and may contain sensitive values.
+Consider whether they should be committed to version control.
+
 ### Bootstrap Configuration
 
 The ability to use many different configuration files, and capability of utilising arbitrary 

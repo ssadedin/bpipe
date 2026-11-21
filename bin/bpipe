@@ -27,6 +27,185 @@ VERSION=0.0.0
 # it will be replaced by the build script at build time
 BUILDDATE=0
 
+#----------------------------------------------------------
+# Options of 'bpipe run' (and the commands that share its
+# command line, eg: test, execute) that take a value. Keep
+# in sync with Runner.configureRunCli. Used so that option
+# values (eg: '-s lib.groovy') are not mistaken for the
+# pipeline script. Note '--report' is deliberately absent:
+# it is ambiguous between the '-r' flag and '-R <template>'.
+#----------------------------------------------------------
+BPIPE_OPTS_WITH_VALUE=" -d --dir --delay -a --autoarchive -f --filename -R -n --threads -m --memory -l --resource -u --until -p --param -b --branch -s --source -e --env -L --interval --staged "
+
+#----------------------------------------------------------
+# Attempt to find the pipeline script from the remaining
+# command line arguments. Scans for the first argument
+# ending in .groovy or .bpipe, skipping the values of
+# options that take one. Sets PIPELINE_SCRIPT_DIR
+# to the canonical directory containing the script, or
+# empty if not found.
+#
+# This is a heuristic: the launcher does not parse the
+# command line properly (the Java side does that). Commands
+# that do not name the script (eg: retry, resume) leave
+# PIPELINE_SCRIPT_DIR empty.
+#----------------------------------------------------------
+resolve_pipeline_script_dir() {
+    PIPELINE_SCRIPT_DIR=""
+    local skip_next=false
+    local arg
+    for arg in "$@"; do
+        if $skip_next; then
+            skip_next=false
+            continue
+        fi
+        case "$BPIPE_OPTS_WITH_VALUE" in
+            *" $arg "*)
+                skip_next=true
+                continue
+                ;;
+        esac
+        case "$arg" in
+            *.groovy|*.bpipe)
+                if [ -f "$arg" ]; then
+                    PIPELINE_SCRIPT_DIR=$(cd "$(dirname "$arg")" 2>/dev/null && pwd)
+                fi
+                return
+                ;;
+        esac
+    done
+}
+
+#----------------------------------------------------------
+# Load default environment variables from a .bpipe.env file.
+#
+# The format is a simple subset of the common "dotenv" format:
+#
+#   # comment
+#   KEY=value                 (unquoted: trailing ' # comment' is removed)
+#   export KEY=value          ('export ' prefix is optional)
+#   KEY="value with spaces"   (quotes are removed, content taken literally)
+#   KEY='value'
+#
+# The file is parsed, NOT sourced: nothing in it is executed and there
+# is no variable expansion or escape processing.
+#
+# Values are *defaults*: a variable that is already set (in the
+# environment, or by a previously loaded .bpipe.env file) is not
+# changed. Within a single file, a later line overrides an earlier one.
+#
+# Keys that are set are appended to BPIPE_ENV_FILES_LOADED so that
+# Bpipe can log where they came from.
+#----------------------------------------------------------
+load_bpipe_env_file() {
+    local file="$1"
+    [ -f "$file" ] || return 0
+
+    # Space delimited list of keys set by this file
+    local file_keys=" "
+    local line key value lineno=0
+
+    # Regexes are kept in variables, as quoting them inline behaves
+    # differently between bash versions (eg: bash 3.2 on macOS)
+    local assign_re='^([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=(.*)$'
+    local dquote_re='^"(.*)"[[:space:]]*(#.*)?$'
+    local squote_re="^'(.*)'[[:space:]]*(#.*)?\$"
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        lineno=$((lineno+1))
+        line="${line%$'\r'}"
+
+        # Strip leading whitespace
+        line="${line#"${line%%[![:space:]]*}"}"
+
+        case "$line" in
+            ''|'#'*) continue ;;
+        esac
+
+        if [[ "$line" == export[[:space:]]* ]]; then
+            line="${line#export}"
+            line="${line#"${line%%[![:space:]]*}"}"
+        fi
+
+        if [[ ! "$line" =~ $assign_re ]]; then
+            echo "WARNING: ignoring invalid line $lineno in $file" >&2
+            continue
+        fi
+
+        key="${BASH_REMATCH[1]}"
+        value="${BASH_REMATCH[2]}"
+        value="${value#"${value%%[![:space:]]*}"}"
+
+        if [[ "$value" =~ $dquote_re ]] || [[ "$value" =~ $squote_re ]]; then
+            value="${BASH_REMATCH[1]}"
+        else
+            # Unquoted: remove trailing comment, then trailing whitespace
+            value="${value%%[[:space:]]#*}"
+            value="${value%"${value##*[![:space:]]}"}"
+        fi
+
+        # Don't override a value that was set before this file was loaded.
+        # $key is validated by assign_re above, so the eval is safe
+        case "$file_keys" in
+            *" $key "*) ;;
+            *)
+                if eval "[ -n \"\${$key+x}\" ]"; then
+                    continue
+                fi
+                file_keys="$file_keys$key "
+                ;;
+        esac
+
+        export "$key=$value"
+    done < "$file"
+
+    if [ "$file_keys" != " " ]; then
+        local keys_csv
+        keys_csv=$(echo $file_keys | tr ' ' ',')
+        BPIPE_ENV_FILES_LOADED="${BPIPE_ENV_FILES_LOADED:+$BPIPE_ENV_FILES_LOADED; }$file ($keys_csv)"
+    fi
+}
+
+#----------------------------------------------------------
+# Load .bpipe.env files from the current directory and then
+# the directory containing the pipeline script (if found and
+# different). Because already-set variables are not changed,
+# the precedence is:
+#
+#    real environment > ./.bpipe.env > <pipeline dir>/.bpipe.env
+#
+# Set BPIPE_ENV_FILES=false to disable.
+#----------------------------------------------------------
+load_bpipe_env_files() {
+
+    # Don't inherit the record from a parent bpipe (eg: bpipe launched by a pipeline command)
+    unset BPIPE_ENV_FILES_LOADED
+
+    if [ "$BPIPE_ENV_FILES" == "false" ]; then
+        return
+    fi
+
+    load_bpipe_env_file "$PWD/.bpipe.env"
+
+    resolve_pipeline_script_dir "$@"
+    if [ -n "$PIPELINE_SCRIPT_DIR" ]; then
+        local run_dir_real pipeline_dir_real
+        run_dir_real=$(pwd -P)
+        pipeline_dir_real=$(cd "$PIPELINE_SCRIPT_DIR" && pwd -P)
+        if [ "$pipeline_dir_real" != "$run_dir_real" ]; then
+            load_bpipe_env_file "$PIPELINE_SCRIPT_DIR/.bpipe.env"
+        fi
+    fi
+
+    if [ -n "$BPIPE_ENV_FILES_LOADED" ]; then
+        export BPIPE_ENV_FILES_LOADED
+    fi
+}
+
+# Must happen before any defaults below are applied, so that
+# .bpipe.env files can set them (eg: MAX_JAVA_MEM)
+load_bpipe_env_files "$@"
+
 # Default memory used
 # Mainly here to limit memory on systems with very large memory
 # as otherwise Java can default to extreme amounts (gigabytes)
@@ -127,27 +306,6 @@ generate_appcds() {
 
     echo "AppCDS archive created at $archive"
     return 0
-}
-
-#----------------------------------------------------------
-# Attempt to find the pipeline script from the remaining
-# command line arguments. Scans for the first argument
-# ending in .groovy or .bpipe. Sets PIPELINE_SCRIPT_DIR
-# to the canonical directory containing the script, or
-# empty if not found.
-#----------------------------------------------------------
-resolve_pipeline_script_dir() {
-    PIPELINE_SCRIPT_DIR=""
-    for arg in "$@"; do
-        case "$arg" in
-            *.groovy|*.bpipe)
-                if [ -f "$arg" ]; then
-                    PIPELINE_SCRIPT_DIR=$(cd "$(dirname "$arg")" 2>/dev/null && pwd)
-                fi
-                return
-                ;;
-        esac
-    done
 }
 
 #----------------------------------------------------------
