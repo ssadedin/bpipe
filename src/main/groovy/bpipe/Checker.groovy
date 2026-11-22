@@ -135,8 +135,15 @@ class Checker {
         
         PipelineStage pipelineStage = ctx.getCurrentStage()
 
+        // The Check may have been loaded from a previous execution, carrying the
+        // message set by that run's otherwise clause (fail / succeed / send).
+        // That message describes the old result, not this one: if the check now
+        // passes it must not keep reporting the old failure, and if it fails again
+        // the otherwise clause will set a fresh message.
+        check.message = null
+
         try { // Check either had not executed, or was not up-to-date
-            
+
             EventManager.theInstance.signal(PipelineEvent.CHECK_EXECUTED, 
                  "Executing check $check.name", 
                  check.getEventDetails(pipelineStage))
