@@ -3862,22 +3862,55 @@ class PipelineContext {
     }
     
     /**
-     * Cause the pipeline to explicitly fail with a given message
-     * @param message
+     * Cause the pipeline to explicitly fail with a given message.
+     * <p>
+     * This is syntactic sugar for <code>throw new PipelineError(message)</code>, 
+     * except that the message is decorated with the stage (and branch, if the
+     * stage is running inside a named branch) so that the user can tell where
+     * the failure came from when many parallel branches are executing.
+     * 
+     * @param message   the reason for the failure, displayed to the user
      */
     void fail(String message) {
         if(currentCheck) {
             currentCheck.message = message
         }
-        throw new PipelineError("Pipeline stage ${stageName} aborted with the following message:\n\n$message\n")
+        throw new PipelineError(failureMessage(message))
     }
     
     Sender fail(Sender s) {
         s.onSend = { details ->
-            throw new PipelineError("Pipeline stage ${stageName} aborted with the following message:\n\n$details.subject\n")
+            throw new PipelineError(failureMessage(String.valueOf(details.subject)))
         }
         return s
     }    
+    
+    /**
+     * Build the user facing message for an explicit call to {@link #fail}, 
+     * including the stage and branch context.
+     */
+    @CompileStatic
+    String failureMessage(String message) {
+        String location = "Pipeline stage ${stageName}"
+        String branchName = describeBranch()
+        if(branchName)
+            location += " in branch ${branchName}"
+        return "$location aborted with the following message:\n\n$message\n"
+    }
+    
+    /**
+     * @return  a user recognisable name for the branch this context executes in, 
+     *          or null if it is the root (unnamed) branch
+     */
+    @CompileStatic
+    String describeBranch() {
+        if(branch == null)
+            return null
+        String name = branch.getFirstNonTrivialName()
+        if(!name || name == "all")
+            return null
+        return name
+    }
     
     /**
      * Cause the current branch to terminate and not process any further, but 

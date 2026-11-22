@@ -2219,6 +2219,36 @@ public class Pipeline implements ResourceRequestor {
         }
     }
     
+    /**
+     * Explicitly fail the pipeline with the given message. Equivalent to 
+     * <code>throw new PipelineError(message)</code>.
+     * <p>
+     * Inside a pipeline stage this is normally resolved to 
+     * {@link PipelineContext#fail(String)}, which adds stage / branch context. This
+     * static form (exposed to scripts via <code>import static Bpipe.*</code>) exists so that
+     * <code>fail</code> also works at the top level of a script, eg: to validate
+     * parameters before the pipeline starts running.
+     */
+    static void fail(String message) {
+        PipelineContext ctx = currentContext.get()
+        if(ctx != null) { // called from within pipeline stage
+            ctx.fail(message)
+        }
+        throw new PipelineError(message)
+    }
+    
+    /**
+     * Because static imports take precedence over the closure delegate, having
+     * {@link #fail(String)} here hides the {@link PipelineContext#fail(Sender)} form
+     * inside stages (eg: <code>fail text { ... }</code>), so forward it explicitly.
+     */
+    static Sender fail(Sender s) {
+        PipelineContext ctx = currentContext.get()
+        if(ctx == null)
+            throw new PipelineError("fail with a notification (eg: fail text { ... }) can only be used inside a pipeline stage")
+        return ctx.fail(s)
+    }
+    
     static void options(Closure c) {
         
         String scriptName = new File(Config.config.script).name
