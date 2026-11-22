@@ -351,5 +351,10 @@ bpipe run --staged test_data/qc_fail,test_data/baseline pipeline.groovy ...   # 
   `(outputs would be copied from staged directory ...)` follows each staged command, followed by
   `(with index files: ...)` when there are any.
 - **Limitations:** only outputs inside the run directory and on local storage can be staged.
-  Glob outputs (`produce('*.vcf')`) cannot be staged. Staging is decided per *command*, so a
+  Staging is decided per *command*, so a
   stage with several `exec`s can have some commands staged and others run for real.
+- **Wildcard outputs** (`produce('*.vcf')`, `produce(~'chr[0-9]+.vcf')`): *every* file in the
+  matching staging directory that matches the wildcard is staged (first staging dir with any match
+  wins). Existing local matches that aren't staged are kept (with a warning) and become outputs too,
+  and staged copies are not removed by a later real run. So clear old outputs when switching
+  between staged and real runs.

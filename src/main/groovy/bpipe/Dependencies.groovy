@@ -80,6 +80,24 @@ class Dependencies {
      * Used by {@link #scanOutputFolder()} to auto-initialize if needed.
      */
     boolean storeInitialized = false
+
+    /**
+     * Whether any output meta data records an output that was copied from a staging
+     * directory (see {@link StagedOutputs}).
+     * <p>
+     * The staging check in {@link #getOutOfDate} has to run even when staging is not enabled,
+     * so that dummy data left by a staged run is not silently reused by a real run. But for
+     * wildcard outputs that check lists the output directory, which can hold thousands of
+     * files, and for every output it costs a meta data lookup. Production runs that have never
+     * staged anything should not pay for that, so the check is skipped unless staging is
+     * enabled or this flag is set.
+     * <p>
+     * It is computed whenever the output graph is loaded, from the meta data that is being
+     * loaded anyway, and set if a staged output is saved later. It is never cleared by a save,
+     * so it may stay set after the staged outputs have been regenerated: that only means the
+     * check runs when it did not need to.
+     */
+    volatile boolean hasStagedOutputs = false
     
     /**
      * Initialise the store and eagerly load the output graph.
@@ -106,6 +124,16 @@ class Dependencies {
         }
         this.outputGraph = computeOutputGraph(outputMetaDataFiles)
         this.outputGraph.index(outputMetaDataFiles.size()*2)
+        this.hasStagedOutputs = anyStaged(outputMetaDataFiles)
+    }
+
+    @CompileStatic
+    private static boolean anyStaged(List<OutputMetaData> outputs) {
+        for(OutputMetaData p in outputs) {
+            if(p.stagedFrom)
+                return true
+        }
+        return false
     }
     
     @CompileStatic
@@ -162,20 +190,25 @@ class Dependencies {
         // stage them from the same place, and outputs that are staged in this run must be
         // replaced if they did not come from (the current version of) the staged file.
         // Note: the check applies even when staging is not enabled, so that dummy data
-        // from a staged run never silently flows into a real run.
+        // from a staged run never silently flows into a real run. However it is skipped
+        // entirely if nothing was ever staged, so that production runs pay nothing for it
+        // (see hasStagedOutputs). Note: getOutputGraph() must be called first, since it is
+        // what computes the flag.
         GraphEntry stagingGraph = this.getOutputGraph()
-        outputGraphLock.readLock().lock()
-        try {
-            List<PipelineFile> stagedOutOfDate = StagedOutputs.findOutOfDate(outputs) { PipelineFile o ->
-                stagingGraph.propertiesFor(o.path)
+        if(StagedOutputs.isEnabled() || this.hasStagedOutputs) {
+            outputGraphLock.readLock().lock()
+            try {
+                List<PipelineFile> stagedOutOfDate = StagedOutputs.findOutOfDate(outputs) { PipelineFile o ->
+                    stagingGraph.propertiesFor(o.path)
+                }
+                outOfDateOutputs.addAll(stagedOutOfDate*.toPath())
             }
-            outOfDateOutputs.addAll(stagedOutOfDate*.toPath())
+            finally {
+                outputGraphLock.readLock().unlock()
+            }
+            if(outOfDateOutputs)
+                return outOfDateOutputs
         }
-        finally {
-            outputGraphLock.readLock().unlock()
-        }
-        if(outOfDateOutputs)
-            return outOfDateOutputs
 
         // Outputs are forcibly out of date if specified by remake
         if(!overrideTimestamps.isEmpty()) { 
@@ -344,6 +377,7 @@ class Dependencies {
             }
             this.outputGraph = computeOutputGraph(outputMetaDataFiles)
             this.outputGraph.index(outputMetaDataFiles.size()*2)
+            this.hasStagedOutputs = anyStaged(outputMetaDataFiles)
         }
         return this.outputGraph
     }
@@ -383,7 +417,20 @@ class Dependencies {
                 // Check if the output file existed before the stage ran. If so, we should not save meta data, as it will already be there
                 // Note: saving two meta data files for the same output can produce a circular dependency (exception
                 // when loading output graph).
-                if(!timestamps.containsKey(o.path)) { 
+                //
+                // An output copied from a staged file was certainly written by this stage, so it is
+                // always saved. This matters because the staged status (stagedFrom) is only recorded
+                // here: if it were not, a staged run following a real run would leave the meta data
+                // from the real run in place, and every subsequent staged run would copy the file
+                // again (forcing downstream stages to re-run too). The timestamps check alone does
+                // not reliably detect this: for outputs in an output directory, the directory watcher
+                // reports file names relative to that directory, which do not match o.path.
+                //
+                // Conversely, an output previously copied from a staged file that has now been
+                // replaced by really running the command must be saved, or its staged status would
+                // never be cleared, and every subsequent real run would run the stage again.
+                boolean staged = command.staging?.files?.containsKey(StagedOutputs.canonicalPath(o))
+                if(!staged && !timestamps.containsKey(o.path) && !replacesStagedOutput(o, stage)) {
                     // TODO - CLOUD - comparing just the paths will get confused if the same path exists on two
                     // storage providers
                     if(store.exists(p) || this.outputFilesGenerated.contains(o) || context.@input.any { it.path == o.path}) {
@@ -410,6 +457,45 @@ class Dependencies {
         }
     }
     
+    /**
+     * Determine whether the given output was previously copied from a staged file, and has
+     * now been written by the given stage (ie: replaced by the real command).
+     * <p>
+     * The previous staged status is read from the in-memory output graph rather than the store,
+     * since not all stores support loading an individual entry (the SQLite store's load() is a
+     * no-op). Whether the stage wrote the file is determined from its modification time rather
+     * than the output directory watcher, since the watcher's file names do not match the paths of
+     * outputs in output directories (see {@link #saveOutputs}). The comparison is at one second
+     * resolution, the same as the watcher uses, to allow for file systems with coarse timestamps.
+     * <p>
+     * Costs nothing unless some output was staged ({@link #hasStagedOutputs}).
+     */
+    @CompileStatic
+    private boolean replacesStagedOutput(PipelineFile o, PipelineStage stage) {
+        if(!hasStagedOutputs)
+            return false
+
+        GraphEntry graph = getOutputGraph()
+        OutputMetaData existing
+        outputGraphLock.readLock().lock()
+        try {
+            existing = graph.propertiesFor(o.path)
+        }
+        finally {
+            outputGraphLock.readLock().unlock()
+        }
+
+        if(!existing?.stagedFrom)
+            return false
+
+        // Staging is only supported for local files (see StagedOutputs.findStaged)
+        long thresholdMs = (long)(stage.startDateTimeMs / 1000L) * 1000L
+        boolean replaced = o.exists() && o.toPath().toFile().lastModified() >= thresholdMs
+        if(replaced)
+            log.info "Output $o was previously staged from $existing.stagedFrom but was written by stage $stage.stageName: saving meta data to clear staged status"
+        return replaced
+    }
+
 	@CompileStatic
     int numberOfGeneratedOutputs() {
         return this.outputFilesGenerated.size();
@@ -418,6 +504,9 @@ class Dependencies {
 	@CompileStatic
     void saveOutputMetaData(OutputMetaData p) {
         store.save(p)
+
+        if(p.stagedFrom)
+            this.hasStagedOutputs = true
         
         // If there is a cached outputgraph, update it
         if(outputGraph != null) {

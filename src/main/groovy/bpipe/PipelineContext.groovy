@@ -1717,8 +1717,9 @@ class PipelineContext {
             String commandId = associatedCommand?.id?:CommandId.newId()
 
             result.each { String output ->
-                pathToCommandId[output] = commandId
-                trackOutputIfNotAlreadyTracked(output, "<produce>", commandId)
+                String outputCommandId = stagedCommandIdFor(output) ?: commandId
+                pathToCommandId[output] = outputCommandId
+                trackOutputIfNotAlreadyTracked(output, "<produce>", outputCommandId)
             }
 
             if(Utils.box(this.@output))
@@ -1728,6 +1729,28 @@ class PipelineContext {
         }
     }
     
+    /**
+     * If a file matched by a wildcard output was copied from a staging directory, find the
+     * command that copied it.
+     * <p>
+     * Glob matches are otherwise associated to the command identified while probing the
+     * produce body, which is not the command object that actually ran, and so does not carry
+     * its staging plan. The output meta data of the match must be recorded from the command
+     * that staged it, or it will not be marked as staged (see {@link OutputMetaData#stagedFrom}),
+     * and staged dummy data could flow into a later real run.
+     *
+     * @return  the id of the tracked command whose staging plan includes the file, or null if none does
+     */
+    @CompileStatic
+    private String stagedCommandIdFor(String path) {
+        if(!StagedOutputs.isEnabled())
+            return null
+        String canonical = Utils.canonicalFileFor(path).path
+        return trackedOutputs.find { String id, Command command ->
+            command.staging?.files?.containsKey(canonical)
+        }?.key
+    }
+
     /**
      * Take all of the existing resolved outputs and associate them generically
      * to a produce block in the tracked outputs
