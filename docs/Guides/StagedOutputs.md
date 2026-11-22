@@ -69,7 +69,41 @@ real run, and the printed command is the fully resolved one. The copy itself is
 always run locally, even if the command is configured for a cluster or cloud
 executor.
 
-## Index Files
+## Wildcard Outputs
+
+Outputs specified with a wildcard, either as a glob (eg: `produce("*.vcf")`) or as a regular
+expression (eg: `produce(~"chr[0-9]+.vcf")`), have no single file name to look up. Instead,
+**every file in the staging directory that matches the wildcard** is treated as a staged output
+of the command. The directory part of the output is matched literally, as for other outputs, so
+for a stage with `output.dir = "calls"` and `produce("*.vcf")`, all the `.vcf` files in
+`<staging dir>/calls` are copied into `calls`.
+
+A wildcard is considered staged if at least one file matches it. As with other outputs, a
+command is only staged if *all* its outputs are staged, including any explicit outputs declared
+alongside the wildcard. When several staging directories are given, the first one that has any
+match supplies all the matched files: matches are not merged across staging directories, so a
+directory listed first can present a smaller set of files than one listed after it.
+
+The files matched by the wildcard then become the stage's outputs in the usual way, so the
+staged set of files does not need to be the same as the files the real command would create.
+Index files of the matched files are copied too (see below).
+
+Since Bpipe does not know which files a wildcard command would create, some of this is
+necessarily approximate:
+
+* existing files that match the wildcard but are not in the staging directory (eg: from an
+  earlier real run) are not removed. They are picked up as outputs of the stage along with
+  the staged files, and Bpipe prints a warning about them when it stages the command
+* all the commands inside a `produce` with a wildcard share the wildcard as an output. So
+  if the wildcard is staged, each of those commands is staged as long as its other outputs
+  are, and the matching files are copied once for each command
+* staged files remain in place after a run without staging. If the real command does not
+  create a file with the same name, the staged copy still matches the wildcard, so it is
+  passed downstream with the real outputs. Because it is still marked as staged, the stage
+  also runs again on every run. Remove such files by hand (or remove all of the stage's
+  outputs) when switching from a staged run to a real one
+* wildcard outputs in a `produce` without a closure are not staged
+
 
 Many tools write an index file alongside their output, often without declaring it as an output
 of the stage. For example, a stage might run `samtools index` on the BAM it creates in the same
@@ -139,6 +173,7 @@ file is modified, or if the output was previously created by running the real co
 ## Limitations
 
 * only outputs inside the run directory, on local storage, can be staged
-* outputs specified as globs (eg: `produce("*.vcf")`) cannot be staged
+* outputs specified as wildcards are staged using every matching staged file (see
+  [Wildcard Outputs](#wildcard-outputs))
 * staging is decided per command: a stage that runs several commands can have
   some of them staged and others executed

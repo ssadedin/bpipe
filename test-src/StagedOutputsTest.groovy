@@ -2,6 +2,8 @@ package bpipe
 
 import static org.junit.Assert.*
 
+import java.util.regex.Pattern
+
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -289,5 +291,135 @@ class StagedOutputsTest {
         StagedOutputs.configure(stagedA.path)
         StagingPlan plan = StagedOutputs.plan('test', outputs('d.bam'))
         assertTrue plan.indexFiles.isEmpty()
+    }
+
+    GlobPipelineFile glob(String pattern) {
+        new GlobPipelineFile(out(pattern))
+    }
+
+    void local(String name, String content='real') {
+        new File(out(name)).with { parentFile.mkdirs(); text = content }
+    }
+
+    @Test
+    void testGlobStagesAllMatchingFiles() {
+        stage(stagedA, out('a.vcf'))
+        stage(stagedA, out('b.vcf'))
+        stage(stagedA, out('c.txt'))
+        StagedOutputs.configure(stagedA.path)
+
+        StagingPlan plan = StagedOutputs.plan('test', [glob('*.vcf')])
+        assertNotNull plan
+        assertEquals([canon('a.vcf'), canon('b.vcf')], plan.files.keySet() as List)
+        assertEquals stagedA.canonicalPath, plan.sourceFor(new LocalPipelineFile(out('a.vcf')))
+
+        // The staging directory must not be modified by looking for matches
+        assertFalse new File(stagedA, out('x')).exists()
+    }
+
+    @Test
+    void testGlobWithNoStagedMatchesIsNotStaged() {
+        stage(stagedA, out('c.txt'))
+        StagedOutputs.configure(stagedA.path)
+        assertNull StagedOutputs.plan('test', [glob('*.vcf')])
+
+        // A missing directory is not an error, and is not created
+        assertNull StagedOutputs.plan('test', [new GlobPipelineFile(out('nodir/*.vcf'))])
+        assertFalse new File(stagedA, out('nodir')).exists()
+    }
+
+    @Test
+    void testRegexGlob() {
+        stage(stagedA, out('s1_x.xml'))
+        stage(stagedA, out('s2_y.xml'))
+        stage(stagedA, out('sA_z.xml'))
+        StagedOutputs.configure(stagedA.path)
+
+        StagingPlan plan = StagedOutputs.plan('test', [new GlobPipelineFile(Pattern.compile(out('s[0-9]_.*.xml')))])
+        assertEquals([canon('s1_x.xml'), canon('s2_y.xml')], plan.files.keySet() as List)
+    }
+
+    @Test
+    void testGlobFirstStagingDirWithMatchesWinsEntirely() {
+        stage(stagedB, out('a.vcf'))
+        stage(stagedB, out('b.vcf'))
+        stage(stagedA, out('a.vcf'))
+        StagedOutputs.configure("$stagedA.path,$stagedB.path")
+
+        StagingPlan plan = StagedOutputs.plan('test', [glob('*.vcf')])
+        assertEquals([canon('a.vcf')], plan.files.keySet() as List)
+        assertEquals([stagedA.canonicalPath], plan.stagedDirs)
+    }
+
+    @Test
+    void testGlobWithFixedOutputs() {
+        stage(stagedA, out('a.vcf'))
+        StagedOutputs.configure(stagedA.path)
+
+        // Fixed output not staged: partial, not planned
+        assertNull StagedOutputs.plan('test', outputs('x.csv') + [glob('*.vcf')])
+
+        stage(stagedB, out('x.csv'))
+        StagedOutputs.configure("$stagedA.path,$stagedB.path")
+        StagingPlan plan = StagedOutputs.plan('test', outputs('x.csv') + [glob('*.vcf')])
+        assertEquals([canon('x.csv'), canon('a.vcf')], plan.files.keySet() as List)
+        assertEquals stagedB.canonicalPath, plan.sources[canon('x.csv')]
+    }
+
+    @Test
+    void testGlobMatchesGetIndexes() {
+        stage(stagedA, out('a.bam'))
+        stage(stagedA, out('a.bam.bai'))
+        stage(stagedA, out('b.bam'))
+        StagedOutputs.configure(stagedA.path)
+
+        StagingPlan plan = StagedOutputs.plan('test', [glob('*.bam')])
+        assertEquals 2, plan.files.size()
+        assertEquals([canon('a.bam.bai')], plan.indexes[canon('a.bam')].keySet() as List)
+
+        // An index matched by the glob itself is an output, not an extra index
+        plan = StagedOutputs.plan('test', [glob('a.*')])
+        assertEquals 2, plan.files.size()
+        assertTrue plan.indexFiles.isEmpty()
+    }
+
+    @Test
+    void testGlobOutOfDate() {
+        stage(stagedA, out('a.vcf'))
+        stage(stagedA, out('b.vcf'))
+        new File(stagedA, out('a.vcf')).lastModified = System.currentTimeMillis() - 10000
+        new File(stagedA, out('b.vcf')).lastModified = System.currentTimeMillis() - 10000
+        StagedOutputs.configure(stagedA.path)
+        List<PipelineFile> o = [glob('*.vcf')]
+
+        Closure<OutputMetaData> fromA = { stagedFrom(stagedA.canonicalPath) }
+
+        // Nothing exists locally: both staged matches are out of date
+        assertEquals([canon('a.vcf'), canon('b.vcf')], StagedOutputs.findOutOfDate(o) { null }*.path)
+
+        // Both copied from staging: up to date
+        local('a.vcf'); local('b.vcf')
+        assertEquals 0, StagedOutputs.findOutOfDate(o, fromA).size()
+
+        // Real outputs are replaced by staged ones
+        assertEquals 2, StagedOutputs.findOutOfDate(o) { stagedFrom(null) }.size()
+
+        // A leftover local match with no staged counterpart is ignored while the glob is staged
+        local('c.vcf')
+        assertEquals 0, StagedOutputs.findOutOfDate(o, fromA).size()
+
+        // A new staged match is out of date
+        stage(stagedA, out('d.vcf'))
+        assertEquals([canon('d.vcf')], StagedOutputs.findOutOfDate(o) { PipelineFile f -> f.path.endsWith('d.vcf') ? null : fromA() }*.path)
+    }
+
+    @Test
+    void testStagedGlobMatchesOutOfDateWhenStagingDisabled() {
+        local('a.vcf'); local('b.vcf')
+        List<PipelineFile> o = [glob('*.vcf')]
+        assertEquals([canon('a.vcf')], StagedOutputs.findOutOfDate(o) { PipelineFile f ->
+            stagedFrom(f.path.endsWith('a.vcf') ? stagedA.canonicalPath : null)
+        }*.path)
+        assertEquals 0, StagedOutputs.findOutOfDate(o) { stagedFrom(null) }.size()
     }
 }

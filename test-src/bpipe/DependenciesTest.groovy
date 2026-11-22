@@ -278,4 +278,64 @@ class DependenciesTest {
        assert c.upToDate
        assert d.upToDate
     }
+
+    /**
+     * A store that returns the given meta data and otherwise does nothing
+     */
+    OutputMetaDataStore stubStore(List<OutputMetaData> outputs) {
+        [
+            loadAll: { -> outputs },
+            save: { OutputMetaData p -> },
+            close: { -> }
+        ] as OutputMetaDataStore
+    }
+
+    /**
+     * Dependencies is a singleton: run the test against it with a stub store, and restore its
+     * state afterwards so that other tests are not affected
+     */
+    void withStubStore(List<OutputMetaData> outputs, Closure c) {
+        Dependencies deps = Dependencies.instance
+        def saved = [deps.@store, deps.storeInitialized, deps.outputGraph, deps.hasStagedOutputs]
+        try {
+            deps.initStore(stubStore(outputs))
+            c(deps)
+        }
+        finally {
+            deps.@store = saved[0]
+            deps.storeInitialized = saved[1]
+            deps.outputGraph = saved[2]
+            deps.hasStagedOutputs = saved[3]
+        }
+    }
+
+    @Test
+    void testHasStagedOutputsComputedOnLoad() {
+        withStubStore([a, b, c, d]) { Dependencies deps ->
+            assert !deps.hasStagedOutputs : "No outputs were staged, but flag was set"
+        }
+
+        c.stagedFrom = '/some/staging/dir'
+        withStubStore([a, b, c, d]) { Dependencies deps ->
+            assert deps.hasStagedOutputs : "Output c was staged, but flag was not set"
+
+            // A full reload recomputes the flag from scratch
+            c.stagedFrom = null
+            deps.reset()
+            deps.getOutputGraph()
+            assert !deps.hasStagedOutputs : "Flag not recomputed on reload of output graph"
+        }
+    }
+
+    @Test
+    void testHasStagedOutputsSetBySave() {
+        withStubStore([a, b]) { Dependencies deps ->
+            deps.saveOutputMetaData(c)
+            assert !deps.hasStagedOutputs
+
+            d.stagedFrom = '/some/staging/dir'
+            deps.saveOutputMetaData(d)
+            assert deps.hasStagedOutputs : "Saving a staged output did not set flag"
+        }
+    }
 }
