@@ -775,7 +775,6 @@ class Dependencies {
         // from the list of outputs and recursively do the same for each output we discovered, building
         // the whole graph from the original inputs through to the final outputs
         
-        List allInputs = outputs*.inputs.flatten().unique() 
         Set allOutputs = outputs*.canonicalPath as Set
         
         // Find outputs with "external" inputs - these are the top layer of outputs which

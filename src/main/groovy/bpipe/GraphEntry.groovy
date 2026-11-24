@@ -86,19 +86,70 @@ class GraphEntry implements Serializable {
     }
     */
     
+    /**
+     * Search this entry and its descendants (depth first) for the first entry having an output
+     * for which the given closure does not return false.
+     * <p>
+     * Note: invoking a Closure always goes through Groovy's dynamic dispatch (ClosureMetaClass
+     * and reflection), even from statically compiled code, so this should not be used for
+     * hot searches over large graphs. See {@link #findByCanonicalPath(String)}.
+     */
     @CompileStatic
     GraphEntry findBy(Closure<Boolean> c) {
-        if(this.values != null) { 
-            for(OutputMetaData value in this.values)
-                if(c(value) != false)
+        if(this.values != null) {
+            for(OutputMetaData value in this.values) {
+                // Equivalent to the Groovy expression c(value) != false, without its dynamic
+                // compareTo dispatch: only an actual Boolean false is a non-match
+                if(!Boolean.FALSE.equals(c.call(value)))
                     return this
+            }
         }
-            
+
         for(GraphEntry child in children) {
-           def result = child.findBy(c)
-           if(result)
-               return result;
+           GraphEntry result = child.findBy(c)
+           if(!result.is(null))
+               return result
         }
+        return null
+    }
+
+    /**
+     * Search this entry and its descendants (depth first, in the same order as {@link #findBy})
+     * for the first entry having an output with the given canonical path.
+     * <p>
+     * This is the search behind {@link #entryForCanonicalPath(String)}, which is called for
+     * every input of every output while the output graph is built, so it is written to run
+     * entirely without Groovy dynamic dispatch. In particular it deliberately avoids:
+     * <ul>
+     *   <li>closures: calling one goes through ClosureMetaClass and reflection even under
+     *       <code>@CompileStatic</code>
+     *   <li><code>==</code> on objects: under <code>@CompileStatic</code> this still compiles to
+     *       ScriptBytecodeAdapter.compareEqual, which for Strings invokes
+     *       <code>compareTo</code> via dynamic dispatch
+     *   <li>Groovy truth on untyped values, which may invoke <code>asBoolean()</code> dynamically
+     * </ul>
+     * Check the bytecode (<code>javap -c</code>) if changing it: it should contain no calls to
+     * ScriptBytecodeAdapter, InvokerHelper or Closure.
+     */
+    @CompileStatic
+    GraphEntry findByCanonicalPath(final String canonicalPath) {
+        final List<OutputMetaData> myValues = this.values
+        if(!myValues.is(null)) {
+            final Iterator<OutputMetaData> i = myValues.iterator()
+            while(i.hasNext()) {
+                final OutputMetaData p = i.next()
+                if(!p.outputFile.is(null) && Objects.equals(canonicalPathFor(p), canonicalPath))
+                    return this
+            }
+        }
+
+        final Iterator<GraphEntry> c = this.children.iterator()
+        while(c.hasNext()) {
+            final GraphEntry result = c.next().findByCanonicalPath(canonicalPath)
+            if(!result.is(null))
+                return result
+        }
+        return null
     }
     
     @CompileStatic
@@ -181,9 +232,7 @@ class GraphEntry implements Serializable {
         }
         
         // In case of non-default output directory, the outputFile itself may be in a directory
-        GraphEntry result = findBy { OutputMetaData p ->
-           !p.outputFile.is(null) && (canonicalPathFor(p) == canonicalPath)
-        }
+        GraphEntry result = findByCanonicalPath(canonicalPath)
         
         if(index != null)
             index.put(canonicalPath, result)
