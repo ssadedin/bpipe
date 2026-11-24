@@ -9,9 +9,12 @@ Bpipe is a workflow engine for bioinformatics pipelines. Users write Groovy scri
 (closures) that run shell commands; Bpipe wires inputs/outputs, tracks dependencies, parallelises,
 and journals the run. The product itself is a CLI (`bin/bpipe`) plus a JVM library.
 
-* Language: **Groovy 3.0.10** (with a legacy 2.4 branch in `build.gradle`) and a handful of `.java` files.
-* Runtime: **JDK 11** is the supported version (`ReleaseNotes.txt` 0.9.13, CI uses `java-version: '11'`).
-* Version string: `project.ext.VERSION` in `build.gradle` (currently `0.9.14`).
+* Language: **Groovy 3.0.25** (`GROOVY_VERSION` in `gradle.properties`; `build.gradle` keeps a legacy
+  branch for `2.4.*` values) and a handful of `.java` files.
+* Runtime: **JDK 11** is the baseline (`ReleaseNotes.txt` 0.9.13, CI uses `java-version: '11'`). JDK 17+
+  also runs: `bin/bpipe` passes `$BPIPE_ADD_OPENS` (`--add-opens java.base/sun.security.ssl=ALL-UNNAMED`,
+  needed by ActiveMQ) to the JVM. CI only exercises 11, so verify on 11 when in doubt.
+* Version string: `project.ext.VERSION` in `build.gradle` (currently `0.9.15`).
 * Distribution: one fat jar (`build/libs/bpipe-all.jar`, shadow) staged into `build/stage/bpipe-<version>`.
 
 ## 2. Getting to a buildable state (do this first)
@@ -35,7 +38,7 @@ After changing JDKs, kill stale daemons:
 
 ```bash
 ./gradlew classes     # ~15s: compile only. Enough for iterating — bin/bpipe prepends build/classes/groovy/main
-./gradlew stage       # ~35s: classes + shadow jar + build/stage/bpipe-0.9.14. Needed ONCE before any run
+./gradlew stage       # ~35s: classes + shadow jar + build/stage/bpipe-<VERSION>. Needed ONCE before any run
 ./gradlew dist        # stage + zip
 ./gradlew test        # unit tests (JUnit 4, from test-src/)
 ```
@@ -71,7 +74,7 @@ Two suites, both must pass.
 `SQLiteOutputMetaDataStoreTest`, `processors/ThreadAllocationReplacerTest`). ~40s. Noise-suppressed
 config in `build.gradle` prints only failures with full stacks.
 
-**E2E ("functional") tests** — `tests/<name>/`, ~277 executed (dirs must start with a letter and contain
+**E2E ("functional") tests** — `tests/<name>/`, ~278 executed (dirs must start with a letter and contain
 `run.sh`; `000-*`/`001-fixme-*` are skipped by design):
 
 ```bash
