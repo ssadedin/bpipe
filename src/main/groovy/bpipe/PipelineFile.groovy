@@ -1,5 +1,6 @@
 package bpipe
 
+import bpipe.storage.DirectoryFlusher
 import bpipe.storage.LocalFileSystemStorageLayer
 import bpipe.storage.StorageLayer
 import bpipe.storage.UnknownStoragePipelineFile
@@ -124,57 +125,180 @@ class PipelineFile implements Serializable {
         PipelineCategory.getPrefix(this.toString())
     }
     
+    /**
+     * Check whether the file exists without taking any measures to flush stale file
+     * system caches.
+     * <p>
+     * <b>Note:</b> subclasses that override {@link #exists()} must override this too,
+     * otherwise bulk checks (which use this after flushing directories themselves) will
+     * not see their logic.
+     */
+    boolean existsWithoutFlush() {
+        storage.existsWithoutFlush(path)
+    }
+
+    /**
+     * The interval between successive re-checks of a file that is missing while
+     * waiting for it to appear (see {@link #flushAndFindMissing})
+     */
+    static final long SYNC_POLL_INTERVAL_MS = 400L
+
+    /**
+     * @return the configured time to wait for files that appear to be missing to
+     *         appear (<code>fileSystemSyncTimeMs</code>), default 500ms
+     */
+    static long getFileSystemSyncTimeMs() {
+        Config.userConfig.getOrDefault('fileSystemSyncTimeMs', 500) as Long
+    }
+
+    /**
+     * Determine whether this file is missing in a way that cannot be accounted for
+     * by the given output meta data, flushing the file system and waiting up to
+     * <code>fileSystemSyncTimeMs</code> for it to appear if it initially appears missing.
+     * <p>
+     * To check many files, prefer {@link #isMissingWithoutFlush} followed by a single call to
+     * {@link #flushAndFindMissing} for all the candidates, which shares the flushes and
+     * waiting between them.
+     */
     boolean isMissing(OutputMetaData p, String type) {
-                
-//        log.info "Checking file " + this.path + " in storage " + this.storage
-        
-        if(this.exists())
+        if(!isMissingWithoutFlush(p, type))
+            return false
+        return !flushAndFindMissing([this], fileSystemSyncTimeMs).isEmpty()
+    }
+
+    /**
+     * First stage of the missing file check: return false if the file is visible right now
+     * or if it is absent but the meta data says it was cleaned up (in which case its absence
+     * is expected); otherwise return true, meaning the file is a candidate to be flushed and
+     * waited for via {@link #flushAndFindMissing}.
+     * <p>
+     * No flush is performed for cleaned up files because the result would be "not missing"
+     * whether or not the flush revealed them.
+     */
+    boolean isMissingWithoutFlush(OutputMetaData p, String type) {
+
+        if(this.existsWithoutFlush())
             return false // not missing
-                    
-        long fileSystemSyncTimeMs = Config.userConfig.getOrDefault('fileSystemSyncTimeMs', 500) as Long
+
         if(!p) {
             log.info "There are no properties for $path and file is missing"
-            return this.flushMetadataAndCheckIfMissing(fileSystemSyncTimeMs)
+            return true
         }
-                
+
         if(p.cleaned) {
             log.info "File $path [$type] does not exist but has a properties file indicating it was cleaned up"
             return false
         }
         else {
             log.info "File $path [$type] does not exist, has a properties file indicating it is not cleaned up"
-            return this.flushMetadataAndCheckIfMissing(fileSystemSyncTimeMs)
+            return true
         }
     }
-    
+
+    /**
+     * Flush the parent directory of this file and check if it is (still) missing, then
+     * keep re-checking at intervals for up to <code>timeout</code> ms.
+     *
+     * @return true if the file is missing after all of that
+     */
     boolean flushMetadataAndCheckIfMissing(long timeout=0L) {
-        log.info "File does not appear to exist: listing directory to flush file system: " + this
-        Path p = this.toPath()
-        Path parent = p.toAbsolutePath().parent
+        return !flushAndFindMissing([this], timeout).isEmpty()
+    }
 
-        def stream
-        try { 
-            stream = Files.list(parent)
-        } catch(Exception e) { 
-            log.warning("Failed to list files of parent directory of " + this + " ($parent)"); 
-        }
-        finally {
-            if(stream)
-                stream.close()
+    /**
+     * Find which of the given files are really missing, allowing for non-coherent
+     * file systems (eg: NFS) whose clients may have a stale view of a directory, and for
+     * files that are moments away from becoming visible (eg: a remote job reported
+     * complete slightly before its outputs are visible here).
+     * <p>
+     * For each file, the guarantee is the same as was previously given by checking files
+     * one at a time:
+     * <ol>
+     *   <li>the parent directory is listed (in full) and then the file is checked again;
+     *   <li>if it is still missing, it is re-checked every {@link #SYNC_POLL_INTERVAL_MS}
+     *       ms, each time preceded by a fresh listing of its directory, for at least
+     *       <code>timeoutMs</code> after it was first checked.
+     * </ol>
+     * The difference is that this is done for all of the files together: each round lists
+     * each distinct directory once for all of the files in it (and shares listings with
+     * other threads, see {@link DirectoryFlusher}), and the waiting happens once for
+     * the whole set rather than once per file. Checking N missing files therefore costs one
+     * timeout rather than N timeouts.
+     *
+     * @param files     files that have been observed to be missing
+     * @param timeoutMs how long to keep re-checking files that remain missing
+     * @return the files that are still missing, in the order given
+     */
+    static List<PipelineFile> flushAndFindMissing(final Collection<PipelineFile> files, final long timeoutMs) {
+
+        List<PipelineFile> missing = flushAndRecheck(files)
+
+        long remaining = timeoutMs
+        while(!missing.isEmpty() && remaining > 0) {
+            Thread.sleep(SYNC_POLL_INTERVAL_MS)
+            missing = flushAndRecheck(missing)
+            remaining -= SYNC_POLL_INTERVAL_MS
         }
 
-        if(this.exists()) {
-            log.info("File " + this + " revealed by listing directory to flush metadata") 
-            return false
+        if(!missing.isEmpty()) {
+            log.info "${missing.size()} file(s) missing after flushing directories and waiting ${timeoutMs}ms: " +
+                     missing.take(10).join(', ') + (missing.size() > 10 ? ', ...' : '')
         }
-        else {
-            while(timeout>0) {
-                Thread.sleep(400)
-                if(!this.flushMetadataAndCheckIfMissing(0))
-                    return false
-                timeout -= 400
+        return missing
+    }
+
+    /**
+     * One round of {@link #flushAndFindMissing}: for each distinct parent directory, flush it
+     * then check the files in it.
+     *
+     * @return the files still missing, in the order given
+     */
+    private static List<PipelineFile> flushAndRecheck(final Collection<PipelineFile> files) {
+
+        // Group by directory so that each directory is listed once per round
+        // (LinkedHashMap: deterministic order, and permits a null key)
+        final Map<Path, List<PipelineFile>> byDirectory = new LinkedHashMap<Path, List<PipelineFile>>()
+        for(PipelineFile f in files) {
+            Path dir = f.parentDirectoryForFlush()
+            List<PipelineFile> dirFiles = byDirectory[dir]
+            if(dirFiles == null) {
+                dirFiles = new ArrayList<PipelineFile>()
+                byDirectory[dir] = dirFiles
             }
-            return true
+            dirFiles.add(f)
+        }
+
+        // Identity based, so that the result is exactly the input objects that were not found 
+        // (PipelineFile.equals compares only the path)
+        final Set<PipelineFile> stillMissing = Collections.newSetFromMap(new IdentityHashMap<PipelineFile,Boolean>())
+        byDirectory.each { Path dir, List<PipelineFile> dirFiles ->
+
+            log.info "Listing directory $dir to flush file system for ${dirFiles.size()} file(s) that do not appear to exist"
+
+            DirectoryFlusher.instance.flush(dir)
+
+            for(PipelineFile f in dirFiles) {
+                if(f.existsWithoutFlush())
+                    log.info("File " + f + " revealed by listing directory to flush metadata")
+                else
+                    stillMissing.add(f)
+            }
+        }
+
+        return files.grep { stillMissing.contains(it) } as List<PipelineFile>
+    }
+
+    /**
+     * @return the directory to list in order to flush the file system's view of this file,
+     *         or null if it cannot be determined
+     */
+    private Path parentDirectoryForFlush() {
+        try {
+            return this.toPath().toAbsolutePath().parent
+        }
+        catch(Exception e) {
+            log.warning("Unable to determine parent directory of " + this + " to flush file system: " + e)
+            return null
         }
     }
    

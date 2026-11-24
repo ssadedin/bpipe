@@ -238,14 +238,14 @@ class Utils {
         
        if(f.exists())
            return true
-           
-       if(!f.exists()) {
-           log.info "File $f does not appear to exist: listing directory to flush file system"
-           try { f.absoluteFile.parentFile.listFiles() } catch(Exception e) { log.warning("Failed to list files of parent directory of $f"); }
-           if(f.exists())
-               log.info("File $f revealed by listing directory")
-       } 
-       return f.exists()
+
+       log.info "File $f does not appear to exist: listing directory to flush file system"
+       bpipe.storage.DirectoryFlusher.instance.flushParentOf(f)
+
+       boolean result = f.exists()
+       if(result)
+           log.info("File $f revealed by listing directory")
+       return result
     }
     
     /**

@@ -316,28 +316,46 @@ class Dependencies {
         
         List<PipelineFile> filesToCheck = files.collect { PipelineFile f -> aliases[f] }
         
-        outputGraphLock.readLock().lock()
-        
+        // The check happens in two phases:
+        //
+        //  1. a plain existence check of each file, consulting the output meta data for any that
+        //     are absent (absence of a cleaned up file is expected and fine). This needs the
+        //     output graph, so happens under the read lock.
+        //  2. the remaining candidates are flushed and waited for *together*: each directory
+        //     is listed once per round for all the files in it, and the configured wait
+        //     (fileSystemSyncTimeMs) is paid once for the whole set, not once per file.
+        //     This does not need the output graph, so the lock is not held while waiting.
+        //
+        // See PipelineFile.flushAndFindMissing for why each file still gets the same
+        // flush / wait protection as when files were checked one at a time.
+
         Closure checkInput = { PipelineFile f ->
             OutputMetaData p = graph.propertiesFor(f.path)
-            f.isMissing(p, type)
+            f.isMissingWithoutFlush(p, type)
         }
-        
-        try { 
-            List missing
+
+        List<PipelineFile> candidates
+        outputGraphLock.readLock().lock()
+        try {
             if(filesToCheck.size()>40) {
-                missing = checkParallel(filesToCheck, missing, checkInput)
+                candidates = checkParallel(filesToCheck, null, checkInput)
             }
             else {
-                missing = filesToCheck.grep(checkInput)
-            }
-            
-            if(missing) {
-                throwMissingError(filesToCheck, missing, type, extraDescription)
+                candidates = (List<PipelineFile>)filesToCheck.grep(checkInput)
             }
         }
         finally {
             outputGraphLock.readLock().unlock()
+        }
+
+        if(!candidates)
+            return
+
+        log.info "${candidates.size()} of ${filesToCheck.size()} $type file(s) do not appear to exist: flushing file system and checking again"
+
+        List<PipelineFile> missing = PipelineFile.flushAndFindMissing(candidates, PipelineFile.fileSystemSyncTimeMs)
+        if(missing) {
+            throwMissingError(filesToCheck, missing, type, extraDescription)
         }
     }
 

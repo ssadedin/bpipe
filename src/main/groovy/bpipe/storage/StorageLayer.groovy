@@ -70,7 +70,20 @@ abstract class StorageLayer implements Serializable {
     public boolean exists(String path) {
         return Files.exists(toPath(path))
     }
-    
+
+    /**
+     * Check whether the path exists <i>without</i> taking any extra measures (such as listing
+     * the parent directory) to defeat stale file system caches.
+     * <p>
+     * This is for callers that perform such measures themselves, in bulk (see
+     * {@link PipelineFile#flushAndFindMissing}), and which would otherwise pay for them twice.
+     * Storage layers whose {@link #exists(String)} does nothing of that kind can rely on this
+     * default.
+     */
+    public boolean existsWithoutFlush(String path) {
+        return exists(path)
+    }
+
     abstract Path toPath(String path)
     
     abstract String getMountCommand(CommandExecutor executor)

@@ -63,6 +63,15 @@ class GlobPipelineFile extends PipelineFile {
             stream.close()
         }
     }
+
+    /**
+     * A glob's existence is determined by matching it against its directory, which
+     * involves no separate flush, so this is the same as {@link #exists()}
+     */
+    @Override
+    boolean existsWithoutFlush() {
+        return exists()
+    }
 	
 	@CompileStatic
 	List<PipelineFile> toPipelineFiles() {
